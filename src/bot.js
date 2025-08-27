@@ -553,11 +553,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
+    const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
     try {
       if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ content: 'Une erreur est survenue.', ephemeral: true });
+        await interaction.followUp({ content: `Une erreur est survenue: ${errorText}`, ephemeral: true });
       } else {
-        await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
+        await interaction.reply({ content: `Une erreur est survenue: ${errorText}`, ephemeral: true });
       }
     } catch (_) {}
   }
