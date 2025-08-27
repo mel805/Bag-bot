@@ -207,8 +207,7 @@ client.once(Events.ClientReady, (readyClient) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (interaction.isChatInputCommand() && interaction.commandName === 'config') {
-      const member = await interaction.guild.members.fetch(interaction.user.id);
-      const hasManageGuild = member.permissions.has(PermissionsBitField.Flags.ManageGuild);
+      const hasManageGuild = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) || interaction.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
       if (!hasManageGuild) {
         return interaction.reply({ content: '⛔ Cette commande est réservée à l\'équipe de modération.', ephemeral: true });
       }
@@ -347,7 +346,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // Levels section navigation
     if (interaction.isStringSelectMenu() && interaction.customId === 'levels_action') {
       const action = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
@@ -364,7 +362,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // Levels settings handlers
     if (interaction.isButton() && (interaction.customId === 'levels_enable' || interaction.customId === 'levels_disable')) {
       const enable = interaction.customId === 'levels_enable';
       await updateLevelsConfig(interaction.guild.id, { enabled: enable });
@@ -439,7 +436,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // Levels rewards handlers
     if (interaction.isRoleSelectMenu() && interaction.customId === 'levels_reward_add_role') {
       const roleId = interaction.values[0];
       const modal = new ModalBuilder().setCustomId(`levels_reward_add_modal:${roleId}`).setTitle('Associer un niveau à ce rôle');
@@ -479,19 +475,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // Admin XP command (single action)
     if (interaction.isChatInputCommand() && interaction.commandName === 'adminxp') {
-      const member = await interaction.guild.members.fetch(interaction.user.id);
-      const hasManageGuild = member.permissions.has(PermissionsBitField.Flags.ManageGuild);
+      const hasManageGuild = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) || interaction.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
       if (!hasManageGuild) return interaction.reply({ content: '⛔ Permission requise.', ephemeral: true });
       const action = interaction.options.getString('action', true);
       const target = interaction.options.getUser('membre', true);
-      const targetMember = await interaction.guild.members.fetch(target.id).catch(() => null);
-      if (!targetMember) return interaction.reply({ content: 'Membre introuvable.', ephemeral: true });
+      const targetMember = interaction.guild.members.cache.get(target.id);
       const levels = await getLevelsConfig(interaction.guild.id);
       let stats = await getUserStats(interaction.guild.id, target.id);
 
       const applyRewardsUpTo = async (newLevel) => {
+        if (!targetMember) return;
         const entries = Object.entries(levels.rewards || {});
         for (const [lvlStr, rid] of entries) {
           const lvlNum = Number(lvlStr);
@@ -569,7 +563,7 @@ client.on(Events.MessageCreate, async (message) => {
     if (!message.guild || message.author.bot) return;
     const levels = await getLevelsConfig(message.guild.id);
     if (!levels.enabled) return;
-    const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+    const member = message.member;
     if (!member) return;
     let stats = await getUserStats(message.guild.id, member.id);
     const amount = Math.max(0, Math.round(levels.xpPerMessage || 0));
@@ -596,9 +590,9 @@ setInterval(async () => {
       if (!levels.enabled) continue;
       const amount = Math.max(0, Math.round(levels.xpPerVoiceMinute || 0));
       if (amount <= 0) continue;
-      for (const [, member] of guild.members.cache) {
-        const inVoice = member.voice && member.voice.channelId;
-        if (!inVoice) continue;
+      for (const [, vs] of guild.voiceStates.cache) {
+        const member = vs.member;
+        if (!member) continue;
         let stats = await getUserStats(guild.id, member.id);
         stats.xp += amount;
         stats.xpSinceLevel += amount;
