@@ -52,6 +52,50 @@ async function setGuildStaffRoleIds(guildId, roleIds) {
   await writeConfig(cfg);
 }
 
+// --- AutoKick config helpers ---
+function ensureAutoKickShape(g) {
+  if (!g.autokick) {
+    g.autokick = { enabled: false, roleId: '', delayMs: 3600000, pendingJoiners: {} };
+  } else {
+    if (typeof g.autokick.enabled !== 'boolean') g.autokick.enabled = false;
+    if (typeof g.autokick.roleId !== 'string') g.autokick.roleId = '';
+    if (typeof g.autokick.delayMs !== 'number') g.autokick.delayMs = 3600000;
+    if (!g.autokick.pendingJoiners || typeof g.autokick.pendingJoiners !== 'object') g.autokick.pendingJoiners = {};
+  }
+}
+
+async function getAutoKickConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].autokick;
+}
+
+async function updateAutoKickConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].autokick = { ...cfg.guilds[guildId].autokick, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].autokick;
+}
+
+async function addPendingJoiner(guildId, userId, joinedAtMs) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].autokick.pendingJoiners[userId] = joinedAtMs;
+  await writeConfig(cfg);
+}
+
+async function removePendingJoiner(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return;
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  delete cfg.guilds[guildId].autokick.pendingJoiners[userId];
+  await writeConfig(cfg);
+}
+
 module.exports = {
   ensureStorageExists,
   readConfig,
@@ -59,6 +103,10 @@ module.exports = {
   getGuildConfig,
   getGuildStaffRoleIds,
   setGuildStaffRoleIds,
+  getAutoKickConfig,
+  updateAutoKickConfig,
+  addPendingJoiner,
+  removePendingJoiner,
   paths: { DATA_DIR, CONFIG_PATH },
 };
 
