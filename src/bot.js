@@ -41,7 +41,6 @@ function formatDuration(ms) {
 }
 
 function xpRequiredForNext(level, curve) {
-  // XP needed to go from current level to next level
   const required = Math.round(curve.base * Math.pow(curve.factor, Math.max(0, level)));
   return Math.max(1, required);
 }
@@ -74,14 +73,14 @@ async function buildConfigEmbed(guild) {
     .setFooter({ text: 'Boy and Girls (BAG) • Config', iconURL: client.user?.displayAvatarURL() });
 }
 
-function buildTopSectionRow(selected) {
+function buildTopSectionRow() {
   const select = new StringSelectMenuBuilder()
     .setCustomId('config_section')
     .setPlaceholder('Choisir une section…')
     .addOptions(
-      { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff', default: selected === 'staff' },
-      { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick", default: selected === 'autokick' },
-      { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux', default: selected === 'levels' },
+      { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff' },
+      { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick" },
+      { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -139,7 +138,7 @@ async function buildAutokickRows(guild) {
     .setCustomId('autokick_delay')
     .setPlaceholder('Choisir un délai avant auto-kick…')
     .addOptions(
-      ...DELAY_OPTIONS.map((o) => ({ label: o.label, value: String(o.ms), default: o.ms === ak.delayMs })),
+      ...DELAY_OPTIONS.map((o) => ({ label: o.label, value: String(o.ms) })),
       { label: 'Personnalisé (minutes)…', value: 'custom' },
     );
   const enableBtn = new ButtonBuilder().setCustomId('autokick_enable').setLabel('Activer AutoKick').setStyle(ButtonStyle.Success).setDisabled(ak.enabled);
@@ -222,7 +221,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
       const section = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow(section);
+      const top = buildTopSectionRow();
       if (section === 'staff') {
         const staffAction = buildStaffActionRow();
         await interaction.update({ embeds: [embed], components: [top, staffAction] });
@@ -241,7 +240,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_staff_action') {
       const action = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('staff');
+      const top = buildTopSectionRow();
       const staffAction = buildStaffActionRow();
       if (action === 'add') {
         const addRows = buildStaffAddRows();
@@ -261,7 +260,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const next = Array.from(new Set([...current, ...interaction.values]));
       await setGuildStaffRoleIds(interaction.guild.id, next);
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('staff');
+      const top = buildTopSectionRow();
       const staffAction = buildStaffActionRow();
       await interaction.update({ embeds: [embed], components: [top, staffAction] });
       return;
@@ -274,7 +273,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const next = current.filter((id) => !toRemove.has(id));
       await setGuildStaffRoleIds(interaction.guild.id, next);
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('staff');
+      const top = buildTopSectionRow();
       const staffAction = buildStaffActionRow();
       await interaction.update({ embeds: [embed], components: [top, staffAction] });
       return;
@@ -284,7 +283,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const selected = interaction.values[0];
       await updateAutoKickConfig(interaction.guild.id, { roleId: selected });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('autokick');
+      const top = buildTopSectionRow();
       const akRows = await buildAutokickRows(interaction.guild);
       await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       return;
@@ -315,7 +314,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         await updateAutoKickConfig(interaction.guild.id, { delayMs });
         const embed = await buildConfigEmbed(interaction.guild);
-        const top = buildTopSectionRow('autokick');
+        const top = buildTopSectionRow();
         const akRows = await buildAutokickRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [top, ...akRows] });
         return;
@@ -326,7 +325,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enable = interaction.customId === 'autokick_enable';
       await updateAutoKickConfig(interaction.guild.id, { enabled: enable });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('autokick');
+      const top = buildTopSectionRow();
       const akRows = await buildAutokickRows(interaction.guild);
       await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       return;
@@ -342,7 +341,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoKickConfig(interaction.guild.id, { delayMs });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('autokick');
+      const top = buildTopSectionRow();
       const akRows = await buildAutokickRows(interaction.guild);
       try { await interaction.editReply({ embeds: [embed], components: [top, ...akRows] }); } catch (_) {}
       return;
@@ -352,7 +351,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'levels_action') {
       const action = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('levels');
+      const top = buildTopSectionRow();
       if (action === 'settings') {
         const rows = await buildLevelsSettingsRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [top, ...rows] });
@@ -370,7 +369,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enable = interaction.customId === 'levels_enable';
       await updateLevelsConfig(interaction.guild.id, { enabled: enable });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('levels');
+      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
       await interaction.update({ embeds: [embed], components: [top, ...rows] });
       return;
@@ -407,7 +406,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { xpPerMessage: Math.round(v) });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('levels');
+      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
       try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
       return;
@@ -419,7 +418,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { xpPerVoiceMinute: Math.round(v) });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('levels');
+      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
       try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
       return;
@@ -434,7 +433,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { levelCurve: { base: Math.round(base), factor } });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('levels');
+      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
       try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
       return;
@@ -460,7 +459,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { rewards });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('levels');
+      const top = buildTopSectionRow();
       const rows = await buildLevelsRewardsRows(interaction.guild);
       try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
       return;
@@ -474,7 +473,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       for (const k of removeLvls) delete rewards[k];
       await updateLevelsConfig(interaction.guild.id, { rewards });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow('levels');
+      const top = buildTopSectionRow();
       const rows = await buildLevelsRewardsRows(interaction.guild);
       await interaction.update({ embeds: [embed], components: [top, ...rows] });
       return;
@@ -506,7 +505,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const amount = interaction.options.getInteger('valeur', true);
         stats.xp += amount;
         stats.xpSinceLevel += amount;
-        // level up loop
         let required = xpRequiredForNext(stats.level, levels.levelCurve);
         while (stats.xpSinceLevel >= required) {
           stats.xpSinceLevel -= required;
@@ -556,13 +554,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
-    if (interaction.isRepliable()) {
-      try { await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true }); } catch (_) {}
-    }
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: 'Une erreur est survenue.', ephemeral: true });
+      } else {
+        await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
+      }
+    } catch (_) {}
   }
 });
 
-// Award text XP on message
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild || message.author.bot) return;
@@ -584,12 +585,9 @@ client.on(Events.MessageCreate, async (message) => {
       if (rid) { try { await member.roles.add(rid); } catch (_) {} }
     }
     await setUserStats(message.guild.id, member.id, stats);
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
 });
 
-// Periodically award voice XP to members currently in voice
 const VOICE_XP_INTERVAL_MS = 60 * 1000;
 setInterval(async () => {
   try {
@@ -615,12 +613,9 @@ setInterval(async () => {
         await setUserStats(guild.id, member.id, stats);
       }
     }
-  } catch (e) {
-    // ignore periodic errors
-  }
+  } catch (e) {}
 }, VOICE_XP_INTERVAL_MS);
 
-// AutoKick tracking
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
     const ak = await getAutoKickConfig(member.guild.id);
@@ -650,7 +645,6 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
   }
 });
 
-// Periodic checker to enforce autokick
 const CHECK_INTERVAL_MS = 60 * 1000;
 setInterval(async () => {
   try {
