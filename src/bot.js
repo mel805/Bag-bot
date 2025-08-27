@@ -119,9 +119,12 @@ async function buildStaffRemoveRows(guild) {
     .setCustomId('staff_remove_select')
     .setPlaceholder('Sélectionner les rôles à RETIRER du Staff…')
     .setMinValues(1)
-    .setMaxValues(Math.min(25, Math.max(1, options.length)))
-    .addOptions(...options);
-  if (options.length === 0) removeSelect.setDisabled(true).setPlaceholder('Aucun rôle Staff à retirer');
+    .setMaxValues(Math.min(25, Math.max(1, options.length)));
+  if (options.length > 0) {
+    removeSelect.addOptions(...options);
+  } else {
+    removeSelect.addOptions({ label: 'Aucun rôle Staff', value: 'none' }).setDisabled(true);
+  }
   return [new ActionRowBuilder().addComponents(removeSelect)];
 }
 
@@ -188,9 +191,12 @@ async function buildLevelsRewardsRows(guild) {
     .setCustomId('levels_reward_remove')
     .setPlaceholder('Supprimer des récompenses (niveau)…')
     .setMinValues(1)
-    .setMaxValues(Math.min(25, Math.max(1, options.length)))
-    .addOptions(...options);
-  if (options.length === 0) removeSelect.setDisabled(true).setPlaceholder('Aucune récompense');
+    .setMaxValues(Math.min(25, Math.max(1, options.length)));
+  if (options.length > 0) {
+    removeSelect.addOptions(...options);
+  } else {
+    removeSelect.addOptions({ label: 'Aucune récompense', value: 'none' }).setDisabled(true);
+  }
   return [new ActionRowBuilder().addComponents(addRole), new ActionRowBuilder().addComponents(removeSelect)];
 }
 
@@ -263,6 +269,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'staff_remove_select') {
       const toRemove = new Set(interaction.values);
+      if (toRemove.has('none')) return interaction.deferUpdate();
       const current = await getGuildStaffRoleIds(interaction.guild.id);
       const next = current.filter((id) => !toRemove.has(id));
       await setGuildStaffRoleIds(interaction.guild.id, next);
@@ -461,6 +468,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'levels_reward_remove') {
       const removeLvls = new Set(interaction.values.map((v) => String(v)));
+      if (removeLvls.has('none')) return interaction.deferUpdate();
       const cfg = await getLevelsConfig(interaction.guild.id);
       const rewards = { ...(cfg.rewards || {}) };
       for (const k of removeLvls) delete rewards[k];
@@ -544,7 +552,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: `Niveau de ${target} défini à ${stats.level}`, ephemeral: true });
       }
 
-      return interaction.reply({ content: 'Sous-commande inconnue.', ephemeral: true });
+      return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
@@ -572,7 +580,6 @@ client.on(Events.MessageCreate, async (message) => {
       stats.xpSinceLevel -= required;
       stats.level += 1;
       required = xpRequiredForNext(stats.level, levels.levelCurve);
-      // Grant reward if any
       const rid = (levels.rewards || {})[String(stats.level)];
       if (rid) { try { await member.roles.add(rid); } catch (_) {} }
     }
