@@ -14,9 +14,45 @@ if (!token || !clientId || !guildId) {
 const commands = [
   new SlashCommandBuilder()
     .setName('config')
-    .setDescription('Configurer le serveur (Staff & AutoKick)')
+    .setDescription('Configurer le serveur (Staff, AutoKick, Levels)')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('adminxp')
+    .setDescription('Gestion des niveaux et XP')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addSubcommand(sc => sc
+      .setName('addxp')
+      .setDescription('Ajouter de l\'XP à un membre')
+      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
+      .addIntegerOption(o => o.setName('montant').setDescription('XP à ajouter').setRequired(true).setMinValue(1))
+    )
+    .addSubcommand(sc => sc
+      .setName('removexp')
+      .setDescription('Retirer de l\'XP à un membre')
+      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
+      .addIntegerOption(o => o.setName('montant').setDescription('XP à retirer').setRequired(true).setMinValue(1))
+    )
+    .addSubcommand(sc => sc
+      .setName('addlevel')
+      .setDescription('Ajouter des niveaux à un membre')
+      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
+      .addIntegerOption(o => o.setName('niveaux').setDescription('Niveaux à ajouter').setRequired(true).setMinValue(1))
+    )
+    .addSubcommand(sc => sc
+      .setName('removelevel')
+      .setDescription('Retirer des niveaux à un membre')
+      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
+      .addIntegerOption(o => o.setName('niveaux').setDescription('Niveaux à retirer').setRequired(true).setMinValue(1))
+    )
+    .addSubcommand(sc => sc
+      .setName('setlevel')
+      .setDescription('Définir le niveau d\'un membre')
+      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
+      .addIntegerOption(o => o.setName('niveau').setDescription('Niveau cible').setRequired(true).setMinValue(0))
+    )
     .toJSON(),
 ];
 

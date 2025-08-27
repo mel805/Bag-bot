@@ -37,7 +37,19 @@ async function writeConfig(cfg) {
 
 async function getGuildConfig(guildId) {
   const cfg = await readConfig();
-  return cfg.guilds[guildId] || { staffRoleIds: [] };
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!Array.isArray(cfg.guilds[guildId].staffRoleIds)) cfg.guilds[guildId].staffRoleIds = [];
+  if (!cfg.guilds[guildId].levels) {
+    cfg.guilds[guildId].levels = {
+      enabled: false,
+      xpPerMessage: 10,
+      xpPerVoiceMinute: 5,
+      levelCurve: { base: 100, factor: 1.2 },
+      rewards: {},
+      users: {},
+    };
+  }
+  return cfg.guilds[guildId];
 }
 
 async function getGuildStaffRoleIds(guildId) {
@@ -95,6 +107,66 @@ async function removePendingJoiner(guildId, userId) {
   delete cfg.guilds[guildId].autokick.pendingJoiners[userId];
   await writeConfig(cfg);
 }
+
+// --- Levels helpers ---
+function ensureLevelsShape(g) {
+  if (!g.levels) {
+    g.levels = { enabled: false, xpPerMessage: 10, xpPerVoiceMinute: 5, levelCurve: { base: 100, factor: 1.2 }, rewards: {}, users: {} };
+  } else {
+    if (typeof g.levels.enabled !== 'boolean') g.levels.enabled = false;
+    if (typeof g.levels.xpPerMessage !== 'number') g.levels.xpPerMessage = 10;
+    if (typeof g.levels.xpPerVoiceMinute !== 'number') g.levels.xpPerVoiceMinute = 5;
+    if (!g.levels.levelCurve || typeof g.levels.levelCurve !== 'object') g.levels.levelCurve = { base: 100, factor: 1.2 };
+    if (typeof g.levels.levelCurve.base !== 'number') g.levels.levelCurve.base = 100;
+    if (typeof g.levels.levelCurve.factor !== 'number') g.levels.levelCurve.factor = 1.2;
+    if (!g.levels.rewards || typeof g.levels.rewards !== 'object') g.levels.rewards = {};
+    if (!g.levels.users || typeof g.levels.users !== 'object') g.levels.users = {};
+  }
+}
+
+async function getLevelsConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].levels;
+}
+
+async function updateLevelsConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].levels = { ...cfg.guilds[guildId].levels, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].levels;
+}
+
+async function getUserStats(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  const existing = cfg.guilds[guildId].levels.users[userId];
+  const u = existing || { xp: 0, level: 0, xpSinceLevel: 0, lastMessageAt: 0, voiceMsAccum: 0, voiceJoinedAt: 0 };
+  if (typeof u.xp !== 'number') u.xp = 0;
+  if (typeof u.level !== 'number') u.level = 0;
+  if (typeof u.xpSinceLevel !== 'number') u.xpSinceLevel = 0;
+  if (typeof u.lastMessageAt !== 'number') u.lastMessageAt = 0;
+  if (typeof u.voiceMsAccum !== 'number') u.voiceMsAccum = 0;
+  if (typeof u.voiceJoinedAt !== 'number') u.voiceJoinedAt = 0;
+  return u;
+}
+
+async function setUserStats(guildId, userId, stats) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].levels.users[userId] = stats;
+  await writeConfig(cfg);
+}
+
+module.exports.getLevelsConfig = getLevelsConfig;
+module.exports.updateLevelsConfig = updateLevelsConfig;
+module.exports.getUserStats = getUserStats;
+module.exports.setUserStats = setUserStats;
 
 module.exports = {
   ensureStorageExists,

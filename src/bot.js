@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats } = require('./storage/jsonStore');
 require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
@@ -11,7 +11,12 @@ if (!token || !guildId) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
   partials: [Partials.GuildMember],
 });
 
@@ -35,6 +40,12 @@ function formatDuration(ms) {
   return `${Math.round(sec / 86400)} j`;
 }
 
+function xpRequiredForNext(level, curve) {
+  // XP needed to go from current level to next level
+  const required = Math.round(curve.base * Math.pow(curve.factor, Math.max(0, level)));
+  return Math.max(1, required);
+}
+
 async function buildConfigEmbed(guild) {
   const staffIds = await getGuildStaffRoleIds(guild.id);
   const staffList = staffIds.length
@@ -46,6 +57,8 @@ async function buildConfigEmbed(guild) {
     : '—';
   const ak = await getAutoKickConfig(guild.id);
   const roleDisplay = ak.roleId ? (guild.roles.cache.get(ak.roleId) || `<@&${ak.roleId}>`) : '—';
+  const levels = await getLevelsConfig(guild.id);
+  const rewardsCount = Object.keys(levels.rewards || {}).length;
 
   return new EmbedBuilder()
     .setColor(THEME_COLOR_PRIMARY)
@@ -53,7 +66,8 @@ async function buildConfigEmbed(guild) {
     .setDescription("Choisissez une section puis ajustez les paramètres.")
     .addFields(
       { name: 'Rôles Staff', value: staffList },
-      { name: 'AutoKick', value: `État: ${ak.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nRôle requis: ${roleDisplay}\nDélai: ${formatDuration(ak.delayMs)}` }
+      { name: 'AutoKick', value: `État: ${ak.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nRôle requis: ${roleDisplay}\nDélai: ${formatDuration(ak.delayMs)}` },
+      { name: 'Levels', value: `État: ${levels.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nXP texte: ${levels.xpPerMessage}\nXP vocal/min: ${levels.xpPerVoiceMinute}\nCourbe: base=${levels.levelCurve.base}, facteur=${levels.levelCurve.factor}\nRécompenses: ${rewardsCount}` },
     )
     .setThumbnail(THEME_IMAGE)
     .setImage(THEME_IMAGE)
@@ -67,6 +81,7 @@ function buildTopSectionRow(selected) {
     .addOptions(
       { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff', default: selected === 'staff' },
       { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick", default: selected === 'autokick' },
+      { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux', default: selected === 'levels' },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -133,6 +148,52 @@ async function buildAutokickRows(guild) {
   ];
 }
 
+function buildLevelsActionRow() {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('levels_action')
+    .setPlaceholder('Choisir une action Levels…')
+    .addOptions(
+      { label: 'Paramètres (XP/texte, XP/vocal, courbe)', value: 'settings' },
+      { label: 'Récompenses (niveau → rôle)', value: 'rewards' },
+    );
+  return new ActionRowBuilder().addComponents(select);
+}
+
+async function buildLevelsSettingsRows(guild) {
+  const levels = await getLevelsConfig(guild.id);
+  const enableBtn = new ButtonBuilder().setCustomId('levels_enable').setLabel('Activer Levels').setStyle(ButtonStyle.Success).setDisabled(levels.enabled);
+  const disableBtn = new ButtonBuilder().setCustomId('levels_disable').setLabel('Désactiver Levels').setStyle(ButtonStyle.Danger).setDisabled(!levels.enabled);
+  const xpTextBtn = new ButtonBuilder().setCustomId('levels_set_xp_text').setLabel('Définir XP Texte').setStyle(ButtonStyle.Primary);
+  const xpVoiceBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice').setLabel('Définir XP Vocal/min').setStyle(ButtonStyle.Primary);
+  const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Définir Courbe (base/facteur)').setStyle(ButtonStyle.Secondary);
+  return [
+    new ActionRowBuilder().addComponents(enableBtn, disableBtn),
+    new ActionRowBuilder().addComponents(xpTextBtn, xpVoiceBtn, curveBtn),
+  ];
+}
+
+async function buildLevelsRewardsRows(guild) {
+  const levels = await getLevelsConfig(guild.id);
+  const addRole = new RoleSelectMenuBuilder()
+    .setCustomId('levels_reward_add_role')
+    .setPlaceholder('Choisir le rôle à associer à un niveau…')
+    .setMinValues(1)
+    .setMaxValues(1);
+  const options = Object.entries(levels.rewards || {})
+    .map(([lvl, rid]) => {
+      const role = guild.roles.cache.get(rid);
+      return { label: `Niveau ${lvl} → ${role ? role.name : rid}`, value: String(lvl) };
+    });
+  const removeSelect = new StringSelectMenuBuilder()
+    .setCustomId('levels_reward_remove')
+    .setPlaceholder('Supprimer des récompenses (niveau)…')
+    .setMinValues(1)
+    .setMaxValues(Math.min(25, Math.max(1, options.length)))
+    .addOptions(...options);
+  if (options.length === 0) removeSelect.setDisabled(true).setPlaceholder('Aucune récompense');
+  return [new ActionRowBuilder().addComponents(addRole), new ActionRowBuilder().addComponents(removeSelect)];
+}
+
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
@@ -162,6 +223,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (section === 'autokick') {
         const akRows = await buildAutokickRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+      } else if (section === 'levels') {
+        const levelAction = buildLevelsActionRow();
+        await interaction.update({ embeds: [embed], components: [top, levelAction] });
       } else {
         await interaction.update({ embeds: [embed], components: [top] });
       }
@@ -276,6 +340,212 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.editReply({ embeds: [embed], components: [top, ...akRows] }); } catch (_) {}
       return;
     }
+
+    // Levels section navigation
+    if (interaction.isStringSelectMenu() && interaction.customId === 'levels_action') {
+      const action = interaction.values[0];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('levels');
+      if (action === 'settings') {
+        const rows = await buildLevelsSettingsRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      } else if (action === 'rewards') {
+        const rows = await buildLevelsRewardsRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      } else {
+        await interaction.update({ embeds: [embed], components: [top, buildLevelsActionRow()] });
+      }
+      return;
+    }
+
+    // Levels settings handlers
+    if (interaction.isButton() && (interaction.customId === 'levels_enable' || interaction.customId === 'levels_disable')) {
+      const enable = interaction.customId === 'levels_enable';
+      await updateLevelsConfig(interaction.guild.id, { enabled: enable });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('levels');
+      const rows = await buildLevelsSettingsRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_set_xp_text') {
+      const modal = new ModalBuilder().setCustomId('levels_xp_text_modal').setTitle('XP par message (texte)');
+      const input = new TextInputBuilder().setCustomId('amount').setLabel('XP/message').setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(6).setPlaceholder('Ex: 10').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_set_xp_voice') {
+      const modal = new ModalBuilder().setCustomId('levels_xp_voice_modal').setTitle('XP vocal par minute');
+      const input = new TextInputBuilder().setCustomId('amount').setLabel('XP/minute en vocal').setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(6).setPlaceholder('Ex: 5').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_set_curve') {
+      const modal = new ModalBuilder().setCustomId('levels_curve_modal').setTitle('Courbe d\'XP (base & facteur)');
+      const baseInput = new TextInputBuilder().setCustomId('base').setLabel('Base (ex: 100)').setStyle(TextInputStyle.Short).setPlaceholder('100').setRequired(true);
+      const factorInput = new TextInputBuilder().setCustomId('factor').setLabel('Facteur (ex: 1.2)').setStyle(TextInputStyle.Short).setPlaceholder('1.2').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(baseInput), new ActionRowBuilder().addComponents(factorInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_text_modal') {
+      const v = Number(interaction.fields.getTextInputValue('amount'));
+      if (!Number.isFinite(v) || v < 0) return interaction.reply({ content: 'Valeur invalide.', ephemeral: true });
+      await updateLevelsConfig(interaction.guild.id, { xpPerMessage: Math.round(v) });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('levels');
+      const rows = await buildLevelsSettingsRows(interaction.guild);
+      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_voice_modal') {
+      const v = Number(interaction.fields.getTextInputValue('amount'));
+      if (!Number.isFinite(v) || v < 0) return interaction.reply({ content: 'Valeur invalide.', ephemeral: true });
+      await updateLevelsConfig(interaction.guild.id, { xpPerVoiceMinute: Math.round(v) });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('levels');
+      const rows = await buildLevelsSettingsRows(interaction.guild);
+      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'levels_curve_modal') {
+      const base = Number(interaction.fields.getTextInputValue('base'));
+      const factor = Number(interaction.fields.getTextInputValue('factor'));
+      if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(factor) || factor <= 0) {
+        return interaction.reply({ content: 'Valeurs invalides.', ephemeral: true });
+      }
+      await updateLevelsConfig(interaction.guild.id, { levelCurve: { base: Math.round(base), factor } });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('levels');
+      const rows = await buildLevelsSettingsRows(interaction.guild);
+      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      return;
+    }
+
+    // Levels rewards handlers
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'levels_reward_add_role') {
+      const roleId = interaction.values[0];
+      const modal = new ModalBuilder().setCustomId(`levels_reward_add_modal:${roleId}`).setTitle('Associer un niveau à ce rôle');
+      const levelInput = new TextInputBuilder().setCustomId('level').setLabel('Niveau (ex: 5)').setStyle(TextInputStyle.Short).setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(levelInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('levels_reward_add_modal:')) {
+      const roleId = interaction.customId.split(':')[1];
+      const lvl = Number(interaction.fields.getTextInputValue('level'));
+      if (!Number.isFinite(lvl) || lvl < 1) return interaction.reply({ content: 'Niveau invalide (>=1).', ephemeral: true });
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      const rewards = { ...(cfg.rewards || {}) };
+      rewards[String(Math.round(lvl))] = roleId;
+      await updateLevelsConfig(interaction.guild.id, { rewards });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('levels');
+      const rows = await buildLevelsRewardsRows(interaction.guild);
+      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'levels_reward_remove') {
+      const removeLvls = new Set(interaction.values.map((v) => String(v)));
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      const rewards = { ...(cfg.rewards || {}) };
+      for (const k of removeLvls) delete rewards[k];
+      await updateLevelsConfig(interaction.guild.id, { rewards });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('levels');
+      const rows = await buildLevelsRewardsRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      return;
+    }
+
+    // Admin XP command
+    if (interaction.isChatInputCommand() && interaction.commandName === 'adminxp') {
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      const hasManageGuild = member.permissions.has(PermissionsBitField.Flags.ManageGuild);
+      if (!hasManageGuild) return interaction.reply({ content: '⛔ Permission requise.', ephemeral: true });
+      const sub = interaction.options.getSubcommand();
+      const target = interaction.options.getUser('membre', true);
+      const targetMember = await interaction.guild.members.fetch(target.id).catch(() => null);
+      if (!targetMember) return interaction.reply({ content: 'Membre introuvable.', ephemeral: true });
+      const levels = await getLevelsConfig(interaction.guild.id);
+      let stats = await getUserStats(interaction.guild.id, target.id);
+
+      const applyRewardsUpTo = async (newLevel) => {
+        const entries = Object.entries(levels.rewards || {});
+        for (const [lvlStr, rid] of entries) {
+          const lvlNum = Number(lvlStr);
+          if (Number.isFinite(lvlNum) && newLevel >= lvlNum) {
+            try { await targetMember.roles.add(rid); } catch (_) {}
+          }
+        }
+      };
+
+      if (sub === 'addxp') {
+        const amount = interaction.options.getInteger('montant', true);
+        stats.xp += amount;
+        stats.xpSinceLevel += amount;
+        // level up loop
+        let required = xpRequiredForNext(stats.level, levels.levelCurve);
+        while (stats.xpSinceLevel >= required) {
+          stats.xpSinceLevel -= required;
+          stats.level += 1;
+          required = xpRequiredForNext(stats.level, levels.levelCurve);
+        }
+        await setUserStats(interaction.guild.id, target.id, stats);
+        await applyRewardsUpTo(stats.level);
+        return interaction.reply({ content: `Ajouté ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+      }
+
+      if (sub === 'removexp') {
+        const amount = interaction.options.getInteger('montant', true);
+        stats.xp = Math.max(0, stats.xp - amount);
+        stats.xpSinceLevel = Math.max(0, stats.xpSinceLevel - amount);
+        await setUserStats(interaction.guild.id, target.id, stats);
+        return interaction.reply({ content: `Retiré ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+      }
+
+      if (sub === 'addlevel') {
+        const n = interaction.options.getInteger('niveaux', true);
+        stats.level = Math.max(0, stats.level + n);
+        stats.xpSinceLevel = 0;
+        await setUserStats(interaction.guild.id, target.id, stats);
+        await applyRewardsUpTo(stats.level);
+        return interaction.reply({ content: `Ajouté ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+      }
+
+      if (sub === 'removelevel') {
+        const n = interaction.options.getInteger('niveaux', true);
+        stats.level = Math.max(0, stats.level - n);
+        stats.xpSinceLevel = 0;
+        await setUserStats(interaction.guild.id, target.id, stats);
+        return interaction.reply({ content: `Retiré ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+      }
+
+      if (sub === 'setlevel') {
+        const lvl = interaction.options.getInteger('niveau', true);
+        stats.level = Math.max(0, lvl);
+        stats.xpSinceLevel = 0;
+        await setUserStats(interaction.guild.id, target.id, stats);
+        await applyRewardsUpTo(stats.level);
+        return interaction.reply({ content: `Niveau de ${target} défini à ${stats.level}`, ephemeral: true });
+      }
+
+      return interaction.reply({ content: 'Sous-commande inconnue.', ephemeral: true });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     if (interaction.isRepliable()) {
@@ -284,7 +554,66 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Track new joiners and role updates for autokick
+// Award text XP on message
+client.on(Events.MessageCreate, async (message) => {
+  try {
+    if (!message.guild || message.author.bot) return;
+    const levels = await getLevelsConfig(message.guild.id);
+    if (!levels.enabled) return;
+    const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+    if (!member) return;
+    let stats = await getUserStats(message.guild.id, member.id);
+    const amount = Math.max(0, Math.round(levels.xpPerMessage || 0));
+    if (amount <= 0) return;
+    stats.xp += amount;
+    stats.xpSinceLevel += amount;
+    let required = xpRequiredForNext(stats.level, levels.levelCurve);
+    while (stats.xpSinceLevel >= required) {
+      stats.xpSinceLevel -= required;
+      stats.level += 1;
+      required = xpRequiredForNext(stats.level, levels.levelCurve);
+      // Grant reward if any
+      const rid = (levels.rewards || {})[String(stats.level)];
+      if (rid) { try { await member.roles.add(rid); } catch (_) {} }
+    }
+    await setUserStats(message.guild.id, member.id, stats);
+  } catch (e) {
+    // ignore
+  }
+});
+
+// Periodically award voice XP to members currently in voice
+const VOICE_XP_INTERVAL_MS = 60 * 1000;
+setInterval(async () => {
+  try {
+    for (const [, guild] of client.guilds.cache) {
+      const levels = await getLevelsConfig(guild.id);
+      if (!levels.enabled) continue;
+      const amount = Math.max(0, Math.round(levels.xpPerVoiceMinute || 0));
+      if (amount <= 0) continue;
+      for (const [, member] of guild.members.cache) {
+        const inVoice = member.voice && member.voice.channelId;
+        if (!inVoice) continue;
+        let stats = await getUserStats(guild.id, member.id);
+        stats.xp += amount;
+        stats.xpSinceLevel += amount;
+        let required = xpRequiredForNext(stats.level, levels.levelCurve);
+        while (stats.xpSinceLevel >= required) {
+          stats.xpSinceLevel -= required;
+          stats.level += 1;
+          required = xpRequiredForNext(stats.level, levels.levelCurve);
+          const rid = (levels.rewards || {})[String(stats.level)];
+          if (rid) { try { await member.roles.add(rid); } catch (_) {} }
+        }
+        await setUserStats(guild.id, member.id, stats);
+      }
+    }
+  } catch (e) {
+    // ignore periodic errors
+  }
+}, VOICE_XP_INTERVAL_MS);
+
+// AutoKick tracking
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
     const ak = await getAutoKickConfig(member.guild.id);
