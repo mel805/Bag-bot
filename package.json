@@ -1,0 +1,19 @@
+{
+  "name": "bag-discord-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Boy and Girls (BAG) Discord bot with /setup command",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "register": "node src/deploy-commands.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  }
+}
+
