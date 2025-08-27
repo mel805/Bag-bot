@@ -59,7 +59,7 @@ async function buildConfigEmbed(guild) {
   const levels = await getLevelsConfig(guild.id);
   const rewardsCount = Object.keys(levels.rewards || {}).length;
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(THEME_COLOR_PRIMARY)
     .setTitle('BAG · Configuration')
     .setDescription("Choisissez une section puis ajustez les paramètres.")
@@ -69,8 +69,13 @@ async function buildConfigEmbed(guild) {
       { name: 'Levels', value: `État: ${levels.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nXP texte: ${levels.xpPerMessage}\nXP vocal/min: ${levels.xpPerVoiceMinute}\nCourbe: base=${levels.levelCurve.base}, facteur=${levels.levelCurve.factor}\nRécompenses: ${rewardsCount}` },
     )
     .setThumbnail(THEME_IMAGE)
-    .setImage(THEME_IMAGE)
-    .setFooter({ text: 'Boy and Girls (BAG) • Config', iconURL: client.user?.displayAvatarURL() });
+    .setImage(THEME_IMAGE);
+
+  const avatar = client.user && client.user.displayAvatarURL ? client.user.displayAvatarURL() : null;
+  if (avatar) embed.setFooter({ text: 'Boy and Girls (BAG) • Config', iconURL: avatar });
+  else embed.setFooter({ text: 'Boy and Girls (BAG) • Config' });
+
+  return embed;
 }
 
 function buildTopSectionRow() {
