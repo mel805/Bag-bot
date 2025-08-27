@@ -101,7 +101,7 @@ client.once(Events.ClientReady, (readyClient) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
+    if (interaction.isChatInputCommand() && interaction.commandName === 'config') {
       // Permission check: show only to those with ManageGuild; ensure enforcement too
       const member = await interaction.guild.members.fetch(interaction.user.id);
       const hasManageGuild = member.permissions.has(PermissionsBitField.Flags.ManageGuild);

@@ -10,11 +10,11 @@ if (!token || !clientId || !guildId) {
   process.exit(2);
 }
 
-// Build /setup command - visible to members with ManageGuild by default
+// Build /config command - visible to members with ManageGuild by default
 const commands = [
   new SlashCommandBuilder()
-    .setName('setup')
-    .setDescription('Configurer le staff et les rôles de modération')
+    .setName('config')
+    .setDescription('Configurer le serveur (Staff & AutoKick)')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
     .toJSON(),
@@ -25,7 +25,7 @@ async function main() {
   try {
     console.log('Registering guild commands...');
     await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-    console.log('✓ /setup registered for guild', guildId);
+    console.log('✓ /config registered for guild', guildId);
   } catch (err) {
     console.error('Failed to register commands:', err?.response?.data || err);
     process.exit(1);
