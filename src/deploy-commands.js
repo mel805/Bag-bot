@@ -38,6 +38,11 @@ const commands = [
     .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
     .addIntegerOption(o => o.setName('valeur').setDescription('Montant XP / Niveau selon action').setRequired(true))
     .toJSON(),
+  new SlashCommandBuilder()
+    .setName('niveau')
+    .setDescription('Voir votre niveau ou celui d\'un membre')
+    .addUserOption(o => o.setName('membre').setDescription('Membre (optionnel)').setRequired(false))
+    .toJSON(),
 ];
 
 async function main() {

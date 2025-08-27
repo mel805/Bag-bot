@@ -57,7 +57,11 @@ async function buildConfigEmbed(guild) {
   const ak = await getAutoKickConfig(guild.id);
   const roleDisplay = ak.roleId ? (guild.roles.cache.get(ak.roleId) || `<@&${ak.roleId}>`) : '—';
   const levels = await getLevelsConfig(guild.id);
-  const rewardsCount = Object.keys(levels.rewards || {}).length;
+  const rewardsEntries = Object.entries(levels.rewards || {}).sort((a,b)=>Number(a[0])-Number(b[0]));
+  const rewardsText = rewardsEntries.length ? rewardsEntries.map(([lvl, rid]) => {
+    const role = guild.roles.cache.get(rid);
+    return `• Niveau ${lvl} → ${role ? role : `<@&${rid}>`}`;
+  }).join('\n') : '—';
 
   const embed = new EmbedBuilder()
     .setColor(THEME_COLOR_PRIMARY)
@@ -66,7 +70,8 @@ async function buildConfigEmbed(guild) {
     .addFields(
       { name: 'Rôles Staff', value: staffList },
       { name: 'AutoKick', value: `État: ${ak.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nRôle requis: ${roleDisplay}\nDélai: ${formatDuration(ak.delayMs)}` },
-      { name: 'Levels', value: `État: ${levels.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nXP texte: ${levels.xpPerMessage}\nXP vocal/min: ${levels.xpPerVoiceMinute}\nCourbe: base=${levels.levelCurve.base}, facteur=${levels.levelCurve.factor}\nRécompenses: ${rewardsCount}` },
+      { name: 'Levels', value: `État: ${levels.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nXP texte: ${levels.xpPerMessage}\nXP vocal/min: ${levels.xpPerVoiceMinute}\nCourbe: base=${levels.levelCurve.base}, facteur=${levels.levelCurve.factor}` },
+      { name: 'Récompenses (niveau → rôle)', value: rewardsText }
     )
     .setThumbnail(THEME_IMAGE)
     .setImage(THEME_IMAGE);
@@ -220,6 +225,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const top = buildTopSectionRow();
       await interaction.reply({ embeds: [embed], components: [top], ephemeral: true });
       return;
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
+      const targetUser = interaction.options.getUser('membre') || interaction.user;
+      const levels = await getLevelsConfig(interaction.guild.id);
+      const stats = await getUserStats(interaction.guild.id, targetUser.id);
+      const curve = levels.levelCurve;
+      const needed = xpRequiredForNext(stats.level, curve);
+      const progress = Math.min(1, Math.max(0, stats.xpSinceLevel / needed));
+      const barLen = 20;
+      const filled = Math.round(progress * barLen);
+      const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_ACCENT)
+        .setTitle(`Niveau de ${targetUser.username}`)
+        .addFields(
+          { name: 'Niveau', value: String(stats.level), inline: true },
+          { name: 'XP total', value: String(stats.xp), inline: true },
+          { name: 'Progression', value: `${bar} ${Math.round(progress * 100)}%\n${stats.xpSinceLevel}/${needed} XP vers le niveau ${stats.level + 1}` }
+        );
+      const avatar = targetUser.displayAvatarURL?.() || null;
+      if (avatar) embed.setThumbnail(avatar);
+      return interaction.reply({ embeds: [embed], ephemeral: false });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
