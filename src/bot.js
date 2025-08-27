@@ -35,7 +35,7 @@ function formatDuration(ms) {
   return `${Math.round(sec / 86400)} j`;
 }
 
-async function buildSetupEmbed(guild) {
+async function buildConfigEmbed(guild) {
   const staffIds = await getGuildStaffRoleIds(guild.id);
   const staffList = staffIds.length
     ? staffIds
@@ -50,31 +50,73 @@ async function buildSetupEmbed(guild) {
   return new EmbedBuilder()
     .setColor(THEME_COLOR_PRIMARY)
     .setTitle('BAG · Configuration')
-    .setDescription("Paramétrez le Staff et l'auto-kick pour votre serveur.")
+    .setDescription("Choisissez une section puis ajustez les paramètres.")
     .addFields(
       { name: 'Rôles Staff', value: staffList },
       { name: 'AutoKick', value: `État: ${ak.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nRôle requis: ${roleDisplay}\nDélai: ${formatDuration(ak.delayMs)}` }
     )
     .setThumbnail(THEME_IMAGE)
     .setImage(THEME_IMAGE)
-    .setFooter({ text: 'Boy and Girls (BAG) • Setup', iconURL: client.user?.displayAvatarURL() });
+    .setFooter({ text: 'Boy and Girls (BAG) • Config', iconURL: client.user?.displayAvatarURL() });
 }
 
-async function buildSetupComponents(guild) {
-  const ak = await getAutoKickConfig(guild.id);
+function buildTopSectionRow(selected) {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('config_section')
+    .setPlaceholder('Choisir une section…')
+    .addOptions(
+      { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff', default: selected === 'staff' },
+      { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick", default: selected === 'autokick' },
+    );
+  return new ActionRowBuilder().addComponents(select);
+}
 
-  const staffSelect = new RoleSelectMenuBuilder()
-    .setCustomId('setup_staff_roles')
-    .setPlaceholder('Sélectionner les rôles du Staff…')
+function buildStaffActionRow() {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('config_staff_action')
+    .setPlaceholder('Choisir une action Staff…')
+    .addOptions(
+      { label: 'Ajouter des rôles Staff', value: 'add' },
+      { label: 'Retirer des rôles Staff', value: 'remove' },
+    );
+  return new ActionRowBuilder().addComponents(select);
+}
+
+function buildStaffAddRows() {
+  const addSelect = new RoleSelectMenuBuilder()
+    .setCustomId('staff_add_roles')
+    .setPlaceholder('Sélectionner les rôles à AJOUTER au Staff…')
     .setMinValues(1)
     .setMaxValues(25);
+  return [new ActionRowBuilder().addComponents(addSelect)];
+}
 
+async function buildStaffRemoveRows(guild) {
+  const staffIds = await getGuildStaffRoleIds(guild.id);
+  const options = staffIds
+    .map((id) => {
+      const role = guild.roles.cache.get(id);
+      if (!role) return null;
+      return { label: role.name, value: role.id };
+    })
+    .filter(Boolean);
+  const removeSelect = new StringSelectMenuBuilder()
+    .setCustomId('staff_remove_select')
+    .setPlaceholder('Sélectionner les rôles à RETIRER du Staff…')
+    .setMinValues(1)
+    .setMaxValues(Math.min(25, Math.max(1, options.length)))
+    .addOptions(...options);
+  if (options.length === 0) removeSelect.setDisabled(true).setPlaceholder('Aucun rôle Staff à retirer');
+  return [new ActionRowBuilder().addComponents(removeSelect)];
+}
+
+async function buildAutokickRows(guild) {
+  const ak = await getAutoKickConfig(guild.id);
   const requiredRoleSelect = new RoleSelectMenuBuilder()
     .setCustomId('autokick_required_role')
     .setPlaceholder("Rôle requis pour éviter l'auto-kick…")
     .setMinValues(1)
     .setMaxValues(1);
-
   const delaySelect = new StringSelectMenuBuilder()
     .setCustomId('autokick_delay')
     .setPlaceholder('Choisir un délai avant auto-kick…')
@@ -82,12 +124,9 @@ async function buildSetupComponents(guild) {
       ...DELAY_OPTIONS.map((o) => ({ label: o.label, value: String(o.ms), default: o.ms === ak.delayMs })),
       { label: 'Personnalisé (minutes)…', value: 'custom' },
     );
-
   const enableBtn = new ButtonBuilder().setCustomId('autokick_enable').setLabel('Activer AutoKick').setStyle(ButtonStyle.Success).setDisabled(ak.enabled);
   const disableBtn = new ButtonBuilder().setCustomId('autokick_disable').setLabel('Désactiver AutoKick').setStyle(ButtonStyle.Danger).setDisabled(!ak.enabled);
-
   return [
-    new ActionRowBuilder().addComponents(staffSelect),
     new ActionRowBuilder().addComponents(requiredRoleSelect),
     new ActionRowBuilder().addComponents(delaySelect),
     new ActionRowBuilder().addComponents(enableBtn, disableBtn),
@@ -102,33 +141,81 @@ client.once(Events.ClientReady, (readyClient) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (interaction.isChatInputCommand() && interaction.commandName === 'config') {
-      // Permission check: show only to those with ManageGuild; ensure enforcement too
       const member = await interaction.guild.members.fetch(interaction.user.id);
       const hasManageGuild = member.permissions.has(PermissionsBitField.Flags.ManageGuild);
       if (!hasManageGuild) {
         return interaction.reply({ content: '⛔ Cette commande est réservée à l\'équipe de modération.', ephemeral: true });
       }
-      const embed = await buildSetupEmbed(interaction.guild);
-      const components = await buildSetupComponents(interaction.guild);
-      await interaction.reply({ embeds: [embed], components, ephemeral: true });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow();
+      await interaction.reply({ embeds: [embed], components: [top], ephemeral: true });
       return;
     }
 
-    if (interaction.isRoleSelectMenu() && interaction.customId === 'setup_staff_roles') {
+    if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
+      const section = interaction.values[0];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow(section);
+      if (section === 'staff') {
+        const staffAction = buildStaffActionRow();
+        await interaction.update({ embeds: [embed], components: [top, staffAction] });
+      } else if (section === 'autokick') {
+        const akRows = await buildAutokickRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+      } else {
+        await interaction.update({ embeds: [embed], components: [top] });
+      }
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'config_staff_action') {
+      const action = interaction.values[0];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('staff');
+      const staffAction = buildStaffActionRow();
+      if (action === 'add') {
+        const addRows = buildStaffAddRows();
+        await interaction.update({ embeds: [embed], components: [top, staffAction, ...addRows] });
+      } else if (action === 'remove') {
+        const removeRows = await buildStaffRemoveRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [top, staffAction, ...removeRows] });
+      } else {
+        await interaction.update({ embeds: [embed], components: [top, staffAction] });
+      }
+      return;
+    }
+
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'staff_add_roles') {
       await ensureStorageExists();
-      await setGuildStaffRoleIds(interaction.guild.id, interaction.values);
-      const embed = await buildSetupEmbed(interaction.guild);
-      const components = await buildSetupComponents(interaction.guild);
-      await interaction.update({ embeds: [embed], components });
+      const current = await getGuildStaffRoleIds(interaction.guild.id);
+      const next = Array.from(new Set([...current, ...interaction.values]));
+      await setGuildStaffRoleIds(interaction.guild.id, next);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('staff');
+      const staffAction = buildStaffActionRow();
+      await interaction.update({ embeds: [embed], components: [top, staffAction] });
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'staff_remove_select') {
+      const toRemove = new Set(interaction.values);
+      const current = await getGuildStaffRoleIds(interaction.guild.id);
+      const next = current.filter((id) => !toRemove.has(id));
+      await setGuildStaffRoleIds(interaction.guild.id, next);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('staff');
+      const staffAction = buildStaffActionRow();
+      await interaction.update({ embeds: [embed], components: [top, staffAction] });
       return;
     }
 
     if (interaction.isRoleSelectMenu() && interaction.customId === 'autokick_required_role') {
       const selected = interaction.values[0];
       await updateAutoKickConfig(interaction.guild.id, { roleId: selected });
-      const embed = await buildSetupEmbed(interaction.guild);
-      const components = await buildSetupComponents(interaction.guild);
-      await interaction.update({ embeds: [embed], components });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('autokick');
+      const akRows = await buildAutokickRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       return;
     }
 
@@ -156,9 +243,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return interaction.reply({ content: 'Valeur de délai invalide.', ephemeral: true });
         }
         await updateAutoKickConfig(interaction.guild.id, { delayMs });
-        const embed = await buildSetupEmbed(interaction.guild);
-        const components = await buildSetupComponents(interaction.guild);
-        await interaction.update({ embeds: [embed], components });
+        const embed = await buildConfigEmbed(interaction.guild);
+        const top = buildTopSectionRow('autokick');
+        const akRows = await buildAutokickRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [top, ...akRows] });
         return;
       }
     }
@@ -166,9 +254,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && (interaction.customId === 'autokick_enable' || interaction.customId === 'autokick_disable')) {
       const enable = interaction.customId === 'autokick_enable';
       await updateAutoKickConfig(interaction.guild.id, { enabled: enable });
-      const embed = await buildSetupEmbed(interaction.guild);
-      const components = await buildSetupComponents(interaction.guild);
-      await interaction.update({ embeds: [embed], components });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('autokick');
+      const akRows = await buildAutokickRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       return;
     }
 
@@ -180,10 +269,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       const delayMs = Math.round(minutes * 60 * 1000);
       await updateAutoKickConfig(interaction.guild.id, { delayMs });
-      const embed = await buildSetupEmbed(interaction.guild);
-      const components = await buildSetupComponents(interaction.guild);
-      // Send a fresh ephemeral response reflecting the updated config
-      return interaction.reply({ embeds: [embed], components, ephemeral: true });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow('autokick');
+      const akRows = await buildAutokickRows(interaction.guild);
+      try { await interaction.editReply({ embeds: [embed], components: [top, ...akRows] }); } catch (_) {}
+      return;
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
@@ -253,7 +344,6 @@ setInterval(async () => {
             await member.kick('AutoKick: rôle requis non pris à temps');
             await removePendingJoiner(guild.id, userId);
           } catch (e) {
-            // likely missing permissions; keep pending to retry later
             console.warn(`Échec du kick de ${member.user.tag}:`, e?.message || e);
           }
         }
