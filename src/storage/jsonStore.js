@@ -163,11 +163,6 @@ async function setUserStats(guildId, userId, stats) {
   await writeConfig(cfg);
 }
 
-module.exports.getLevelsConfig = getLevelsConfig;
-module.exports.updateLevelsConfig = updateLevelsConfig;
-module.exports.getUserStats = getUserStats;
-module.exports.setUserStats = setUserStats;
-
 module.exports = {
   ensureStorageExists,
   readConfig,
@@ -179,6 +174,11 @@ module.exports = {
   updateAutoKickConfig,
   addPendingJoiner,
   removePendingJoiner,
+  // Levels
+  getLevelsConfig,
+  updateLevelsConfig,
+  getUserStats,
+  setUserStats,
   paths: { DATA_DIR, CONFIG_PATH },
 };
 
