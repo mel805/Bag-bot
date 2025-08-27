@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, PermissionsBitField, Events } = require('discord.js');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists } = require('./storage/jsonStore');
 require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
@@ -63,11 +64,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const roles = interaction.values.map((roleId) => interaction.guild.roles.cache.get(roleId)).filter(Boolean);
       const roleList = roles.length ? roles.map((r) => `• ${r}`).join('\n') : 'Aucun rôle sélectionné';
 
+      // Persist selection
+      await ensureStorageExists();
+      await setGuildStaffRoleIds(interaction.guild.id, interaction.values);
+
+      const savedIds = await getGuildStaffRoleIds(interaction.guild.id);
       const confirmEmbed = new EmbedBuilder()
         .setColor(THEME_COLOR_ACCENT)
         .setTitle('BAG · Staff configuré')
         .setDescription('Les rôles suivants sont désormais considérés comme membres du Staff :')
-        .addFields({ name: 'Rôles', value: roleList })
+        .addFields({ name: 'Rôles', value: roleList }, { name: 'IDs sauvegardés', value: savedIds.map((id) => `${id}`).join('\n') || '—' })
         .setThumbnail(THEME_IMAGE);
 
       // Persisting selection would usually involve a database; for now, just confirm
