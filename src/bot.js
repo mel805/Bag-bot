@@ -472,12 +472,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // Admin XP command
+    // Admin XP command (single action)
     if (interaction.isChatInputCommand() && interaction.commandName === 'adminxp') {
       const member = await interaction.guild.members.fetch(interaction.user.id);
       const hasManageGuild = member.permissions.has(PermissionsBitField.Flags.ManageGuild);
       if (!hasManageGuild) return interaction.reply({ content: '⛔ Permission requise.', ephemeral: true });
-      const sub = interaction.options.getSubcommand();
+      const action = interaction.options.getString('action', true);
       const target = interaction.options.getUser('membre', true);
       const targetMember = await interaction.guild.members.fetch(target.id).catch(() => null);
       if (!targetMember) return interaction.reply({ content: 'Membre introuvable.', ephemeral: true });
@@ -494,8 +494,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       };
 
-      if (sub === 'addxp') {
-        const amount = interaction.options.getInteger('montant', true);
+      if (action === 'addxp') {
+        const amount = interaction.options.getInteger('valeur', true);
         stats.xp += amount;
         stats.xpSinceLevel += amount;
         // level up loop
@@ -510,16 +510,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: `Ajouté ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
 
-      if (sub === 'removexp') {
-        const amount = interaction.options.getInteger('montant', true);
+      if (action === 'removexp') {
+        const amount = interaction.options.getInteger('valeur', true);
         stats.xp = Math.max(0, stats.xp - amount);
         stats.xpSinceLevel = Math.max(0, stats.xpSinceLevel - amount);
         await setUserStats(interaction.guild.id, target.id, stats);
         return interaction.reply({ content: `Retiré ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
 
-      if (sub === 'addlevel') {
-        const n = interaction.options.getInteger('niveaux', true);
+      if (action === 'addlevel') {
+        const n = interaction.options.getInteger('valeur', true);
         stats.level = Math.max(0, stats.level + n);
         stats.xpSinceLevel = 0;
         await setUserStats(interaction.guild.id, target.id, stats);
@@ -527,16 +527,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: `Ajouté ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
 
-      if (sub === 'removelevel') {
-        const n = interaction.options.getInteger('niveaux', true);
+      if (action === 'removelevel') {
+        const n = interaction.options.getInteger('valeur', true);
         stats.level = Math.max(0, stats.level - n);
         stats.xpSinceLevel = 0;
         await setUserStats(interaction.guild.id, target.id, stats);
         return interaction.reply({ content: `Retiré ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
 
-      if (sub === 'setlevel') {
-        const lvl = interaction.options.getInteger('niveau', true);
+      if (action === 'setlevel') {
+        const lvl = interaction.options.getInteger('valeur', true);
         stats.level = Math.max(0, lvl);
         stats.xpSinceLevel = 0;
         await setUserStats(interaction.guild.id, target.id, stats);

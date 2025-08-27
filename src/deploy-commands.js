@@ -23,36 +23,20 @@ const commands = [
     .setDescription('Gestion des niveaux et XP')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
-    .addSubcommand(sc => sc
-      .setName('addxp')
-      .setDescription('Ajouter de l\'XP à un membre')
-      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
-      .addIntegerOption(o => o.setName('montant').setDescription('XP à ajouter').setRequired(true).setMinValue(1))
+    .addStringOption(o => o
+      .setName('action')
+      .setDescription('Action à effectuer')
+      .setRequired(true)
+      .addChoices(
+        { name: 'addxp', value: 'addxp' },
+        { name: 'removexp', value: 'removexp' },
+        { name: 'addlevel', value: 'addlevel' },
+        { name: 'removelevel', value: 'removelevel' },
+        { name: 'setlevel', value: 'setlevel' },
+      )
     )
-    .addSubcommand(sc => sc
-      .setName('removexp')
-      .setDescription('Retirer de l\'XP à un membre')
-      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
-      .addIntegerOption(o => o.setName('montant').setDescription('XP à retirer').setRequired(true).setMinValue(1))
-    )
-    .addSubcommand(sc => sc
-      .setName('addlevel')
-      .setDescription('Ajouter des niveaux à un membre')
-      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
-      .addIntegerOption(o => o.setName('niveaux').setDescription('Niveaux à ajouter').setRequired(true).setMinValue(1))
-    )
-    .addSubcommand(sc => sc
-      .setName('removelevel')
-      .setDescription('Retirer des niveaux à un membre')
-      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
-      .addIntegerOption(o => o.setName('niveaux').setDescription('Niveaux à retirer').setRequired(true).setMinValue(1))
-    )
-    .addSubcommand(sc => sc
-      .setName('setlevel')
-      .setDescription('Définir le niveau d\'un membre')
-      .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
-      .addIntegerOption(o => o.setName('niveau').setDescription('Niveau cible').setRequired(true).setMinValue(0))
-    )
+    .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
+    .addIntegerOption(o => o.setName('valeur').setDescription('Montant XP / Niveau selon action').setRequired(true))
     .toJSON(),
 ];
 
