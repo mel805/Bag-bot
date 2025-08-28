@@ -1399,7 +1399,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
 
       if (!interaction.deferred && !interaction.replied) {
-        try { await interaction.deferReply({ ephemeral: false }); console.log('[action]', key, 'deferred'); } catch (_) {}
+        try { await interaction.deferReply({ ephemeral: true }); console.log('[action]', key, 'deferred'); } catch (_) {}
       }
 
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
@@ -1480,7 +1480,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
       const cible = interaction.options.getUser('membre', true);
       if (cible.id === interaction.user.id) return interaction.reply({ content: 'Impossible de vous voler vous-même.', ephemeral: true });
-      if (!interaction.deferred && !interaction.replied) { try { await interaction.deferReply({ ephemeral: false }); } catch (_) {} }
+      if (!interaction.deferred && !interaction.replied) { try { await interaction.deferReply({ ephemeral: true }); } catch (_) {} }
       if (Math.random() < 0.5) {
         return runEcoAction(interaction, 'steal', cible);
       } else {
