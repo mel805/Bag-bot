@@ -335,34 +335,34 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
         ctx.stroke();
       }
     }
-    // title (slightly reduced size, elegant serif stack)
+    // title (reduced size)
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 3;
-    ctx.font = '600 58px Georgia, "Times New Roman", Serif';
+    ctx.font = '600 50px Georgia, "Times New Roman", Serif';
     ctx.textBaseline = 'top';
     ctx.strokeText(title, 48, 48);
     ctx.fillText(title, 48, 48);
     // content
-    ctx.font = '32px Georgia, "Times New Roman", Serif';
-    let y = 128;
+    ctx.font = '28px Georgia, "Times New Roman", Serif';
+    let y = 120;
     for (const line of lines) {
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
-      y += 44;
+      y += 38;
     }
     // progress bar (optional)
     if (typeof progressRatio === 'number') {
       const ratio = Math.max(0, Math.min(1, progressRatio));
       const barX = 48;
       const barW = width - 96;
-      const barH = 32;
+      const barH = 30;
       const barY = height - 48 - barH - 12; // above bottom overlay margin
       // label
       if (progressText) {
-        ctx.font = '600 28px Georgia, "Times New Roman", Serif';
-        ctx.strokeText(progressText, 48, barY - 36);
-        ctx.fillText(progressText, 48, barY - 36);
+        ctx.font = '600 24px Georgia, "Times New Roman", Serif';
+        ctx.strokeText(progressText, 48, barY - 34);
+        ctx.fillText(progressText, 48, barY - 34);
       }
       // bg
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
