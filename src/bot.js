@@ -1459,12 +1459,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
           if (levels?.enabled) {
             const xpAdd = Math.max(1, Math.round((levels.xpPerMessage || 10) / 2));
             const tStats = await getUserStats(interaction.guild.id, targetUserOptional.id);
+            const prevLevel = tStats.level || 0;
             tStats.xp = (tStats.xp||0) + xpAdd;
             const norm = xpToLevel(tStats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
             tStats.level = norm.level;
             tStats.xpSinceLevel = norm.xpSinceLevel;
             await setUserStats(interaction.guild.id, targetUserOptional.id, tStats);
             targetXpDelta = xpAdd;
+            if (tStats.level > prevLevel) {
+              const mem = await fetchMember(interaction.guild, targetUserOptional.id);
+              if (mem) {
+                maybeAnnounceLevelUp(interaction.guild, mem, levels, tStats.level);
+                const rid = (levels.rewards || {})[String(tStats.level)];
+                if (rid) {
+                  try { await mem.roles.add(rid); } catch (_) {}
+                  maybeAnnounceRoleAward(interaction.guild, mem, levels, rid);
+                }
+              }
+            }
           }
           targetField = `Cible ${targetUserOptional}: XP ${targetXpDelta||0} • Karma ${conf.karma === 'perversion' ? '😈' : (conf.karma === 'none' ? '—' : '🫦')} ${targetKarmaDelta}`;
         }
