@@ -140,6 +140,7 @@ function buildTopSectionRow() {
       { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff' },
       { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick" },
       { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
+      { label: 'Économie', value: 'economy', description: "Configurer l'économie" },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -604,7 +605,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       } else if (section === 'levels') {
         const rows = await buildLevelsGeneralRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, ...rows] });
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'economy') {
         const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
         await interaction.update({ embeds: [embed], components: [top, ...rows] });
