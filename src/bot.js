@@ -1332,19 +1332,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
 
-      // Random success/failure (default 80% success for most, 65% for fish)
       const successRate = key === 'fish' ? 0.65 : 0.8;
       const isSuccess = Math.random() < successRate;
 
-      // Always set cooldown
       if (!u.cooldowns) u.cooldowns={};
       u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
 
       if (!isSuccess) {
         await setEconomyUser(interaction.guild.id, userId, u);
-        // Failure embed
         let failText = 'Action manquée… Réessayez plus tard.';
         if (key === 'fish') failText = pickRandom(FISH_FAIL);
+        else if (key === 'work') failText = pickRandom(WORK_FAIL);
+        else if (key === 'kiss') failText = pickRandom(KISS_FAIL);
+        else if (key === 'flirt') failText = pickRandom(FLIRT_FAIL);
+        else if (key === 'seduce') failText = pickRandom(SEDUCE_FAIL);
+        else if (key === 'fuck') failText = pickRandom(FUCK_FAIL);
+        else if (key === 'massage') failText = pickRandom(MASSAGE_FAIL);
+        else if (key === 'dance') failText = pickRandom(DANCE_FAIL);
+        else if (key === 'crime') failText = pickRandom(CRIME_FAIL);
         const embed = buildEcoEmbed({
           title: `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`,
           description: failText,
@@ -1354,7 +1359,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ embeds: [embed] });
       }
 
-      // Success: compute gain and karma
       const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
       u.amount = (u.amount||0) + gain;
       if (conf.karma === 'charm') u.charm = (u.charm||0) + (conf.karmaDelta||0);
@@ -1363,13 +1367,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const icon = conf.karma === 'perversion' ? '😈' : '🫦';
       const title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
-      let desc = `+${gain} ${eco.currency?.name || 'BAG$'}`;
+      let desc;
       if (key === 'fish') desc = `${pickRandom(FISH_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'work') desc = `${pickRandom(WORK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'kiss') desc = `${pickRandom(KISS_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'flirt') desc = `${pickRandom(FLIRT_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'seduce') desc = `${pickRandom(SEDUCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'fuck') desc = `${pickRandom(FUCK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'massage') desc = `${pickRandom(MASSAGE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'dance') desc = `${pickRandom(DANCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else if (key === 'crime') desc = `${pickRandom(CRIME_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+      else desc = `+${gain} ${eco.currency?.name || 'BAG$'}`;
       const embed = buildEcoEmbed({
         title,
         description: desc,
         fields: [
-          { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : 'charme 🫦'} +${conf.karmaDelta||0}`, inline: true },
+          { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}`.trim(), inline: true },
           { name: 'Solde', value: String(u.amount), inline: true },
           { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
         ],
@@ -1380,7 +1393,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
       const cible = interaction.options.getUser('membre', true);
       if (cible.id === interaction.user.id) return interaction.reply({ content: 'Impossible de vous voler vous-même.', ephemeral: true });
-      // 50% success chance
       if (Math.random() < 0.5) {
         return runEcoAction(interaction, 'steal', cible);
       } else {
@@ -1394,7 +1406,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
         const embed = buildEcoEmbed({
           title: '😵 Échec du vol',
-          description: `Amende ${penalty} ${eco.currency?.name || 'BAG$'}`,
+          description: `${pickRandom(STEAL_FAIL)}\nAmende ${penalty} ${eco.currency?.name || 'BAG$'}`,
           fields: [ { name: 'Solde', value: String(u.amount), inline: true } ],
           color: 0xff5252,
         });
@@ -1583,3 +1595,31 @@ const FISH_FAIL = [
   'Le poisson s\'est échappé au dernier moment !',
   'Silence radio sous l\'eau… aucun poisson aujourd\'hui.',
 ];
+
+const WORK_SUCCESS = [
+  'Belle journée de travail, mission accomplie !',
+  'Vous avez brillamment terminé votre tâche.',
+  'Prime méritée pour votre efficacité.',
+  'Vos efforts paient, bien joué !',
+];
+const WORK_FAIL = [
+  'Contretemps au bureau…',
+  'Le projet a été reporté, pas de gain aujourd\'hui.',
+  'Panne système, impossible de travailler.',
+];
+const KISS_SUCCESS = [ 'Un doux moment partagé 💋', 'Baiser accepté 🫦', 'Tendresse réciproque.' ];
+const KISS_FAIL = [ 'Baiser esquivé…', 'Mauvais timing, désolé.', 'Refus poli.' ];
+const FLIRT_SUCCESS = [ 'Le charme opère ✨', 'Clin d\'œil réussi 😉', 'Conversation enflammée.' ];
+const FLIRT_FAIL = [ 'Le courant ne passe pas…', 'Tentative maladroite.', 'Message vu… ignoré.' ];
+const SEDUCE_SUCCESS = [ 'Séduction réussie 🔥', 'Alchimie évidente.', 'Étincelles dans l\'air.' ];
+const SEDUCE_FAIL = [ 'Pas aujourd\'hui…', 'Ça n\'a pas pris.', 'Tentation sans suite.' ];
+const FUCK_SUCCESS = [ 'Moment intense 😈', 'Passion déchaînée.', 'Nuit mémorable.' ];
+const FUCK_FAIL = [ 'Pas d\'humeur…', 'Fatigue, une autre fois.', 'Ambiance retombée.' ];
+const MASSAGE_SUCCESS = [ 'Détente absolue 💆', 'Tensions envolées.', 'Relaxation profonde.' ];
+const MASSAGE_FAIL = [ 'Crampes… raté.', 'Huile renversée, oups.', 'Nœud récalcitrant.' ];
+const DANCE_SUCCESS = [ 'Choré synchro 💃', 'Pas de danse parfaits.', 'Ambiance de folie.' ];
+const DANCE_FAIL = [ 'Deux pieds gauches…', 'Musique coupée !', 'Glissade imprévue.' ];
+const CRIME_SUCCESS = [ 'Coup monté réussi 🕶️', 'Plan sans faute.', 'Aucune trace laissée.' ];
+const CRIME_FAIL = [ 'Sirènes au loin… fuyez !', 'Plan compromis.', 'Informateur douteux.' ];
+const STEAL_SUCCESS = [ 'Vol discret réussi.', 'Butin subtilisé.', 'Personne ne vous a vu.' ];
+const STEAL_FAIL = [ 'Pris la main dans le sac !', 'Caméra vous a repéré.', 'La cible s\'est retournée.' ];

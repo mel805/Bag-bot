@@ -251,11 +251,18 @@ function ensureEconomyShape(g) {
   if (!e.settings || typeof e.settings !== 'object') e.settings = {};
   if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
   if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
-  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120 };
+  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120, crime: 1800 };
   if (!e.actions || typeof e.actions !== 'object') e.actions = {};
-  if (!Array.isArray(e.actions.enabled)) e.actions.enabled = ['steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
+  if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
+  else {
+    for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
+  }
   if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
   const defaults = {
+    work: { moneyMin: 40, moneyMax: 90, karma: 'none', karmaDelta: 0, cooldown: 600 },
+    fish: { moneyMin: 20, moneyMax: 60, karma: 'none', karmaDelta: 0, cooldown: 300 },
+    give: { moneyMin: 0, moneyMax: 0, karma: 'charm', karmaDelta: 1, cooldown: 0 },
     steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800 },
     kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
     flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
@@ -271,7 +278,7 @@ function ensureEconomyShape(g) {
       const c = e.actions.config[k];
       if (typeof c.moneyMin !== 'number') c.moneyMin = d.moneyMin;
       if (typeof c.moneyMax !== 'number') c.moneyMax = d.moneyMax;
-      if (c.karma !== 'charm' && c.karma !== 'perversion') c.karma = d.karma;
+      if (c.karma !== 'charm' && c.karma !== 'perversion' && c.karma !== 'none') c.karma = d.karma;
       if (typeof c.karmaDelta !== 'number') c.karmaDelta = d.karmaDelta;
       if (typeof c.cooldown !== 'number') c.cooldown = d.cooldown;
     }
