@@ -1545,7 +1545,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
           ],
         });
-        return await interaction.reply({ embeds: [embed] });
+        return await interaction.reply({ embeds: [embed], ephemeral: true });
       } catch (e1) {
         console.error('/economie embed reply failed:', e1);
         try {
@@ -1553,7 +1553,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
           const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
           if (interaction.deferred || interaction.replied) return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
-          return await interaction.reply({ content: text, allowedMentions: { parse: [] } });
+          return await interaction.reply({ content: text, allowedMentions: { parse: [] }, ephemeral: true });
         } catch (e2) {
           console.error('/economie text fallback failed:', e2);
           try {
@@ -1641,52 +1641,4 @@ async function buildBoutiqueRows(guild) {
   for (const r of roles) {
     const label = r.name || (guild.roles.cache.get(r.roleId)?.name) || r.roleId;
     const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
-    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}` });
-  }
-  if (options.length === 0) options.push({ label: 'Aucun article disponible', value: 'none', description: 'Revenez plus tard' });
-  const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
-  return [new ActionRowBuilder().addComponents(select)];
-}
-
-function pickRandom(array) { return array[Math.floor(Math.random() * array.length)]; }
-const FISH_SUCCESS = [
-  'Félicitations, vous avez pêché un thon !',
-  'Bravo, vous avez pêché un magnifique saumon !',
-  'Incroyable, une carpe dorée mord à l\'hameçon !',
-  'Quel talent ! Un brochet impressionnant !',
-  'Un bar splendide pour le dîner !',
-];
-const FISH_FAIL = [
-  'Aïe… la ligne s\'est emmêlée, rien attrapé.',
-  'Juste une vieille botte… pas de chance !',
-  'Le poisson s\'est échappé au dernier moment !',
-  'Silence radio sous l\'eau… aucun poisson aujourd\'hui.',
-];
-
-const WORK_SUCCESS = [
-  'Belle journée de travail, mission accomplie !',
-  'Vous avez brillamment terminé votre tâche.',
-  'Prime méritée pour votre efficacité.',
-  'Vos efforts paient, bien joué !',
-];
-const WORK_FAIL = [
-  'Contretemps au bureau…',
-  'Le projet a été reporté, pas de gain aujourd\'hui.',
-  'Panne système, impossible de travailler.',
-];
-const KISS_SUCCESS = [ 'Un doux moment partagé 💋', 'Baiser accepté 🫦', 'Tendresse réciproque.' ];
-const KISS_FAIL = [ 'Baiser esquivé…', 'Mauvais timing, désolé.', 'Refus poli.' ];
-const FLIRT_SUCCESS = [ 'Le charme opère ✨', 'Clin d\'œil réussi 😉', 'Conversation enflammée.' ];
-const FLIRT_FAIL = [ 'Le courant ne passe pas…', 'Tentative maladroite.', 'Message vu… ignoré.' ];
-const SEDUCE_SUCCESS = [ 'Séduction réussie 🔥', 'Alchimie évidente.', 'Étincelles dans l\'air.' ];
-const SEDUCE_FAIL = [ 'Pas aujourd\'hui…', 'Ça n\'a pas pris.', 'Tentation sans suite.' ];
-const FUCK_SUCCESS = [ 'Moment intense 😈', 'Passion déchaînée.', 'Nuit mémorable.' ];
-const FUCK_FAIL = [ 'Pas d\'humeur…', 'Fatigue, une autre fois.', 'Ambiance retombée.' ];
-const MASSAGE_SUCCESS = [ 'Détente absolue 💆', 'Tensions envolées.', 'Relaxation profonde.' ];
-const MASSAGE_FAIL = [ 'Crampes… raté.', 'Huile renversée, oups.', 'Nœud récalcitrant.' ];
-const DANCE_SUCCESS = [ 'Choré synchro 💃', 'Pas de danse parfaits.', 'Ambiance de folie.' ];
-const DANCE_FAIL = [ 'Deux pieds gauches…', 'Musique coupée !', 'Glissade imprévue.' ];
-const CRIME_SUCCESS = [ 'Coup monté réussi 🕶️', 'Plan sans faute.', 'Aucune trace laissée.' ];
-const CRIME_FAIL = [ 'Sirènes au loin… fuyez !', 'Plan compromis.', 'Informateur douteux.' ];
-const STEAL_SUCCESS = [ 'Vol discret réussi.', 'Butin subtilisé.', 'Personne ne vous a vu.' ];
-const STEAL_FAIL = [ 'Pris la main dans le sac !', 'Caméra vous a repéré.', 'La cible s\'est retournée.' ];
+    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}`
