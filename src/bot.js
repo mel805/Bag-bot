@@ -1362,28 +1362,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed] });
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'travailler') {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const userId = interaction.user.id;
-      const u = await getEconomyUser(interaction.guild.id, userId);
-      const now = Date.now();
-      const last = u.cooldowns?.work || 0;
-      const remain = Math.max(0, last - now);
-      if (remain > 0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s.`, ephemeral: true });
-      const gain = Math.floor((eco.settings?.baseWorkReward || 50) * (0.8 + Math.random()*0.4));
-      u.amount = (u.amount||0) + gain;
-      if (!u.cooldowns) u.cooldowns = {};
-      u.cooldowns.work = now + (Math.max(0, eco.settings?.cooldowns?.work || 600))*1000;
-      await setEconomyUser(interaction.guild.id, userId, u);
-      const embed = buildEcoEmbed({
-        title: 'Travailler',
-        description: `+${gain} ${eco.currency?.name || 'BAG$'}`,
-        fields: [
-          { name: 'Solde', value: String(u.amount), inline: true },
-          { name: 'Cooldown', value: `${Math.max(0, eco.settings?.cooldowns?.work || 600)}s`, inline: true },
-        ],
-        color: THEME_COLOR_PRIMARY,
-      });
-      return interaction.reply({ embeds: [embed] });
+      return runEcoAction(interaction, 'work');
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'pêcher' || interaction.commandName === 'pecher')) {
       return runEcoAction(interaction, 'fish');
@@ -1418,6 +1397,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
 
+      if (!interaction.deferred && !interaction.replied) {
+        try { await interaction.deferReply({ ephemeral: false }); } catch (_) {}
+      }
+
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
 
@@ -1425,7 +1408,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
 
       if (!isSuccess) {
-        // Failure: deduct money and karma
         const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
         u.amount = Math.max(0, (u.amount||0) - lose);
         if (conf.karma === 'charm') u.charm = Math.max(0, (u.charm||0) - Math.max(0, conf.failKarmaDelta || 0));
@@ -1451,7 +1433,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ],
           color: 0xff5252,
         });
-        return interaction.reply({ embeds: [embed] });
+        try { return await interaction.editReply({ embeds: [embed] }); } catch (_) {
+          return await interaction.followUp({ content: `${failText}${lose>0?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`, ephemeral: true }).catch(()=>{});
+        }
       }
 
       const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
@@ -1482,12 +1466,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
         ],
       });
-      return interaction.reply({ embeds: [embed] });
+      try { return await interaction.editReply({ embeds: [embed] }); } catch (_) {
+        return await interaction.followUp({ content: `${desc} • Solde: ${u.amount}`, ephemeral: true }).catch(()=>{});
+      }
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
       const cible = interaction.options.getUser('membre', true);
       if (cible.id === interaction.user.id) return interaction.reply({ content: 'Impossible de vous voler vous-même.', ephemeral: true });
+      if (!interaction.deferred && !interaction.replied) { try { await interaction.deferReply({ ephemeral: false }); } catch (_) {} }
       if (Math.random() < 0.5) {
         return runEcoAction(interaction, 'steal', cible);
       } else {
@@ -1505,7 +1492,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           fields: [ { name: 'Solde', value: String(u.amount), inline: true } ],
           color: 0xff5252,
         });
-        return interaction.reply({ embeds: [embed] });
+        try { return await interaction.editReply({ embeds: [embed] }); } catch (_) { return; }
       }
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
