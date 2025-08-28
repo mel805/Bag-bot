@@ -516,12 +516,36 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
 async function buildEconomySettingsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
   const nav = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('economy_page:settings').setLabel('Éco • Réglages').setStyle(ButtonStyle.Primary).setDisabled(true)
+    new ButtonBuilder().setCustomId('economy_page:settings').setLabel('Éco • Réglages').setStyle(ButtonStyle.Primary).setDisabled(true),
+    new ButtonBuilder().setCustomId('economy_page:actions').setLabel('Éco • Actions').setStyle(ButtonStyle.Secondary)
   );
   const curBtn = new ButtonBuilder().setCustomId('economy_set_currency').setLabel(`Devise: ${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`).setStyle(ButtonStyle.Secondary);
   const baseBtn = new ButtonBuilder().setCustomId('economy_set_base').setLabel(`Gains: work ${eco.settings?.baseWorkReward || 50} / fish ${eco.settings?.baseFishReward || 30}`).setStyle(ButtonStyle.Secondary);
-  const cdBtn = new ButtonBuilder().setCustomId('economy_set_cooldowns').setLabel('Cooldowns des actions').setStyle(ButtonStyle.Secondary);
+  const cdBtn = new ButtonBuilder().setCustomId('economy_set_cooldowns').setLabel('Cooldowns des actions (rapide)').setStyle(ButtonStyle.Secondary);
   const row = new ActionRowBuilder().addComponents(curBtn, baseBtn, cdBtn);
+  return [nav, row];
+}
+
+function actionKeyToLabel(key) {
+  const map = { steal: 'voler', kiss: 'embrasser', flirt: 'flirter', seduce: 'séduire', fuck: 'fuck', massage: 'masser', dance: 'danser' };
+  return map[key] || key;
+}
+
+async function buildEconomyActionsRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const nav = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('economy_page:settings').setLabel('Éco • Réglages').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('economy_page:actions').setLabel('Éco • Actions').setStyle(ButtonStyle.Primary).setDisabled(true)
+  );
+  const conf = eco.actions?.config || {};
+  const options = Object.keys(conf).map((k) => {
+    const c = conf[k] || {};
+    const karma = c.karma === 'perversion' ? '😈' : '🫦';
+    return { label: `${actionKeyToLabel(k)} • ${karma} • ${c.moneyMin||0}-${c.moneyMax||0} • ${c.cooldown||0}s`, value: k };
+  });
+  if (options.length === 0) options.push({ label: 'Aucune action', value: 'none' });
+  const select = new StringSelectMenuBuilder().setCustomId('economy_actions_pick').setPlaceholder('Choisir une action à modifier…').addOptions(...options);
+  const row = new ActionRowBuilder().addComponents(select);
   return [nav, row];
 }
 
@@ -1375,6 +1399,50 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'danser') {
       return runEcoAction(interaction, 'dance');
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('economy_page:')) {
+      const page = interaction.customId.split(':')[1];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = page === 'actions' ? await buildEconomyActionsRows(interaction.guild) : await buildEconomySettingsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'economy_actions_pick') {
+      const key = interaction.values[0];
+      if (key === 'none') return interaction.deferUpdate();
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const c = eco.actions?.config?.[key] || {};
+      const modal = new ModalBuilder().setCustomId(`economy_actions_modal:${key}`).setTitle(`Modifier: ${actionKeyToLabel(key)}`);
+      const moneyMin = new TextInputBuilder().setCustomId('moneyMin').setLabel('Argent min').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('5').setValue(String(c.moneyMin ?? ''));
+      const moneyMax = new TextInputBuilder().setCustomId('moneyMax').setLabel('Argent max').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('15').setValue(String(c.moneyMax ?? ''));
+      const karma = new TextInputBuilder().setCustomId('karma').setLabel('Karma (charme/perversion)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('charme').setValue(c.karma === 'perversion' ? 'perversion' : 'charme');
+      const karmaDelta = new TextInputBuilder().setCustomId('karmaDelta').setLabel('Variation karma').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('1').setValue(String(c.karmaDelta ?? ''));
+      const cooldown = new TextInputBuilder().setCustomId('cooldown').setLabel('Cooldown (s)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('60').setValue(String(c.cooldown ?? ''));
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(moneyMin),
+        new ActionRowBuilder().addComponents(moneyMax),
+        new ActionRowBuilder().addComponents(karma),
+        new ActionRowBuilder().addComponents(karmaDelta),
+        new ActionRowBuilder().addComponents(cooldown)
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_actions_modal:')) {
+      await interaction.deferReply({ ephemeral: true });
+      const key = interaction.customId.split(':')[1];
+      const moneyMin = Number(interaction.fields.getTextInputValue('moneyMin')) || 0;
+      const moneyMax = Number(interaction.fields.getTextInputValue('moneyMax')) || 0;
+      const karmaTxt = (interaction.fields.getTextInputValue('karma')||'').toLowerCase().includes('per') ? 'perversion' : 'charm';
+      const karmaDelta = Number(interaction.fields.getTextInputValue('karmaDelta')) || 0;
+      const cooldown = Number(interaction.fields.getTextInputValue('cooldown')) || 0;
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const conf = { ...(eco.actions?.config || {}) };
+      conf[key] = { moneyMin, moneyMax, karma: karmaTxt, karmaDelta, cooldown };
+      await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), config: conf } });
+      return interaction.editReply({ content: `✅ Action "${actionKeyToLabel(key)}" mise à jour.` });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
