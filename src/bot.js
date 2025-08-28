@@ -1537,19 +1537,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try {
         const eco = await getEconomyConfig(interaction.guild.id);
         const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-        const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
+        const embed = buildEcoEmbed({
+          title: `Économie de ${interaction.user.username}`,
+          fields: [
+            { name: 'Argent', value: String(u.amount || 0), inline: true },
+            { name: 'Charme 🫦', value: String(u.charm || 0), inline: true },
+            { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
+          ],
+        });
+        return await interaction.reply({ embeds: [embed] });
+      } catch (e1) {
+        console.error('/economie embed reply failed:', e1);
         try {
+          const eco = await getEconomyConfig(interaction.guild.id);
+          const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+          const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
+          if (interaction.deferred || interaction.replied) return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
           return await interaction.reply({ content: text, allowedMentions: { parse: [] } });
-        } catch (eReply) {
+        } catch (e2) {
+          console.error('/economie text fallback failed:', e2);
           try {
-            return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
-          } catch (eEdit) {
-            return await interaction.followUp({ content: text, ephemeral: true, allowedMentions: { parse: [] } });
+            return await interaction.followUp({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true });
+          } catch (_) {
+            return;
           }
         }
-      } catch (e) {
-        console.error('/economie failed:', e);
-        return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }).catch(()=>{});
       }
     }
   } catch (err) {
