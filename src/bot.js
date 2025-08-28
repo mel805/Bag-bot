@@ -1539,19 +1539,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try {
         const eco = await getEconomyConfig(interaction.guild.id);
         const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-        const embed = buildEcoEmbed({
-          title: `Économie de ${interaction.user.username}`,
-          fields: [
-            { name: 'Argent', value: String(u.amount || 0), inline: true },
-            { name: 'Charme 🫦', value: String(u.charm || 0), inline: true },
-            { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
-          ],
-        });
-        return await interaction.reply({ embeds: [embed], ephemeral: false });
-      } catch (e1) {
-        try {
-          const eco = await getEconomyConfig(interaction.guild.id);
-          const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+        const me = interaction.guild?.members?.me;
+        const canEmbed = interaction.channel?.permissionsFor?.(me)?.has(PermissionsBitField.Flags.EmbedLinks) ?? true;
+        const text = `Argent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
+        if (canEmbed) {
           const embed = buildEcoEmbed({
             title: `Économie de ${interaction.user.username}`,
             fields: [
@@ -1560,9 +1551,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
               { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
             ],
           });
-          if (interaction.deferred || interaction.replied) return await interaction.editReply({ embeds: [embed] });
-          return await interaction.followUp({ embeds: [embed], ephemeral: true });
+          return await interaction.reply({ embeds: [embed], ephemeral: false });
+        }
+        return await interaction.reply({ content: text, ephemeral: false });
+      } catch (e1) {
+        console.error('/economie reply failed:', e1);
+        try {
+          const eco = await getEconomyConfig(interaction.guild.id);
+          const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+          const text = `Argent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
+          if (interaction.deferred || interaction.replied) return await interaction.editReply({ content: text });
+          return await interaction.followUp({ content: text, ephemeral: true });
         } catch (e2) {
+          console.error('/economie followup failed:', e2);
           return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }).catch(()=>{});
         }
       }
