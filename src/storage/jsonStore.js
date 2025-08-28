@@ -111,7 +111,18 @@ async function removePendingJoiner(guildId, userId) {
 // --- Levels helpers ---
 function ensureLevelsShape(g) {
   if (!g.levels) {
-    g.levels = { enabled: false, xpPerMessage: 10, xpPerVoiceMinute: 5, levelCurve: { base: 100, factor: 1.2 }, rewards: {}, users: {}, announce: { enabled: false, channelId: '' } };
+    g.levels = {
+      enabled: false,
+      xpPerMessage: 10,
+      xpPerVoiceMinute: 5,
+      levelCurve: { base: 100, factor: 1.2 },
+      rewards: {},
+      users: {},
+      announce: {
+        levelUp: { enabled: false, channelId: '' },
+        roleAward: { enabled: false, channelId: '' },
+      },
+    };
   } else {
     if (typeof g.levels.enabled !== 'boolean') g.levels.enabled = false;
     if (typeof g.levels.xpPerMessage !== 'number') g.levels.xpPerMessage = 10;
@@ -121,9 +132,13 @@ function ensureLevelsShape(g) {
     if (typeof g.levels.levelCurve.factor !== 'number') g.levels.levelCurve.factor = 1.2;
     if (!g.levels.rewards || typeof g.levels.rewards !== 'object') g.levels.rewards = {};
     if (!g.levels.users || typeof g.levels.users !== 'object') g.levels.users = {};
-    if (!g.levels.announce || typeof g.levels.announce !== 'object') g.levels.announce = { enabled: false, channelId: '' };
-    if (typeof g.levels.announce.enabled !== 'boolean') g.levels.announce.enabled = false;
-    if (typeof g.levels.announce.channelId !== 'string') g.levels.announce.channelId = '';
+    if (!g.levels.announce || typeof g.levels.announce !== 'object') g.levels.announce = {};
+    if (!g.levels.announce.levelUp || typeof g.levels.announce.levelUp !== 'object') g.levels.announce.levelUp = { enabled: false, channelId: '' };
+    if (!g.levels.announce.roleAward || typeof g.levels.announce.roleAward !== 'object') g.levels.announce.roleAward = { enabled: false, channelId: '' };
+    if (typeof g.levels.announce.levelUp.enabled !== 'boolean') g.levels.announce.levelUp.enabled = false;
+    if (typeof g.levels.announce.levelUp.channelId !== 'string') g.levels.announce.levelUp.channelId = '';
+    if (typeof g.levels.announce.roleAward.enabled !== 'boolean') g.levels.announce.roleAward.enabled = false;
+    if (typeof g.levels.announce.roleAward.channelId !== 'string') g.levels.announce.roleAward.channelId = '';
   }
 }
 
