@@ -747,6 +747,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
     }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'top') {
+      const sub = interaction.options.getSubcommand();
+      if (sub === 'niveau') {
+        const limit = interaction.options.getInteger('limite') || 10;
+        const levels = await getLevelsConfig(interaction.guild.id);
+        const entries = Object.entries(levels.users || {});
+        if (!entries.length) return interaction.reply({ content: 'Aucune donnée de niveau pour le moment.', ephemeral: true });
+        entries.sort((a, b) => {
+          const ua = a[1], ub = b[1];
+          if ((ub.level || 0) !== (ua.level || 0)) return (ub.level || 0) - (ua.level || 0);
+          return (ub.xp || 0) - (ua.xp || 0);
+        });
+        const top = entries.slice(0, Math.min(25, Math.max(1, limit)));
+        const lines = await Promise.all(top.map(async ([uid, st], idx) => {
+          const mem = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(() => null);
+          const name = mem ? (mem.nickname || mem.user.username) : `Utilisateur ${uid}`;
+          return `${idx + 1}. ${name} — Niveau ${st.level || 0} (${st.xp || 0} XP)`;
+        }));
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Classement des niveaux').setDescription(lines.join('\n'));
+        return interaction.reply({ embeds: [embed] });
+      }
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');

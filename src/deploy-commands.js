@@ -43,6 +43,16 @@ const commands = [
     .setDescription('Voir votre niveau ou celui d\'un membre')
     .addUserOption(o => o.setName('membre').setDescription('Membre (optionnel)').setRequired(false))
     .toJSON(),
+  new SlashCommandBuilder()
+    .setName('top')
+    .setDescription('Classements')
+    .setDMPermission(false)
+    .addSubcommand(sc => sc
+      .setName('niveau')
+      .setDescription('Classement des niveaux')
+      .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
+    )
+    .toJSON(),
 ];
 
 async function main() {
