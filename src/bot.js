@@ -208,26 +208,22 @@ async function buildLevelsSettingsRows(guild) {
   const levels = await getLevelsConfig(guild.id);
   const enableBtn = new ButtonBuilder().setCustomId('levels_enable').setLabel('Activer Levels').setStyle(ButtonStyle.Success).setDisabled(levels.enabled);
   const disableBtn = new ButtonBuilder().setCustomId('levels_disable').setLabel('Désactiver Levels').setStyle(ButtonStyle.Danger).setDisabled(!levels.enabled);
-  const xpTextBtn = new ButtonBuilder().setCustomId('levels_set_xp_text').setLabel('Définir XP Texte').setStyle(ButtonStyle.Primary);
-  const xpVoiceBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice').setLabel('Définir XP Vocal/min').setStyle(ButtonStyle.Primary);
-  const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Définir Courbe (base/facteur)').setStyle(ButtonStyle.Secondary);
+  const xpTextBtn = new ButtonBuilder().setCustomId('levels_set_xp_text').setLabel('XP Texte').setStyle(ButtonStyle.Primary);
+  const xpVoiceBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice').setLabel('XP Vocal/min').setStyle(ButtonStyle.Primary);
+  const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Courbe').setStyle(ButtonStyle.Secondary);
 
   const levelUpToggle = new ButtonBuilder().setCustomId('levels_announce_level_toggle').setLabel(levels.announce?.levelUp?.enabled ? 'Annonces Niveau: ON' : 'Annonces Niveau: OFF').setStyle(levels.announce?.levelUp?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
-  const levelUpChannel = new StringSelectMenuBuilder().setCustomId('levels_announce_level_channel').setPlaceholder('Salon annonces de niveau…').addOptions(
-    ...((guild.channels.cache.filter(ch => ch.isTextBased() && ch.viewable).map(ch => ({ label: ch.name.slice(0, 100), value: ch.id })) || []).slice(0, 25))
-  );
-
   const roleAwardToggle = new ButtonBuilder().setCustomId('levels_announce_role_toggle').setLabel(levels.announce?.roleAward?.enabled ? 'Annonces Rôle: ON' : 'Annonces Rôle: OFF').setStyle(levels.announce?.roleAward?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
-  const roleAwardChannel = new StringSelectMenuBuilder().setCustomId('levels_announce_role_channel').setPlaceholder('Salon annonces de rôle…').addOptions(
-    ...((guild.channels.cache.filter(ch => ch.isTextBased() && ch.viewable).map(ch => ({ label: ch.name.slice(0, 100), value: ch.id })) || []).slice(0, 25))
-  );
+
+  const channels = (guild.channels.cache.filter(ch => ch.isTextBased() && ch.viewable).map(ch => ({ label: ch.name.slice(0, 100), value: ch.id })) || []).slice(0, 25);
+  const fallback = [{ label: 'Aucun salon', value: 'none' }];
+  const levelUpChannel = new StringSelectMenuBuilder().setCustomId('levels_announce_level_channel').setPlaceholder('Salon annonces de niveau…').addOptions(...(channels.length ? channels : fallback));
+  const roleAwardChannel = new StringSelectMenuBuilder().setCustomId('levels_announce_role_channel').setPlaceholder('Salon annonces de rôle…').addOptions(...(channels.length ? channels : fallback));
 
   return [
-    new ActionRowBuilder().addComponents(enableBtn, disableBtn),
-    new ActionRowBuilder().addComponents(xpTextBtn, xpVoiceBtn, curveBtn),
-    new ActionRowBuilder().addComponents(levelUpToggle),
+    new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextBtn, xpVoiceBtn, curveBtn),
+    new ActionRowBuilder().addComponents(levelUpToggle, roleAwardToggle),
     new ActionRowBuilder().addComponents(levelUpChannel),
-    new ActionRowBuilder().addComponents(roleAwardToggle),
     new ActionRowBuilder().addComponents(roleAwardChannel),
   ];
 }
@@ -349,9 +345,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const akRows = await buildAutokickRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       } else if (section === 'levels') {
-        const levelAction = buildLevelsActionRow();
         const settingsRows = await buildLevelsSettingsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, levelAction, ...settingsRows] });
+        await interaction.update({ embeds: [embed], components: [...settingsRows] });
       } else {
         await interaction.update({ embeds: [embed], components: [top] });
       }
