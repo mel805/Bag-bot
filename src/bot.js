@@ -263,6 +263,42 @@ async function fetchMember(guild, userId) {
   return guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
 }
 
+function pickThemeColorForGuild(guild) {
+  const palette = [0x1e88e5, 0xec407a, 0x26a69a, 0x8e24aa, 0xff7043];
+  const id = String(guild?.id || '0');
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 33 + id.charCodeAt(i)) >>> 0;
+  return palette[hash % palette.length];
+}
+
+async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
+  const slice = entriesSorted.slice(offset, offset + limit);
+  const formatNum = (n) => (Number(n) || 0).toLocaleString('fr-FR');
+  const medalFor = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`);
+  const lines = await Promise.all(slice.map(async ([uid, st], idx) => {
+    const rank = offset + idx;
+    const mem = guild.members.cache.get(uid) || await guild.members.fetch(uid).catch(() => null);
+    const display = mem ? (mem.nickname || mem.user.username) : `<@${uid}>`;
+    const lvl = st.level || 0;
+    const xp = formatNum(st.xp || 0);
+    return `${medalFor(rank)} **${display}** • Lvl ${lvl} • ${xp} XP`;
+  }));
+  const color = pickThemeColorForGuild(guild);
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: `${guild.name} • Classement des niveaux`, iconURL: guild.iconURL?.() || undefined })
+    .setDescription(lines.join('\n') || '—')
+    .setThumbnail(THEME_IMAGE)
+    .setFooter({ text: `Boy and Girls (BAG) • Premium Leaderboard • ${offset + 1}-${Math.min(entriesSorted.length, offset + limit)} sur ${entriesSorted.length}` })
+    .setTimestamp(new Date());
+  const components = [];
+  if (offset + limit < entriesSorted.length) {
+    const moreBtn = new ButtonBuilder().setCustomId(`top_niveau_more:${offset + limit}:${limit}`).setLabel('Voir plus').setStyle(ButtonStyle.Primary);
+    components.push(new ActionRowBuilder().addComponents(moreBtn));
+  }
+  return { embed, components };
+}
+
 process.on('unhandledRejection', (reason) => {
   console.error('UnhandledRejection:', reason);
 });
@@ -756,26 +792,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
           if ((ub.level || 0) !== (ua.level || 0)) return (ub.level || 0) - (ua.level || 0);
           return (ub.xp || 0) - (ua.xp || 0);
         });
-        const top = entries.slice(0, Math.min(25, Math.max(1, limit)));
-        const formatNum = (n) => (Number(n) || 0).toLocaleString('fr-FR');
-        const medalFor = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`);
-        const lines = await Promise.all(top.map(async ([uid, st], idx) => {
-          const mem = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(() => null);
-          const display = mem ? (mem.nickname || mem.user.username) : `<@${uid}>`;
-          const lvl = st.level || 0;
-          const xp = formatNum(st.xp || 0);
-          return `${medalFor(idx)} **${display}** • Lvl ${lvl} • ${xp} XP`;
-        }));
-        const guildIcon = interaction.guild.iconURL?.() || null;
-        const embed = new EmbedBuilder()
-          .setColor(THEME_COLOR_PRIMARY)
-          .setAuthor({ name: `${interaction.guild.name} • Classement des niveaux`, iconURL: guildIcon || undefined })
-          .setDescription(lines.join('\n'))
-          .setThumbnail(THEME_IMAGE)
-          .setFooter({ text: 'Boy and Girls (BAG) • Premium Leaderboard' })
-          .setTimestamp(new Date());
-        return interaction.reply({ embeds: [embed] });
+        const { embed, components } = await buildTopNiveauEmbed(interaction.guild, entries, 0, Math.min(25, Math.max(1, limit)));
+        return interaction.reply({ embeds: [embed], components });
       }
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('top_niveau_more:')) {
+      const parts = interaction.customId.split(':');
+      const offset = Number(parts[1]) || 0;
+      const limit = Number(parts[2]) || 10;
+      const levels = await getLevelsConfig(interaction.guild.id);
+      const entries = Object.entries(levels.users || {});
+      entries.sort((a, b) => {
+        const ua = a[1], ub = b[1];
+        if ((ub.level || 0) !== (ua.level || 0)) return (ub.level || 0) - (ua.level || 0);
+        return (ub.xp || 0) - (ua.xp || 0);
+      });
+      const { embed, components } = await buildTopNiveauEmbed(interaction.guild, entries, offset, Math.min(25, Math.max(1, limit)));
+      return interaction.update({ embeds: [embed], components });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
