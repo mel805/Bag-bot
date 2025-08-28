@@ -1050,7 +1050,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const [uid, state] = sorted[i];
           let tag = `<@${uid}>`;
           try { const m = await interaction.guild.members.fetch(uid); tag = m.user ? `${m.user.username}` : tag; } catch (_) {}
-          lines.push(`${i+1}. ${tag} — ${state?.amount||0} ${eco.currency?.name || 'BAG$'}`);
+          const charm = state?.charm || 0;
+          const perv = state?.perversion || 0;
+          lines.push(`${i+1}. ${tag} — ${state?.amount||0} ${eco.currency?.name || 'BAG$'} • 🫦 ${charm} • 😈 ${perv}`);
         }
         const embed = new EmbedBuilder()
           .setColor(THEME_COLOR_ACCENT)
@@ -1536,6 +1538,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
       const eco = await getEconomyConfig(interaction.guild.id);
       const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      await interaction.deferReply({ ephemeral: false });
       const embed = buildEcoEmbed({
         title: `Économie de ${interaction.user.username}`,
         fields: [
@@ -1544,7 +1547,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
         ],
       });
-      return interaction.reply({ embeds: [embed], ephemeral: false });
+      return interaction.editReply({ embeds: [embed] });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
