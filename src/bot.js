@@ -1535,7 +1535,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
       try {
-        try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
+        try { await interaction.deferReply({ ephemeral: true }); console.log('/economie: deferred'); } catch (eDef) { console.error('/economie: defer failed', eDef); }
         const eco = await getEconomyConfig(interaction.guild?.id || '');
         const u = await getEconomyUser(interaction.guild?.id || '', interaction.user.id);
         const embed = buildEcoEmbed({
@@ -1547,10 +1547,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ],
         });
         try {
+          console.log('/economie: editing reply with embed');
           return await interaction.editReply({ embeds: [embed] });
-        } catch (_) {
+        } catch (eEdit) {
+          console.error('/economie: editReply failed', eEdit);
           const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
-          return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
+          try {
+            console.log('/economie: editing reply with text');
+            return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
+          } catch (eEdit2) {
+            console.error('/economie: editReply (text) failed', eEdit2);
+            try {
+              console.log('/economie: replying fresh with text');
+              return await interaction.reply({ content: text, ephemeral: true, allowedMentions: { parse: [] } });
+            } catch (eReply) {
+              console.error('/economie: reply failed', eReply);
+              try {
+                console.log('/economie: channel.send fallback');
+                await interaction.channel?.send({ content: text, allowedMentions: { parse: [] } });
+                return;
+              } catch (eSend) {
+                console.error('/economie: channel.send failed', eSend);
+                return;
+              }
+            }
+          }
         }
       } catch (e1) {
         console.error('/economie failed (defer/edit):', e1);
@@ -1635,9 +1656,4 @@ async function buildBoutiqueRows(guild) {
   for (const r of roles) {
     const label = r.name || (guild.roles.cache.get(r.roleId)?.name) || r.roleId;
     const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
-    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}` });
-  }
-  if (options.length === 0) options.push({ label: 'Aucun article disponible', value: 'none', description: 'Revenez plus tard' });
-  const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
-  return [new ActionRowBuilder().addComponents(select)];
-}
+    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}`

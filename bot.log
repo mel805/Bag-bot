@@ -2,57 +2,19 @@
 > bag-discord-bot@0.1.0 start
 > node src/bot.js
 
-Login succeeded
-Logged in as Bag bot#8659
-(node:105552) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
-/economie failed (defer/edit): CombinedError (2)
-  Received one or more errors
+/workspace/src/bot.js:1659
+    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}`
+                                                                                                                                                                 
 
-  1 ExpectedValidationError > s.literal(V)
-  |   Expected values to be equals
-  | 
-  |   Expected:
-  |   | null
-  | 
-  |   Received:
-  |   | ''
+SyntaxError: Unexpected end of input
+    at wrapSafe (node:internal/modules/cjs/loader:1662:18)
+    at Module._compile (node:internal/modules/cjs/loader:1704:20)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
 
-  2 ExpectedConstraintError > s.string().lengthGreaterThanOrEqual()
-  |   Invalid string length
-  | 
-  |   Expected: expected.length >= 1
-  | 
-  |   Received:
-  |   | ''
-
-    at _UnionValidator.handle (/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:1965:23)
-    at _UnionValidator.parse (/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:972:90)
-    at EmbedBuilder.setDescription (/workspace/node_modules/@discordjs/builders/dist/index.js:325:26)
-    at buildEcoEmbed (/workspace/src/bot.js:1619:6)
-    at Client.<anonymous> (/workspace/src/bot.js:1541:23)
-/economie failed (defer/edit): CombinedError (2)
-  Received one or more errors
-
-  1 ExpectedValidationError > s.literal(V)
-  |   Expected values to be equals
-  | 
-  |   Expected:
-  |   | null
-  | 
-  |   Received:
-  |   | ''
-
-  2 ExpectedConstraintError > s.string().lengthGreaterThanOrEqual()
-  |   Invalid string length
-  | 
-  |   Expected: expected.length >= 1
-  | 
-  |   Received:
-  |   | ''
-
-    at _UnionValidator.handle (/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:1965:23)
-    at _UnionValidator.parse (/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:972:90)
-    at EmbedBuilder.setDescription (/workspace/node_modules/@discordjs/builders/dist/index.js:325:26)
-    at buildEcoEmbed (/workspace/src/bot.js:1619:6)
-    at Client.<anonymous> (/workspace/src/bot.js:1541:23)
+Node.js v22.16.0
