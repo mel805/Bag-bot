@@ -1758,7 +1758,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'shop_add_item') {
       const modal = new ModalBuilder().setCustomId('shop_add_item_modal').setTitle('Ajouter un objet');
       modal.addComponents(
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('id').setLabel('ID').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true))
       );
@@ -1767,34 +1766,53 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isModalSubmit() && interaction.customId === 'shop_add_item_modal') {
       await interaction.deferReply({ ephemeral: true });
-      const id = interaction.fields.getTextInputValue('id');
       const name = interaction.fields.getTextInputValue('name');
       const price = Math.max(0, Number(interaction.fields.getTextInputValue('price'))||0);
       const eco = await getEconomyConfig(interaction.guild.id);
+      // generate a simple id
+      const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`;
       eco.shop = { ...(eco.shop||{}), items: [...(eco.shop?.items||[]), { id, name, price }] };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Objet ajouté.' });
     }
+
     if (interaction.isButton() && interaction.customId === 'shop_add_role') {
-      const modal = new ModalBuilder().setCustomId('shop_add_role_modal').setTitle('Ajouter un rôle');
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('roleId').setLabel('ID du rôle').setStyle(TextInputStyle.Short).setRequired(true)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('duration').setLabel('Durée (jours, 0 = permanent)').setStyle(TextInputStyle.Short).setRequired(true))
-      );
+      // Step 1: type select
+      const typeSelect = new StringSelectMenuBuilder()
+        .setCustomId('shop_add_role_type')
+        .setPlaceholder('Type de rôle…')
+        .addOptions(
+          { label: 'Permanent', value: 'permanent' },
+          { label: 'Temporaire', value: 'temporaire' }
+        );
+      const row = new ActionRowBuilder().addComponents(typeSelect);
+      return interaction.reply({ content: 'Choisissez le type de rôle à ajouter:', components: [row], ephemeral: true });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'shop_add_role_type') {
+      const type = interaction.values[0];
+      const rolePicker = new RoleSelectMenuBuilder().setCustomId(`shop_add_role_pick:${type}`).setPlaceholder('Sélectionner le rôle…').setMinValues(1).setMaxValues(1);
+      const row = new ActionRowBuilder().addComponents(rolePicker);
+      return interaction.update({ content: 'Sélectionnez le rôle:', components: [row] });
+    }
+    if (interaction.isRoleSelectMenu() && interaction.customId.startsWith('shop_add_role_pick:')) {
+      const type = interaction.customId.split(':')[1];
+      const roleId = interaction.values[0];
+      const modal = new ModalBuilder().setCustomId(`shop_add_role_price:${type}:${roleId}`).setTitle('Prix du rôle');
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)));
       await interaction.showModal(modal);
       return;
     }
-    if (interaction.isModalSubmit() && interaction.customId === 'shop_add_role_modal') {
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('shop_add_role_price:')) {
       await interaction.deferReply({ ephemeral: true });
-      const roleId = interaction.fields.getTextInputValue('roleId');
+      const [, type, roleId] = interaction.customId.split(':');
       const price = Math.max(0, Number(interaction.fields.getTextInputValue('price'))||0);
-      const durationDays = Math.max(0, Number(interaction.fields.getTextInputValue('duration'))||0);
       const eco = await getEconomyConfig(interaction.guild.id);
+      const durationDays = type === 'temporaire' ? 30 : 0; // default 30j for temporary; can extend to another select later
       eco.shop = { ...(eco.shop||{}), roles: [...(eco.shop?.roles||[]), { roleId, price, durationDays }] };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Rôle ajouté.' });
     }
+
     if (interaction.isStringSelectMenu() && interaction.customId === 'shop_remove_select') {
       const values = interaction.values;
       const eco = await getEconomyConfig(interaction.guild.id);
