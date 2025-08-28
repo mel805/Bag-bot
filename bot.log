@@ -12,3 +12,6 @@ Client error: ReferenceError: pickRandom is not defined
 [action] massage start
 Client error: ReferenceError: pickRandom is not defined
     at runEcoAction (/workspace/src/bot.js:1442:37)
+[action] massage start
+Client error: ReferenceError: pickRandom is not defined
+    at runEcoAction (/workspace/src/bot.js:1442:37)
