@@ -515,15 +515,11 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
 // Add Economy config UI (basic Settings page)
 async function buildEconomySettingsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
-  const nav = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('economy_page:settings').setLabel('Éco • Réglages').setStyle(ButtonStyle.Primary).setDisabled(true),
-    new ButtonBuilder().setCustomId('economy_page:actions').setLabel('Éco • Actions').setStyle(ButtonStyle.Secondary)
-  );
   const curBtn = new ButtonBuilder().setCustomId('economy_set_currency').setLabel(`Devise: ${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`).setStyle(ButtonStyle.Secondary);
   const baseBtn = new ButtonBuilder().setCustomId('economy_set_base').setLabel(`Gains: work ${eco.settings?.baseWorkReward || 50} / fish ${eco.settings?.baseFishReward || 30}`).setStyle(ButtonStyle.Secondary);
   const cdBtn = new ButtonBuilder().setCustomId('economy_set_cooldowns').setLabel('Cooldowns des actions (rapide)').setStyle(ButtonStyle.Secondary);
   const row = new ActionRowBuilder().addComponents(curBtn, baseBtn, cdBtn);
-  return [nav, row];
+  return [row];
 }
 
 function actionKeyToLabel(key) {
@@ -533,10 +529,6 @@ function actionKeyToLabel(key) {
 
 async function buildEconomyActionsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
-  const nav = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('economy_page:settings').setLabel('Éco • Réglages').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('economy_page:actions').setLabel('Éco • Actions').setStyle(ButtonStyle.Primary).setDisabled(true)
-  );
   const conf = eco.actions?.config || {};
   const options = Object.keys(conf).map((k) => {
     const c = conf[k] || {};
@@ -546,7 +538,7 @@ async function buildEconomyActionsRows(guild) {
   if (options.length === 0) options.push({ label: 'Aucune action', value: 'none' });
   const select = new StringSelectMenuBuilder().setCustomId('economy_actions_pick').setPlaceholder('Choisir une action à modifier…').addOptions(...options);
   const row = new ActionRowBuilder().addComponents(select);
-  return [nav, row];
+  return [row];
 }
 
 process.on('unhandledRejection', (reason) => {
@@ -603,19 +595,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
       const section = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow();
       if (section === 'staff') {
         const staffAction = buildStaffActionRow();
-        await interaction.update({ embeds: [embed], components: [staffAction] });
+        await interaction.update({ embeds: [embed], components: [top, staffAction] });
       } else if (section === 'autokick') {
         const akRows = await buildAutokickRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...akRows] });
+        await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       } else if (section === 'levels') {
         const rows = await buildLevelsGeneralRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      } else if (section === 'economy') {
+        const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
+        await interaction.update({ embeds: [embed], components: [top, ...rows] });
       } else {
-        await interaction.update({ embeds: [embed], components: [] });
+        await interaction.update({ embeds: [embed], components: [top] });
       }
       return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'economy_menu') {
+      const page = interaction.values[0];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow();
+      const rows = await buildEconomyMenuRows(interaction.guild, page);
+      return interaction.update({ embeds: [embed], components: [top, ...rows] });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
@@ -1399,3 +1403,41 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch (_) {}
   }
 });
+
+function buildEconomyMenuSelect(current) {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('economy_menu')
+    .setPlaceholder('Économie • Choisir une page…')
+    .addOptions(
+      { label: 'Réglages', value: 'settings', default: current === 'settings' },
+      { label: 'Actions', value: 'actions', default: current === 'actions' },
+      { label: 'Boutique', value: 'shop', default: current === 'shop' },
+      { label: 'Suites privées', value: 'suites', default: current === 'suites' },
+    );
+  return new ActionRowBuilder().addComponents(select);
+}
+
+async function buildEconomyMenuRows(guild, page) {
+  const menu = buildEconomyMenuSelect(page);
+  if (page === 'actions') {
+    const actions = await buildEconomyActionsRows(guild);
+    // buildEconomyActionsRows returns [nav, row]; we only want its content row (the select)
+    const [, actionsRow] = actions;
+    return [menu, actionsRow];
+  }
+  if (page === 'settings') {
+    const settings = await buildEconomySettingsRows(guild);
+    // settings: [navButtons, row]; keep only the config row
+    const [, settingsRow] = settings;
+    return [menu, settingsRow];
+  }
+  if (page === 'shop') {
+    // placeholder until shop implemented
+    return [menu];
+  }
+  if (page === 'suites') {
+    // placeholder until suites implemented
+    return [menu];
+  }
+  return [menu];
+}
