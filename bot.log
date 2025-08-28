@@ -13,3 +13,8 @@ Interaction handler error: ReferenceError: pickRandom is not defined
 Client error: ReferenceError: pickRandom is not defined
     at runEcoAction (/workspace/src/bot.js:1444:37)
     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[action] massage start
+[action] massage deferred
+Client error: ReferenceError: pickRandom is not defined
+    at runEcoAction (/workspace/src/bot.js:1444:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
