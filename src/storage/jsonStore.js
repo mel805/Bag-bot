@@ -235,6 +235,24 @@ async function setUserStats(guildId, userId, stats) {
   await writeConfig(cfg);
 }
 
+async function getEconomyUser(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
+  const eco = cfg.guilds[guildId].economy;
+  const u = eco.balances?.[userId] || { amount: 0, cooldowns: {} };
+  return u;
+}
+
+async function setEconomyUser(guildId, userId, state) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
+  if (!cfg.guilds[guildId].economy.balances) cfg.guilds[guildId].economy.balances = {};
+  cfg.guilds[guildId].economy.balances[userId] = state;
+  await writeConfig(cfg);
+}
+
 module.exports = {
   ensureStorageExists,
   readConfig,
@@ -254,6 +272,8 @@ module.exports = {
   // Economy
   getEconomyConfig,
   updateEconomyConfig,
+  getEconomyUser,
+  setEconomyUser,
   paths: { DATA_DIR, CONFIG_PATH },
 };
 

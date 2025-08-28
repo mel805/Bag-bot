@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -1205,6 +1205,72 @@ client.on(Events.InteractionCreate, async (interaction) => {
       eco.settings = { ...(eco.settings || {}), cooldowns: cds };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Cooldowns mis à jour.' });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'eco') {
+      const sub = interaction.options.getSubcommand();
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const curr = `${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`;
+      // Load user state
+      const userId = interaction.user.id;
+      const u = await getEconomyUser(interaction.guild.id, userId);
+      const now = Date.now();
+      const cd = (k)=>Math.max(0, (u.cooldowns?.[k]||0)-now);
+      const setCd=(k,sec)=>{ if(!u.cooldowns) u.cooldowns={}; u.cooldowns[k]=now+sec*1000; };
+      if (sub === 'solde') {
+        return interaction.reply({ content: `Votre solde: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}` });
+      }
+      if (sub === 'travailler') {
+        if (cd('work')>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(cd('work')/1000)}s avant de retravailler.`, ephemeral: true });
+        const gain = Math.max(0, eco.settings?.baseWorkReward || 50);
+        u.amount = (u.amount||0) + gain;
+        setCd('work', Math.max(0, eco.settings?.cooldowns?.work || 600));
+        await setEconomyUser(interaction.guild.id, userId, u);
+        return interaction.reply({ content: `Vous avez travaillé et gagné ${gain} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+      }
+      if (sub === 'pecher') {
+        if (cd('fish')>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(cd('fish')/1000)}s avant de repêcher.`, ephemeral: true });
+        const gain = Math.max(0, eco.settings?.baseFishReward || 30);
+        u.amount = (u.amount||0) + gain;
+        setCd('fish', Math.max(0, eco.settings?.cooldowns?.fish || 300));
+        await setEconomyUser(interaction.guild.id, userId, u);
+        return interaction.reply({ content: `Vous avez pêché et gagné ${gain} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+      }
+      if (sub === 'donner') {
+        const cible = interaction.options.getUser('membre', true);
+        const montant = interaction.options.getInteger('montant', true);
+        if ((u.amount||0) < montant) return interaction.reply({ content: `Solde insuffisant.`, ephemeral: true });
+        u.amount = (u.amount||0) - montant;
+        await setEconomyUser(interaction.guild.id, userId, u);
+        const tu = await getEconomyUser(interaction.guild.id, cible.id);
+        tu.amount = (tu.amount||0) + montant;
+        await setEconomyUser(interaction.guild.id, cible.id, tu);
+        return interaction.reply({ content: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}. Votre solde: ${u.amount}` });
+      }
+      return interaction.reply({ content: 'Action non implémentée pour le moment.', ephemeral: true });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
+      const sub = interaction.options.getSubcommand();
+      if (sub === 'voir') {
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const items = eco.shop?.items || [];
+        const roles = eco.shop?.roles || [];
+        const lines = [];
+        if (roles.length) {
+          lines.push('Rôles disponibles:');
+          for (const r of roles) lines.push(`• ${r.name || r.roleId} — ${r.price} ${eco.currency?.name || 'BAG$'} (${r.durationDays?`${r.durationDays}j`: 'permanent'})`);
+        }
+        if (items.length) {
+          lines.push('Objets:');
+          for (const it of items) lines.push(`• ${it.id}: ${it.name} — ${it.price} ${eco.currency?.name || 'BAG$'}`);
+        }
+        if (!lines.length) lines.push('La boutique est vide.');
+        return interaction.reply({ content: lines.join('\n') });
+      }
+      if (sub === 'acheter') {
+        return interaction.reply({ content: 'Achat: à implémenter (après configuration de la boutique).', ephemeral: true });
+      }
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
