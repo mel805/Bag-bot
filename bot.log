@@ -4,3 +4,23 @@
 
 Login succeeded
 Logged in as Bag bot#8659
+(node:143119) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Client error: DiscordAPIError[50035]: Invalid Form Body
+data.components[2].components[0].options[BASE_TYPE_BAD_LENGTH]: Must be between 1 and 25 in length.
+    at handleErrors (/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async BurstHandler.runRequest (/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async StringSelectMenuInteraction.update (/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:361:22) {
+  requestBody: { files: [], json: { type: 7, data: [Object] } },
+  rawError: {
+    message: 'Invalid Form Body',
+    code: 50035,
+    errors: { data: [Object] }
+  },
+  code: 50035,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1410703151983624393/aW50ZXJhY3Rpb246MTQxMDcwMzE1MTk4MzYyNDM5MzpyQk0xQmFOTmdWS0VyWFZtZkNITmw4eXFwMGc2UGg0bmJQUE5xVzBqNDJMcFRUUTZZc2xod2tCNXVkUUZkUDNlaFBGRmpLbkpaZFltUG92TElsc21YRVBjM2owTkthM0JGSmYwVXpkcnFoQWJwYW5JUUtKT3JzYkVUWHFGNU9HSw/callback?with_response=false'
+}
