@@ -239,15 +239,16 @@ async function buildLevelsCardsRows(guild) {
   const certifiedRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_certified_roles').setPlaceholder('Rôles “certifié”… (multi)').setMinValues(0).setMaxValues(25);
   const rowFemale = new ActionRowBuilder().addComponents(femaleRoles);
   const rowCert = new ActionRowBuilder().addComponents(certifiedRoles);
+  // Per-role card mapping
+  const perRoleSelect = new RoleSelectMenuBuilder().setCustomId('levels_cards_role_pick').setPlaceholder('Choisir un rôle pour une carte dédiée…').setMinValues(1).setMaxValues(1);
+  const rowPerRoleSelect = new ActionRowBuilder().addComponents(perRoleSelect);
+  // Buttons row (merged): default/female/certified + per-role set
   const bgDefaultBtn = new ButtonBuilder().setCustomId('levels_cards_bg_default').setLabel('BG par défaut').setStyle(ButtonStyle.Primary);
   const bgFemaleBtn = new ButtonBuilder().setCustomId('levels_cards_bg_female').setLabel('BG femme').setStyle(ButtonStyle.Primary);
   const bgCertifiedBtn = new ButtonBuilder().setCustomId('levels_cards_bg_certified').setLabel('BG certifié').setStyle(ButtonStyle.Primary);
-  const rowBgs = new ActionRowBuilder().addComponents(bgDefaultBtn, bgFemaleBtn, bgCertifiedBtn);
-  // Per-role card mapping
-  const perRoleSelect = new RoleSelectMenuBuilder().setCustomId('levels_cards_role_pick').setPlaceholder('Choisir un rôle pour une carte dédiée…').setMinValues(1).setMaxValues(1);
   const perRoleBtn = new ButtonBuilder().setCustomId('levels_cards_role_set_bg').setLabel('Définir BG du rôle sélectionné').setStyle(ButtonStyle.Secondary);
-  const rowPerRole = new ActionRowBuilder().addComponents(perRoleSelect, perRoleBtn);
-  return [nav, rowFemale, rowCert, rowBgs, rowPerRole];
+  const rowButtons = new ActionRowBuilder().addComponents(bgDefaultBtn, bgFemaleBtn, bgCertifiedBtn, perRoleBtn);
+  return [nav, rowFemale, rowCert, rowPerRoleSelect, rowButtons];
 }
 
 async function buildLevelsRewardsRows(guild) {
