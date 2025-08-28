@@ -1323,7 +1323,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed] });
     }
 
-    const runEcoAction = async (interaction, key, targetUserOptional) => {
+    // Economy action executor (hoisted)
+    async function runEcoAction(interaction, key, targetUserOptional) {
       const eco = await getEconomyConfig(interaction.guild.id);
       const userId = interaction.user.id;
       const u = await getEconomyUser(interaction.guild.id, userId);
@@ -1388,7 +1389,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ],
       });
       return interaction.reply({ embeds: [embed] });
-    };
+    }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
       const cible = interaction.options.getUser('membre', true);
