@@ -311,11 +311,11 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
     // overlay panel
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(24, 24, width - 48, height - 48);
-    // optional avatar (top-right)
+    // optional avatar (top-right, larger)
     if (avatarUrl) {
       const av = await getCachedImage(avatarUrl);
       if (av) {
-        const size = 112;
+        const size = 160;
         const x = width - 48 - size;
         const y = 48;
         const cx = x + size / 2;
@@ -328,41 +328,41 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
         ctx.drawImage(av.img, x, y, size, size);
         ctx.restore();
         // ring
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 5;
         ctx.strokeStyle = 'rgba(255,255,255,0.85)';
         ctx.beginPath();
         ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
-    // title (reduced size)
+    // title (reduced ~50%)
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-    ctx.lineWidth = 3;
-    ctx.font = '600 50px Georgia, "Times New Roman", Serif';
+    ctx.lineWidth = 2;
+    ctx.font = '600 28px Georgia, "Times New Roman", Serif';
     ctx.textBaseline = 'top';
     ctx.strokeText(title, 48, 48);
     ctx.fillText(title, 48, 48);
     // content
-    ctx.font = '28px Georgia, "Times New Roman", Serif';
-    let y = 120;
+    ctx.font = '16px Georgia, "Times New Roman", Serif';
+    let y = 100;
     for (const line of lines) {
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
-      y += 38;
+      y += 26;
     }
     // progress bar (optional)
     if (typeof progressRatio === 'number') {
       const ratio = Math.max(0, Math.min(1, progressRatio));
       const barX = 48;
       const barW = width - 96;
-      const barH = 30;
-      const barY = height - 48 - barH - 12; // above bottom overlay margin
+      const barH = 20;
+      const barY = height - 48 - barH - 10;
       // label
       if (progressText) {
-        ctx.font = '600 24px Georgia, "Times New Roman", Serif';
-        ctx.strokeText(progressText, 48, barY - 34);
-        ctx.fillText(progressText, 48, barY - 34);
+        ctx.font = '600 14px Georgia, "Times New Roman", Serif';
+        ctx.strokeText(progressText, 48, barY - 24);
+        ctx.fillText(progressText, 48, barY - 24);
       }
       // bg
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -371,7 +371,7 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
       ctx.fillStyle = '#1e88e5';
       ctx.fillRect(barX, barY, Math.round(barW * ratio), barH);
       // border
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       ctx.strokeStyle = 'rgba(255,255,255,0.8)';
       ctx.strokeRect(barX, barY, barW, barH);
     }
