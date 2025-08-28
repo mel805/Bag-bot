@@ -149,24 +149,11 @@ function buildStaffAddRows() {
 }
 
 async function buildStaffRemoveRows(guild) {
-  const staffIds = await getGuildStaffRoleIds(guild.id);
-  const options = staffIds
-    .map((id) => {
-      const role = guild.roles.cache.get(id);
-      if (!role) return null;
-      return { label: role.name, value: role.id };
-    })
-    .filter(Boolean);
-  const removeSelect = new StringSelectMenuBuilder()
-    .setCustomId('staff_remove_select')
+  const removeSelect = new RoleSelectMenuBuilder()
+    .setCustomId('staff_remove_roles')
     .setPlaceholder('Sélectionner les rôles à RETIRER du Staff…')
     .setMinValues(1)
-    .setMaxValues(Math.min(25, Math.max(1, options.length)));
-  if (options.length > 0) {
-    removeSelect.addOptions(...options);
-  } else {
-    removeSelect.addOptions({ label: 'Aucun rôle Staff', value: 'none' }).setDisabled(true);
-  }
+    .setMaxValues(25);
   return [new ActionRowBuilder().addComponents(removeSelect)];
 }
 
@@ -382,11 +369,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isStringSelectMenu() && interaction.customId === 'staff_remove_select') {
-      const toRemove = new Set(interaction.values);
-      if (toRemove.has('none')) return interaction.deferUpdate();
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'staff_remove_roles') {
+      const selected = new Set(interaction.values);
       const current = await getGuildStaffRoleIds(interaction.guild.id);
-      const next = current.filter((id) => !toRemove.has(id));
+      const next = current.filter((id) => !selected.has(id));
       await setGuildStaffRoleIds(interaction.guild.id, next);
       const embed = await buildConfigEmbed(interaction.guild);
       const top = buildTopSectionRow();
