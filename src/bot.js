@@ -347,9 +347,12 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
     ctx.font = '18px Georgia, "Times New Roman", Serif';
     let y = 100;
     for (const line of lines) {
+      const isEmphasis = line.startsWith('Niveau:') || line.startsWith('Dernière récompense:');
+      ctx.font = isEmphasis ? '600 22px Georgia, "Times New Roman", Serif' : '18px Georgia, "Times New Roman", Serif';
+      ctx.lineWidth = 2;
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
-      y += 28;
+      y += isEmphasis ? 30 : 28;
     }
     // centered celebration text
     if (centerText) {
