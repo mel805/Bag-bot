@@ -1409,7 +1409,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const next = { amount: u.amount||0, charm: u.charm||0, perversion: u.perversion||0, cooldowns: { ...(u.cooldowns||{}) } };
       next.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
 
-      let title, desc, embed;
+      let title, desc;
       if (!isSuccess) {
         const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
         next.amount = Math.max(0, next.amount - lose);
@@ -1426,17 +1426,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else if (key === 'dance') failText = pickRandom(DANCE_FAIL);
         else if (key === 'crime') failText = pickRandom(CRIME_FAIL);
         title = `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
-        desc = `${failText}${(lose>0)?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`;
-        embed = buildEcoEmbed({
-          title,
-          description: desc,
-          fields: [
-            { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `-${Math.max(0, conf.failKarmaDelta||0)}`}`.trim(), inline: true },
-            { name: 'Solde', value: String(next.amount), inline: true },
-            { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
-          ],
-          color: 0xff5252,
-        });
+        desc = `${title}\n${failText}${(lose>0)?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s\nSolde: ${next.amount}`;
       } else {
         const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
         next.amount = next.amount + gain;
@@ -1444,31 +1434,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else if (conf.karma === 'perversion') next.perversion = next.perversion + (conf.karmaDelta||0);
         const icon = conf.karma === 'perversion' ? '😈' : '🫦';
         title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
-        if (key === 'fish') desc = `${pickRandom(FISH_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'work') desc = `${pickRandom(WORK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'kiss') desc = `${pickRandom(KISS_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'flirt') desc = `${pickRandom(FLIRT_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'seduce') desc = `${pickRandom(SEDUCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'fuck') desc = `${pickRandom(FUCK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'massage') desc = `${pickRandom(MASSAGE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'dance') desc = `${pickRandom(DANCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else if (key === 'crime') desc = `${pickRandom(CRIME_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-        else desc = `+${gain} ${eco.currency?.name || 'BAG$'}`;
-        embed = buildEcoEmbed({
-          title,
-          description: desc,
-          fields: [
-            { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}`.trim(), inline: true },
-            { name: 'Solde', value: String(next.amount), inline: true },
-            { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
-          ],
-        });
+        let line;
+        if (key === 'fish') line = pickRandom(FISH_SUCCESS);
+        else if (key === 'work') line = pickRandom(WORK_SUCCESS);
+        else if (key === 'kiss') line = pickRandom(KISS_SUCCESS);
+        else if (key === 'flirt') line = pickRandom(FLIRT_SUCCESS);
+        else if (key === 'seduce') line = pickRandom(SEDUCE_SUCCESS);
+        else if (key === 'fuck') line = pickRandom(FUCK_SUCCESS);
+        else if (key === 'massage') line = pickRandom(MASSAGE_SUCCESS);
+        else if (key === 'dance') line = pickRandom(DANCE_SUCCESS);
+        else if (key === 'crime') line = pickRandom(CRIME_SUCCESS);
+        else line = 'Action réussie.';
+        desc = `${title}\n${line}\n+${Math.max(0, gain)} ${eco.currency?.name || 'BAG$'}\nKarma: ${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s`;
       }
 
-      try { await interaction.editReply({ embeds: [embed] }); console.log('[action]', key, 'replied'); }
+      try { await interaction.editReply({ content: desc }); console.log('[action]', key, 'replied'); }
       catch (e) {
-        try { await interaction.editReply({ content: desc || title || 'Action effectuée.' }); console.log('[action]', key, 'text replied'); }
-        catch (_) { try { await interaction.followUp({ content: desc || title || 'Action effectuée.', ephemeral: true }); } catch (_) {} }
+        try { await interaction.editReply({ content: desc }); console.log('[action]', key, 'text replied'); }
+        catch (_) { try { await interaction.followUp({ content: desc, ephemeral: true }); } catch (_) {} }
       }
 
       try {
@@ -1492,13 +1475,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const conf = eco.actions?.config?.steal || { cooldown: 1800 };
         u.cooldowns.steal = Date.now() + (Math.max(0, conf.cooldown || 1800))*1000;
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
-        const embed = buildEcoEmbed({
-          title: '😵 Échec du vol',
-          description: `${pickRandom(STEAL_FAIL)}\nAmende ${penalty} ${eco.currency?.name || 'BAG$'}`,
-          fields: [ { name: 'Solde', value: String(u.amount), inline: true } ],
-          color: 0xff5252,
-        });
-        try { return await interaction.editReply({ embeds: [embed] }); } catch (_) { return; }
+        const msg = `😵 Échec du vol\n${pickRandom(STEAL_FAIL)}\nAmende ${penalty} ${eco.currency?.name || 'BAG$'}\nSolde: ${u.amount}`;
+        try { return await interaction.editReply({ content: msg }); } catch (_) { return; }
       }
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
