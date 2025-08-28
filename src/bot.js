@@ -1445,7 +1445,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else line = 'Action réussie.';
         desc = `${title}\n${line}\n+${Math.max(0, gain)} ${eco.currency?.name || 'BAG$'}\nKarma: ${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s`;
       }
-      try { await interaction.followUp({ content: desc, ephemeral: true }); } catch (_) {}
+      try { await interaction.followUp({ content: desc, ephemeral: true }); }
+      catch (e) { try { await interaction.editReply({ content: desc }); } catch (_) {} }
       setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }).catch(()=>{});
       return;
     }
