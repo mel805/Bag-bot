@@ -1301,28 +1301,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed] });
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'pêcher' || interaction.commandName === 'pecher')) {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const userId = interaction.user.id;
-      const u = await getEconomyUser(interaction.guild.id, userId);
-      const now = Date.now();
-      const last = u.cooldowns?.fish || 0;
-      const remain = Math.max(0, last - now);
-      if (remain > 0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s.`, ephemeral: true });
-      const gain = Math.floor((eco.settings?.baseFishReward || 30) * (0.8 + Math.random()*0.4));
-      u.amount = (u.amount||0) + gain;
-      if (!u.cooldowns) u.cooldowns = {};
-      u.cooldowns.fish = now + (Math.max(0, eco.settings?.cooldowns?.fish || 300))*1000;
-      await setEconomyUser(interaction.guild.id, userId, u);
-      const embed = buildEcoEmbed({
-        title: 'Pêcher',
-        description: `+${gain} ${eco.currency?.name || 'BAG$'}`,
-        fields: [
-          { name: 'Solde', value: String(u.amount), inline: true },
-          { name: 'Cooldown', value: `${Math.max(0, eco.settings?.cooldowns?.fish || 300)}s`, inline: true },
-        ],
-        color: THEME_COLOR_PRIMARY,
-      });
-      return interaction.reply({ embeds: [embed] });
+      return runEcoAction(interaction, 'fish');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'donner') {
       const eco = await getEconomyConfig(interaction.guild.id);
@@ -1352,18 +1331,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
+
+      // Random success/failure (default 80% success for most, 65% for fish)
+      const successRate = key === 'fish' ? 0.65 : 0.8;
+      const isSuccess = Math.random() < successRate;
+
+      // Always set cooldown
+      if (!u.cooldowns) u.cooldowns={};
+      u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
+
+      if (!isSuccess) {
+        await setEconomyUser(interaction.guild.id, userId, u);
+        // Failure embed
+        let failText = 'Action manquée… Réessayez plus tard.';
+        if (key === 'fish') failText = pickRandom(FISH_FAIL);
+        const embed = buildEcoEmbed({
+          title: `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`,
+          description: failText,
+          fields: [ { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true } ],
+          color: 0xff5252,
+        });
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // Success: compute gain and karma
       const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
       u.amount = (u.amount||0) + gain;
       if (conf.karma === 'charm') u.charm = (u.charm||0) + (conf.karmaDelta||0);
       else if (conf.karma === 'perversion') u.perversion = (u.perversion||0) + (conf.karmaDelta||0);
-      if (!u.cooldowns) u.cooldowns={};
-      u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
       await setEconomyUser(interaction.guild.id, userId, u);
+
       const icon = conf.karma === 'perversion' ? '😈' : '🫦';
       const title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
+      let desc = `+${gain} ${eco.currency?.name || 'BAG$'}`;
+      if (key === 'fish') desc = `${pickRandom(FISH_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
       const embed = buildEcoEmbed({
         title,
-        description: `+${gain} ${eco.currency?.name || 'BAG$'}`,
+        description: desc,
         fields: [
           { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : 'charme 🫦'} +${conf.karmaDelta||0}`, inline: true },
           { name: 'Solde', value: String(u.amount), inline: true },
@@ -1564,3 +1568,18 @@ async function buildBoutiqueRows(guild) {
   const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
   return [new ActionRowBuilder().addComponents(select)];
 }
+
+function pickRandom(array) { return array[Math.floor(Math.random() * array.length)]; }
+const FISH_SUCCESS = [
+  'Félicitations, vous avez pêché un thon !',
+  'Bravo, vous avez pêché un magnifique saumon !',
+  'Incroyable, une carpe dorée mord à l\'hameçon !',
+  'Quel talent ! Un brochet impressionnant !',
+  'Un bar splendide pour le dîner !',
+];
+const FISH_FAIL = [
+  'Aïe… la ligne s\'est emmêlée, rien attrapé.',
+  'Juste une vieille botte… pas de chance !',
+  'Le poisson s\'est échappé au dernier moment !',
+  'Silence radio sous l\'eau… aucun poisson aujourd\'hui.',
+];
