@@ -284,7 +284,19 @@ function chooseCardBackgroundForMember(memberOrMention, levels) {
   return bgs.default || THEME_IMAGE;
 }
 
-async function drawCard(backgroundUrl, title, lines) {
+function getLastRewardForLevel(levels, currentLevel) {
+  const entries = Object.entries(levels.rewards || {});
+  let best = null;
+  for (const [lvlStr, rid] of entries) {
+    const ln = Number(lvlStr);
+    if (Number.isFinite(ln) && ln <= (currentLevel || 0)) {
+      if (!best || ln > best.level) best = { level: ln, roleId: rid };
+    }
+  }
+  return best;
+}
+
+async function drawCard(backgroundUrl, title, lines, progressRatio, progressText) {
   try {
     const entry = await getCachedImage(backgroundUrl);
     if (!entry) return null;
@@ -314,6 +326,30 @@ async function drawCard(backgroundUrl, title, lines) {
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
       y += 52;
+    }
+    // progress bar (optional)
+    if (typeof progressRatio === 'number') {
+      const ratio = Math.max(0, Math.min(1, progressRatio));
+      const barX = 48;
+      const barW = width - 96;
+      const barH = 36;
+      const barY = height - 48 - barH - 12; // above bottom overlay margin
+      // label
+      if (progressText) {
+        ctx.font = 'bold 32px Sans-Serif';
+        ctx.strokeText(progressText, 48, barY - 40);
+        ctx.fillText(progressText, 48, barY - 40);
+      }
+      // bg
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(barX, barY, barW, barH);
+      // fill
+      ctx.fillStyle = '#1e88e5';
+      ctx.fillRect(barX, barY, Math.round(barW * ratio), barH);
+      // border
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.strokeRect(barX, barY, barW, barH);
     }
     return canvas.toBuffer('image/png');
   } catch (_) {
@@ -453,11 +489,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
       const targetMember = interaction.guild.members.cache.get(targetUser.id) || await interaction.guild.members.fetch(targetUser.id).catch(() => null);
       const bg = chooseCardBackgroundForMember(targetMember, levels);
+      const lastReward = getLastRewardForLevel(levels, stats.level);
+      const rewardText = lastReward ? `Dernière récompense: <@&${lastReward.roleId}> (niv ${lastReward.level})` : 'Dernière récompense: —';
       const img = await drawCard(bg, `Niveau de ${targetUser.username}`, [
         `Niveau: ${stats.level}`,
         `XP total: ${stats.xp}`,
-        `Progression: ${Math.round(progress * 100)}% (${stats.xpSinceLevel}/${needed})`,
-      ]);
+        rewardText,
+      ], progress, `${Math.round(progress * 100)}% (${stats.xpSinceLevel}/${needed}) vers ${stats.level + 1}`);
       if (img) {
         return interaction.reply({ files: [{ attachment: img, name: 'niveau.png' }] });
       }
@@ -467,7 +505,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .addFields(
           { name: 'Niveau', value: String(stats.level), inline: true },
           { name: 'XP total', value: String(stats.xp), inline: true },
-          { name: 'Progression', value: `${bar} ${Math.round(progress * 100)}%\n${stats.xpSinceLevel}/${needed} XP vers le niveau ${stats.level + 1}` }
+          { name: 'Progression', value: `${bar} ${Math.round(progress * 100)}%\n${stats.xpSinceLevel}/${needed} XP vers le niveau ${stats.level + 1}` },
+          { name: 'Dernière récompense', value: lastReward ? `<@&${lastReward.roleId}> (niv ${lastReward.level})` : '—' }
         )
         .setImage(bg)
         .setTimestamp(new Date());
