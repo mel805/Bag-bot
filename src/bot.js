@@ -239,6 +239,30 @@ function maybeAnnounceRoleAward(guild, member, levels, roleId) {
   channel.send({ content: `🏅 ${member} reçoit le rôle <@&${roleId}> en récompense !` }).catch(() => {});
 }
 
+process.on('unhandledRejection', (reason) => {
+  console.error('UnhandledRejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('UncaughtException:', err);
+});
+
+client.on('shardError', (error) => {
+  console.error('WebSocket shard error:', error);
+});
+client.on('error', (error) => {
+  console.error('Client error:', error);
+});
+client.on('warn', (info) => {
+  console.warn('Client warn:', info);
+});
+
+client.login(token).then(() => {
+  console.log('Login succeeded');
+}).catch((err) => {
+  console.error('Login failed:', err?.message || err);
+  process.exit(1);
+});
+
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
@@ -685,4 +709,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
     try {
       if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ content: `
+        await interaction.followUp({ content: `Une erreur est survenue: ${errorText}`, ephemeral: true });
+      } else {
+        await interaction.reply({ content: `Une erreur est survenue: ${errorText}`, ephemeral: true });
+      }
+    } catch (_) {}
+  }
+});
