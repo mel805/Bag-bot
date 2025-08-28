@@ -452,15 +452,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'levels_action') {
       const action = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       if (action === 'settings') {
         const rows = await buildLevelsSettingsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, ...rows] });
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (action === 'rewards') {
         const rows = await buildLevelsRewardsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, ...rows] });
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
-        await interaction.update({ embeds: [embed], components: [top, buildLevelsActionRow()] });
+        const rows = await buildLevelsSettingsRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...rows] });
       }
       return;
     }
@@ -469,20 +469,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enable = interaction.customId === 'levels_enable';
       await updateLevelsConfig(interaction.guild.id, { enabled: enable });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...rows] });
-      return;
-    }
-
-    if (interaction.isButton() && interaction.customId === 'levels_announce_toggle') {
-      const cfg = await getLevelsConfig(interaction.guild.id);
-      const nowEnabled = !cfg.announce?.enabled;
-      await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), enabled: nowEnabled } });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
-      const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      await interaction.update({ embeds: [embed], components: [...rows] });
       return;
     }
 
@@ -491,9 +479,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enabled = !cfg.announce?.levelUp?.enabled;
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), levelUp: { ...(cfg.announce?.levelUp || {}), enabled } } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      await interaction.update({ embeds: [embed], components: [...rows] });
       return;
     }
 
@@ -503,9 +490,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getLevelsConfig(interaction.guild.id);
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), levelUp: { ...(cfg.announce?.levelUp || {}), channelId: value } } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      await interaction.update({ embeds: [embed], components: [...rows] });
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_announce_role_toggle') {
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      const enabled = !cfg.announce?.roleAward?.enabled;
+      await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), roleAward: { ...(cfg.announce?.roleAward || {}), enabled } } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLevelsSettingsRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [...rows] });
       return;
     }
 
@@ -515,9 +511,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getLevelsConfig(interaction.guild.id);
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), roleAward: { ...(cfg.announce?.roleAward || {}), channelId: value } } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      await interaction.update({ embeds: [embed], components: [...rows] });
       return;
     }
 
@@ -552,9 +547,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { xpPerMessage: Math.round(v) });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
       return;
     }
 
@@ -564,9 +558,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { xpPerVoiceMinute: Math.round(v) });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
       return;
     }
 
@@ -577,7 +570,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: 'Valeurs invalides.', ephemeral: true });
       }
       await updateLevelsConfig(interaction.guild.id, { levelCurve: { base: Math.round(base), factor } });
-      // Resync all users
+      // Resync users ... (kept)
       const cfg = await getLevelsConfig(interaction.guild.id);
       const users = Object.keys(cfg.users || {});
       for (const uid of users) {
@@ -588,7 +581,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await setUserStats(interaction.guild.id, uid, st);
         const member = interaction.guild.members.cache.get(uid);
         if (member) {
-          // Ensure rewards up to level are granted
           const entries = Object.entries(cfg.rewards || {});
           for (const [lvlStr, rid] of entries) {
             const ln = Number(lvlStr);
@@ -600,9 +592,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
       return;
     }
 
@@ -625,9 +616,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { rewards });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsRewardsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [top, ...rows] }); } catch (_) {}
+      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
       return;
     }
 
@@ -639,9 +629,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       for (const k of removeLvls) delete rewards[k];
       await updateLevelsConfig(interaction.guild.id, { rewards });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       const rows = await buildLevelsRewardsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      await interaction.update({ embeds: [embed], components: [...rows] });
       return;
     }
 
