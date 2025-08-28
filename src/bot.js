@@ -243,7 +243,11 @@ async function buildLevelsCardsRows(guild) {
   const bgFemaleBtn = new ButtonBuilder().setCustomId('levels_cards_bg_female').setLabel('BG femme').setStyle(ButtonStyle.Primary);
   const bgCertifiedBtn = new ButtonBuilder().setCustomId('levels_cards_bg_certified').setLabel('BG certifié').setStyle(ButtonStyle.Primary);
   const rowBgs = new ActionRowBuilder().addComponents(bgDefaultBtn, bgFemaleBtn, bgCertifiedBtn);
-  return [nav, rowFemale, rowCert, rowBgs];
+  // Per-role card mapping
+  const perRoleSelect = new RoleSelectMenuBuilder().setCustomId('levels_cards_role_pick').setPlaceholder('Choisir un rôle pour une carte dédiée…').setMinValues(1).setMaxValues(1);
+  const perRoleBtn = new ButtonBuilder().setCustomId('levels_cards_role_set_bg').setLabel('Définir BG du rôle sélectionné').setStyle(ButtonStyle.Secondary);
+  const rowPerRole = new ActionRowBuilder().addComponents(perRoleSelect, perRoleBtn);
+  return [nav, rowFemale, rowCert, rowBgs, rowPerRole];
 }
 
 async function buildLevelsRewardsRows(guild) {
@@ -273,6 +277,13 @@ async function buildLevelsRewardsRows(guild) {
 
 function chooseCardBackgroundForMember(memberOrMention, levels) {
   const bgs = levels.cards?.backgrounds || {};
+  const perMap = levels.cards?.perRoleBackgrounds || {};
+  // If we have a member with roles, try per-role mapping first
+  if (memberOrMention && memberOrMention.roles) {
+    for (const [rid, url] of Object.entries(perMap)) {
+      if (memberOrMention.roles.cache?.has(rid) && url) return url;
+    }
+  }
   if (!memberOrMention || !memberOrMention.roles) return bgs.default || THEME_IMAGE;
   const femaleIds = new Set(levels.cards?.femaleRoleIds || []);
   const certIds = new Set(levels.cards?.certifiedRoleIds || []);
@@ -1101,6 +1112,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // Preload to speed up first render
       getCachedImage(url).catch(() => {});
       return interaction.editReply({ content: `✅ Fond ${key} mis à jour.` });
+    }
+
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'levels_cards_role_pick') {
+      const roleId = interaction.values[0];
+      const modal = new ModalBuilder().setCustomId(`levels_cards_role_bg_modal:${roleId}`).setTitle(`BG spécifique à ${guild.roles.cache.get(roleId)?.name || roleId}`);
+      const urlInput = new TextInputBuilder().setCustomId('url').setLabel('URL de l\'image').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('https://...');
+      modal.addComponents(new ActionRowBuilder().addComponents(urlInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('levels_cards_role_bg_modal:')) {
+      const roleId = interaction.customId.split(':')[1];
+      const url = interaction.fields.getTextInputValue('url');
+      await interaction.deferReply({ ephemeral: true });
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      const map = { ...(cfg.cards?.perRoleBackgrounds || {}) };
+      map[roleId] = url;
+      await updateLevelsConfig(interaction.guild.id, { cards: { ...(cfg.cards || {}), perRoleBackgrounds: map } });
+      // Preload
+      getCachedImage(url).catch(() => {});
+      return interaction.editReply({ content: `✅ Fond défini pour le rôle ${roleId}.` });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
