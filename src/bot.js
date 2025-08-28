@@ -381,18 +381,34 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
   }
 }
 
+function memberDisplayName(guild, memberOrMention, userIdFallback) {
+  if (memberOrMention && memberOrMention.user) {
+    return memberOrMention.nickname || memberOrMention.user.username;
+  }
+  if (userIdFallback) {
+    const m = guild.members.cache.get(userIdFallback);
+    if (m) return m.nickname || m.user.username;
+  }
+  return userIdFallback ? `Membre ${userIdFallback}` : 'Membre';
+}
+
 function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const ann = levels.announce?.levelUp || {};
   if (!ann.enabled || !ann.channelId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const lastReward = getLastRewardForLevel(levels, newLevel);
+  const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
+  const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
+  const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 128 }) || null;
   const lines = [
     `Niveau: ${newLevel}`,
+    lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
   ];
-  drawCard(bg, `${memberOrMention} monte de niveau !`, lines).then((img) => {
+  drawCard(bg, `${name} monte de niveau !`, lines, undefined, undefined, avatarUrl).then((img) => {
     if (img) channel.send({ files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
-    else channel.send({ content: `🎉 ${memberOrMention} passe niveau ${newLevel} !` }).catch(() => {});
+    else channel.send({ content: `🎉 ${name} passe niveau ${newLevel} !` }).catch(() => {});
   });
 }
 
@@ -402,9 +418,12 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-  drawCard(bg, `${memberOrMention} reçoit un rôle !`, [`Rôle: <@&${roleId}>`]).then((img) => {
+  const roleName = guild.roles.cache.get(roleId)?.name || `Rôle ${roleId}`;
+  const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
+  const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 128 }) || null;
+  drawCard(bg, `${name} reçoit un rôle !`, [`Rôle: ${roleName}`], undefined, undefined, avatarUrl).then((img) => {
     if (img) channel.send({ files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-    else channel.send({ content: `🏅 ${memberOrMention} reçoit le rôle <@&${roleId}> !` }).catch(() => {});
+    else channel.send({ content: `🏅 ${name} reçoit le rôle ${roleName} !` }).catch(() => {});
   });
 }
 
