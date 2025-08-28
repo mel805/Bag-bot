@@ -1399,16 +1399,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
       if (remain>0) {
-        if (acked) return interaction.editReply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.` });
-        return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
+        const msg = `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`;
+        if (acked) { try { return await interaction.followUp({ content: msg, ephemeral: true }); } catch (_) { return; } }
+        return interaction.reply({ content: msg, ephemeral: true });
       }
-
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
-
       const next = { amount: u.amount||0, charm: u.charm||0, perversion: u.perversion||0, cooldowns: { ...(u.cooldowns||{}) } };
       next.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
-
       let title, desc;
       if (!isSuccess) {
         const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
@@ -1447,11 +1445,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else line = 'Action réussie.';
         desc = `${title}\n${line}\n+${Math.max(0, gain)} ${eco.currency?.name || 'BAG$'}\nKarma: ${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s`;
       }
-
-      try {
-        if (acked) await interaction.editReply({ content: desc });
-        else await interaction.reply({ content: desc, ephemeral: true });
-      } catch (_) {}
+      try { await interaction.followUp({ content: desc, ephemeral: true }); } catch (_) {}
       setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }).catch(()=>{});
       return;
     }
@@ -1471,7 +1465,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         u.cooldowns.steal = Date.now() + (Math.max(0, conf.cooldown || 1800))*1000;
         setEconomyUser(interaction.guild.id, interaction.user.id, u).catch(()=>{});
         const msg = `😵 Échec du vol\n${pickRandom(STEAL_FAIL)}\nAmende ${penalty} ${eco.currency?.name || 'BAG$'}\nSolde: ${u.amount}`;
-        return interaction.reply({ content: msg, ephemeral: true });
+        try { await interaction.reply({ content: msg, ephemeral: true }); } catch (_) { try { await interaction.followUp({ content: msg, ephemeral: true }); } catch (_) {} }
+        return;
       }
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
