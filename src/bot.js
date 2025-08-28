@@ -311,21 +311,21 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
     // overlay panel
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(24, 24, width - 48, height - 48);
-    // title
+    // title (slightly reduced size, elegant serif stack)
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-    ctx.lineWidth = 4;
-    ctx.font = 'bold 72px Sans-Serif';
+    ctx.lineWidth = 3;
+    ctx.font = '600 64px Georgia, "Times New Roman", Serif';
     ctx.textBaseline = 'top';
     ctx.strokeText(title, 48, 48);
     ctx.fillText(title, 48, 48);
     // content
-    ctx.font = '42px Sans-Serif';
-    let y = 140;
+    ctx.font = '36px Georgia, "Times New Roman", Serif';
+    let y = 132;
     for (const line of lines) {
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
-      y += 52;
+      y += 48;
     }
     // progress bar (optional)
     if (typeof progressRatio === 'number') {
@@ -336,9 +336,9 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
       const barY = height - 48 - barH - 12; // above bottom overlay margin
       // label
       if (progressText) {
-        ctx.font = 'bold 32px Sans-Serif';
-        ctx.strokeText(progressText, 48, barY - 40);
-        ctx.fillText(progressText, 48, barY - 40);
+        ctx.font = '600 30px Georgia, "Times New Roman", Serif';
+        ctx.strokeText(progressText, 48, barY - 38);
+        ctx.fillText(progressText, 48, barY - 38);
       }
       // bg
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
