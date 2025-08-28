@@ -1738,3 +1738,23 @@ async function buildBoutiqueRows(guild) {
   const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
   return [new ActionRowBuilder().addComponents(select)];
 }
+
+function pickRandom(array) { return array[Math.floor(Math.random() * array.length)] }
+const WORK_SUCCESS = ['Belle journée de travail, mission accomplie !','Vous avez brillamment terminé votre tâche.','Prime méritée pour votre efficacité.','Vos efforts paient, bien joué !']
+const WORK_FAIL = ['Contretemps au bureau…','Le projet a été reporté, pas de gain aujourd\'hui.','Panne système, impossible de travailler.']
+const KISS_SUCCESS = ['Un doux moment partagé 💋','Baiser accepté 🫦','Tendresse réciproque.']
+const KISS_FAIL = ['Baiser esquivé…','Mauvais timing, désolé.','Refus poli.']
+const FLIRT_SUCCESS = ['Le charme opère ✨','Clin d\'œil réussi 😉','Conversation enflammée.']
+const FLIRT_FAIL = ['Le courant ne passe pas…','Tentative maladroite.','Message vu… ignoré.']
+const SEDUCE_SUCCESS = ['Séduction réussie 🔥','Alchimie évidente.','Étincelles dans l\'air.']
+const SEDUCE_FAIL = ['Pas aujourd\'hui…','Ça n\'a pas pris.','Tentation sans suite.']
+const FUCK_SUCCESS = ['Moment intense 😈','Passion déchaînée.','Nuit mémorable.']
+const FUCK_FAIL = ['Pas d\'humeur…','Fatigue, une autre fois.','Ambiance retombée.']
+const MASSAGE_SUCCESS = ['Détente absolue 💆','Tensions envolées.','Relaxation profonde.']
+const MASSAGE_FAIL = ['Crampes… raté.','Huile renversée, oups.','Nœud récalcitrant.']
+const DANCE_SUCCESS = ['Choré synchro 💃','Pas de danse parfaits.','Ambiance de folie.']
+const DANCE_FAIL = ['Deux pieds gauches…','Musique coupée !','Glissade imprévue.']
+const CRIME_SUCCESS = ['Coup monté réussi 🕶️','Plan sans faute.','Aucune trace laissée.']
+const CRIME_FAIL = ['Sirènes au loin… fuyez !','Plan compromis.','Informateur douteux.']
+const FISH_SUCCESS = ['Félicitations, vous avez pêché un thon !','Bravo, vous avez pêché un magnifique saumon !','Incroyable, une carpe dorée mord à l\'hameçon !','Quel talent ! Un brochet impressionnant !','Un bar splendide pour le dîner !']
+const FISH_FAIL = ['Aïe… la ligne s\'est emmêlée, rien attrapé.','Juste une vieille botte… pas de chance !','Le poisson s\'est échappé au dernier moment !','Silence radio sous l\'eau… aucun poisson aujourd\'hui.']
