@@ -651,6 +651,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       let rows;
       if (page === 'suites') {
         rows = [buildEconomyMenuSelect(page), ...(await buildSuitesRows(interaction.guild))];
+      } else if (page === 'shop') {
+        rows = [buildEconomyMenuSelect(page), ...(await buildShopRows(interaction.guild))];
       } else {
         rows = await buildEconomyMenuRows(interaction.guild, page);
       }
@@ -1752,6 +1754,59 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try { return await interaction.reply({ content: 'Erreur lors de l\'affichage du niveau.', ephemeral: true }); } catch (_) { return; }
       }
     }
+
+    if (interaction.isButton() && interaction.customId === 'shop_add_item') {
+      const modal = new ModalBuilder().setCustomId('shop_add_item_modal').setTitle('Ajouter un objet');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('id').setLabel('ID').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'shop_add_item_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const id = interaction.fields.getTextInputValue('id');
+      const name = interaction.fields.getTextInputValue('name');
+      const price = Math.max(0, Number(interaction.fields.getTextInputValue('price'))||0);
+      const eco = await getEconomyConfig(interaction.guild.id);
+      eco.shop = { ...(eco.shop||{}), items: [...(eco.shop?.items||[]), { id, name, price }] };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Objet ajouté.' });
+    }
+    if (interaction.isButton() && interaction.customId === 'shop_add_role') {
+      const modal = new ModalBuilder().setCustomId('shop_add_role_modal').setTitle('Ajouter un rôle');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('roleId').setLabel('ID du rôle').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('duration').setLabel('Durée (jours, 0 = permanent)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'shop_add_role_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const roleId = interaction.fields.getTextInputValue('roleId');
+      const price = Math.max(0, Number(interaction.fields.getTextInputValue('price'))||0);
+      const durationDays = Math.max(0, Number(interaction.fields.getTextInputValue('duration'))||0);
+      const eco = await getEconomyConfig(interaction.guild.id);
+      eco.shop = { ...(eco.shop||{}), roles: [...(eco.shop?.roles||[]), { roleId, price, durationDays }] };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Rôle ajouté.' });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'shop_remove_select') {
+      const values = interaction.values;
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const keepItems = (eco.shop?.items||[]).filter(it => !values.includes(`item:${it.id}`));
+      const keepRoles = (eco.shop?.roles||[]).filter(r => !values.includes(`role:${r.roleId}:${r.durationDays||0}`));
+      eco.shop = { items: keepItems, roles: keepRoles };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow();
+      const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
+      return interaction.update({ embeds: [embed], components: [top, ...rows] });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
@@ -1938,3 +1993,24 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     }
   } catch (_) {}
 });
+
+async function buildShopRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const controls = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('shop_add_role').setLabel('Ajouter un rôle').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('shop_add_item').setLabel('Ajouter un objet').setStyle(ButtonStyle.Secondary)
+  );
+  const options = [];
+  for (const it of (eco.shop?.items || [])) {
+    options.push({ label: `Objet: ${it.name || it.id} — ${it.price||0}`, value: `item:${it.id}` });
+  }
+  for (const r of (eco.shop?.roles || [])) {
+    const roleName = guild.roles.cache.get(r.roleId)?.name || r.name || r.roleId;
+    const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
+    options.push({ label: `Rôle: ${roleName} — ${r.price||0} (${dur})`, value: `role:${r.roleId}:${r.durationDays||0}` });
+  }
+  const remove = new StringSelectMenuBuilder().setCustomId('shop_remove_select').setPlaceholder('Supprimer des articles…').setMinValues(0).setMaxValues(Math.min(25, Math.max(1, options.length || 1)));
+  if (options.length) remove.addOptions(...options); else remove.addOptions({ label: 'Aucun article', value: 'none' }).setDisabled(true);
+  const removeRow = new ActionRowBuilder().addComponents(remove);
+  return [controls, removeRow];
+}
