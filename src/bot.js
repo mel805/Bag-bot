@@ -599,6 +599,31 @@ client.once(Events.ClientReady, (readyClient) => {
       }
     } catch (_) {}
   }, 5 * 60 * 1000);
+  // Temporary roles cleanup every 10 minutes
+  setInterval(async () => {
+    try {
+      const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
+      if (!guild) return;
+      const eco = await getEconomyConfig(guild.id);
+      const grants = { ...(eco.shop?.grants || {}) };
+      const now = Date.now();
+      let changed = false;
+      for (const key of Object.keys(grants)) {
+        const g = grants[key];
+        if (!g || !g.expiresAt || now < g.expiresAt) continue;
+        try {
+          const member = await guild.members.fetch(g.userId).catch(()=>null);
+          if (member) { await member.roles.remove(g.roleId).catch(()=>{}); }
+        } catch (_) {}
+        delete grants[key];
+        changed = true;
+      }
+      if (changed) {
+        eco.shop = { ...(eco.shop||{}), grants };
+        await updateEconomyConfig(guild.id, eco);
+      }
+    } catch (_) {}
+  }, 10 * 60 * 1000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -1314,6 +1339,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const member = await interaction.guild.members.fetch(interaction.user.id);
           await member.roles.add(roleId);
         } catch (_) {}
+        // Track grant for temporary roles
+        if ((entry.durationDays||0) > 0) {
+          const eco2 = await getEconomyConfig(interaction.guild.id);
+          const grants = { ...(eco2.shop?.grants || {}) };
+          grants[`${interaction.user.id}:${roleId}`] = { userId: interaction.user.id, roleId, expiresAt: Date.now() + entry.durationDays*24*60*60*1000 };
+          eco2.shop = { ...(eco2.shop||{}), grants };
+          await updateEconomyConfig(interaction.guild.id, eco2);
+        }
         const label = entry.name || (interaction.guild.roles.cache.get(roleId)?.name) || roleId;
         const embed = buildEcoEmbed({ title: 'Achat réussi', description: `Rôle attribué: ${label} (${entry.durationDays?`${entry.durationDays}j`:'permanent'}) pour ${price} ${eco.currency?.name || 'BAG$'}`, fields: [ { name: 'Solde', value: String(u.amount), inline: true } ] });
         return interaction.update({ embeds: [embed], components: [] });
@@ -1798,7 +1831,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const type = interaction.customId.split(':')[1];
       const roleId = interaction.values[0];
       const modal = new ModalBuilder().setCustomId(`shop_add_role_price:${type}:${roleId}`).setTitle('Prix du rôle');
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)));
+      const priceInput = new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(priceInput));
+      if (type === 'temporaire') {
+        const durInput = new TextInputBuilder().setCustomId('duration').setLabel('Durée (jours)').setStyle(TextInputStyle.Short).setRequired(true).setValue('30');
+        modal.addComponents(new ActionRowBuilder().addComponents(durInput));
+      }
       await interaction.showModal(modal);
       return;
     }
@@ -1807,7 +1845,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const [, type, roleId] = interaction.customId.split(':');
       const price = Math.max(0, Number(interaction.fields.getTextInputValue('price'))||0);
       const eco = await getEconomyConfig(interaction.guild.id);
-      const durationDays = type === 'temporaire' ? 30 : 0; // default 30j for temporary; can extend to another select later
+      const durationDays = type === 'temporaire' ? Math.max(1, Number(interaction.fields.getTextInputValue('duration'))||30) : 0;
       eco.shop = { ...(eco.shop||{}), roles: [...(eco.shop?.roles||[]), { roleId, price, durationDays }] };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Rôle ajouté.' });

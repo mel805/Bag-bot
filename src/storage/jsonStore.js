@@ -287,7 +287,12 @@ function ensureEconomyShape(g) {
       if (typeof c.failKarmaDelta !== 'number') c.failKarmaDelta = d.failKarmaDelta;
     }
   }
-  if (!e.shop || typeof e.shop !== 'object') e.shop = { items: [], roles: [] };
+  if (!e.shop || typeof e.shop !== 'object') e.shop = { items: [], roles: [], grants: {} };
+  else {
+    if (!Array.isArray(e.shop.items)) e.shop.items = [];
+    if (!Array.isArray(e.shop.roles)) e.shop.roles = [];
+    if (!e.shop.grants || typeof e.shop.grants !== 'object') e.shop.grants = {};
+  }
   if (!e.suites || typeof e.suites !== 'object') e.suites = { durations: { day: 1, week: 7, month: 30 }, categoryId: '', prices: { day: 1000, week: 5000, month: 20000 }, active: {} };
   else {
     if (!e.suites.durations || typeof e.suites.durations !== 'object') e.suites.durations = { day: 1, week: 7, month: 30 };
