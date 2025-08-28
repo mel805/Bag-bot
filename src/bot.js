@@ -1248,48 +1248,82 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'solde') {
       const eco = await getEconomyConfig(interaction.guild.id);
       const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-      return interaction.reply({ content: `Votre solde: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}` });
+      const embed = buildEcoEmbed({
+        title: 'Votre solde',
+        description: `
+**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}
+**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}
+        `.trim(),
+        fields: [ { name: 'Devise', value: `${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`, inline: true } ],
+      });
+      return interaction.reply({ embeds: [embed] });
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'travailler') {
       const eco = await getEconomyConfig(interaction.guild.id);
       const userId = interaction.user.id;
       const u = await getEconomyUser(interaction.guild.id, userId);
       const now = Date.now();
-      const remain = Math.max(0, (u.cooldowns?.work||0)-now);
-      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de retravailler.`, ephemeral: true });
-      const gain = Math.max(0, eco.settings?.baseWorkReward || 50);
+      const last = u.cooldowns?.work || 0;
+      const remain = Math.max(0, last - now);
+      if (remain > 0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s.`, ephemeral: true });
+      const gain = Math.floor((eco.settings?.baseWorkReward || 50) * (0.8 + Math.random()*0.4));
       u.amount = (u.amount||0) + gain;
-      if (!u.cooldowns) u.cooldowns={};
+      if (!u.cooldowns) u.cooldowns = {};
       u.cooldowns.work = now + (Math.max(0, eco.settings?.cooldowns?.work || 600))*1000;
       await setEconomyUser(interaction.guild.id, userId, u);
-      return interaction.reply({ content: `Vous avez travaillé et gagné ${gain} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+      const embed = buildEcoEmbed({
+        title: 'Travailler',
+        description: `+${gain} ${eco.currency?.name || 'BAG$'}`,
+        fields: [
+          { name: 'Solde', value: String(u.amount), inline: true },
+          { name: 'Cooldown', value: `${Math.max(0, eco.settings?.cooldowns?.work || 600)}s`, inline: true },
+        ],
+        color: THEME_COLOR_PRIMARY,
+      });
+      return interaction.reply({ embeds: [embed] });
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'pêcher' || interaction.commandName === 'pecher')) {
       const eco = await getEconomyConfig(interaction.guild.id);
       const userId = interaction.user.id;
       const u = await getEconomyUser(interaction.guild.id, userId);
       const now = Date.now();
-      const remain = Math.max(0, (u.cooldowns?.fish||0)-now);
-      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de repêcher.`, ephemeral: true });
-      const gain = Math.max(0, eco.settings?.baseFishReward || 30);
+      const last = u.cooldowns?.fish || 0;
+      const remain = Math.max(0, last - now);
+      if (remain > 0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s.`, ephemeral: true });
+      const gain = Math.floor((eco.settings?.baseFishReward || 30) * (0.8 + Math.random()*0.4));
       u.amount = (u.amount||0) + gain;
-      if (!u.cooldowns) u.cooldowns={};
+      if (!u.cooldowns) u.cooldowns = {};
       u.cooldowns.fish = now + (Math.max(0, eco.settings?.cooldowns?.fish || 300))*1000;
       await setEconomyUser(interaction.guild.id, userId, u);
-      return interaction.reply({ content: `Vous avez pêché et gagné ${gain} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+      const embed = buildEcoEmbed({
+        title: 'Pêcher',
+        description: `+${gain} ${eco.currency?.name || 'BAG$'}`,
+        fields: [
+          { name: 'Solde', value: String(u.amount), inline: true },
+          { name: 'Cooldown', value: `${Math.max(0, eco.settings?.cooldowns?.fish || 300)}s`, inline: true },
+        ],
+        color: THEME_COLOR_PRIMARY,
+      });
+      return interaction.reply({ embeds: [embed] });
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'donner') {
       const eco = await getEconomyConfig(interaction.guild.id);
+      const userId = interaction.user.id;
+      const u = await getEconomyUser(interaction.guild.id, userId);
       const cible = interaction.options.getUser('membre', true);
-      const montant = interaction.options.getInteger('montant', true);
-      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-      if ((u.amount||0) < montant) return interaction.reply({ content: `Solde insuffisant.`, ephemeral: true });
+      const montant = Math.max(1, interaction.options.getInteger('montant', true));
+      if ((u.amount||0) < montant) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
       u.amount = (u.amount||0) - montant;
       await setEconomyUser(interaction.guild.id, interaction.user.id, u);
       const tu = await getEconomyUser(interaction.guild.id, cible.id);
       tu.amount = (tu.amount||0) + montant;
       await setEconomyUser(interaction.guild.id, cible.id, tu);
-      return interaction.reply({ content: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}. Votre solde: ${u.amount}` });
+      const embed = buildEcoEmbed({
+        title: 'Donner',
+        description: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}.`,
+        fields: [ { name: 'Votre solde', value: String(u.amount), inline: true } ],
+      });
+      return interaction.reply({ embeds: [embed] });
     }
 
     const runEcoAction = async (interaction, key, targetUserOptional) => {
@@ -1308,7 +1342,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
       await setEconomyUser(interaction.guild.id, userId, u);
       const icon = conf.karma === 'perversion' ? '😈' : '🫦';
-      return interaction.reply({ content: `${icon} +${gain} ${eco.currency?.name || 'BAG$'} • Karma ${conf.karma === 'perversion' ? 'perversion' : 'charme'} +${conf.karmaDelta||0} • Solde: ${u.amount}` });
+      const embed = buildEcoEmbed({
+        title: `${icon} ${actionKeyToLabel(key)}`,
+        description: `+${gain} ${eco.currency?.name || 'BAG$'}`,
+        fields: [
+          { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : 'charme 🫦'} +${conf.karmaDelta||0}`, inline: true },
+          { name: 'Solde', value: String(u.amount), inline: true },
+          { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
+        ],
+      });
+      return interaction.reply({ embeds: [embed] });
     };
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
@@ -1326,7 +1369,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const conf = eco.actions?.config?.steal || { cooldown: 1800 };
         u.cooldowns.steal = Date.now() + (Math.max(0, conf.cooldown || 1800))*1000;
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
-        return interaction.reply({ content: `😵 Échec du vol. Amende ${penalty} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+        const embed = buildEcoEmbed({
+          title: '😵 Échec du vol',
+          description: `Amende ${penalty} ${eco.currency?.name || 'BAG$'}`,
+          fields: [ { name: 'Solde', value: String(u.amount), inline: true } ],
+          color: 0xff5252,
+        });
+        return interaction.reply({ embeds: [embed] });
       }
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
@@ -1456,4 +1505,15 @@ async function buildEconomyMenuRows(guild, page) {
 function buildBackRow() {
   const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
   return new ActionRowBuilder().addComponents(back);
+}
+
+function buildEcoEmbed({ title, description, fields, color }) {
+  const embed = new EmbedBuilder()
+    .setColor(color || THEME_COLOR_ACCENT)
+    .setTitle(title || 'Économie')
+    .setDescription(description || '')
+    .setThumbnail(THEME_IMAGE)
+    .setTimestamp(new Date());
+  if (Array.isArray(fields)) embed.addFields(fields);
+  return embed;
 }
