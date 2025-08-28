@@ -49,12 +49,7 @@ const commands = [
   new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('masser').setDescription('Masser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('danser').setDescription('Danser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Danser avec (optionnel)').setRequired(false)).toJSON(),
-  new SlashCommandBuilder()
-    .setName('boutique')
-    .setDescription('Consulter la boutique et acheter')
-    .addSubcommand(sc => sc.setName('voir').setDescription('Voir la boutique'))
-    .addSubcommand(sc => sc.setName('acheter').setDescription('Acheter un article').addStringOption(o=>o.setName('article').setDescription('ID de l\'article').setRequired(true)))
-    .toJSON(),
+  new SlashCommandBuilder().setName('boutique').setDescription('Ouvrir la boutique du serveur').toJSON(),
   new SlashCommandBuilder()
     .setName('niveau')
     .setDescription('Voir votre niveau ou celui d\'un membre')

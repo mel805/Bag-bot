@@ -1222,26 +1222,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
-      const sub = interaction.options.getSubcommand();
-      if (sub === 'voir') {
-        const eco = await getEconomyConfig(interaction.guild.id);
-        const items = eco.shop?.items || [];
-        const roles = eco.shop?.roles || [];
-        const lines = [];
-        if (roles.length) {
-          lines.push('Rôles disponibles:');
-          for (const r of roles) lines.push(`• ${r.name || r.roleId} — ${r.price} ${eco.currency?.name || 'BAG$'} (${r.durationDays?`${r.durationDays}j`: 'permanent'})`);
-        }
-        if (items.length) {
-          lines.push('Objets:');
-          for (const it of items) lines.push(`• ${it.id}: ${it.name} — ${it.price} ${eco.currency?.name || 'BAG$'}`);
-        }
-        if (!lines.length) lines.push('La boutique est vide.');
-        return interaction.reply({ content: lines.join('\n') });
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Boutique BAG').setDescription('Sélectionnez un article à acheter.').setThumbnail(THEME_IMAGE);
+      const rows = await buildBoutiqueRows(interaction.guild);
+      return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'boutique_select') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      const choice = interaction.values[0];
+      if (choice === 'none') return interaction.deferUpdate();
+      if (choice.startsWith('item:')) {
+        const id = choice.split(':')[1];
+        const it = (eco.shop?.items || []).find(x => String(x.id) === String(id));
+        if (!it) return interaction.reply({ content: 'Article indisponible.', ephemeral: true });
+        const price = Number(it.price||0);
+        if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
+        u.amount = (u.amount||0) - price;
+        await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+        const embed = buildEcoEmbed({ title: 'Achat réussi', description: `Vous avez acheté: ${it.name||it.id} pour ${price} ${eco.currency?.name || 'BAG$'}`, fields: [ { name: 'Solde', value: String(u.amount), inline: true } ] });
+        return interaction.update({ embeds: [embed], components: [] });
       }
-      if (sub === 'acheter') {
-        return interaction.reply({ content: 'Achat: à implémenter (après configuration de la boutique).', ephemeral: true });
+      if (choice.startsWith('role:')) {
+        const [, roleId, durStr] = choice.split(':');
+        const entry = (eco.shop?.roles || []).find(r => String(r.roleId) === String(roleId) && String(r.durationDays||0) === String(Number(durStr)||0));
+        if (!entry) return interaction.reply({ content: 'Rôle indisponible.', ephemeral: true });
+        const price = Number(entry.price||0);
+        if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
+        u.amount = (u.amount||0) - price;
+        await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+        try {
+          const member = await interaction.guild.members.fetch(interaction.user.id);
+          await member.roles.add(roleId);
+        } catch (_) {}
+        const label = entry.name || (interaction.guild.roles.cache.get(roleId)?.name) || roleId;
+        const embed = buildEcoEmbed({ title: 'Achat réussi', description: `Rôle attribué: ${label} (${entry.durationDays?`${entry.durationDays}j`:'permanent'}) pour ${price} ${eco.currency?.name || 'BAG$'}`, fields: [ { name: 'Solde', value: String(u.amount), inline: true } ] });
+        return interaction.update({ embeds: [embed], components: [] });
       }
+      return interaction.reply({ content: 'Choix invalide.', ephemeral: true });
     }
 
     // French economy top-level commands
@@ -1527,4 +1545,22 @@ function buildEcoEmbed({ title, description, fields, color }) {
     .setTimestamp(new Date());
   if (Array.isArray(fields)) embed.addFields(fields);
   return embed;
+}
+
+async function buildBoutiqueRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const items = Array.isArray(eco.shop?.items) ? eco.shop.items : [];
+  const roles = Array.isArray(eco.shop?.roles) ? eco.shop.roles : [];
+  const options = [];
+  for (const it of items) {
+    options.push({ label: it.name || it.id, value: `item:${it.id}`, description: `${it.price||0} ${eco.currency?.name || 'BAG$'}` });
+  }
+  for (const r of roles) {
+    const label = r.name || (guild.roles.cache.get(r.roleId)?.name) || r.roleId;
+    const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
+    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}` });
+  }
+  if (options.length === 0) options.push({ label: 'Aucun article disponible', value: 'none', description: 'Revenez plus tard' });
+  const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
+  return [new ActionRowBuilder().addComponents(select)];
 }
