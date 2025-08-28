@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats } = require('./storage/jsonStore');
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
@@ -268,14 +269,46 @@ function chooseCardBackgroundForMember(memberOrMention, levels) {
   return bgs.default || THEME_IMAGE;
 }
 
+async function drawCard(backgroundUrl, title, lines) {
+  try {
+    const bg = await loadImage(backgroundUrl);
+    const width = bg.width || 1024;
+    const height = bg.height || 512;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bg, 0, 0, width, height);
+    // overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(20, 20, width - 40, height - 40);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 48px Sans-Serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(title, 40, 40);
+    ctx.font = '32px Sans-Serif';
+    let y = 110;
+    for (const line of lines) {
+      ctx.fillText(line, 40, y);
+      y += 42;
+    }
+    return canvas.toBuffer('image/png');
+  } catch (_) {
+    return null;
+  }
+}
+
 function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const ann = levels.announce?.levelUp || {};
   if (!ann.enabled || !ann.channelId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-  const embed = new EmbedBuilder().setColor(pickThemeColorForGuild(guild)).setDescription(`🎉 ${memberOrMention} passe niveau ${newLevel} !`).setImage(bg).setTimestamp(new Date());
-  channel.send({ embeds: [embed] }).catch(() => {});
+  const lines = [
+    `Niveau: ${newLevel}`,
+  ];
+  drawCard(bg, `${memberOrMention} monte de niveau !`, lines).then((img) => {
+    if (img) channel.send({ files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
+    else channel.send({ content: `🎉 ${memberOrMention} passe niveau ${newLevel} !` }).catch(() => {});
+  });
 }
 
 function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
@@ -284,8 +317,10 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-  const embed = new EmbedBuilder().setColor(pickThemeColorForGuild(guild)).setDescription(`🏅 ${memberOrMention} reçoit le rôle <@&${roleId}> !`).setImage(bg).setTimestamp(new Date());
-  channel.send({ embeds: [embed] }).catch(() => {});
+  drawCard(bg, `${memberOrMention} reçoit un rôle !`, [`Rôle: <@&${roleId}>`]).then((img) => {
+    if (img) channel.send({ files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
+    else channel.send({ content: `🏅 ${memberOrMention} reçoit le rôle <@&${roleId}> !` }).catch(() => {});
+  });
 }
 
 function memberMention(userId) {
@@ -393,6 +428,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
       const targetMember = interaction.guild.members.cache.get(targetUser.id) || await interaction.guild.members.fetch(targetUser.id).catch(() => null);
       const bg = chooseCardBackgroundForMember(targetMember, levels);
+      const img = await drawCard(bg, `Niveau de ${targetUser.username}`, [
+        `Niveau: ${stats.level}`,
+        `XP total: ${stats.xp}`,
+        `Progression: ${Math.round(progress * 100)}% (${stats.xpSinceLevel}/${needed})`,
+      ]);
+      if (img) {
+        return interaction.reply({ files: [{ attachment: img, name: 'niveau.png' }] });
+      }
       const embed = new EmbedBuilder()
         .setColor(pickThemeColorForGuild(interaction.guild))
         .setTitle(`Niveau de ${targetUser.username}`)
