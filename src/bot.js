@@ -296,7 +296,7 @@ function getLastRewardForLevel(levels, currentLevel) {
   return best;
 }
 
-async function drawCard(backgroundUrl, title, lines, progressRatio, progressText) {
+async function drawCard(backgroundUrl, title, lines, progressRatio, progressText, avatarUrl) {
   try {
     const entry = await getCachedImage(backgroundUrl);
     if (!entry) return null;
@@ -311,34 +311,58 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
     // overlay panel
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(24, 24, width - 48, height - 48);
+    // optional avatar (top-right)
+    if (avatarUrl) {
+      const av = await getCachedImage(avatarUrl);
+      if (av) {
+        const size = 112;
+        const x = width - 48 - size;
+        const y = 48;
+        const cx = x + size / 2;
+        const cy = y + size / 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(av.img, x, y, size, size);
+        ctx.restore();
+        // ring
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
     // title (slightly reduced size, elegant serif stack)
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 3;
-    ctx.font = '600 64px Georgia, "Times New Roman", Serif';
+    ctx.font = '600 58px Georgia, "Times New Roman", Serif';
     ctx.textBaseline = 'top';
     ctx.strokeText(title, 48, 48);
     ctx.fillText(title, 48, 48);
     // content
-    ctx.font = '36px Georgia, "Times New Roman", Serif';
-    let y = 132;
+    ctx.font = '32px Georgia, "Times New Roman", Serif';
+    let y = 128;
     for (const line of lines) {
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
-      y += 48;
+      y += 44;
     }
     // progress bar (optional)
     if (typeof progressRatio === 'number') {
       const ratio = Math.max(0, Math.min(1, progressRatio));
       const barX = 48;
       const barW = width - 96;
-      const barH = 36;
+      const barH = 32;
       const barY = height - 48 - barH - 12; // above bottom overlay margin
       // label
       if (progressText) {
-        ctx.font = '600 30px Georgia, "Times New Roman", Serif';
-        ctx.strokeText(progressText, 48, barY - 38);
-        ctx.fillText(progressText, 48, barY - 38);
+        ctx.font = '600 28px Georgia, "Times New Roman", Serif';
+        ctx.strokeText(progressText, 48, barY - 36);
+        ctx.fillText(progressText, 48, barY - 36);
       }
       // bg
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -490,12 +514,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const targetMember = interaction.guild.members.cache.get(targetUser.id) || await interaction.guild.members.fetch(targetUser.id).catch(() => null);
       const bg = chooseCardBackgroundForMember(targetMember, levels);
       const lastReward = getLastRewardForLevel(levels, stats.level);
-      const rewardText = lastReward ? `Dernière récompense: <@&${lastReward.roleId}> (niv ${lastReward.level})` : 'Dernière récompense: —';
+      const roleName = lastReward ? (interaction.guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
+      const rewardText = lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —';
+      const avatarUrl = targetUser.displayAvatarURL?.({ extension: 'png', size: 128 }) || targetUser.displayAvatarURL?.() || null;
       const img = await drawCard(bg, `Niveau de ${targetUser.username}`, [
         `Niveau: ${stats.level}`,
         `XP total: ${stats.xp}`,
         rewardText,
-      ], progress, `${Math.round(progress * 100)}% (${stats.xpSinceLevel}/${needed}) vers ${stats.level + 1}`);
+      ], progress, `${Math.round(progress * 100)}% (${stats.xpSinceLevel}/${needed}) vers ${stats.level + 1}`, avatarUrl);
       if (img) {
         return interaction.reply({ files: [{ attachment: img, name: 'niveau.png' }] });
       }
@@ -506,7 +532,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { name: 'Niveau', value: String(stats.level), inline: true },
           { name: 'XP total', value: String(stats.xp), inline: true },
           { name: 'Progression', value: `${bar} ${Math.round(progress * 100)}%\n${stats.xpSinceLevel}/${needed} XP vers le niveau ${stats.level + 1}` },
-          { name: 'Dernière récompense', value: lastReward ? `<@&${lastReward.roleId}> (niv ${lastReward.level})` : '—' }
+          { name: 'Dernière récompense', value: roleName ? `${roleName} (niv ${lastReward.level})` : '—' }
         )
         .setImage(bg)
         .setTimestamp(new Date());
