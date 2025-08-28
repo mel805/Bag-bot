@@ -632,7 +632,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...akRows] });
       } else if (section === 'levels') {
         const rows = await buildLevelsGeneralRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'economy') {
         const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
