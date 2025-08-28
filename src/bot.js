@@ -256,6 +256,13 @@ function maybeAnnounceRoleAward(guild, member, levels, roleId) {
   channel.send({ content: `🏅 ${member} reçoit le rôle <@&${roleId}> en récompense !` }).catch(() => {});
 }
 
+function memberMention(userId) {
+  return `<@${userId}>`;
+}
+async function fetchMember(guild, userId) {
+  return guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
+}
+
 process.on('unhandledRejection', (reason) => {
   console.error('UnhandledRejection:', reason);
 });
@@ -644,12 +651,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       let stats = await getUserStats(interaction.guild.id, target.id);
 
       const applyRewardsUpTo = async (newLevel) => {
-        if (!targetMember) return;
+        const tm = await fetchMember(interaction.guild, target.id);
+        if (!tm) return;
         const entries = Object.entries(levels.rewards || {});
         for (const [lvlStr, rid] of entries) {
           const lvlNum = Number(lvlStr);
           if (Number.isFinite(lvlNum) && newLevel >= lvlNum) {
-            try { await targetMember.roles.add(rid); } catch (_) {}
+            try { await tm.roles.add(rid); } catch (_) {}
           }
         }
       };
@@ -675,11 +683,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await setUserStats(interaction.guild.id, target.id, stats);
         }
         await applyRewardsUpTo(stats.level);
-        const member = interaction.guild.members.cache.get(target.id);
-        if (leveled && member) {
-          maybeAnnounceLevelUp(interaction.guild, member, levels, stats.level);
+        const mem = await fetchMember(interaction.guild, target.id);
+        if (leveled) {
+          maybeAnnounceLevelUp(interaction.guild, mem || memberMention(target.id), levels, stats.level);
           const rid = (levels.rewards || {})[String(stats.level)];
-          if (rid) maybeAnnounceRoleAward(interaction.guild, member, levels, rid);
+          if (rid) maybeAnnounceRoleAward(interaction.guild, mem || memberMention(target.id), levels, rid);
         }
         return interaction.reply({ content: `Ajouté ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
@@ -701,11 +709,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         stats.xpSinceLevel = 0;
         await setUserStats(interaction.guild.id, target.id, stats);
         await applyRewardsUpTo(stats.level);
-        const member = interaction.guild.members.cache.get(target.id);
-        if (member) {
-          maybeAnnounceLevelUp(interaction.guild, member, levels, stats.level);
+        const mem = await fetchMember(interaction.guild, target.id);
+        if (mem) {
+          maybeAnnounceLevelUp(interaction.guild, mem, levels, stats.level);
           const rid = (levels.rewards || {})[String(stats.level)];
-          if (rid) maybeAnnounceRoleAward(interaction.guild, member, levels, rid);
+          if (rid) maybeAnnounceRoleAward(interaction.guild, mem, levels, rid);
         }
         return interaction.reply({ content: `Ajouté ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
@@ -728,6 +736,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if ((stats.xp || 0) < floor) stats.xp = floor;
         await setUserStats(interaction.guild.id, target.id, stats);
         await applyRewardsUpTo(stats.level);
+        const mem = await fetchMember(interaction.guild, target.id);
+        if (mem) {
+          maybeAnnounceLevelUp(interaction.guild, mem, levels, stats.level);
+          const rid = (levels.rewards || {})[String(stats.level)];
+          if (rid) maybeAnnounceRoleAward(interaction.guild, mem, levels, rid);
+        }
         return interaction.reply({ content: `Niveau de ${target} défini à ${stats.level}`, ephemeral: true });
       }
 
