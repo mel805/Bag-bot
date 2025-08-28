@@ -4,3 +4,9 @@
 
 Login succeeded
 Logged in as Bag bot#8659
+(node:111598) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Client error: ReferenceError: pickRandom is not defined
+    at runEcoAction (/workspace/src/bot.js:1451:32)
+Client error: ReferenceError: pickRandom is not defined
+    at runEcoAction (/workspace/src/bot.js:1457:33)
