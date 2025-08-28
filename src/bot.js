@@ -44,6 +44,40 @@ function xpRequiredForNext(level, curve) {
   return Math.max(1, required);
 }
 
+function totalXpAtLevel(level, curve) {
+  const base = Number(curve?.base) || 100;
+  const factor = Number(curve?.factor) || 1.2;
+  if (factor === 1) return Math.max(0, Math.round(base * Math.max(0, level)));
+  const l = Math.max(0, level);
+  const sum = base * (Math.pow(factor, l) - 1) / (factor - 1);
+  return Math.max(0, Math.round(sum));
+}
+
+function xpToLevel(xp, curve) {
+  const base = Number(curve?.base) || 100;
+  const factor = Number(curve?.factor) || 1.2;
+  let remaining = Math.max(0, Math.floor(Number(xp) || 0));
+  let level = 0;
+  // Fast path: approximate level from geometric series, then adjust
+  if (factor !== 1 && base > 0) {
+    const approx = Math.floor(Math.log((remaining * (factor - 1)) / base + 1) / Math.log(factor));
+    if (Number.isFinite(approx) && approx > 0) {
+      const approxSum = totalXpAtLevel(approx, { base, factor });
+      if (approxSum <= remaining) {
+        level = approx;
+        remaining -= approxSum;
+      }
+    }
+  }
+  for (let guard = 0; guard < 100000; guard++) {
+    const req = Math.max(1, Math.round(base * Math.pow(factor, level)));
+    if (remaining < req) break;
+    remaining -= req;
+    level += 1;
+  }
+  return { level, xpSinceLevel: remaining };
+}
+
 async function buildConfigEmbed(guild) {
   const staffIds = await getGuildStaffRoleIds(guild.id);
   const staffList = staffIds.length
@@ -573,6 +607,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: 'Valeurs invalides.', ephemeral: true });
       }
       await updateLevelsConfig(interaction.guild.id, { levelCurve: { base: Math.round(base), factor } });
+      // Resync all users
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      const users = Object.keys(cfg.users || {});
+      for (const uid of users) {
+        const st = await getUserStats(interaction.guild.id, uid);
+        const norm = xpToLevel(st.xp, cfg.levelCurve);
+        st.level = norm.level;
+        st.xpSinceLevel = norm.xpSinceLevel;
+        await setUserStats(interaction.guild.id, uid, st);
+        const member = interaction.guild.members.cache.get(uid);
+        if (member) {
+          // Ensure rewards up to level are granted
+          const entries = Object.entries(cfg.rewards || {});
+          for (const [lvlStr, rid] of entries) {
+            const ln = Number(lvlStr);
+            if (Number.isFinite(ln) && st.level >= ln) {
+              try { await member.roles.add(rid); } catch (_) {}
+            }
+          }
+        }
+      }
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const top = buildTopSectionRow();
@@ -653,6 +708,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
           required = xpRequiredForNext(stats.level, levels.levelCurve);
         }
         await setUserStats(interaction.guild.id, target.id, stats);
+        // Final normalization to ensure xpSinceLevel < required
+        const norm = xpToLevel(stats.xp, levels.levelCurve);
+        if (norm.level !== stats.level || norm.xpSinceLevel !== stats.xpSinceLevel) {
+          stats.level = norm.level;
+          stats.xpSinceLevel = norm.xpSinceLevel;
+          await setUserStats(interaction.guild.id, target.id, stats);
+        }
         await applyRewardsUpTo(stats.level);
         const member = interaction.guild.members.cache.get(target.id);
         if (leveled && member) {
@@ -665,8 +727,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       if (action === 'removexp') {
         const amount = interaction.options.getInteger('valeur', true);
-        stats.xp = Math.max(0, stats.xp - amount);
-        stats.xpSinceLevel = Math.max(0, stats.xpSinceLevel - amount);
+        const newTotal = Math.max(0, (stats.xp || 0) - amount);
+        const norm = xpToLevel(newTotal, levels.levelCurve);
+        stats.xp = newTotal;
+        stats.level = norm.level;
+        stats.xpSinceLevel = norm.xpSinceLevel;
         await setUserStats(interaction.guild.id, target.id, stats);
         return interaction.reply({ content: `Retiré ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
@@ -696,8 +761,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       if (action === 'setlevel') {
         const lvl = interaction.options.getInteger('valeur', true);
+        const norm = xpToLevel(stats.xp, levels.levelCurve);
         stats.level = Math.max(0, lvl);
         stats.xpSinceLevel = 0;
+        // Keep total XP consistent with new level floor
+        const floor = totalXpAtLevel(stats.level, levels.levelCurve);
+        if ((stats.xp || 0) < floor) stats.xp = floor;
         await setUserStats(interaction.guild.id, target.id, stats);
         await applyRewardsUpTo(stats.level);
         return interaction.reply({ content: `Niveau de ${target} défini à ${stats.level}`, ephemeral: true });
