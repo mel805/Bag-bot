@@ -586,75 +586,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '⛔ Cette commande est réservée à l\'équipe de modération.', ephemeral: true });
       }
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('config_section:staff').setLabel('Staff').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('config_section:autokick').setLabel('AutoKick').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('config_section:levels').setLabel('Levels').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('config_section:economy').setLabel('Économie').setStyle(ButtonStyle.Primary)
-      );
-      await interaction.reply({ embeds: [embed], components: [top], ephemeral: true });
+      const sectionSelect = new StringSelectMenuBuilder()
+        .setCustomId('config_section')
+        .setPlaceholder('Choisir une section…')
+        .addOptions(
+          { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff' },
+          { label: 'AutoKick', value: 'autokick', description: 'Configurer l\'auto-kick' },
+          { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
+          { label: 'Économie', value: 'economy', description: 'Configurer l\'économie' }
+        );
+      const row = new ActionRowBuilder().addComponents(sectionSelect);
+      await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       return;
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith('config_section:')) {
-      const section = interaction.customId.split(':')[1];
-      const embed = await buildConfigEmbed(interaction.guild);
-      if (section === 'staff') {
-        const staffAction = buildStaffActionRow();
-        return interaction.update({ embeds: [embed], components: [staffAction] });
-      }
-      if (section === 'autokick') {
-        const akRows = await buildAutokickRows(interaction.guild);
-        return interaction.update({ embeds: [embed], components: [...akRows] });
-      }
-      if (section === 'levels') {
-        const rows = await buildLevelsGeneralRows(interaction.guild);
-        return interaction.update({ embeds: [embed], components: [...rows] });
-      }
-      if (section === 'economy') {
-        const rows = await buildEconomySettingsRows(interaction.guild);
-        return interaction.update({ embeds: [embed], components: [...rows] });
-      }
-    }
-
-    if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
-      const targetUser = interaction.options.getUser('membre') || interaction.user;
-      const levels = await getLevelsConfig(interaction.guild.id);
-      const stats = await getUserStats(interaction.guild.id, targetUser.id);
-      const curve = levels.levelCurve;
-      const needed = xpRequiredForNext(stats.level, curve);
-      const progress = Math.min(1, Math.max(0, stats.xpSinceLevel / needed));
-      const barLen = 20;
-      const filled = Math.round(progress * barLen);
-      const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
-      const targetMember = interaction.guild.members.cache.get(targetUser.id) || await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-      const bg = chooseCardBackgroundForMember(targetMember, levels);
-      const lastReward = getLastRewardForLevel(levels, stats.level);
-      const roleName = lastReward ? (interaction.guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
-      const rewardText = lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —';
-      const avatarUrl = targetUser.displayAvatarURL?.({ extension: 'png', size: 128 }) || targetUser.displayAvatarURL?.() || null;
-      const img = await drawCard(bg, `Niveau de ${targetUser.username}`, [
-        `Niveau: ${stats.level}`,
-        `XP total: ${stats.xp}`,
-        rewardText,
-      ], progress, `${Math.round(progress * 100)}% (${stats.xpSinceLevel}/${needed}) vers ${stats.level + 1}`, avatarUrl);
-      if (img) {
-        return interaction.reply({ files: [{ attachment: img, name: 'niveau.png' }] });
-      }
-      const embed = new EmbedBuilder()
-        .setColor(pickThemeColorForGuild(interaction.guild))
-        .setTitle(`Niveau de ${targetUser.username}`)
-        .addFields(
-          { name: 'Niveau', value: String(stats.level), inline: true },
-          { name: 'XP total', value: String(stats.xp), inline: true },
-          { name: 'Progression', value: `${bar} ${Math.round(progress * 100)}%\n${stats.xpSinceLevel}/${needed} XP vers le niveau ${stats.level + 1}` },
-          { name: 'Dernière récompense', value: roleName ? `${roleName} (niv ${lastReward.level})` : '—' }
-        )
-        .setImage(bg)
-        .setTimestamp(new Date());
-      const avatar = targetUser.displayAvatarURL?.() || null;
-      if (avatar) embed.setThumbnail(avatar);
-      return interaction.reply({ embeds: [embed], ephemeral: false });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
