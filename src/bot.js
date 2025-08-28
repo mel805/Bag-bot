@@ -576,19 +576,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(factor) || factor <= 0) {
         return interaction.reply({ content: 'Valeurs invalides.', ephemeral: true });
       }
+      // Capture previous users snapshot to preserve current levels
+      const prevCfg = await getLevelsConfig(interaction.guild.id);
+      const prevUsers = { ...(prevCfg.users || {}) };
       await updateLevelsConfig(interaction.guild.id, { levelCurve: { base: Math.round(base), factor } });
-      // Resync users ... (kept)
-      const cfg = await getLevelsConfig(interaction.guild.id);
-      const users = Object.keys(cfg.users || {});
+      const newCfg = await getLevelsConfig(interaction.guild.id);
+      const users = Object.keys(prevUsers);
       for (const uid of users) {
+        const stPrev = prevUsers[uid] || { level: 0, xp: 0, xpSinceLevel: 0 };
+        const newFloor = totalXpAtLevel(stPrev.level || 0, newCfg.levelCurve);
+        const newReq = Math.max(1, xpRequiredForNext(stPrev.level || 0, newCfg.levelCurve));
+        const cappedSince = Math.max(0, Math.min(stPrev.xpSinceLevel || 0, newReq - 1));
         const st = await getUserStats(interaction.guild.id, uid);
-        const norm = xpToLevel(st.xp, cfg.levelCurve);
-        st.level = norm.level;
-        st.xpSinceLevel = norm.xpSinceLevel;
+        st.level = Math.max(0, stPrev.level || 0);
+        st.xpSinceLevel = cappedSince;
+        st.xp = newFloor + cappedSince;
         await setUserStats(interaction.guild.id, uid, st);
-        const member = interaction.guild.members.cache.get(uid);
+        const member = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(() => null);
         if (member) {
-          const entries = Object.entries(cfg.rewards || {});
+          const entries = Object.entries(newCfg.rewards || {});
           for (const [lvlStr, rid] of entries) {
             const ln = Number(lvlStr);
             if (Number.isFinite(ln) && st.level >= ln) {
