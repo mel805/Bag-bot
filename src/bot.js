@@ -1389,8 +1389,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Economy action executor (hoisted)
     async function runEcoAction(interaction, key, targetUserOptional) {
-      let acked = false;
-      try { await interaction.reply({ content: '⏳ Traitement…', ephemeral: true }); acked = true; } catch (_) {}
       try { console.log('[action]', key, 'start'); } catch (_) {}
       const eco = await getEconomyConfig(interaction.guild.id);
       const userId = interaction.user.id;
@@ -1398,16 +1396,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const now = Date.now();
       const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
-      if (remain>0) {
-        const msg = `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`;
-        if (acked) { try { return await interaction.followUp({ content: msg, ephemeral: true }); } catch (_) { return; } }
-        return interaction.reply({ content: msg, ephemeral: true });
-      }
+      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
+
+      // Defer first, then edit with final result
+      try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
+
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
+
       const next = { amount: u.amount||0, charm: u.charm||0, perversion: u.perversion||0, cooldowns: { ...(u.cooldowns||{}) } };
       next.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
-      let title, desc;
+
+      let title;
+      let descLine;
       if (!isSuccess) {
         const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
         next.amount = Math.max(0, next.amount - lose);
@@ -1424,7 +1425,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else if (key === 'dance') failText = pickRandom(DANCE_FAIL);
         else if (key === 'crime') failText = pickRandom(CRIME_FAIL);
         title = `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
-        desc = `${title}\n${failText}${(lose>0)?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s\nSolde: ${next.amount}`;
+        descLine = `${failText}${(lose>0)?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`;
       } else {
         const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
         next.amount = next.amount + gain;
@@ -1443,12 +1444,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else if (key === 'dance') line = pickRandom(DANCE_SUCCESS);
         else if (key === 'crime') line = pickRandom(CRIME_SUCCESS);
         else line = 'Action réussie.';
-        desc = `${title}\n${line}\n+${Math.max(0, gain)} ${eco.currency?.name || 'BAG$'}\nKarma: ${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s`;
+        descLine = `${line}\n+${Math.max(0, next.amount - (u.amount||0))} ${eco.currency?.name || 'BAG$'}`;
       }
-      try { await interaction.followUp({ content: desc, ephemeral: true }); }
-      catch (e) { try { await interaction.editReply({ content: desc }); } catch (_) {} }
-      setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }).catch(()=>{});
-      return;
+
+      const embed = buildEcoEmbed({
+        title,
+        description: descLine,
+        fields: [
+          { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `${isSuccess?'+':'-'}${Math.max(0, isSuccess?(conf.karmaDelta||0):(conf.failKarmaDelta||0))}`}`.trim(), inline: true },
+          { name: 'Solde', value: String(next.amount), inline: true },
+          { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
+        ],
+      });
+
+      // Persist state, then edit reply
+      try { await setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }); } catch (_) {}
+      try { return await interaction.editReply({ embeds: [embed], content: '' }); } catch (e) {
+        console.error('[action] editReply failed', e);
+        return await interaction.editReply({ content: `${title}\n${descLine}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s` });
+      }
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
@@ -1457,6 +1471,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (Math.random() < 0.5) {
         return runEcoAction(interaction, 'steal', cible);
       } else {
+        try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
         const eco = await getEconomyConfig(interaction.guild.id);
         const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
         const penalty = Math.min(u.amount||0, 10);
@@ -1466,8 +1481,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         u.cooldowns.steal = Date.now() + (Math.max(0, conf.cooldown || 1800))*1000;
         setEconomyUser(interaction.guild.id, interaction.user.id, u).catch(()=>{});
         const msg = `😵 Échec du vol\n${pickRandom(STEAL_FAIL)}\nAmende ${penalty} ${eco.currency?.name || 'BAG$'}\nSolde: ${u.amount}`;
-        try { await interaction.reply({ content: msg, ephemeral: true }); } catch (_) { try { await interaction.followUp({ content: msg, ephemeral: true }); } catch (_) {} }
-        return;
+        try { return await interaction.editReply({ content: msg }); } catch (_) { return; }
       }
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
