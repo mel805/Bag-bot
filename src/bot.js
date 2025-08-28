@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -512,6 +512,19 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
   return { embed, components };
 }
 
+// Add Economy config UI (basic Settings page)
+async function buildEconomySettingsRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const nav = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('economy_page:settings').setLabel('Éco • Réglages').setStyle(ButtonStyle.Primary).setDisabled(true)
+  );
+  const curBtn = new ButtonBuilder().setCustomId('economy_set_currency').setLabel(`Devise: ${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`).setStyle(ButtonStyle.Secondary);
+  const baseBtn = new ButtonBuilder().setCustomId('economy_set_base').setLabel(`Gains: work ${eco.settings?.baseWorkReward || 50} / fish ${eco.settings?.baseFishReward || 30}`).setStyle(ButtonStyle.Secondary);
+  const cdBtn = new ButtonBuilder().setCustomId('economy_set_cooldowns').setLabel('Cooldowns des actions').setStyle(ButtonStyle.Secondary);
+  const row = new ActionRowBuilder().addComponents(curBtn, baseBtn, cdBtn);
+  return [nav, row];
+}
+
 process.on('unhandledRejection', (reason) => {
   console.error('UnhandledRejection:', reason);
 });
@@ -549,9 +562,35 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '⛔ Cette commande est réservée à l\'équipe de modération.', ephemeral: true });
       }
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
+      const top = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('config_section:staff').setLabel('Staff').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('config_section:autokick').setLabel('AutoKick').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('config_section:levels').setLabel('Levels').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('config_section:economy').setLabel('Économie').setStyle(ButtonStyle.Primary)
+      );
       await interaction.reply({ embeds: [embed], components: [top], ephemeral: true });
       return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('config_section:')) {
+      const section = interaction.customId.split(':')[1];
+      const embed = await buildConfigEmbed(interaction.guild);
+      if (section === 'staff') {
+        const staffAction = buildStaffActionRow();
+        return interaction.update({ embeds: [embed], components: [staffAction] });
+      }
+      if (section === 'autokick') {
+        const akRows = await buildAutokickRows(interaction.guild);
+        return interaction.update({ embeds: [embed], components: [...akRows] });
+      }
+      if (section === 'levels') {
+        const rows = await buildLevelsGeneralRows(interaction.guild);
+        return interaction.update({ embeds: [embed], components: [...rows] });
+      }
+      if (section === 'economy') {
+        const rows = await buildEconomySettingsRows(interaction.guild);
+        return interaction.update({ embeds: [embed], components: [...rows] });
+      }
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
@@ -1108,6 +1147,64 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // Preload to speed up first render
       getCachedImage(url).catch(() => {});
       return interaction.editReply({ content: `✅ Fond ${key} mis à jour.` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'economy_set_currency') {
+      const modal = new ModalBuilder().setCustomId('economy_currency_modal').setTitle('Devise');
+      const symbol = new TextInputBuilder().setCustomId('symbol').setLabel('Symbole').setStyle(TextInputStyle.Short).setPlaceholder('🪙').setRequired(true).setMaxLength(4);
+      const name = new TextInputBuilder().setCustomId('name').setLabel('Nom').setStyle(TextInputStyle.Short).setPlaceholder('BAG$').setRequired(true).setMaxLength(16);
+      modal.addComponents(new ActionRowBuilder().addComponents(symbol), new ActionRowBuilder().addComponents(name));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'economy_currency_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const symbol = interaction.fields.getTextInputValue('symbol');
+      const name = interaction.fields.getTextInputValue('name');
+      const eco = await updateEconomyConfig(interaction.guild.id, { currency: { symbol, name } });
+      return interaction.editReply({ content: `✅ Devise mise à jour: ${eco.currency.symbol} ${eco.currency.name}` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'economy_set_base') {
+      const modal = new ModalBuilder().setCustomId('economy_base_modal').setTitle('Gains de base');
+      const work = new TextInputBuilder().setCustomId('work').setLabel('work').setStyle(TextInputStyle.Short).setPlaceholder('50').setRequired(true);
+      const fish = new TextInputBuilder().setCustomId('fish').setLabel('fish').setStyle(TextInputStyle.Short).setPlaceholder('30').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(work), new ActionRowBuilder().addComponents(fish));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'economy_base_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const work = Number(interaction.fields.getTextInputValue('work')) || 0;
+      const fish = Number(interaction.fields.getTextInputValue('fish')) || 0;
+      const eco = await getEconomyConfig(interaction.guild.id);
+      eco.settings = { ...(eco.settings || {}), baseWorkReward: work, baseFishReward: fish };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: `✅ Gains: work ${work} / fish ${fish}` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'economy_set_cooldowns') {
+      const modal = new ModalBuilder().setCustomId('economy_cd_modal').setTitle('Cooldowns (secondes)');
+      const fields = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance'];
+      const rows = fields.map((f) => new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(f).setLabel(f).setStyle(TextInputStyle.Short).setPlaceholder('0/60/300...').setRequired(false)));
+      modal.addComponents(...rows.slice(0,5)); // Discord modal max 5 components
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'economy_cd_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const cds = { ...(eco.settings?.cooldowns || {}) };
+      for (const f of ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance']) {
+        const v = interaction.fields.getTextInputValue(f);
+        if (v !== null && v !== undefined && v !== '') cds[f] = Math.max(0, Number(v) || 0);
+      }
+      eco.settings = { ...(eco.settings || {}), cooldowns: cds };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Cooldowns mis à jour.' });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);

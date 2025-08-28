@@ -47,6 +47,33 @@ async function getGuildConfig(guildId) {
       levelCurve: { base: 100, factor: 1.2 },
       rewards: {},
       users: {},
+      announce: {
+        levelUp: { enabled: false, channelId: '' },
+        roleAward: { enabled: false, channelId: '' },
+      },
+      cards: {
+        femaleRoleIds: [],
+        certifiedRoleIds: [],
+        backgrounds: { default: '', female: '', certified: '' },
+        perRoleBackgrounds: {},
+      },
+    };
+  }
+  if (!cfg.guilds[guildId].economy) {
+    cfg.guilds[guildId].economy = {
+      currency: { symbol: '🪙', name: 'BAG$' },
+      settings: {
+        baseWorkReward: 50,
+        baseFishReward: 30,
+        cooldowns: { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120 },
+      },
+      actions: {
+        enabled: ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance'],
+        karma: { good: ['kiss','flirt','seduce','massage','dance'], bad: ['steal','fuck'] },
+      },
+      shop: { items: [], roles: [] },
+      suites: { durations: { day: 1, week: 7, month: 30 }, categoryId: '' },
+      balances: {},
     };
   }
   return cfg.guilds[guildId];
@@ -162,6 +189,20 @@ async function getLevelsConfig(guildId) {
   return cfg.guilds[guildId].levels;
 }
 
+async function getEconomyConfig(guildId) {
+  const g = await getGuildConfig(guildId);
+  return g.economy;
+}
+
+async function updateEconomyConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = {};
+  cfg.guilds[guildId].economy = { ...cfg.guilds[guildId].economy, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].economy;
+}
+
 async function updateLevelsConfig(guildId, partial) {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
@@ -210,6 +251,9 @@ module.exports = {
   updateLevelsConfig,
   getUserStats,
   setUserStats,
+  // Economy
+  getEconomyConfig,
+  updateEconomyConfig,
   paths: { DATA_DIR, CONFIG_PATH },
 };
 
