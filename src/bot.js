@@ -1650,6 +1650,40 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
     }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
+      try {
+        await interaction.reply({ content: '⏳ Génération de la carte…', ephemeral: true });
+      } catch (_) {}
+      try {
+        const target = interaction.options.getUser('membre') || interaction.user;
+        const member = await interaction.guild.members.fetch(target.id).catch(()=>null);
+        const levels = await getLevelsConfig(interaction.guild.id);
+        const stats = await getUserStats(interaction.guild.id, target.id);
+        const name = memberDisplayName(interaction.guild, member, target.id);
+        const avatarUrl = member?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || target.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
+        const curve = levels.levelCurve || { base: 100, factor: 1.2 };
+        const lvl = stats.level || 0;
+        const required = Math.max(1, xpRequiredForNext(lvl, curve));
+        const progress = Math.min(1, Math.max(0, (stats.xpSinceLevel || 0) / required));
+        const lastReward = getLastRewardForLevel(levels, lvl);
+        const roleName = lastReward ? (interaction.guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : '—';
+        const lines = [
+          `Niveau: ${lvl} (${stats.xpSinceLevel||0}/${required})`,
+          `Dernière récompense: ${roleName}`,
+        ];
+        const bg = chooseCardBackgroundForMember(member, levels);
+        const img = await drawCard(bg, `${name}`, lines, progress, `${Math.round(progress*100)}%`, avatarUrl);
+        if (img) {
+          try { return await interaction.editReply({ content: '', files: [{ attachment: img, name: 'niveau.png' }] }); } catch (_) {}
+        }
+        return await interaction.editReply({ content: `${name} — Niveau ${lvl} (${stats.xpSinceLevel||0}/${required}) • Dernière récompense: ${roleName}` });
+      } catch (e) {
+        console.error('/niveau failed:', e);
+        try { return await interaction.editReply({ content: 'Erreur lors de l\'affichage du niveau.' }); } catch (_) {}
+        try { return await interaction.reply({ content: 'Erreur lors de l\'affichage du niveau.', ephemeral: true }); } catch (_) { return; }
+      }
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
