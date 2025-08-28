@@ -2086,3 +2086,5 @@ async function buildShopRows(guild) {
   const removeRow = new ActionRowBuilder().addComponents(remove);
   return [controls, removeRow];
 }
+
+const SUITE_EMOJI = '💞';
