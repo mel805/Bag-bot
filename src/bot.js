@@ -1040,6 +1040,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
         const { embed, components } = await buildTopNiveauEmbed(interaction.guild, entries, 0, Math.min(25, Math.max(1, limit)));
         return interaction.reply({ embeds: [embed], components });
+      } else if (sub === 'economie') {
+        const limit = Math.max(1, Math.min(25, interaction.options.getInteger('limite') || 10));
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const entries = Object.entries(eco.balances || {});
+        const sorted = entries.sort((a,b) => (b[1]?.amount||0) - (a[1]?.amount||0)).slice(0, limit);
+        const lines = [];
+        for (let i=0; i<sorted.length; i++) {
+          const [uid, state] = sorted[i];
+          let tag = `<@${uid}>`;
+          try { const m = await interaction.guild.members.fetch(uid); tag = m.user ? `${m.user.username}` : tag; } catch (_) {}
+          lines.push(`${i+1}. ${tag} — ${state?.amount||0} ${eco.currency?.name || 'BAG$'}`);
+        }
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_ACCENT)
+          .setTitle('Classement Économie')
+          .setDescription(lines.join('\n') || '—')
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: `Top ${limit}` })
+          .setTimestamp(new Date());
+        return interaction.reply({ embeds: [embed] });
+      } else {
+        return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
       }
     }
 
@@ -1509,6 +1531,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
       const row = new ActionRowBuilder().addComponents(sectionSelect);
       return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      const embed = buildEcoEmbed({
+        title: `Économie de ${interaction.user.username}`,
+        fields: [
+          { name: 'Argent', value: String(u.amount || 0), inline: true },
+          { name: 'Charme 🫦', value: String(u.charm || 0), inline: true },
+          { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
+        ],
+      });
+      return interaction.reply({ embeds: [embed], ephemeral: false });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);

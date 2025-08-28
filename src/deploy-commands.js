@@ -55,6 +55,7 @@ const commands = [
     .setDescription('Voir votre niveau ou celui d\'un membre')
     .addUserOption(o => o.setName('membre').setDescription('Membre (optionnel)').setRequired(false))
     .toJSON(),
+  new SlashCommandBuilder().setName('economie').setDescription('Voir votre économie (argent, charme, perversion)').toJSON(),
   new SlashCommandBuilder()
     .setName('top')
     .setDescription('Classements')
@@ -62,6 +63,11 @@ const commands = [
     .addSubcommand(sc => sc
       .setName('niveau')
       .setDescription('Classement des niveaux')
+      .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
+    )
+    .addSubcommand(sc => sc
+      .setName('economie')
+      .setDescription('Classement par argent')
       .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
     )
     .toJSON(),
