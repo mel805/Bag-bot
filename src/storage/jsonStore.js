@@ -69,6 +69,15 @@ async function getGuildConfig(guildId) {
       },
       actions: {
         enabled: ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance'],
+        config: {
+          steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800 },
+          kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
+          flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
+          seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120 },
+          fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600 },
+          massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
+          dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
+        },
         karma: { good: ['kiss','flirt','seduce','massage','dance'], bad: ['steal','fuck'] },
       },
       shop: { items: [], roles: [] },

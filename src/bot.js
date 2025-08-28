@@ -1320,6 +1320,62 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await setEconomyUser(interaction.guild.id, cible.id, tu);
       return interaction.reply({ content: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}. Votre solde: ${u.amount}` });
     }
+
+    const runEcoAction = async (interaction, key, targetUserOptional) => {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const userId = interaction.user.id;
+      const u = await getEconomyUser(interaction.guild.id, userId);
+      const now = Date.now();
+      const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
+      const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
+      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
+      const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
+      u.amount = (u.amount||0) + gain;
+      if (conf.karma === 'charm') u.charm = (u.charm||0) + (conf.karmaDelta||0);
+      else if (conf.karma === 'perversion') u.perversion = (u.perversion||0) + (conf.karmaDelta||0);
+      if (!u.cooldowns) u.cooldowns={};
+      u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
+      await setEconomyUser(interaction.guild.id, userId, u);
+      const icon = conf.karma === 'perversion' ? '😈' : '🫦';
+      return interaction.reply({ content: `${icon} +${gain} ${eco.currency?.name || 'BAG$'} • Karma ${conf.karma === 'perversion' ? 'perversion' : 'charme'} +${conf.karmaDelta||0} • Solde: ${u.amount}` });
+    };
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
+      const cible = interaction.options.getUser('membre', true);
+      if (cible.id === interaction.user.id) return interaction.reply({ content: 'Impossible de vous voler vous-même.', ephemeral: true });
+      // 50% success chance
+      if (Math.random() < 0.5) {
+        return runEcoAction(interaction, 'steal', cible);
+      } else {
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+        const penalty = Math.min(u.amount||0, 10);
+        u.amount = (u.amount||0) - penalty;
+        if (!u.cooldowns) u.cooldowns={};
+        const conf = eco.actions?.config?.steal || { cooldown: 1800 };
+        u.cooldowns.steal = Date.now() + (Math.max(0, conf.cooldown || 1800))*1000;
+        await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+        return interaction.reply({ content: `😵 Échec du vol. Amende ${penalty} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+      }
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
+      return runEcoAction(interaction, 'kiss');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'flirter') {
+      return runEcoAction(interaction, 'flirt');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'séduire') {
+      return runEcoAction(interaction, 'seduce');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'fuck') {
+      return runEcoAction(interaction, 'fuck');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'masser') {
+      return runEcoAction(interaction, 'massage');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'danser') {
+      return runEcoAction(interaction, 'dance');
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
