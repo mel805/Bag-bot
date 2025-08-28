@@ -1433,7 +1433,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           color: 0xff5252,
         });
         try { return await interaction.editReply({ embeds: [embed] }); } catch (_) {
-          return await interaction.followUp({ content: `${failText}${lose>0?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`, ephemeral: true }).catch(()=>{});
+          return await interaction.editReply({ content: `${failText}${lose>0?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}` }).catch(()=>{});
         }
       }
 
@@ -1468,7 +1468,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ],
       });
       try { return await interaction.editReply({ embeds: [embed] }); } catch (_) {
-        return await interaction.followUp({ content: `${desc} • Solde: ${u.amount}`, ephemeral: true }).catch(()=>{});
+        return await interaction.editReply({ content: `${desc} • Solde: ${u.amount}` }).catch(()=>{});
       }
     }
 
