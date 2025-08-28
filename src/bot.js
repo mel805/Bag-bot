@@ -1,6 +1,21 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
+// Simple in-memory image cache
+const imageCache = new Map(); // url -> { img, width, height, ts }
+async function getCachedImage(url) {
+  if (!url) return null;
+  const cached = imageCache.get(url);
+  if (cached) return cached;
+  try {
+    const img = await loadImage(url);
+    const entry = { img, width: img.width || 1024, height: img.height || 512, ts: Date.now() };
+    imageCache.set(url, entry);
+    return entry;
+  } catch (_) {
+    return null;
+  }
+}
 require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
@@ -271,24 +286,34 @@ function chooseCardBackgroundForMember(memberOrMention, levels) {
 
 async function drawCard(backgroundUrl, title, lines) {
   try {
-    const bg = await loadImage(backgroundUrl);
-    const width = bg.width || 1024;
-    const height = bg.height || 512;
+    const entry = await getCachedImage(backgroundUrl);
+    if (!entry) return null;
+    const maxW = 1024;
+    const scale = entry.width > maxW ? maxW / entry.width : 1;
+    const width = Math.max(640, Math.round(entry.width * scale));
+    const height = Math.max(360, Math.round(entry.height * scale));
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(bg, 0, 0, width, height);
-    // overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(20, 20, width - 40, height - 40);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(entry.img, 0, 0, width, height);
+    // overlay panel
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(24, 24, width - 48, height - 48);
+    // title
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 48px Sans-Serif';
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 4;
+    ctx.font = 'bold 72px Sans-Serif';
     ctx.textBaseline = 'top';
-    ctx.fillText(title, 40, 40);
-    ctx.font = '32px Sans-Serif';
-    let y = 110;
+    ctx.strokeText(title, 48, 48);
+    ctx.fillText(title, 48, 48);
+    // content
+    ctx.font = '42px Sans-Serif';
+    let y = 140;
     for (const line of lines) {
-      ctx.fillText(line, 40, y);
-      y += 42;
+      ctx.strokeText(line, 48, y);
+      ctx.fillText(line, 48, y);
+      y += 52;
     }
     return canvas.toBuffer('image/png');
   } catch (_) {
@@ -962,6 +987,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const cfg = await getLevelsConfig(interaction.guild.id);
       await updateLevelsConfig(interaction.guild.id, { cards: { ...(cfg.cards || {}), backgrounds: { ...(cfg.cards?.backgrounds || {}), [key]: url } } });
+      // Preload to speed up first render
+      getCachedImage(url).catch(() => {});
       return interaction.editReply({ content: `✅ Fond ${key} mis à jour.` });
     }
   } catch (err) {
