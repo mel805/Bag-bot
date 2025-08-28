@@ -296,7 +296,7 @@ function getLastRewardForLevel(levels, currentLevel) {
   return best;
 }
 
-async function drawCard(backgroundUrl, title, lines, progressRatio, progressText, avatarUrl) {
+async function drawCard(backgroundUrl, title, lines, progressRatio, progressText, avatarUrl, centerText) {
   try {
     const entry = await getCachedImage(backgroundUrl);
     if (!entry) return null;
@@ -335,34 +335,44 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
         ctx.stroke();
       }
     }
-    // title (reduced ~50%)
+    // title (slightly bigger)
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 2;
-    ctx.font = '600 28px Georgia, "Times New Roman", Serif';
+    ctx.font = '600 32px Georgia, "Times New Roman", Serif';
     ctx.textBaseline = 'top';
     ctx.strokeText(title, 48, 48);
     ctx.fillText(title, 48, 48);
-    // content
-    ctx.font = '16px Georgia, "Times New Roman", Serif';
+    // content (slightly bigger)
+    ctx.font = '18px Georgia, "Times New Roman", Serif';
     let y = 100;
     for (const line of lines) {
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
-      y += 26;
+      y += 28;
+    }
+    // centered celebration text
+    if (centerText) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '700 40px Georgia, "Times New Roman", Serif';
+      ctx.strokeText(centerText, width / 2, height / 2);
+      ctx.fillText(centerText, width / 2, height / 2);
+      ctx.restore();
     }
     // progress bar (optional)
     if (typeof progressRatio === 'number') {
       const ratio = Math.max(0, Math.min(1, progressRatio));
       const barX = 48;
       const barW = width - 96;
-      const barH = 20;
+      const barH = 22;
       const barY = height - 48 - barH - 10;
       // label
       if (progressText) {
-        ctx.font = '600 14px Georgia, "Times New Roman", Serif';
-        ctx.strokeText(progressText, 48, barY - 24);
-        ctx.fillText(progressText, 48, barY - 24);
+        ctx.font = '600 16px Georgia, "Times New Roman", Serif';
+        ctx.strokeText(progressText, 48, barY - 22);
+        ctx.fillText(progressText, 48, barY - 22);
       }
       // bg
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -401,12 +411,12 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const lastReward = getLastRewardForLevel(levels, newLevel);
   const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
-  const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 128 }) || null;
+  const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
   const lines = [
     `Niveau: ${newLevel}`,
     lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
   ];
-  drawCard(bg, `${name} monte de niveau !`, lines, undefined, undefined, avatarUrl).then((img) => {
+  drawCard(bg, `${name} monte de niveau !`, lines, undefined, undefined, avatarUrl, '🎉 Félicitations !').then((img) => {
     if (img) channel.send({ files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
     else channel.send({ content: `🎉 ${name} passe niveau ${newLevel} !` }).catch(() => {});
   });
