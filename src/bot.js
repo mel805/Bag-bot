@@ -1389,6 +1389,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Economy action executor (hoisted)
     async function runEcoAction(interaction, key, targetUserOptional) {
+      let acked = false;
+      try { await interaction.reply({ content: '⏳ Traitement…', ephemeral: true }); acked = true; } catch (_) {}
       try { console.log('[action]', key, 'start'); } catch (_) {}
       const eco = await getEconomyConfig(interaction.guild.id);
       const userId = interaction.user.id;
@@ -1396,7 +1398,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const now = Date.now();
       const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
-      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
+      if (remain>0) {
+        if (acked) return interaction.editReply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.` });
+        return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
+      }
 
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
@@ -1443,11 +1448,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         desc = `${title}\n${line}\n+${Math.max(0, gain)} ${eco.currency?.name || 'BAG$'}\nKarma: ${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s`;
       }
 
-      // Reply immediately
-      try { await interaction.reply({ content: desc, ephemeral: true }); } catch (_) {
-        try { await interaction.editReply({ content: desc }); } catch { /* ignore */ }
-      }
-      // Persist state asynchronously
+      try {
+        if (acked) await interaction.editReply({ content: desc });
+        else await interaction.reply({ content: desc, ephemeral: true });
+      } catch (_) {}
       setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }).catch(()=>{});
       return;
     }
