@@ -1536,18 +1536,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-      await interaction.deferReply({ ephemeral: false });
-      const embed = buildEcoEmbed({
-        title: `Économie de ${interaction.user.username}`,
-        fields: [
-          { name: 'Argent', value: String(u.amount || 0), inline: true },
-          { name: 'Charme 🫦', value: String(u.charm || 0), inline: true },
-          { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
-        ],
-      });
-      return interaction.editReply({ embeds: [embed] });
+      try {
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+        const embed = buildEcoEmbed({
+          title: `Économie de ${interaction.user.username}`,
+          fields: [
+            { name: 'Argent', value: String(u.amount || 0), inline: true },
+            { name: 'Charme 🫦', value: String(u.charm || 0), inline: true },
+            { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
+          ],
+        });
+        return await interaction.reply({ embeds: [embed], ephemeral: false });
+      } catch (e1) {
+        try {
+          const eco = await getEconomyConfig(interaction.guild.id);
+          const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+          const embed = buildEcoEmbed({
+            title: `Économie de ${interaction.user.username}`,
+            fields: [
+              { name: 'Argent', value: String(u.amount || 0), inline: true },
+              { name: 'Charme 🫦', value: String(u.charm || 0), inline: true },
+              { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
+            ],
+          });
+          if (interaction.deferred || interaction.replied) return await interaction.editReply({ embeds: [embed] });
+          return await interaction.followUp({ embeds: [embed], ephemeral: true });
+        } catch (e2) {
+          return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }).catch(()=>{});
+        }
+      }
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
