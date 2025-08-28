@@ -1398,14 +1398,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
 
-      if (!interaction.deferred && !interaction.replied) {
-        try { await interaction.deferReply({ ephemeral: true }); console.log('[action]', key, 'deferred'); } catch (_) {}
-      }
-
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
 
-      // Prepare new state but do not persist yet
       const next = { amount: u.amount||0, charm: u.charm||0, perversion: u.perversion||0, cooldowns: { ...(u.cooldowns||{}) } };
       next.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
 
@@ -1448,22 +1443,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         desc = `${title}\n${line}\n+${Math.max(0, gain)} ${eco.currency?.name || 'BAG$'}\nKarma: ${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s`;
       }
 
-      try { await interaction.editReply({ content: desc }); console.log('[action]', key, 'replied'); }
-      catch (e) {
-        try { await interaction.editReply({ content: desc }); console.log('[action]', key, 'text replied'); }
-        catch (_) { try { await interaction.followUp({ content: desc, ephemeral: true }); } catch (_) {} }
+      // Reply immediately
+      try { await interaction.reply({ content: desc, ephemeral: true }); } catch (_) {
+        try { await interaction.editReply({ content: desc }); } catch { /* ignore */ }
       }
-
-      try {
-        await setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns });
-      } catch (e) { console.error('[action] persist failed', e); }
+      // Persist state asynchronously
+      setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }).catch(()=>{});
       return;
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
       const cible = interaction.options.getUser('membre', true);
       if (cible.id === interaction.user.id) return interaction.reply({ content: 'Impossible de vous voler vous-même.', ephemeral: true });
-      if (!interaction.deferred && !interaction.replied) { try { await interaction.deferReply({ ephemeral: true }); } catch (_) {} }
       if (Math.random() < 0.5) {
         return runEcoAction(interaction, 'steal', cible);
       } else {
@@ -1474,9 +1465,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!u.cooldowns) u.cooldowns={};
         const conf = eco.actions?.config?.steal || { cooldown: 1800 };
         u.cooldowns.steal = Date.now() + (Math.max(0, conf.cooldown || 1800))*1000;
-        await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+        setEconomyUser(interaction.guild.id, interaction.user.id, u).catch(()=>{});
         const msg = `😵 Échec du vol\n${pickRandom(STEAL_FAIL)}\nAmende ${penalty} ${eco.currency?.name || 'BAG$'}\nSolde: ${u.amount}`;
-        try { return await interaction.editReply({ content: msg }); } catch (_) { return; }
+        return interaction.reply({ content: msg, ephemeral: true });
       }
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
