@@ -1545,23 +1545,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
             { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
           ],
         });
-        return await interaction.reply({ embeds: [embed], ephemeral: true });
-      } catch (e1) {
-        console.error('/economie embed reply failed:', e1);
-        try {
-          const eco = await getEconomyConfig(interaction.guild.id);
-          const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-          const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
-          if (interaction.deferred || interaction.replied) return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
-          return await interaction.reply({ content: text, allowedMentions: { parse: [] }, ephemeral: true });
-        } catch (e2) {
-          console.error('/economie text fallback failed:', e2);
-          try {
-            return await interaction.followUp({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true });
-          } catch (_) {
-            return;
-          }
+        const me = interaction.guild?.members?.me;
+        const canEmbed = interaction.channel?.permissionsFor?.(me)?.has(PermissionsBitField.Flags.EmbedLinks) ?? false;
+        if (canEmbed) {
+          return await interaction.reply({ embeds: [embed], ephemeral: true });
         }
+        // Fallback: DM the embed to the user
+        try {
+          await interaction.user.send({ embeds: [embed] });
+          return await interaction.reply({ content: 'Je t\'ai envoyé ton récap économique en message privé (embeds). Donne la permission "Intégrer des liens" au bot pour l\'afficher ici.', ephemeral: true });
+        } catch (_) {
+          return await interaction.reply({ content: 'Impossible d\'envoyer un embed (permission manquante) ou DM bloqué. Voici un résumé: \n' + `Argent: ${u.amount||0} ${eco.currency?.name || 'BAG$'} | 🫦 ${u.charm||0} | 😈 ${u.perversion||0}`, ephemeral: true });
+        }
+      } catch (e1) {
+        console.error('/economie embed+DM failed:', e1);
+        return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }).catch(()=>{});
       }
     }
   } catch (err) {
