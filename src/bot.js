@@ -1863,6 +1863,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
     }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'ajout') {
+      const sub = interaction.options.getSubcommand();
+      const isAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
+      if (!isAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+      if (sub === 'argent') {
+        const cible = interaction.options.getUser('membre', true);
+        const montant = Math.max(1, interaction.options.getInteger('montant', true));
+        const u = await getEconomyUser(interaction.guild.id, cible.id);
+        u.amount = (u.amount||0) + montant;
+        await setEconomyUser(interaction.guild.id, cible.id, u);
+        const eco = await getEconomyConfig(interaction.guild.id);
+        return interaction.reply({ content: `✅ Ajouté ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}. Nouveau solde: ${u.amount}` });
+      }
+      return interaction.reply({ content: 'Sous-commande inconnue.', ephemeral: true });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');

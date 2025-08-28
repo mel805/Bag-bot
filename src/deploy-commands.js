@@ -72,6 +72,18 @@ const commands = [
     )
     .toJSON(),
   new SlashCommandBuilder().setName('crime').setDescription('Commettre un crime… au risque 😈').addUserOption(o=>o.setName('complice').setDescription('Complice (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder()
+    .setName('ajout')
+    .setDescription('Administration: ajout de ressources')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addSubcommand(sc => sc
+      .setName('argent')
+      .setDescription('Ajouter de l\'argent à un membre')
+      .addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true))
+      .addIntegerOption(o=>o.setName('montant').setDescription('Montant à ajouter').setRequired(true).setMinValue(1))
+    )
+    .toJSON(),
 ];
 
 async function main() {
