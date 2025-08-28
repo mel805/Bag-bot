@@ -293,7 +293,7 @@ function ensureEconomyShape(g) {
     if (!Array.isArray(e.shop.roles)) e.shop.roles = [];
     if (!e.shop.grants || typeof e.shop.grants !== 'object') e.shop.grants = {};
   }
-  if (!e.suites || typeof e.suites !== 'object') e.suites = { durations: { day: 1, week: 7, month: 30 }, categoryId: '', prices: { day: 1000, week: 5000, month: 20000 }, active: {} };
+  if (!e.suites || typeof e.suites !== 'object') e.suites = { durations: { day: 1, week: 7, month: 30 }, categoryId: '', prices: { day: 1000, week: 5000, month: 20000 }, active: {}, emoji: '💞' };
   else {
     if (!e.suites.durations || typeof e.suites.durations !== 'object') e.suites.durations = { day: 1, week: 7, month: 30 };
     if (typeof e.suites.categoryId !== 'string') e.suites.categoryId = '';
@@ -302,6 +302,7 @@ function ensureEconomyShape(g) {
     if (typeof e.suites.prices.week !== 'number') e.suites.prices.week = 5000;
     if (typeof e.suites.prices.month !== 'number') e.suites.prices.month = 20000;
     if (!e.suites.active || typeof e.suites.active !== 'object') e.suites.active = {};
+    if (typeof e.suites.emoji !== 'string' || !e.suites.emoji) e.suites.emoji = '💞';
   }
   if (!e.balances || typeof e.balances !== 'object') e.balances = {};
 }

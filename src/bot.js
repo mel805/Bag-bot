@@ -1717,7 +1717,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setMaxValues(1)
         .addChannelTypes(ChannelType.GuildCategory);
       const pricesBtn = new ButtonBuilder().setCustomId('suites_set_prices').setLabel(`Prix: 1j ${eco.suites?.prices?.day||0} • 1sem ${eco.suites?.prices?.week||0} • 1mois ${eco.suites?.prices?.month||0}`).setStyle(ButtonStyle.Secondary);
-      return [new ActionRowBuilder().addComponents(catSelect), new ActionRowBuilder().addComponents(pricesBtn)];
+      const emojiBtn = new ButtonBuilder().setCustomId('suites_set_emoji').setLabel(`Emoji: ${eco.suites?.emoji || '💞'}`).setStyle(ButtonStyle.Secondary);
+      return [new ActionRowBuilder().addComponents(catSelect), new ActionRowBuilder().addComponents(pricesBtn, emojiBtn)];
     }
 
     if (interaction.isChannelSelectMenu && interaction.customId === 'suites_category_select') {
@@ -1878,6 +1879,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: `✅ Ajouté ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}. Nouveau solde: ${u.amount}` });
       }
       return interaction.reply({ content: 'Sous-commande inconnue.', ephemeral: true });
+    }
+
+    if (interaction.isButton() && interaction.isButton() && interaction.customId === 'suites_set_emoji') {
+      const modal = new ModalBuilder().setCustomId('suites_emoji_modal').setTitle('Emoji des suites privées');
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Emoji').setStyle(TextInputStyle.Short).setRequired(true).setValue('💞')));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.isModalSubmit() && interaction.customId === 'suites_emoji_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const emoji = interaction.fields.getTextInputValue('emoji') || '💞';
+      const eco = await getEconomyConfig(interaction.guild.id);
+      eco.suites = { ...(eco.suites||{}), emoji };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Emoji des suites mis à jour.' });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
@@ -2087,4 +2103,4 @@ async function buildShopRows(guild) {
   return [controls, removeRow];
 }
 
-const SUITE_EMOJI = '💞';
+let SUITE_EMOJI = '💞';
