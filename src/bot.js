@@ -353,12 +353,26 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
     }
     // centered celebration text
     if (centerText) {
+      // Try to render 🎉 as image (Twemoji) above the text
+      let emojiDrawn = false;
+      if (centerText.includes('🎉')) {
+        const twemojiUrl = 'https://twemoji.maxcdn.com/v/latest/72x72/1f389.png';
+        const em = await getCachedImage(twemojiUrl);
+        if (em) {
+          const esize = 72;
+          const ex = (width / 2) - (esize / 2);
+          const ey = (height / 2) - esize - 6;
+          ctx.drawImage(em.img, ex, ey, esize, esize);
+          emojiDrawn = true;
+        }
+      }
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = '700 40px Georgia, "Times New Roman", Serif';
-      ctx.strokeText(centerText, width / 2, height / 2);
-      ctx.fillText(centerText, width / 2, height / 2);
+      const ty = emojiDrawn ? (height / 2) + 28 : (height / 2);
+      ctx.strokeText(centerText, width / 2, ty);
+      ctx.fillText(centerText, width / 2, ty);
       ctx.restore();
     }
     // progress bar (optional)
