@@ -596,21 +596,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
       const section = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       if (section === 'staff') {
         const staffAction = buildStaffActionRow();
-        await interaction.update({ embeds: [embed], components: [top, staffAction] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), staffAction] });
       } else if (section === 'autokick') {
         const akRows = await buildAutokickRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...akRows] });
       } else if (section === 'levels') {
         const rows = await buildLevelsGeneralRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'economy') {
         const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
-        await interaction.update({ embeds: [embed], components: [top, ...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else {
-        await interaction.update({ embeds: [embed], components: [top] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
       return;
     }
@@ -1392,6 +1391,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), config: conf } });
       return interaction.editReply({ content: `✅ Action "${actionKeyToLabel(key)}" mise à jour.` });
     }
+
+    if (interaction.isButton() && interaction.customId === 'config_back_home') {
+      const embed = await buildConfigEmbed(interaction.guild);
+      const sectionSelect = new StringSelectMenuBuilder()
+        .setCustomId('config_section')
+        .setPlaceholder('Choisir une section…')
+        .addOptions(
+          { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff' },
+          { label: 'AutoKick', value: 'autokick', description: 'Configurer l\'auto-kick' },
+          { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
+          { label: 'Économie', value: 'economy', description: 'Configurer l\'économie' }
+        );
+      const row = new ActionRowBuilder().addComponents(sectionSelect);
+      return interaction.update({ embeds: [embed], components: [row] });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
@@ -1422,23 +1436,24 @@ async function buildEconomyMenuRows(guild, page) {
   const menu = buildEconomyMenuSelect(page);
   if (page === 'actions') {
     const actions = await buildEconomyActionsRows(guild);
-    // buildEconomyActionsRows returns [nav, row]; we only want its content row (the select)
-    const [, actionsRow] = actions;
+    const actionsRow = actions[0];
     return [menu, actionsRow];
   }
   if (page === 'settings') {
     const settings = await buildEconomySettingsRows(guild);
-    // settings: [navButtons, row]; keep only the config row
-    const [, settingsRow] = settings;
+    const settingsRow = settings[0];
     return [menu, settingsRow];
   }
   if (page === 'shop') {
-    // placeholder until shop implemented
     return [menu];
   }
   if (page === 'suites') {
-    // placeholder until suites implemented
     return [menu];
   }
   return [menu];
+}
+
+function buildBackRow() {
+  const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
+  return new ActionRowBuilder().addComponents(back);
 }
