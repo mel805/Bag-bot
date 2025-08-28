@@ -569,6 +569,34 @@ client.login(token).then(() => {
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
+  // Suites cleanup every 5 minutes
+  setInterval(async () => {
+    try {
+      const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
+      if (!guild) return;
+      const eco = await getEconomyConfig(guild.id);
+      const active = eco.suites?.active || {};
+      const now = Date.now();
+      let modified = false;
+      for (const [uid, info] of Object.entries(active)) {
+        if (!info || typeof info.expiresAt !== 'number') continue;
+        if (now >= info.expiresAt) {
+          // delete channels
+          for (const cid of [info.textId, info.voiceId]) {
+            if (!cid) continue;
+            const ch = guild.channels.cache.get(cid) || await guild.channels.fetch(cid).catch(()=>null);
+            if (ch) await ch.delete().catch(()=>{});
+          }
+          delete active[uid];
+          modified = true;
+        }
+      }
+      if (modified) {
+        eco.suites = { ...(eco.suites||{}), active };
+        await updateEconomyConfig(guild.id, eco);
+      }
+    } catch (_) {}
+  }, 5 * 60 * 1000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -618,7 +646,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const page = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
       const top = buildTopSectionRow();
-      const rows = await buildEconomyMenuRows(interaction.guild, page);
+      let rows;
+      if (page === 'suites') {
+        rows = [buildEconomyMenuSelect(page), ...(await buildSuitesRows(interaction.guild))];
+      } else {
+        rows = await buildEconomyMenuRows(interaction.guild, page);
+      }
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
     }
 
@@ -1281,6 +1314,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const embed = buildEcoEmbed({ title: 'Achat réussi', description: `Rôle attribué: ${label} (${entry.durationDays?`${entry.durationDays}j`:'permanent'}) pour ${price} ${eco.currency?.name || 'BAG$'}`, fields: [ { name: 'Solde', value: String(u.amount), inline: true } ] });
         return interaction.update({ embeds: [embed], components: [] });
       }
+      if (choice.startsWith('suite:')) {
+        const key = choice.split(':')[1];
+        const prices = eco.suites?.prices || { day:0, week:0, month:0 };
+        const daysMap = { day: eco.suites?.durations?.day || 1, week: eco.suites?.durations?.week || 7, month: eco.suites?.durations?.month || 30 };
+        const price = Number(prices[key]||0);
+        if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
+        const categoryId = eco.suites?.categoryId || '';
+        if (!categoryId) return interaction.reply({ content: 'Catégorie des suites non définie. Configurez-la dans /config → Économie → Suites.', ephemeral: true });
+        u.amount = (u.amount||0) - price;
+        await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+        // Create private channels
+        const parent = interaction.guild.channels.cache.get(categoryId);
+        if (!parent) return interaction.reply({ content: 'Catégorie introuvable. Reconfigurez-la.', ephemeral: true });
+        const member = await interaction.guild.members.fetch(interaction.user.id);
+        const overwrites = [
+          { id: interaction.guild.roles.everyone.id, deny: ['ViewChannel'] },
+          { id: member.id, allow: ['ViewChannel','SendMessages','Connect','Speak'] },
+        ];
+        const nameBase = `suite-${member.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,20);
+        const text = await interaction.guild.channels.create({ name: `${nameBase}-txt`, type: ChannelType.GuildText, parent: parent.id, permissionOverwrites: overwrites });
+        const voice = await interaction.guild.channels.create({ name: `${nameBase}-vc`, type: ChannelType.GuildVoice, parent: parent.id, permissionOverwrites: overwrites });
+        const now = Date.now();
+        const ms = (daysMap[key] || 1) * 24 * 60 * 60 * 1000;
+        const until = now + ms;
+        const cfg = await getEconomyConfig(interaction.guild.id);
+        cfg.suites = { ...(cfg.suites||{}), active: { ...(cfg.suites?.active||{}), [member.id]: { textId: text.id, voiceId: voice.id, expiresAt: until } } };
+        await updateEconomyConfig(interaction.guild.id, cfg);
+        const embed = buildEcoEmbed({ title: 'Suite privée créée', description: `Vos salons privés ont été créés pour ${daysMap[key]} jour(s).`, fields: [ { name: 'Texte', value: `<#${text.id}>`, inline: true }, { name: 'Vocal', value: `<#${voice.id}>`, inline: true }, { name: 'Expiration', value: `<t:${Math.floor(until/1000)}:R>`, inline: true } ] });
+        return interaction.update({ embeds: [embed], components: [] });
+      }
       return interaction.reply({ content: 'Choix invalide.', ephemeral: true });
     }
 
@@ -1579,6 +1642,52 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try { return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) { return; }
       }
     }
+
+    // Suites UI rows
+    async function buildSuitesRows(guild) {
+      const eco = await getEconomyConfig(guild.id);
+      const catSelect = new StringSelectMenuBuilder()
+        .setCustomId('suites_category_select')
+        .setPlaceholder('Choisir la catégorie parent des suites privées…')
+        .addOptions(
+          ...(guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).map(c => ({ label: c.name, value: c.id }))?.toJSON?.() || [])
+        );
+      const pricesBtn = new ButtonBuilder().setCustomId('suites_set_prices').setLabel(`Prix: 1j ${eco.suites?.prices?.day||0} • 1sem ${eco.suites?.prices?.week||0} • 1mois ${eco.suites?.prices?.month||0}`).setStyle(ButtonStyle.Secondary);
+      return [new ActionRowBuilder().addComponents(catSelect), new ActionRowBuilder().addComponents(pricesBtn)];
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'suites_category_select') {
+      const catId = interaction.values[0];
+      const eco = await getEconomyConfig(interaction.guild.id);
+      eco.suites = { ...(eco.suites||{}), categoryId: catId };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow();
+      const rows = [buildEconomyMenuSelect('suites'), ...(await buildSuitesRows(interaction.guild))];
+      return interaction.update({ embeds: [embed], components: [top, ...rows] });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'suites_set_prices') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const modal = new ModalBuilder().setCustomId('suites_prices_modal').setTitle('Prix suites privées');
+      const day = new TextInputBuilder().setCustomId('day').setLabel('1 jour').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(eco.suites?.prices?.day||0));
+      const week = new TextInputBuilder().setCustomId('week').setLabel('1 semaine').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(eco.suites?.prices?.week||0));
+      const month = new TextInputBuilder().setCustomId('month').setLabel('1 mois').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(eco.suites?.prices?.month||0));
+      modal.addComponents(new ActionRowBuilder().addComponents(day), new ActionRowBuilder().addComponents(week), new ActionRowBuilder().addComponents(month));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'suites_prices_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const day = Math.max(0, Number(interaction.fields.getTextInputValue('day'))||0);
+      const week = Math.max(0, Number(interaction.fields.getTextInputValue('week'))||0);
+      const month = Math.max(0, Number(interaction.fields.getTextInputValue('month'))||0);
+      const eco = await getEconomyConfig(interaction.guild.id);
+      eco.suites = { ...(eco.suites||{}), prices: { day, week, month } };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
@@ -1658,6 +1767,11 @@ async function buildBoutiqueRows(guild) {
     const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
     options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}` });
   }
+  // Suite private offers
+  const prices = eco.suites?.prices || { day: 0, week: 0, month: 0 };
+  options.push({ label: 'Suite privée • 1 jour', value: 'suite:day', description: `${prices.day||0} ${eco.currency?.name || 'BAG$'}` });
+  options.push({ label: 'Suite privée • 1 semaine', value: 'suite:week', description: `${prices.week||0} ${eco.currency?.name || 'BAG$'}` });
+  options.push({ label: 'Suite privée • 1 mois', value: 'suite:month', description: `${prices.month||0} ${eco.currency?.name || 'BAG$'}` });
   if (options.length === 0) options.push({ label: 'Aucun article disponible', value: 'none', description: 'Revenez plus tard' });
   const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
   return [new ActionRowBuilder().addComponents(select)];

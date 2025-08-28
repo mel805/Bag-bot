@@ -288,7 +288,16 @@ function ensureEconomyShape(g) {
     }
   }
   if (!e.shop || typeof e.shop !== 'object') e.shop = { items: [], roles: [] };
-  if (!e.suites || typeof e.suites !== 'object') e.suites = { durations: { day: 1, week: 7, month: 30 }, categoryId: '' };
+  if (!e.suites || typeof e.suites !== 'object') e.suites = { durations: { day: 1, week: 7, month: 30 }, categoryId: '', prices: { day: 1000, week: 5000, month: 20000 }, active: {} };
+  else {
+    if (!e.suites.durations || typeof e.suites.durations !== 'object') e.suites.durations = { day: 1, week: 7, month: 30 };
+    if (typeof e.suites.categoryId !== 'string') e.suites.categoryId = '';
+    if (!e.suites.prices || typeof e.suites.prices !== 'object') e.suites.prices = { day: 1000, week: 5000, month: 20000 };
+    if (typeof e.suites.prices.day !== 'number') e.suites.prices.day = 1000;
+    if (typeof e.suites.prices.week !== 'number') e.suites.prices.week = 5000;
+    if (typeof e.suites.prices.month !== 'number') e.suites.prices.month = 20000;
+    if (!e.suites.active || typeof e.suites.active !== 'object') e.suites.active = {};
+  }
   if (!e.balances || typeof e.balances !== 'object') e.balances = {};
 }
 
