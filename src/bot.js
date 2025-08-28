@@ -1535,8 +1535,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
       try {
-        const eco = await getEconomyConfig(interaction.guild.id);
-        const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+        try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
+        const eco = await getEconomyConfig(interaction.guild?.id || '');
+        const u = await getEconomyUser(interaction.guild?.id || '', interaction.user.id);
         const embed = buildEcoEmbed({
           title: `Économie de ${interaction.user.username}`,
           fields: [
@@ -1545,22 +1546,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
             { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
           ],
         });
-        // Try DM first (avoid channel permission constraints)
-        let dmOk = false;
         try {
-          await interaction.user.send({ embeds: [embed] });
-          dmOk = true;
-        } catch (_) {}
-        if (dmOk) {
-          try { return await interaction.reply({ content: "📩 Je t'ai envoyé ton récap en message privé.", ephemeral: true }); } catch (_) { return; }
+          return await interaction.editReply({ embeds: [embed] });
+        } catch (_) {
+          const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
+          return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
         }
-        // DM failed: try ephemeral embed in channel
-        try { return await interaction.reply({ embeds: [embed], ephemeral: true }); } catch (_) {}
-        // Final fallback: plain text
-        const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
-        try { return await interaction.reply({ content: text, ephemeral: true, allowedMentions: { parse: [] } }); } catch (_) { return; }
       } catch (e1) {
-        console.error('/economie failed (all fallbacks):', e1);
+        console.error('/economie failed (defer/edit):', e1);
+        try { return await interaction.editReply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) {}
         try { return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) { return; }
       }
     }
@@ -1641,9 +1635,4 @@ async function buildBoutiqueRows(guild) {
   for (const r of roles) {
     const label = r.name || (guild.roles.cache.get(r.roleId)?.name) || r.roleId;
     const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
-    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}` });
-  }
-  if (options.length === 0) options.push({ label: 'Aucun article disponible', value: 'none', description: 'Revenez plus tard' });
-  const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
-  return [new ActionRowBuilder().addComponents(select)];
-}
+    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}`
