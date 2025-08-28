@@ -316,7 +316,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [top, ...akRows] });
       } else if (section === 'levels') {
         const levelAction = buildLevelsActionRow();
-        await interaction.update({ embeds: [embed], components: [top, levelAction] });
+        const settingsRows = await buildLevelsSettingsRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [top, levelAction, ...settingsRows] });
       } else {
         await interaction.update({ embeds: [embed], components: [top] });
       }
