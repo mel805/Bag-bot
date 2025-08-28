@@ -1342,8 +1342,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
       await setEconomyUser(interaction.guild.id, userId, u);
       const icon = conf.karma === 'perversion' ? '😈' : '🫦';
+      const title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
       const embed = buildEcoEmbed({
-        title: `${icon} ${actionKeyToLabel(key)}`,
+        title,
         description: `+${gain} ${eco.currency?.name || 'BAG$'}`,
         fields: [
           { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : 'charme 🫦'} +${conf.karmaDelta||0}`, inline: true },
@@ -1379,22 +1380,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
-      return runEcoAction(interaction, 'kiss');
+      const cible = interaction.options.getUser('cible');
+      return runEcoAction(interaction, 'kiss', cible);
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'flirter') {
-      return runEcoAction(interaction, 'flirt');
+      const cible = interaction.options.getUser('cible');
+      return runEcoAction(interaction, 'flirt', cible);
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'séduire') {
-      return runEcoAction(interaction, 'seduce');
+      const cible = interaction.options.getUser('cible');
+      return runEcoAction(interaction, 'seduce', cible);
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'fuck') {
-      return runEcoAction(interaction, 'fuck');
+      const cible = interaction.options.getUser('cible');
+      return runEcoAction(interaction, 'fuck', cible);
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'masser') {
-      return runEcoAction(interaction, 'massage');
+      const cible = interaction.options.getUser('cible');
+      return runEcoAction(interaction, 'massage', cible);
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'danser') {
-      return runEcoAction(interaction, 'dance');
+      const cible = interaction.options.getUser('cible');
+      return runEcoAction(interaction, 'dance', cible);
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'crime') {
+      const cible = interaction.options.getUser('complice');
+      return runEcoAction(interaction, 'crime', cible);
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('economy_page:')) {
@@ -1454,10 +1465,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
       const row = new ActionRowBuilder().addComponents(sectionSelect);
       return interaction.update({ embeds: [embed], components: [row] });
-    }
-
-    if (interaction.isChatInputCommand() && interaction.commandName === 'crime') {
-      return runEcoAction(interaction, 'crime');
     }
   } catch (err) {
     console.error('Interaction handler error:', err);

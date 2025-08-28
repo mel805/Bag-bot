@@ -43,12 +43,12 @@ const commands = [
   new SlashCommandBuilder().setName('pêcher').setDescription('Pêcher pour gagner de l\'argent').toJSON(),
   new SlashCommandBuilder().setName('donner').setDescription('Donner de l\'argent à un membre').addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addIntegerOption(o=>o.setName('montant').setDescription('Montant').setRequired(true).setMinValue(1)).toJSON(),
   new SlashCommandBuilder().setName('voler').setDescription('Tenter de voler un membre').addUserOption(o=>o.setName('membre').setDescription('Cible').setRequired(true)).toJSON(),
-  new SlashCommandBuilder().setName('embrasser').setDescription('Embrasser pour gagner du charme').toJSON(),
-  new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').toJSON(),
-  new SlashCommandBuilder().setName('séduire').setDescription('Séduire pour gagner du charme').toJSON(),
-  new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').toJSON(),
-  new SlashCommandBuilder().setName('masser').setDescription('Masser pour gagner du charme').toJSON(),
-  new SlashCommandBuilder().setName('danser').setDescription('Danser pour gagner du charme').toJSON(),
+  new SlashCommandBuilder().setName('embrasser').setDescription('Embrasser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('séduire').setDescription('Séduire pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('masser').setDescription('Masser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('danser').setDescription('Danser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Danser avec (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder()
     .setName('boutique')
     .setDescription('Consulter la boutique et acheter')
@@ -70,7 +70,7 @@ const commands = [
       .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
     )
     .toJSON(),
-  new SlashCommandBuilder().setName('crime').setDescription('Commettre un crime… au risque 😈').toJSON(),
+  new SlashCommandBuilder().setName('crime').setDescription('Commettre un crime… au risque 😈').addUserOption(o=>o.setName('complice').setDescription('Complice (optionnel)').setRequired(false)).toJSON(),
 ];
 
 async function main() {
