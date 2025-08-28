@@ -122,6 +122,11 @@ function ensureLevelsShape(g) {
         levelUp: { enabled: false, channelId: '' },
         roleAward: { enabled: false, channelId: '' },
       },
+      cards: {
+        femaleRoleIds: [],
+        certifiedRoleIds: [],
+        backgrounds: { default: '', female: '', certified: '' },
+      },
     };
   } else {
     if (typeof g.levels.enabled !== 'boolean') g.levels.enabled = false;
@@ -139,6 +144,13 @@ function ensureLevelsShape(g) {
     if (typeof g.levels.announce.levelUp.channelId !== 'string') g.levels.announce.levelUp.channelId = '';
     if (typeof g.levels.announce.roleAward.enabled !== 'boolean') g.levels.announce.roleAward.enabled = false;
     if (typeof g.levels.announce.roleAward.channelId !== 'string') g.levels.announce.roleAward.channelId = '';
+    if (!g.levels.cards || typeof g.levels.cards !== 'object') g.levels.cards = { femaleRoleIds: [], certifiedRoleIds: [], backgrounds: { default: '', female: '', certified: '' } };
+    if (!Array.isArray(g.levels.cards.femaleRoleIds)) g.levels.cards.femaleRoleIds = [];
+    if (!Array.isArray(g.levels.cards.certifiedRoleIds)) g.levels.cards.certifiedRoleIds = [];
+    if (!g.levels.cards.backgrounds || typeof g.levels.cards.backgrounds !== 'object') g.levels.cards.backgrounds = { default: '', female: '', certified: '' };
+    if (typeof g.levels.cards.backgrounds.default !== 'string') g.levels.cards.backgrounds.default = '';
+    if (typeof g.levels.cards.backgrounds.female !== 'string') g.levels.cards.backgrounds.female = '';
+    if (typeof g.levels.cards.backgrounds.certified !== 'string') g.levels.cards.backgrounds.certified = '';
   }
 }
 

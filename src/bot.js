@@ -202,16 +202,22 @@ async function buildLevelsSettingsRows(guild) {
   const levelUpToggle = new ButtonBuilder().setCustomId('levels_announce_level_toggle').setLabel(levels.announce?.levelUp?.enabled ? 'Annonces Niveau: ON' : 'Annonces Niveau: OFF').setStyle(levels.announce?.levelUp?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const roleAwardToggle = new ButtonBuilder().setCustomId('levels_announce_role_toggle').setLabel(levels.announce?.roleAward?.enabled ? 'Annonces Rôle: ON' : 'Annonces Rôle: OFF').setStyle(levels.announce?.roleAward?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
 
-  const channels = (guild.channels.cache.filter(ch => ch.isTextBased() && ch.viewable).map(ch => ({ label: ch.name.slice(0, 100), value: ch.id })) || []).slice(0, 25);
-  const fallback = [{ label: 'Aucun salon', value: 'none' }];
   const levelUpChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_level_channel').setPlaceholder('Salon annonces de niveau…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const roleAwardChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_role_channel').setPlaceholder('Salon annonces de rôle…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+
+  // Card style
+  const femaleRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_female_roles').setPlaceholder('Rôles “femme”… (multi)').setMinValues(0).setMaxValues(25);
+  const certifiedRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_certified_roles').setPlaceholder('Rôles “certifié”… (multi)').setMinValues(0).setMaxValues(25);
+  const bgDefaultBtn = new ButtonBuilder().setCustomId('levels_cards_bg_default').setLabel('BG par défaut').setStyle(ButtonStyle.Primary);
+  const bgFemaleBtn = new ButtonBuilder().setCustomId('levels_cards_bg_female').setLabel('BG femme').setStyle(ButtonStyle.Primary);
+  const bgCertifiedBtn = new ButtonBuilder().setCustomId('levels_cards_bg_certified').setLabel('BG certifié').setStyle(ButtonStyle.Primary);
 
   return [
     new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextBtn, xpVoiceBtn, curveBtn),
     new ActionRowBuilder().addComponents(levelUpToggle, roleAwardToggle),
-    new ActionRowBuilder().addComponents(levelUpChannel),
-    new ActionRowBuilder().addComponents(roleAwardChannel),
+    new ActionRowBuilder().addComponents(levelUpChannel, roleAwardChannel),
+    new ActionRowBuilder().addComponents(femaleRoles, certifiedRoles),
+    new ActionRowBuilder().addComponents(bgDefaultBtn, bgFemaleBtn, bgCertifiedBtn),
   ];
 }
 
@@ -240,20 +246,37 @@ async function buildLevelsRewardsRows(guild) {
   return [new ActionRowBuilder().addComponents(addRole), new ActionRowBuilder().addComponents(removeSelect)];
 }
 
-function maybeAnnounceLevelUp(guild, member, levels, newLevel) {
+function chooseCardBackgroundForMember(memberOrMention, levels) {
+  const bgs = levels.cards?.backgrounds || {};
+  if (!memberOrMention || !memberOrMention.roles) return bgs.default || THEME_IMAGE;
+  const femaleIds = new Set(levels.cards?.femaleRoleIds || []);
+  const certIds = new Set(levels.cards?.certifiedRoleIds || []);
+  const hasFemale = memberOrMention.roles.cache?.some(r => femaleIds.has(r.id));
+  const hasCert = memberOrMention.roles.cache?.some(r => certIds.has(r.id));
+  if (hasFemale && hasCert) return bgs.certified || bgs.female || bgs.default || THEME_IMAGE;
+  if (hasFemale) return bgs.female || bgs.default || THEME_IMAGE;
+  if (hasCert) return bgs.certified || bgs.default || THEME_IMAGE;
+  return bgs.default || THEME_IMAGE;
+}
+
+function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const ann = levels.announce?.levelUp || {};
   if (!ann.enabled || !ann.channelId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
-  channel.send({ content: `🎉 ${member} passe niveau ${newLevel} !` }).catch(() => {});
+  const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const embed = new EmbedBuilder().setColor(pickThemeColorForGuild(guild)).setDescription(`🎉 ${memberOrMention} passe niveau ${newLevel} !`).setImage(bg).setTimestamp(new Date());
+  channel.send({ embeds: [embed] }).catch(() => {});
 }
 
-function maybeAnnounceRoleAward(guild, member, levels, roleId) {
+function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const ann = levels.announce?.roleAward || {};
   if (!ann.enabled || !ann.channelId || !roleId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
-  channel.send({ content: `🏅 ${member} reçoit le rôle <@&${roleId}> en récompense !` }).catch(() => {});
+  const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const embed = new EmbedBuilder().setColor(pickThemeColorForGuild(guild)).setDescription(`🏅 ${memberOrMention} reçoit le rôle <@&${roleId}> !`).setImage(bg).setTimestamp(new Date());
+  channel.send({ embeds: [embed] }).catch(() => {});
 }
 
 function memberMention(userId) {
@@ -833,6 +856,51 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
       const { embed, components } = await buildTopNiveauEmbed(interaction.guild, entries, offset, Math.min(25, Math.max(1, limit)));
       return interaction.update({ embeds: [embed], components });
+    }
+
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'levels_cards_female_roles') {
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      await updateLevelsConfig(interaction.guild.id, { cards: { ...(cfg.cards || {}), femaleRoleIds: interaction.values } });
+      return interaction.deferUpdate();
+    }
+
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'levels_cards_certified_roles') {
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      await updateLevelsConfig(interaction.guild.id, { cards: { ...(cfg.cards || {}), certifiedRoleIds: interaction.values } });
+      return interaction.deferUpdate();
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_cards_bg_default') {
+      const modal = new ModalBuilder().setCustomId('levels_cards_bg_modal:default').setTitle('URL BG par défaut');
+      const input = new TextInputBuilder().setCustomId('url').setLabel('URL de l\'image').setStyle(TextInputStyle.Short).setPlaceholder('https://...').setRequired(true).setMaxLength(512);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_cards_bg_female') {
+      const modal = new ModalBuilder().setCustomId('levels_cards_bg_modal:female').setTitle('URL BG femme');
+      const input = new TextInputBuilder().setCustomId('url').setLabel('URL de l\'image').setStyle(TextInputStyle.Short).setPlaceholder('https://...').setRequired(true).setMaxLength(512);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_cards_bg_certified') {
+      const modal = new ModalBuilder().setCustomId('levels_cards_bg_modal:certified').setTitle('URL BG certifié');
+      const input = new TextInputBuilder().setCustomId('url').setLabel('URL de l\'image').setStyle(TextInputStyle.Short).setPlaceholder('https://...').setRequired(true).setMaxLength(512);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('levels_cards_bg_modal:')) {
+      const key = interaction.customId.split(':')[1];
+      const url = interaction.fields.getTextInputValue('url');
+      await interaction.deferReply({ ephemeral: true });
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      await updateLevelsConfig(interaction.guild.id, { cards: { ...(cfg.cards || {}), backgrounds: { ...(cfg.cards?.backgrounds || {}), [key]: url } } });
+      return interaction.editReply({ content: `✅ Fond ${key} mis à jour.` });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
