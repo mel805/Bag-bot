@@ -4,3 +4,30 @@
 
 Login succeeded
 Logged in as Bag bot#8659
+(node:102537) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+/economie failed (defer/edit): CombinedError (2)
+  Received one or more errors
+
+  1 ExpectedValidationError > s.literal(V)
+  |   Expected values to be equals
+  | 
+  |   Expected:
+  |   | null
+  | 
+  |   Received:
+  |   | ''
+
+  2 ExpectedConstraintError > s.string().lengthGreaterThanOrEqual()
+  |   Invalid string length
+  | 
+  |   Expected: expected.length >= 1
+  | 
+  |   Received:
+  |   | ''
+
+    at _UnionValidator.handle (/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:1965:23)
+    at _UnionValidator.parse (/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:972:90)
+    at EmbedBuilder.setDescription (/workspace/node_modules/@discordjs/builders/dist/index.js:325:26)
+    at buildEcoEmbed (/workspace/src/bot.js:1619:6)
+    at Client.<anonymous> (/workspace/src/bot.js:1541:23)

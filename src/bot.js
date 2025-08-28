@@ -1635,4 +1635,9 @@ async function buildBoutiqueRows(guild) {
   for (const r of roles) {
     const label = r.name || (guild.roles.cache.get(r.roleId)?.name) || r.roleId;
     const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
-    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}`
+    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}` });
+  }
+  if (options.length === 0) options.push({ label: 'Aucun article disponible', value: 'none', description: 'Revenez plus tard' });
+  const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisissez un article à acheter…').addOptions(...options);
+  return [new ActionRowBuilder().addComponents(select)];
+}
