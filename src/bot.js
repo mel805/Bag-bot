@@ -1404,14 +1404,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
 
-      if (!u.cooldowns) u.cooldowns={};
-      u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
-
       if (!isSuccess) {
         const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
         u.amount = Math.max(0, (u.amount||0) - lose);
         if (conf.karma === 'charm') u.charm = Math.max(0, (u.charm||0) - Math.max(0, conf.failKarmaDelta || 0));
         else if (conf.karma === 'perversion') u.perversion = Math.max(0, (u.perversion||0) - Math.max(0, conf.failKarmaDelta || 0));
+        if (!u.cooldowns) u.cooldowns={};
+        u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
         await setEconomyUser(interaction.guild.id, userId, u);
         let failText = 'Action manquée… Réessayez plus tard.';
         if (key === 'fish') failText = pickRandom(FISH_FAIL);
@@ -1442,6 +1441,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       u.amount = (u.amount||0) + gain;
       if (conf.karma === 'charm') u.charm = (u.charm||0) + (conf.karmaDelta||0);
       else if (conf.karma === 'perversion') u.perversion = (u.perversion||0) + (conf.karmaDelta||0);
+      if (!u.cooldowns) u.cooldowns={};
+      u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
       await setEconomyUser(interaction.guild.id, userId, u);
 
       const icon = conf.karma === 'perversion' ? '😈' : '🫦';
