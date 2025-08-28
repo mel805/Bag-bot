@@ -1710,17 +1710,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // Suites UI rows
     async function buildSuitesRows(guild) {
       const eco = await getEconomyConfig(guild.id);
-      const catSelect = new StringSelectMenuBuilder()
+      const catSelect = new ChannelSelectMenuBuilder()
         .setCustomId('suites_category_select')
         .setPlaceholder('Choisir la catégorie parent des suites privées…')
-        .addOptions(
-          ...(guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).map(c => ({ label: c.name, value: c.id }))?.toJSON?.() || [])
-        );
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addChannelTypes(ChannelType.GuildCategory);
       const pricesBtn = new ButtonBuilder().setCustomId('suites_set_prices').setLabel(`Prix: 1j ${eco.suites?.prices?.day||0} • 1sem ${eco.suites?.prices?.week||0} • 1mois ${eco.suites?.prices?.month||0}`).setStyle(ButtonStyle.Secondary);
       return [new ActionRowBuilder().addComponents(catSelect), new ActionRowBuilder().addComponents(pricesBtn)];
     }
 
-    if (interaction.isStringSelectMenu() && interaction.customId === 'suites_category_select') {
+    if (interaction.isChannelSelectMenu && interaction.customId === 'suites_category_select') {
       const catId = interaction.values[0];
       const eco = await getEconomyConfig(interaction.guild.id);
       eco.suites = { ...(eco.suites||{}), categoryId: catId };
