@@ -757,12 +757,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return (ub.xp || 0) - (ua.xp || 0);
         });
         const top = entries.slice(0, Math.min(25, Math.max(1, limit)));
+        const formatNum = (n) => (Number(n) || 0).toLocaleString('fr-FR');
+        const medalFor = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`);
         const lines = await Promise.all(top.map(async ([uid, st], idx) => {
           const mem = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(() => null);
-          const name = mem ? (mem.nickname || mem.user.username) : `Utilisateur ${uid}`;
-          return `${idx + 1}. ${name} — Niveau ${st.level || 0} (${st.xp || 0} XP)`;
+          const display = mem ? (mem.nickname || mem.user.username) : `<@${uid}>`;
+          const lvl = st.level || 0;
+          const xp = formatNum(st.xp || 0);
+          return `${medalFor(idx)} **${display}** • Lvl ${lvl} • ${xp} XP`;
         }));
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Classement des niveaux').setDescription(lines.join('\n'));
+        const guildIcon = interaction.guild.iconURL?.() || null;
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setAuthor({ name: `${interaction.guild.name} • Classement des niveaux`, iconURL: guildIcon || undefined })
+          .setDescription(lines.join('\n'))
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: 'Boy and Girls (BAG) • Premium Leaderboard' })
+          .setTimestamp(new Date());
         return interaction.reply({ embeds: [embed] });
       }
     }
