@@ -1054,13 +1054,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const perv = state?.perversion || 0;
           lines.push(`${i+1}. ${tag} — ${state?.amount||0} ${eco.currency?.name || 'BAG$'} • 🫦 ${charm} • 😈 ${perv}`);
         }
-        const embed = new EmbedBuilder()
-          .setColor(THEME_COLOR_ACCENT)
-          .setTitle('Classement Économie')
-          .setDescription(lines.join('\n') || '—')
-          .setThumbnail(THEME_IMAGE)
-          .setFooter({ text: `Top ${limit}` })
-          .setTimestamp(new Date());
+        const embed = buildEcoEmbed({
+          title: 'Classement Économie',
+          description: lines.join('\n') || '—',
+          fields: [ { name: 'Devise', value: `${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`, inline: true }, { name: 'Entrées', value: String(sorted.length), inline: true } ],
+        });
         return interaction.reply({ embeds: [embed] });
       } else {
         return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
@@ -1607,11 +1605,14 @@ function buildBackRow() {
 }
 
 function buildEcoEmbed({ title, description, fields, color }) {
+  const avatar = client.user && client.user.displayAvatarURL ? client.user.displayAvatarURL() : undefined;
   const embed = new EmbedBuilder()
     .setColor(color || THEME_COLOR_ACCENT)
+    .setAuthor({ name: 'Économie • Boy and Girls (BAG)', iconURL: avatar })
     .setTitle(title || 'Économie')
     .setDescription(description || '')
     .setThumbnail(THEME_IMAGE)
+    .setFooter({ text: 'BAG • Économie' })
     .setTimestamp(new Date());
   if (Array.isArray(fields)) embed.addFields(fields);
   return embed;
