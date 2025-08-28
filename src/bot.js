@@ -191,34 +191,43 @@ function buildLevelsActionRow() {
   return new ActionRowBuilder().addComponents(select);
 }
 
-async function buildLevelsSettingsRows(guild) {
+async function buildLevelsGeneralRows(guild) {
   const levels = await getLevelsConfig(guild.id);
+  const nav = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('levels_page:general').setLabel('Réglages').setStyle(ButtonStyle.Primary).setDisabled(true),
+    new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Secondary)
+  );
   const enableBtn = new ButtonBuilder().setCustomId('levels_enable').setLabel('Activer Levels').setStyle(ButtonStyle.Success).setDisabled(levels.enabled);
   const disableBtn = new ButtonBuilder().setCustomId('levels_disable').setLabel('Désactiver Levels').setStyle(ButtonStyle.Danger).setDisabled(!levels.enabled);
   const xpTextBtn = new ButtonBuilder().setCustomId('levels_set_xp_text').setLabel('XP Texte').setStyle(ButtonStyle.Primary);
   const xpVoiceBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice').setLabel('XP Vocal/min').setStyle(ButtonStyle.Primary);
   const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Courbe').setStyle(ButtonStyle.Secondary);
-
+  const rowActions = new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextBtn, xpVoiceBtn, curveBtn);
   const levelUpToggle = new ButtonBuilder().setCustomId('levels_announce_level_toggle').setLabel(levels.announce?.levelUp?.enabled ? 'Annonces Niveau: ON' : 'Annonces Niveau: OFF').setStyle(levels.announce?.levelUp?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const roleAwardToggle = new ButtonBuilder().setCustomId('levels_announce_role_toggle').setLabel(levels.announce?.roleAward?.enabled ? 'Annonces Rôle: ON' : 'Annonces Rôle: OFF').setStyle(levels.announce?.roleAward?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
-
+  const rowToggles = new ActionRowBuilder().addComponents(levelUpToggle, roleAwardToggle);
   const levelUpChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_level_channel').setPlaceholder('Salon annonces de niveau…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const roleAwardChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_role_channel').setPlaceholder('Salon annonces de rôle…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+  const rowLevelUp = new ActionRowBuilder().addComponents(levelUpChannel);
+  const rowRoleAward = new ActionRowBuilder().addComponents(roleAwardChannel);
+  return [nav, rowActions, rowToggles, rowLevelUp, rowRoleAward];
+}
 
-  // Card style
+async function buildLevelsCardsRows(guild) {
+  const levels = await getLevelsConfig(guild.id);
+  const nav = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('levels_page:general').setLabel('Réglages').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Primary).setDisabled(true)
+  );
   const femaleRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_female_roles').setPlaceholder('Rôles “femme”… (multi)').setMinValues(0).setMaxValues(25);
   const certifiedRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_certified_roles').setPlaceholder('Rôles “certifié”… (multi)').setMinValues(0).setMaxValues(25);
+  const rowFemale = new ActionRowBuilder().addComponents(femaleRoles);
+  const rowCert = new ActionRowBuilder().addComponents(certifiedRoles);
   const bgDefaultBtn = new ButtonBuilder().setCustomId('levels_cards_bg_default').setLabel('BG par défaut').setStyle(ButtonStyle.Primary);
   const bgFemaleBtn = new ButtonBuilder().setCustomId('levels_cards_bg_female').setLabel('BG femme').setStyle(ButtonStyle.Primary);
   const bgCertifiedBtn = new ButtonBuilder().setCustomId('levels_cards_bg_certified').setLabel('BG certifié').setStyle(ButtonStyle.Primary);
-
-  return [
-    new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextBtn, xpVoiceBtn, curveBtn),
-    new ActionRowBuilder().addComponents(levelUpToggle, roleAwardToggle),
-    new ActionRowBuilder().addComponents(levelUpChannel, roleAwardChannel),
-    new ActionRowBuilder().addComponents(femaleRoles, certifiedRoles),
-    new ActionRowBuilder().addComponents(bgDefaultBtn, bgFemaleBtn, bgCertifiedBtn),
-  ];
+  const rowBgs = new ActionRowBuilder().addComponents(bgDefaultBtn, bgFemaleBtn, bgCertifiedBtn);
+  return [nav, rowFemale, rowCert, rowBgs];
 }
 
 async function buildLevelsRewardsRows(guild) {
@@ -398,20 +407,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
       const section = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
       if (section === 'staff') {
         const staffAction = buildStaffActionRow();
-        await interaction.update({ embeds: [embed], components: [top, staffAction] });
+        await interaction.update({ embeds: [embed], components: [staffAction] });
       } else if (section === 'autokick') {
         const akRows = await buildAutokickRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+        await interaction.update({ embeds: [embed], components: [...akRows] });
       } else if (section === 'levels') {
-        const settingsRows = await buildLevelsSettingsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...settingsRows] });
+        const rows = await buildLevelsGeneralRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
-        await interaction.update({ embeds: [embed], components: [top] });
+        await interaction.update({ embeds: [embed], components: [] });
       }
       return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
+      const page = interaction.customId.split(':')[1];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = page === 'cards' ? await buildLevelsCardsRows(interaction.guild) : await buildLevelsGeneralRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_staff_action') {
@@ -527,14 +542,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const action = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
       if (action === 'settings') {
-        const rows = await buildLevelsSettingsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        const levelsGeneralRows = await buildLevelsGeneralRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       } else if (action === 'rewards') {
         const rows = await buildLevelsRewardsRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
-        const rows = await buildLevelsSettingsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        const levelsGeneralRows = await buildLevelsGeneralRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       }
       return;
     }
@@ -543,8 +558,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enable = interaction.customId === 'levels_enable';
       await updateLevelsConfig(interaction.guild.id, { enabled: enable });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      const levelsGeneralRows = await buildLevelsGeneralRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       return;
     }
 
@@ -553,8 +568,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enabled = !cfg.announce?.levelUp?.enabled;
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), levelUp: { ...(cfg.announce?.levelUp || {}), enabled } } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      const levelsGeneralRows = await buildLevelsGeneralRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       return;
     }
 
@@ -564,8 +579,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getLevelsConfig(interaction.guild.id);
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), levelUp: { ...(cfg.announce?.levelUp || {}), channelId: value } } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      const levelsGeneralRows = await buildLevelsGeneralRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       return;
     }
 
@@ -574,8 +589,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enabled = !cfg.announce?.roleAward?.enabled;
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), roleAward: { ...(cfg.announce?.roleAward || {}), enabled } } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      const levelsGeneralRows = await buildLevelsGeneralRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       return;
     }
 
@@ -585,8 +600,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getLevelsConfig(interaction.guild.id);
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), roleAward: { ...(cfg.announce?.roleAward || {}), channelId: value } } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      const levelsGeneralRows = await buildLevelsGeneralRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       return;
     }
 
