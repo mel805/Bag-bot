@@ -487,7 +487,9 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
     const display = mem ? (mem.nickname || mem.user.username) : `<@${uid}>`;
     const lvl = st.level || 0;
     const xp = formatNum(st.xp || 0);
-    return `${medalFor(rank)} **${display}** • Lvl ${lvl} • ${xp} XP`;
+    const msgs = st.messages || 0;
+    const vmin = Math.floor((st.voiceMsAccum||0)/60000);
+    return `${medalFor(rank)} **${display}** • Lvl ${lvl} • ${xp} XP • Msg ${msgs} • Voc ${vmin}m`;
   }));
   const color = pickThemeColorForGuild(guild);
   const total = entriesSorted.length;
@@ -1736,13 +1738,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const lines = [
           `Niveau: ${lvl} (${stats.xpSinceLevel||0}/${required})`,
           `Dernière récompense: ${roleName}`,
+          `Messages: ${stats.messages||0} • Vocal: ${Math.floor((stats.voiceMsAccum||0)/60000)} min`,
         ];
         const bg = chooseCardBackgroundForMember(member, levels);
         const img = await drawCard(bg, `${name}`, lines, progress, `${Math.round(progress*100)}%`, avatarUrl);
         if (img) {
           try { return await interaction.editReply({ content: '', files: [{ attachment: img, name: 'niveau.png' }] }); } catch (_) {}
         }
-        return await interaction.editReply({ content: `${name} — Niveau ${lvl} (${stats.xpSinceLevel||0}/${required}) • Dernière récompense: ${roleName}` });
+        return await interaction.editReply({ content: `${name} — Niveau ${lvl} (${stats.xpSinceLevel||0}/${required}) • Dernière récompense: ${roleName} • Messages: ${stats.messages||0} • Vocal: ${Math.floor((stats.voiceMsAccum||0)/60000)} min` });
       } catch (e) {
         console.error('/niveau failed:', e);
         try { return await interaction.editReply({ content: 'Erreur lors de l\'affichage du niveau.' }); } catch (_) {}
@@ -1857,3 +1860,81 @@ const CRIME_SUCCESS = ['Coup monté réussi 🕶️','Plan sans faute.','Aucune 
 const CRIME_FAIL = ['Sirènes au loin… fuyez !','Plan compromis.','Informateur douteux.']
 const FISH_SUCCESS = ['Félicitations, vous avez pêché un thon !','Bravo, vous avez pêché un magnifique saumon !','Incroyable, une carpe dorée mord à l\'hameçon !','Quel talent ! Un brochet impressionnant !','Un bar splendide pour le dîner !']
 const FISH_FAIL = ['Aïe… la ligne s\'est emmêlée, rien attrapé.','Juste une vieille botte… pas de chance !','Le poisson s\'est échappé au dernier moment !','Silence radio sous l\'eau… aucun poisson aujourd\'hui.']
+
+client.on(Events.MessageCreate, async (message) => {
+  try {
+    if (!message.guild || message.author.bot) return;
+    const levels = await getLevelsConfig(message.guild.id);
+    if (!levels?.enabled) return;
+    const stats = await getUserStats(message.guild.id, message.author.id);
+    stats.messages = (stats.messages||0) + 1;
+    // XP for text
+    stats.xp = (stats.xp||0) + (levels.xpPerMessage || 10);
+    const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
+    const prevLevel = stats.level || 0;
+    stats.level = norm.level;
+    stats.xpSinceLevel = norm.xpSinceLevel;
+    await setUserStats(message.guild.id, message.author.id, stats);
+    if (stats.level > prevLevel) {
+      const mem = await fetchMember(message.guild, message.author.id);
+      if (mem) {
+        maybeAnnounceLevelUp(message.guild, mem, levels, stats.level);
+        const rid = (levels.rewards || {})[String(stats.level)];
+        if (rid) {
+          try { await mem.roles.add(rid); } catch (_) {}
+          maybeAnnounceRoleAward(message.guild, mem, levels, rid);
+        }
+      }
+    }
+  } catch (_) {}
+});
+
+client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+  try {
+    const guild = newState.guild || oldState.guild;
+    if (!guild) return;
+    const userId = newState.id || oldState.id;
+    const levels = await getLevelsConfig(guild.id);
+    if (!levels?.enabled) return;
+    const stats = await getUserStats(guild.id, userId);
+    const now = Date.now();
+    // on join
+    if (!oldState.channelId && newState.channelId) {
+      stats.voiceJoinedAt = now;
+      await setUserStats(guild.id, userId, stats);
+      return;
+    }
+    // on leave
+    if (oldState.channelId && !newState.channelId) {
+      if (stats.voiceJoinedAt && stats.voiceJoinedAt > 0) {
+        const delta = Math.max(0, now - stats.voiceJoinedAt);
+        stats.voiceMsAccum = (stats.voiceMsAccum||0) + delta;
+        stats.voiceJoinedAt = 0;
+        // XP for voice
+        const minutes = Math.floor(delta / 60000);
+        const xpAdd = minutes * (levels.xpPerVoiceMinute || 5);
+        if (xpAdd > 0) {
+          stats.xp = (stats.xp||0) + xpAdd;
+          const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
+          const prevLevel = stats.level || 0;
+          stats.level = norm.level;
+          stats.xpSinceLevel = norm.xpSinceLevel;
+          await setUserStats(guild.id, userId, stats);
+          if (stats.level > prevLevel) {
+            const mem = await fetchMember(guild, userId);
+            if (mem) {
+              maybeAnnounceLevelUp(guild, mem, levels, stats.level);
+              const rid = (levels.rewards || {})[String(stats.level)];
+              if (rid) {
+                try { await mem.roles.add(rid); } catch (_) {}
+                maybeAnnounceRoleAward(guild, mem, levels, rid);
+              }
+            }
+          }
+          return;
+        }
+        await setUserStats(guild.id, userId, stats);
+      }
+    }
+  } catch (_) {}
+});
