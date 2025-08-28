@@ -391,14 +391,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const barLen = 20;
       const filled = Math.round(progress * barLen);
       const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
+      const targetMember = interaction.guild.members.cache.get(targetUser.id) || await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+      const bg = chooseCardBackgroundForMember(targetMember, levels);
       const embed = new EmbedBuilder()
-        .setColor(THEME_COLOR_ACCENT)
+        .setColor(pickThemeColorForGuild(interaction.guild))
         .setTitle(`Niveau de ${targetUser.username}`)
         .addFields(
           { name: 'Niveau', value: String(stats.level), inline: true },
           { name: 'XP total', value: String(stats.xp), inline: true },
           { name: 'Progression', value: `${bar} ${Math.round(progress * 100)}%\n${stats.xpSinceLevel}/${needed} XP vers le niveau ${stats.level + 1}` }
-        );
+        )
+        .setImage(bg)
+        .setTimestamp(new Date());
       const avatar = targetUser.displayAvatarURL?.() || null;
       if (avatar) embed.setThumbnail(avatar);
       return interaction.reply({ embeds: [embed], ephemeral: false });
