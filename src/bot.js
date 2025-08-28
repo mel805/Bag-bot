@@ -1409,11 +1409,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       let title;
       let descLine;
+      let targetField = null;
+      const hasTarget = targetUserOptional && targetUserOptional.id !== userId;
+      let targetEconNext = null;
+      let targetXpDelta = 0;
+      let targetMoneyDelta = 0;
+      let targetKarmaDelta = 0;
       if (!isSuccess) {
         const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
         next.amount = Math.max(0, next.amount - lose);
         if (conf.karma === 'charm') next.charm = Math.max(0, next.charm - Math.max(0, conf.failKarmaDelta || 0));
         else if (conf.karma === 'perversion') next.perversion = Math.max(0, next.perversion - Math.max(0, conf.failKarmaDelta || 0));
+        if (hasTarget) {
+          const tgt = await getEconomyUser(interaction.guild.id, targetUserOptional.id);
+          targetEconNext = { amount: tgt.amount||0, charm: tgt.charm||0, perversion: tgt.perversion||0, cooldowns: { ...(tgt.cooldowns||{}) } };
+          const tLose = Math.floor(lose / 2);
+          targetEconNext.amount = Math.max(0, targetEconNext.amount - tLose);
+          targetMoneyDelta = -tLose;
+          const tK = Math.max(1, Math.ceil((conf.failKarmaDelta || conf.karmaDelta || 1)/2));
+          if (conf.karma === 'charm') { targetEconNext.charm = Math.max(0, targetEconNext.charm - tK); targetKarmaDelta = -tK; }
+          else if (conf.karma === 'perversion') { targetEconNext.perversion = Math.max(0, targetEconNext.perversion - tK); targetKarmaDelta = -tK; }
+          targetField = `Cible ${targetUserOptional}: ${tLose>0?`-${tLose} ${eco.currency?.name || 'BAG$'}`:'—'} • Karma ${conf.karma === 'perversion' ? '😈' : (conf.karma === 'none' ? '—' : '🫦')} ${targetKarmaDelta}`;
+        }
         let failText = 'Action manquée… Réessayez plus tard.';
         if (key === 'fish') failText = pickRandom(FISH_FAIL);
         else if (key === 'work') failText = pickRandom(WORK_FAIL);
@@ -1431,6 +1448,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         next.amount = next.amount + gain;
         if (conf.karma === 'charm') next.charm = next.charm + (conf.karmaDelta||0);
         else if (conf.karma === 'perversion') next.perversion = next.perversion + (conf.karmaDelta||0);
+        if (hasTarget) {
+          const tgt = await getEconomyUser(interaction.guild.id, targetUserOptional.id);
+          targetEconNext = { amount: tgt.amount||0, charm: tgt.charm||0, perversion: tgt.perversion||0, cooldowns: { ...(tgt.cooldowns||{}) } };
+          const tK = Math.max(1, Math.ceil((conf.karmaDelta || 1)/2));
+          if (conf.karma === 'charm') { targetEconNext.charm = (targetEconNext.charm||0) + tK; targetKarmaDelta = tK; }
+          else if (conf.karma === 'perversion') { targetEconNext.perversion = (targetEconNext.perversion||0) + tK; targetKarmaDelta = tK; }
+          // Levels XP for target (small bonus)
+          const levels = await getLevelsConfig(interaction.guild.id);
+          if (levels?.enabled) {
+            const xpAdd = Math.max(1, Math.round((levels.xpPerMessage || 10) / 2));
+            const tStats = await getUserStats(interaction.guild.id, targetUserOptional.id);
+            tStats.xp = (tStats.xp||0) + xpAdd;
+            const norm = xpToLevel(tStats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
+            tStats.level = norm.level;
+            tStats.xpSinceLevel = norm.xpSinceLevel;
+            await setUserStats(interaction.guild.id, targetUserOptional.id, tStats);
+            targetXpDelta = xpAdd;
+          }
+          targetField = `Cible ${targetUserOptional}: XP ${targetXpDelta||0} • Karma ${conf.karma === 'perversion' ? '😈' : (conf.karma === 'none' ? '—' : '🫦')} ${targetKarmaDelta}`;
+        }
         const icon = conf.karma === 'perversion' ? '😈' : '🫦';
         title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
         let line;
@@ -1454,14 +1491,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `${isSuccess?'+':'-'}${Math.max(0, isSuccess?(conf.karmaDelta||0):(conf.failKarmaDelta||0))}`}`.trim(), inline: true },
           { name: 'Solde', value: String(next.amount), inline: true },
           { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
+          ...(targetField ? [{ name: 'Effet cible', value: targetField, inline: false }] : []),
         ],
       });
 
       // Persist state, then edit reply
       try { await setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }); } catch (_) {}
+      if (targetEconNext) { setEconomyUser(interaction.guild.id, targetUserOptional.id, targetEconNext).catch(()=>{}); }
       try { return await interaction.editReply({ embeds: [embed], content: '' }); } catch (e) {
         console.error('[action] editReply failed', e);
-        return await interaction.editReply({ content: `${title}\n${descLine}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s` });
+        return await interaction.editReply({ content: `${title}\n${descLine}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s${targetField?`\n${targetField}`:''}` });
       }
     }
 

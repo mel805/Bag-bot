@@ -4,7 +4,3 @@
 
 Login succeeded
 Logged in as Bag bot#8659
-[action] massage start
-(node:127761) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
-[action] crime start
