@@ -524,15 +524,15 @@ async function buildEconomySettingsRows(guild) {
 }
 
 function actionKeyToLabel(key) {
-  const map = { steal: 'voler', kiss: 'embrasser', flirt: 'flirter', seduce: 'séduire', fuck: 'fuck', massage: 'masser', dance: 'danser' };
+  const map = { steal: 'voler', kiss: 'embrasser', flirt: 'flirter', seduce: 'séduire', fuck: 'fuck', massage: 'masser', dance: 'danser', crime: 'crime' };
   return map[key] || key;
 }
 
 async function buildEconomyActionsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
-  const conf = eco.actions?.config || {};
-  const options = Object.keys(conf).map((k) => {
-    const c = conf[k] || {};
+  const enabled = Array.isArray(eco.actions?.enabled) ? eco.actions.enabled : Object.keys(eco.actions?.config || {});
+  const options = enabled.map((k) => {
+    const c = (eco.actions?.config || {})[k] || {};
     const karma = c.karma === 'perversion' ? '😈' : '🫦';
     return { label: `${actionKeyToLabel(k)} • ${karma} • ${c.moneyMin||0}-${c.moneyMax||0} • ${c.cooldown||0}s`, value: k };
   });
@@ -1454,6 +1454,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
       const row = new ActionRowBuilder().addComponents(sectionSelect);
       return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'crime') {
+      return runEcoAction(interaction, 'crime');
     }
   } catch (err) {
     console.error('Interaction handler error:', err);

@@ -70,6 +70,7 @@ const commands = [
       .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
     )
     .toJSON(),
+  new SlashCommandBuilder().setName('crime').setDescription('Commettre un crime… au risque 😈').toJSON(),
 ];
 
 async function main() {

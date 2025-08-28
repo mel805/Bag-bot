@@ -59,32 +59,7 @@ async function getGuildConfig(guildId) {
       },
     };
   }
-  if (!cfg.guilds[guildId].economy) {
-    cfg.guilds[guildId].economy = {
-      currency: { symbol: '🪙', name: 'BAG$' },
-      settings: {
-        baseWorkReward: 50,
-        baseFishReward: 30,
-        cooldowns: { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120 },
-      },
-      actions: {
-        enabled: ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance'],
-        config: {
-          steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800 },
-          kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
-          flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
-          seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120 },
-          fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600 },
-          massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
-          dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
-        },
-        karma: { good: ['kiss','flirt','seduce','massage','dance'], bad: ['steal','fuck'] },
-      },
-      shop: { items: [], roles: [] },
-      suites: { durations: { day: 1, week: 7, month: 30 }, categoryId: '' },
-      balances: {},
-    };
-  }
+  ensureEconomyShape(cfg.guilds[guildId]);
   return cfg.guilds[guildId];
 }
 
@@ -200,6 +175,7 @@ async function getLevelsConfig(guildId) {
 
 async function getEconomyConfig(guildId) {
   const g = await getGuildConfig(guildId);
+  ensureEconomyShape(g);
   return g.economy;
 }
 
@@ -265,6 +241,47 @@ async function setEconomyUser(guildId, userId, state) {
   cfg.guilds[guildId].economy.balances[userId] = state;
   await writeConfig(cfg);
 }
+
+function ensureEconomyShape(g) {
+  if (!g.economy || typeof g.economy !== 'object') {
+    g.economy = {};
+  }
+  const e = g.economy;
+  if (!e.currency || typeof e.currency !== 'object') e.currency = { symbol: '🪙', name: 'BAG$' };
+  if (!e.settings || typeof e.settings !== 'object') e.settings = {};
+  if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
+  if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
+  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120 };
+  if (!e.actions || typeof e.actions !== 'object') e.actions = {};
+  if (!Array.isArray(e.actions.enabled)) e.actions.enabled = ['steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
+  if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
+  const defaults = {
+    steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800 },
+    kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
+    flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
+    seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120 },
+    fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600 },
+    massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
+    dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
+    crime: { moneyMin: 30, moneyMax: 80, karma: 'perversion', karmaDelta: 4, cooldown: 1800 },
+  };
+  for (const [k, d] of Object.entries(defaults)) {
+    if (!e.actions.config[k] || typeof e.actions.config[k] !== 'object') e.actions.config[k] = { ...d };
+    else {
+      const c = e.actions.config[k];
+      if (typeof c.moneyMin !== 'number') c.moneyMin = d.moneyMin;
+      if (typeof c.moneyMax !== 'number') c.moneyMax = d.moneyMax;
+      if (c.karma !== 'charm' && c.karma !== 'perversion') c.karma = d.karma;
+      if (typeof c.karmaDelta !== 'number') c.karmaDelta = d.karmaDelta;
+      if (typeof c.cooldown !== 'number') c.cooldown = d.cooldown;
+    }
+  }
+  if (!e.shop || typeof e.shop !== 'object') e.shop = { items: [], roles: [] };
+  if (!e.suites || typeof e.suites !== 'object') e.suites = { durations: { day: 1, week: 7, month: 30 }, categoryId: '' };
+  if (!e.balances || typeof e.balances !== 'object') e.balances = {};
+}
+
+// Ensure economy shape on getGuildConfig and getEconomyConfig
 
 module.exports = {
   ensureStorageExists,
