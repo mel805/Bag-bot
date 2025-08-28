@@ -1389,6 +1389,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Economy action executor (hoisted)
     async function runEcoAction(interaction, key, targetUserOptional) {
+      try { console.log('[action]', key, 'start'); } catch (_) {}
       const eco = await getEconomyConfig(interaction.guild.id);
       const userId = interaction.user.id;
       const u = await getEconomyUser(interaction.guild.id, userId);
@@ -1398,20 +1399,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
 
       if (!interaction.deferred && !interaction.replied) {
-        try { await interaction.deferReply({ ephemeral: false }); } catch (_) {}
+        try { await interaction.deferReply({ ephemeral: false }); console.log('[action]', key, 'deferred'); } catch (_) {}
       }
 
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
 
+      // Prepare new state but do not persist yet
+      const next = { amount: u.amount||0, charm: u.charm||0, perversion: u.perversion||0, cooldowns: { ...(u.cooldowns||{}) } };
+      next.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
+
+      let title, desc, embed;
       if (!isSuccess) {
         const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
-        u.amount = Math.max(0, (u.amount||0) - lose);
-        if (conf.karma === 'charm') u.charm = Math.max(0, (u.charm||0) - Math.max(0, conf.failKarmaDelta || 0));
-        else if (conf.karma === 'perversion') u.perversion = Math.max(0, (u.perversion||0) - Math.max(0, conf.failKarmaDelta || 0));
-        if (!u.cooldowns) u.cooldowns={};
-        u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
-        await setEconomyUser(interaction.guild.id, userId, u);
+        next.amount = Math.max(0, next.amount - lose);
+        if (conf.karma === 'charm') next.charm = Math.max(0, next.charm - Math.max(0, conf.failKarmaDelta || 0));
+        else if (conf.karma === 'perversion') next.perversion = Math.max(0, next.perversion - Math.max(0, conf.failKarmaDelta || 0));
         let failText = 'Action manquée… Réessayez plus tard.';
         if (key === 'fish') failText = pickRandom(FISH_FAIL);
         else if (key === 'work') failText = pickRandom(WORK_FAIL);
@@ -1422,54 +1425,56 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else if (key === 'massage') failText = pickRandom(MASSAGE_FAIL);
         else if (key === 'dance') failText = pickRandom(DANCE_FAIL);
         else if (key === 'crime') failText = pickRandom(CRIME_FAIL);
-        const embed = buildEcoEmbed({
-          title: `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`,
-          description: `${failText}${lose>0?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`,
+        title = `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
+        desc = `${failText}${(lose>0)?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`;
+        embed = buildEcoEmbed({
+          title,
+          description: desc,
           fields: [
             { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `-${Math.max(0, conf.failKarmaDelta||0)}`}`.trim(), inline: true },
-            { name: 'Solde', value: String(u.amount), inline: true },
+            { name: 'Solde', value: String(next.amount), inline: true },
             { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
           ],
           color: 0xff5252,
         });
-        try { return await interaction.editReply({ embeds: [embed] }); } catch (_) {
-          return await interaction.editReply({ content: `${failText}${lose>0?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}` }).catch(()=>{});
-        }
+      } else {
+        const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
+        next.amount = next.amount + gain;
+        if (conf.karma === 'charm') next.charm = next.charm + (conf.karmaDelta||0);
+        else if (conf.karma === 'perversion') next.perversion = next.perversion + (conf.karmaDelta||0);
+        const icon = conf.karma === 'perversion' ? '😈' : '🫦';
+        title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
+        if (key === 'fish') desc = `${pickRandom(FISH_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'work') desc = `${pickRandom(WORK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'kiss') desc = `${pickRandom(KISS_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'flirt') desc = `${pickRandom(FLIRT_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'seduce') desc = `${pickRandom(SEDUCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'fuck') desc = `${pickRandom(FUCK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'massage') desc = `${pickRandom(MASSAGE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'dance') desc = `${pickRandom(DANCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else if (key === 'crime') desc = `${pickRandom(CRIME_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
+        else desc = `+${gain} ${eco.currency?.name || 'BAG$'}`;
+        embed = buildEcoEmbed({
+          title,
+          description: desc,
+          fields: [
+            { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}`.trim(), inline: true },
+            { name: 'Solde', value: String(next.amount), inline: true },
+            { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
+          ],
+        });
       }
 
-      const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
-      u.amount = (u.amount||0) + gain;
-      if (conf.karma === 'charm') u.charm = (u.charm||0) + (conf.karmaDelta||0);
-      else if (conf.karma === 'perversion') u.perversion = (u.perversion||0) + (conf.karmaDelta||0);
-      if (!u.cooldowns) u.cooldowns={};
-      u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
-      await setEconomyUser(interaction.guild.id, userId, u);
-
-      const icon = conf.karma === 'perversion' ? '😈' : '🫦';
-      const title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
-      let desc;
-      if (key === 'fish') desc = `${pickRandom(FISH_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'work') desc = `${pickRandom(WORK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'kiss') desc = `${pickRandom(KISS_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'flirt') desc = `${pickRandom(FLIRT_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'seduce') desc = `${pickRandom(SEDUCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'fuck') desc = `${pickRandom(FUCK_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'massage') desc = `${pickRandom(MASSAGE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'dance') desc = `${pickRandom(DANCE_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else if (key === 'crime') desc = `${pickRandom(CRIME_SUCCESS)}\n+${gain} ${eco.currency?.name || 'BAG$'}`;
-      else desc = `+${gain} ${eco.currency?.name || 'BAG$'}`;
-      const embed = buildEcoEmbed({
-        title,
-        description: desc,
-        fields: [
-          { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `+${conf.karmaDelta||0}`}`.trim(), inline: true },
-          { name: 'Solde', value: String(u.amount), inline: true },
-          { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
-        ],
-      });
-      try { return await interaction.editReply({ embeds: [embed] }); } catch (_) {
-        return await interaction.editReply({ content: `${desc} • Solde: ${u.amount}` }).catch(()=>{});
+      try { await interaction.editReply({ embeds: [embed] }); console.log('[action]', key, 'replied'); }
+      catch (e) {
+        try { await interaction.editReply({ content: desc || title || 'Action effectuée.' }); console.log('[action]', key, 'text replied'); }
+        catch (_) { try { await interaction.followUp({ content: desc || title || 'Action effectuée.', ephemeral: true }); } catch (_) {} }
       }
+
+      try {
+        await setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns });
+      } catch (e) { console.error('[action] persist failed', e); }
+      return;
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
