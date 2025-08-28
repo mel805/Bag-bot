@@ -1396,10 +1396,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const now = Date.now();
       const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
-      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
+      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.` });
 
       // Defer first, then edit with final result
-      try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
+      try { await interaction.deferReply(); } catch (_) {}
 
       const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
@@ -1706,7 +1706,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
       try {
-        await interaction.reply({ content: '⏳ Génération de la carte…', ephemeral: true });
+        await interaction.reply({ content: '⏳ Génération de la carte…' });
       } catch (_) {}
       try {
         const target = interaction.options.getUser('membre') || interaction.user;
