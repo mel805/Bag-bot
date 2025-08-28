@@ -240,7 +240,11 @@ async function getEconomyUser(guildId, userId) {
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
   const eco = cfg.guilds[guildId].economy;
-  const u = eco.balances?.[userId] || { amount: 0, cooldowns: {} };
+  const u = eco.balances?.[userId] || { amount: 0, cooldowns: {}, charm: 0, perversion: 0 };
+  if (typeof u.amount !== 'number') u.amount = 0;
+  if (!u.cooldowns || typeof u.cooldowns !== 'object') u.cooldowns = {};
+  if (typeof u.charm !== 'number') u.charm = 0;
+  if (typeof u.perversion !== 'number') u.perversion = 0;
   return u;
 }
 

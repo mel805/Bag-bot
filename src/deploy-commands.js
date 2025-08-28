@@ -38,21 +38,17 @@ const commands = [
     .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
     .addIntegerOption(o => o.setName('valeur').setDescription('Montant XP / Niveau selon action').setRequired(true))
     .toJSON(),
-  new SlashCommandBuilder()
-    .setName('eco')
-    .setDescription('Économie')
-    .addSubcommand(sc => sc.setName('solde').setDescription('Voir votre solde'))
-    .addSubcommand(sc => sc.setName('travailler').setDescription('Gagner de l\'argent en travaillant'))
-    .addSubcommand(sc => sc.setName('pecher').setDescription('Pêcher pour gagner de l\'argent'))
-    .addSubcommand(sc => sc.setName('donner').setDescription('Donner de l\'argent à un membre').addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addIntegerOption(o=>o.setName('montant').setDescription('Montant').setRequired(true).setMinValue(1)))
-    .addSubcommand(sc => sc.setName('voler').setDescription('Tenter de voler un membre').addUserOption(o=>o.setName('membre').setDescription('Cible').setRequired(true)))
-    .addSubcommand(sc => sc.setName('embrasser').setDescription('Embrasser pour gagner du charme'))
-    .addSubcommand(sc => sc.setName('flirter').setDescription('Flirter pour gagner du charme'))
-    .addSubcommand(sc => sc.setName('seduire').setDescription('Séduire pour gagner du charme'))
-    .addSubcommand(sc => sc.setName('fuck').setDescription('Action perverse 😈'))
-    .addSubcommand(sc => sc.setName('masser').setDescription('Masser pour gagner du charme'))
-    .addSubcommand(sc => sc.setName('danser').setDescription('Danser pour gagner du charme'))
-    .toJSON(),
+  new SlashCommandBuilder().setName('solde').setDescription('Voir votre solde').toJSON(),
+  new SlashCommandBuilder().setName('travailler').setDescription('Gagner de l\'argent en travaillant').toJSON(),
+  new SlashCommandBuilder().setName('pêcher').setDescription('Pêcher pour gagner de l\'argent').toJSON(),
+  new SlashCommandBuilder().setName('donner').setDescription('Donner de l\'argent à un membre').addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addIntegerOption(o=>o.setName('montant').setDescription('Montant').setRequired(true).setMinValue(1)).toJSON(),
+  new SlashCommandBuilder().setName('voler').setDescription('Tenter de voler un membre').addUserOption(o=>o.setName('membre').setDescription('Cible').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('embrasser').setDescription('Embrasser pour gagner du charme').toJSON(),
+  new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').toJSON(),
+  new SlashCommandBuilder().setName('séduire').setDescription('Séduire pour gagner du charme').toJSON(),
+  new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').toJSON(),
+  new SlashCommandBuilder().setName('masser').setDescription('Masser pour gagner du charme').toJSON(),
+  new SlashCommandBuilder().setName('danser').setDescription('Danser pour gagner du charme').toJSON(),
   new SlashCommandBuilder()
     .setName('boutique')
     .setDescription('Consulter la boutique et acheter')

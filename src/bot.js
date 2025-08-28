@@ -235,8 +235,8 @@ async function buildLevelsCardsRows(guild) {
     new ButtonBuilder().setCustomId('levels_page:general').setLabel('Réglages').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Primary).setDisabled(true)
   );
-  const femaleRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_female_roles').setPlaceholder('Rôles “femme”… (multi)').setMinValues(0).setMaxValues(25);
-  const certifiedRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_certified_roles').setPlaceholder('Rôles “certifié”… (multi)').setMinValues(0).setMaxValues(25);
+  const femaleRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_female_roles').setPlaceholder('Rôles "femme"... (multi)').setMinValues(0).setMaxValues(25);
+  const certifiedRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_certified_roles').setPlaceholder('Rôles "certifié"... (multi)').setMinValues(0).setMaxValues(25);
   const rowFemale = new ActionRowBuilder().addComponents(femaleRoles);
   const rowCert = new ActionRowBuilder().addComponents(certifiedRoles);
   const bgDefaultBtn = new ButtonBuilder().setCustomId('levels_cards_bg_default').setLabel('BG par défaut').setStyle(ButtonStyle.Primary);
@@ -1271,6 +1271,54 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (sub === 'acheter') {
         return interaction.reply({ content: 'Achat: à implémenter (après configuration de la boutique).', ephemeral: true });
       }
+    }
+
+    // French economy top-level commands
+    if (interaction.isChatInputCommand() && interaction.commandName === 'solde') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      return interaction.reply({ content: `Votre solde: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}` });
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'travailler') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const userId = interaction.user.id;
+      const u = await getEconomyUser(interaction.guild.id, userId);
+      const now = Date.now();
+      const remain = Math.max(0, (u.cooldowns?.work||0)-now);
+      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de retravailler.`, ephemeral: true });
+      const gain = Math.max(0, eco.settings?.baseWorkReward || 50);
+      u.amount = (u.amount||0) + gain;
+      if (!u.cooldowns) u.cooldowns={};
+      u.cooldowns.work = now + (Math.max(0, eco.settings?.cooldowns?.work || 600))*1000;
+      await setEconomyUser(interaction.guild.id, userId, u);
+      return interaction.reply({ content: `Vous avez travaillé et gagné ${gain} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+    }
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'pêcher' || interaction.commandName === 'pecher')) {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const userId = interaction.user.id;
+      const u = await getEconomyUser(interaction.guild.id, userId);
+      const now = Date.now();
+      const remain = Math.max(0, (u.cooldowns?.fish||0)-now);
+      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de repêcher.`, ephemeral: true });
+      const gain = Math.max(0, eco.settings?.baseFishReward || 30);
+      u.amount = (u.amount||0) + gain;
+      if (!u.cooldowns) u.cooldowns={};
+      u.cooldowns.fish = now + (Math.max(0, eco.settings?.cooldowns?.fish || 300))*1000;
+      await setEconomyUser(interaction.guild.id, userId, u);
+      return interaction.reply({ content: `Vous avez pêché et gagné ${gain} ${eco.currency?.name || 'BAG$'}. Solde: ${u.amount}` });
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'donner') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const cible = interaction.options.getUser('membre', true);
+      const montant = interaction.options.getInteger('montant', true);
+      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      if ((u.amount||0) < montant) return interaction.reply({ content: `Solde insuffisant.`, ephemeral: true });
+      u.amount = (u.amount||0) - montant;
+      await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+      const tu = await getEconomyUser(interaction.guild.id, cible.id);
+      tu.amount = (tu.amount||0) + montant;
+      await setEconomyUser(interaction.guild.id, cible.id, tu);
+      return interaction.reply({ content: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}. Votre solde: ${u.amount}` });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
