@@ -1333,13 +1333,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.`, ephemeral: true });
 
-      const successRate = key === 'fish' ? 0.65 : 0.8;
+      const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
       const isSuccess = Math.random() < successRate;
 
       if (!u.cooldowns) u.cooldowns={};
       u.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
 
       if (!isSuccess) {
+        // Failure: deduct money and karma
+        const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
+        u.amount = Math.max(0, (u.amount||0) - lose);
+        if (conf.karma === 'charm') u.charm = Math.max(0, (u.charm||0) - Math.max(0, conf.failKarmaDelta || 0));
+        else if (conf.karma === 'perversion') u.perversion = Math.max(0, (u.perversion||0) - Math.max(0, conf.failKarmaDelta || 0));
         await setEconomyUser(interaction.guild.id, userId, u);
         let failText = 'Action manquée… Réessayez plus tard.';
         if (key === 'fish') failText = pickRandom(FISH_FAIL);
@@ -1353,8 +1358,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else if (key === 'crime') failText = pickRandom(CRIME_FAIL);
         const embed = buildEcoEmbed({
           title: `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`,
-          description: failText,
-          fields: [ { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true } ],
+          description: `${failText}${lose>0?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`,
+          fields: [
+            { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `-${Math.max(0, conf.failKarmaDelta||0)}`}`.trim(), inline: true },
+            { name: 'Solde', value: String(u.amount), inline: true },
+            { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
+          ],
           color: 0xff5252,
         });
         return interaction.reply({ embeds: [embed] });

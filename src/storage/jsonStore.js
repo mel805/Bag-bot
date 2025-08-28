@@ -260,17 +260,17 @@ function ensureEconomyShape(g) {
   }
   if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
   const defaults = {
-    work: { moneyMin: 40, moneyMax: 90, karma: 'none', karmaDelta: 0, cooldown: 600 },
-    fish: { moneyMin: 20, moneyMax: 60, karma: 'none', karmaDelta: 0, cooldown: 300 },
-    give: { moneyMin: 0, moneyMax: 0, karma: 'charm', karmaDelta: 1, cooldown: 0 },
-    steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800 },
-    kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
-    flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60 },
-    seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120 },
-    fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600 },
-    massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
-    dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120 },
-    crime: { moneyMin: 30, moneyMax: 80, karma: 'perversion', karmaDelta: 4, cooldown: 1800 },
+    work: { moneyMin: 40, moneyMax: 90, karma: 'none', karmaDelta: 0, cooldown: 600, successRate: 0.9, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 0 },
+    fish: { moneyMin: 20, moneyMax: 60, karma: 'none', karmaDelta: 0, cooldown: 300, successRate: 0.65, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 0 },
+    give: { moneyMin: 0, moneyMax: 0, karma: 'charm', karmaDelta: 1, cooldown: 0, successRate: 1.0, failMoneyMin: 0, failMoneyMax: 0, failKarmaDelta: 0 },
+    steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800, successRate: 0.5, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 2 },
+    kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2 },
+    flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2 },
+    seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 3 },
+    fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 5 },
+    massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1 },
+    dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1 },
+    crime: { moneyMin: 30, moneyMax: 80, karma: 'perversion', karmaDelta: 4, cooldown: 1800, successRate: 0.6, failMoneyMin: 15, failMoneyMax: 30, failKarmaDelta: 4 },
   };
   for (const [k, d] of Object.entries(defaults)) {
     if (!e.actions.config[k] || typeof e.actions.config[k] !== 'object') e.actions.config[k] = { ...d };
@@ -281,6 +281,10 @@ function ensureEconomyShape(g) {
       if (c.karma !== 'charm' && c.karma !== 'perversion' && c.karma !== 'none') c.karma = d.karma;
       if (typeof c.karmaDelta !== 'number') c.karmaDelta = d.karmaDelta;
       if (typeof c.cooldown !== 'number') c.cooldown = d.cooldown;
+      if (typeof c.successRate !== 'number') c.successRate = d.successRate;
+      if (typeof c.failMoneyMin !== 'number') c.failMoneyMin = d.failMoneyMin;
+      if (typeof c.failMoneyMax !== 'number') c.failMoneyMax = d.failMoneyMax;
+      if (typeof c.failKarmaDelta !== 'number') c.failKarmaDelta = d.failKarmaDelta;
     }
   }
   if (!e.shop || typeof e.shop !== 'object') e.shop = { items: [], roles: [] };
