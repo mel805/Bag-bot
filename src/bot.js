@@ -284,18 +284,26 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
     return `${medalFor(rank)} **${display}** • Lvl ${lvl} • ${xp} XP`;
   }));
   const color = pickThemeColorForGuild(guild);
+  const total = entriesSorted.length;
   const embed = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: `${guild.name} • Classement des niveaux`, iconURL: guild.iconURL?.() || undefined })
     .setDescription(lines.join('\n') || '—')
     .setThumbnail(THEME_IMAGE)
-    .setFooter({ text: `Boy and Girls (BAG) • Premium Leaderboard • ${offset + 1}-${Math.min(entriesSorted.length, offset + limit)} sur ${entriesSorted.length}` })
+    .setFooter({ text: `Boy and Girls (BAG) • ${offset + 1}-${Math.min(total, offset + limit)} sur ${total}` })
     .setTimestamp(new Date());
+
   const components = [];
-  if (offset + limit < entriesSorted.length) {
-    const moreBtn = new ButtonBuilder().setCustomId(`top_niveau_more:${offset + limit}:${limit}`).setLabel('Voir plus').setStyle(ButtonStyle.Primary);
-    components.push(new ActionRowBuilder().addComponents(moreBtn));
-  }
+  const row = new ActionRowBuilder();
+  const hasPrev = offset > 0;
+  const hasNext = offset + limit < total;
+  const prevOffset = Math.max(0, offset - limit);
+  const nextOffset = offset + limit;
+  const prevBtn = new ButtonBuilder().setCustomId(`top_niveau_page:${prevOffset}:${limit}`).setLabel('⟨ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(!hasPrev);
+  const nextBtn = new ButtonBuilder().setCustomId(`top_niveau_page:${nextOffset}:${limit}`).setLabel('Suivant ⟩').setStyle(ButtonStyle.Primary).setDisabled(!hasNext);
+  row.addComponents(prevBtn, nextBtn);
+  components.push(row);
+
   return { embed, components };
 }
 
@@ -798,6 +806,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('top_niveau_more:')) {
+      const parts = interaction.customId.split(':');
+      const offset = Number(parts[1]) || 0;
+      const limit = Number(parts[2]) || 10;
+      const levels = await getLevelsConfig(interaction.guild.id);
+      const entries = Object.entries(levels.users || {});
+      entries.sort((a, b) => {
+        const ua = a[1], ub = b[1];
+        if ((ub.level || 0) !== (ua.level || 0)) return (ub.level || 0) - (ua.level || 0);
+        return (ub.xp || 0) - (ua.xp || 0);
+      });
+      const { embed, components } = await buildTopNiveauEmbed(interaction.guild, entries, offset, Math.min(25, Math.max(1, limit)));
+      return interaction.update({ embeds: [embed], components });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('top_niveau_page:')) {
       const parts = interaction.customId.split(':');
       const offset = Number(parts[1]) || 0;
       const limit = Number(parts[2]) || 10;
