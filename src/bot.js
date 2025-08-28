@@ -551,23 +551,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_text_modal') {
       const v = Number(interaction.fields.getTextInputValue('amount'));
       if (!Number.isFinite(v) || v < 0) return interaction.reply({ content: 'Valeur invalide.', ephemeral: true });
+      await interaction.deferReply({ ephemeral: true });
       await updateLevelsConfig(interaction.guild.id, { xpPerMessage: Math.round(v) });
-      try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
-      return;
+      return interaction.editReply({ embeds: [embed], components: [...rows] });
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_voice_modal') {
       const v = Number(interaction.fields.getTextInputValue('amount'));
       if (!Number.isFinite(v) || v < 0) return interaction.reply({ content: 'Valeur invalide.', ephemeral: true });
+      await interaction.deferReply({ ephemeral: true });
       await updateLevelsConfig(interaction.guild.id, { xpPerVoiceMinute: Math.round(v) });
-      try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
-      return;
+      return interaction.editReply({ embeds: [embed], components: [...rows] });
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'levels_curve_modal') {
@@ -576,6 +574,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(factor) || factor <= 0) {
         return interaction.reply({ content: 'Valeurs invalides.', ephemeral: true });
       }
+      await interaction.deferReply({ ephemeral: true });
       // Capture previous users snapshot to preserve current levels
       const prevCfg = await getLevelsConfig(interaction.guild.id);
       const prevUsers = { ...(prevCfg.users || {}) };
@@ -603,11 +602,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           }
         }
       }
-      try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLevelsSettingsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
-      return;
+      return interaction.editReply({ embeds: [embed], components: [...rows] });
     }
 
     if (interaction.isRoleSelectMenu() && interaction.customId === 'levels_reward_add_role') {
