@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats } = require('./storage/jsonStore');
 require('dotenv').config();
 
@@ -204,8 +204,8 @@ async function buildLevelsSettingsRows(guild) {
 
   const channels = (guild.channels.cache.filter(ch => ch.isTextBased() && ch.viewable).map(ch => ({ label: ch.name.slice(0, 100), value: ch.id })) || []).slice(0, 25);
   const fallback = [{ label: 'Aucun salon', value: 'none' }];
-  const levelUpChannel = new StringSelectMenuBuilder().setCustomId('levels_announce_level_channel').setPlaceholder('Salon annonces de niveau…').addOptions(...(channels.length ? channels : fallback));
-  const roleAwardChannel = new StringSelectMenuBuilder().setCustomId('levels_announce_role_channel').setPlaceholder('Salon annonces de rôle…').addOptions(...(channels.length ? channels : fallback));
+  const levelUpChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_level_channel').setPlaceholder('Salon annonces de niveau…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.Announcement);
+  const roleAwardChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_role_channel').setPlaceholder('Salon annonces de rôle…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.Announcement);
 
   return [
     new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextBtn, xpVoiceBtn, curveBtn),
@@ -497,22 +497,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isStringSelectMenu() && interaction.customId === 'levels_announce_level_channel') {
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'levels_announce_level_channel') {
       const value = interaction.values[0];
       if (value === 'none') return interaction.deferUpdate();
       const cfg = await getLevelsConfig(interaction.guild.id);
       await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), levelUp: { ...(cfg.announce?.levelUp || {}), channelId: value } } });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
-      const rows = await buildLevelsSettingsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...rows] });
-      return;
-    }
-
-    if (interaction.isButton() && interaction.customId === 'levels_announce_role_toggle') {
-      const cfg = await getLevelsConfig(interaction.guild.id);
-      const enabled = !cfg.announce?.roleAward?.enabled;
-      await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), roleAward: { ...(cfg.announce?.roleAward || {}), enabled } } });
       const embed = await buildConfigEmbed(interaction.guild);
       const top = buildTopSectionRow();
       const rows = await buildLevelsSettingsRows(interaction.guild);
