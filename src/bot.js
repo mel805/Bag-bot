@@ -1545,21 +1545,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
             { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
           ],
         });
-        const me = interaction.guild?.members?.me;
-        const canEmbed = interaction.channel?.permissionsFor?.(me)?.has(PermissionsBitField.Flags.EmbedLinks) ?? false;
-        if (canEmbed) {
-          return await interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-        // Fallback: DM the embed to the user
+        // Try DM first (avoid channel permission constraints)
+        let dmOk = false;
         try {
           await interaction.user.send({ embeds: [embed] });
-          return await interaction.reply({ content: 'Je t\'ai envoyé ton récap économique en message privé (embeds). Donne la permission "Intégrer des liens" au bot pour l\'afficher ici.', ephemeral: true });
-        } catch (_) {
-          return await interaction.reply({ content: 'Impossible d\'envoyer un embed (permission manquante) ou DM bloqué. Voici un résumé: \n' + `Argent: ${u.amount||0} ${eco.currency?.name || 'BAG$'} | 🫦 ${u.charm||0} | 😈 ${u.perversion||0}`, ephemeral: true });
+          dmOk = true;
+        } catch (_) {}
+        if (dmOk) {
+          try { return await interaction.reply({ content: "📩 Je t'ai envoyé ton récap en message privé.", ephemeral: true }); } catch (_) { return; }
         }
+        // DM failed: try ephemeral embed in channel
+        try { return await interaction.reply({ embeds: [embed], ephemeral: true }); } catch (_) {}
+        // Final fallback: plain text
+        const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
+        try { return await interaction.reply({ content: text, ephemeral: true, allowedMentions: { parse: [] } }); } catch (_) { return; }
       } catch (e1) {
-        console.error('/economie embed+DM failed:', e1);
-        return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }).catch(()=>{});
+        console.error('/economie failed (all fallbacks):', e1);
+        try { return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) { return; }
       }
     }
   } catch (err) {
