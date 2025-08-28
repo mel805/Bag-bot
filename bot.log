@@ -4,3 +4,9 @@
 
 Login succeeded
 Logged in as Bag bot#8659
+[action] massage start
+Client error: ReferenceError: pickRandom is not defined
+    at runEcoAction (/workspace/src/bot.js:1420:37)
+[action] massage start
+Client error: ReferenceError: pickRandom is not defined
+    at runEcoAction (/workspace/src/bot.js:1439:37)
