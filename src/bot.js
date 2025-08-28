@@ -1641,4 +1641,6 @@ async function buildBoutiqueRows(guild) {
   for (const r of roles) {
     const label = r.name || (guild.roles.cache.get(r.roleId)?.name) || r.roleId;
     const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
-    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}`
+    options.push({ label: `Rôle: ${label}`, value: `role:${r.roleId}:${r.durationDays||0}`, description: `${r.price||0} ${eco.currency?.name || 'BAG$'} • ${dur}` });
+  }
+}
