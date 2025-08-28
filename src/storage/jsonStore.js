@@ -111,7 +111,7 @@ async function removePendingJoiner(guildId, userId) {
 // --- Levels helpers ---
 function ensureLevelsShape(g) {
   if (!g.levels) {
-    g.levels = { enabled: false, xpPerMessage: 10, xpPerVoiceMinute: 5, levelCurve: { base: 100, factor: 1.2 }, rewards: {}, users: {} };
+    g.levels = { enabled: false, xpPerMessage: 10, xpPerVoiceMinute: 5, levelCurve: { base: 100, factor: 1.2 }, rewards: {}, users: {}, announce: { enabled: false, channelId: '' } };
   } else {
     if (typeof g.levels.enabled !== 'boolean') g.levels.enabled = false;
     if (typeof g.levels.xpPerMessage !== 'number') g.levels.xpPerMessage = 10;
@@ -121,6 +121,9 @@ function ensureLevelsShape(g) {
     if (typeof g.levels.levelCurve.factor !== 'number') g.levels.levelCurve.factor = 1.2;
     if (!g.levels.rewards || typeof g.levels.rewards !== 'object') g.levels.rewards = {};
     if (!g.levels.users || typeof g.levels.users !== 'object') g.levels.users = {};
+    if (!g.levels.announce || typeof g.levels.announce !== 'object') g.levels.announce = { enabled: false, channelId: '' };
+    if (typeof g.levels.announce.enabled !== 'boolean') g.levels.announce.enabled = false;
+    if (typeof g.levels.announce.channelId !== 'string') g.levels.announce.channelId = '';
   }
 }
 

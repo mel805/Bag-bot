@@ -178,9 +178,15 @@ async function buildLevelsSettingsRows(guild) {
   const xpTextBtn = new ButtonBuilder().setCustomId('levels_set_xp_text').setLabel('Définir XP Texte').setStyle(ButtonStyle.Primary);
   const xpVoiceBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice').setLabel('Définir XP Vocal/min').setStyle(ButtonStyle.Primary);
   const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Définir Courbe (base/facteur)').setStyle(ButtonStyle.Secondary);
+  const announceToggle = new ButtonBuilder().setCustomId('levels_announce_toggle').setLabel(levels.announce?.enabled ? 'Désactiver annonces' : 'Activer annonces').setStyle(levels.announce?.enabled ? ButtonStyle.Danger : ButtonStyle.Success);
+  const channelSelect = new StringSelectMenuBuilder().setCustomId('levels_announce_channel').setPlaceholder('Choisir le salon d\'annonce…').addOptions(
+    ...(guild.channels.cache.filter(ch => ch.isTextBased() && ch.viewable).map(ch => ({ label: ch.name.slice(0, 100), value: ch.id })).first(25) || [{ label: 'Aucun salon', value: 'none' }])
+  );
   return [
     new ActionRowBuilder().addComponents(enableBtn, disableBtn),
     new ActionRowBuilder().addComponents(xpTextBtn, xpVoiceBtn, curveBtn),
+    new ActionRowBuilder().addComponents(announceToggle),
+    new ActionRowBuilder().addComponents(channelSelect),
   ];
 }
 
@@ -207,6 +213,15 @@ async function buildLevelsRewardsRows(guild) {
     removeSelect.addOptions({ label: 'Aucune récompense', value: 'none' }).setDisabled(true);
   }
   return [new ActionRowBuilder().addComponents(addRole), new ActionRowBuilder().addComponents(removeSelect)];
+}
+
+function maybeAnnounceLevelUp(guild, member, levels, newLevel, grantedRoleId) {
+  const ann = levels.announce || {};
+  if (!ann.enabled || !ann.channelId) return;
+  const channel = guild.channels.cache.get(ann.channelId);
+  if (!channel || !channel.isTextBased?.()) return;
+  const roleText = grantedRoleId ? ` et reçoit le rôle <@&${grantedRoleId}>` : '';
+  channel.send({ content: `🎉 Félicitations ${member} passe niveau ${newLevel}${roleText} !` }).catch(() => {});
 }
 
 client.once(Events.ClientReady, (readyClient) => {
@@ -405,6 +420,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.isButton() && interaction.customId === 'levels_announce_toggle') {
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      const nowEnabled = !cfg.announce?.enabled;
+      await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), enabled: nowEnabled } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow();
+      const rows = await buildLevelsSettingsRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'levels_announce_channel') {
+      const value = interaction.values[0];
+      if (value === 'none') return interaction.deferUpdate();
+      const cfg = await getLevelsConfig(interaction.guild.id);
+      await updateLevelsConfig(interaction.guild.id, { announce: { ...(cfg.announce || {}), channelId: value } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const top = buildTopSectionRow();
+      const rows = await buildLevelsSettingsRows(interaction.guild);
+      await interaction.update({ embeds: [embed], components: [top, ...rows] });
+      return;
+    }
+
     if (interaction.isButton() && interaction.customId === 'levels_set_xp_text') {
       const modal = new ModalBuilder().setCustomId('levels_xp_text_modal').setTitle('XP par message (texte)');
       const input = new TextInputBuilder().setCustomId('amount').setLabel('XP/message').setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(6).setPlaceholder('Ex: 10').setRequired(true);
@@ -533,13 +571,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
         stats.xp += amount;
         stats.xpSinceLevel += amount;
         let required = xpRequiredForNext(stats.level, levels.levelCurve);
+        let leveled = false;
         while (stats.xpSinceLevel >= required) {
           stats.xpSinceLevel -= required;
           stats.level += 1;
+          leveled = true;
           required = xpRequiredForNext(stats.level, levels.levelCurve);
         }
         await setUserStats(interaction.guild.id, target.id, stats);
         await applyRewardsUpTo(stats.level);
+        if (leveled) {
+          const granted = (levels.rewards || {})[String(stats.level)];
+          const member = interaction.guild.members.cache.get(target.id);
+          if (member) maybeAnnounceLevelUp(interaction.guild, member, levels, stats.level, granted);
+        }
         return interaction.reply({ content: `Ajouté ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
 
@@ -557,6 +602,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         stats.xpSinceLevel = 0;
         await setUserStats(interaction.guild.id, target.id, stats);
         await applyRewardsUpTo(stats.level);
+        const granted = (levels.rewards || {})[String(stats.level)];
+        const member = interaction.guild.members.cache.get(target.id);
+        if (member) maybeAnnounceLevelUp(interaction.guild, member, levels, stats.level, granted);
         return interaction.reply({ content: `Ajouté ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
       }
 
@@ -611,6 +659,7 @@ client.on(Events.MessageCreate, async (message) => {
       required = xpRequiredForNext(stats.level, levels.levelCurve);
       const rid = (levels.rewards || {})[String(stats.level)];
       if (rid) { try { await member.roles.add(rid); } catch (_) {} }
+      maybeAnnounceLevelUp(message.guild, member, levels, stats.level, (levels.rewards || {})[String(stats.level)]);
     }
     await setUserStats(message.guild.id, member.id, stats);
   } catch (e) {}
@@ -637,6 +686,7 @@ setInterval(async () => {
           required = xpRequiredForNext(stats.level, levels.levelCurve);
           const rid = (levels.rewards || {})[String(stats.level)];
           if (rid) { try { await member.roles.add(rid); } catch (_) {} }
+          maybeAnnounceLevelUp(guild, member, levels, stats.level, (levels.rewards || {})[String(stats.level)]);
         }
         await setUserStats(guild.id, member.id, stats);
       }
