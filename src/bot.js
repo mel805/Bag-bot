@@ -1760,6 +1760,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ...(targetField ? [{ name: 'Effet cible', value: targetField, inline: false }] : []),
         ],
       });
+      // Attach an action-appropriate GIF if available
+      try {
+        const gifs = ACTION_GIFS[key] || {};
+        const pickGif = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null);
+        const url = isSuccess ? pickGif(gifs.success) : pickGif(gifs.fail);
+        if (url) embed.setImage(url);
+      } catch (_) {}
 
       // Persist state, then edit reply
       try { await setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }); } catch (_) {}
@@ -2445,6 +2452,55 @@ const CRIME_SUCCESS = ['Coup monté réussi 🕶️','Plan sans faute.','Aucune 
 const CRIME_FAIL = ['Sirènes au loin… fuyez !','Plan compromis.','Informateur douteux.']
 const FISH_SUCCESS = ['Félicitations, vous avez pêché un thon !','Bravo, vous avez pêché un magnifique saumon !','Incroyable, une carpe dorée mord à l\'hameçon !','Quel talent ! Un brochet impressionnant !','Un bar splendide pour le dîner !']
 const FISH_FAIL = ['Aïe… la ligne s\'est emmêlée, rien attrapé.','Juste une vieille botte… pas de chance !','Le poisson s\'est échappé au dernier moment !','Silence radio sous l\'eau… aucun poisson aujourd\'hui.']
+const STEAL_SUCCESS = ['Vol réussi… mais restez discret.','Votre coup a payé.','Butin acquis sans être vu.']
+const STEAL_FAIL = ['Pris la main dans le sac !','Tentative avortée.','La cible vous a repéré.']
+
+// GIFs per action (success/fail)
+const ACTION_GIFS = {
+  work: {
+    success: ['https://media.giphy.com/media/3o6ZtaO9BZHcOjmErm/giphy.gif','https://media.giphy.com/media/l2Sq0oQbAJGEGZmLe/giphy.gif'],
+    fail: ['https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif']
+  },
+  fish: {
+    success: ['https://media.giphy.com/media/xT9IgIc0lryrxvqVGM/giphy.gif','https://media.giphy.com/media/3ohhwIDbJnb5jWRVja/giphy.gif'],
+    fail: ['https://media.giphy.com/media/3o6ZsUT0G3jvm7FQ5S/giphy.gif']
+  },
+  give: {
+    success: ['https://media.giphy.com/media/3ohhwf34cGDoFFhRzi/giphy.gif','https://media.giphy.com/media/xUNd9HZq1itMki3jhC/giphy.gif']
+  },
+  steal: {
+    success: ['https://media.giphy.com/media/26u4b45b8KlgAB7iM/giphy.gif'],
+    fail: ['https://media.giphy.com/media/26tPplGWjN0xLybiU/giphy.gif']
+  },
+  kiss: {
+    success: ['https://media.giphy.com/media/G3va31oEEnIkM/giphy.gif','https://media.giphy.com/media/12VXIxKaIEarL2/giphy.gif'],
+    fail: ['https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif']
+  },
+  flirt: {
+    success: ['https://media.giphy.com/media/l0HUqsz2jdQYElRm0/giphy.gif','https://media.giphy.com/media/l3vR85PnGsBwu1PFK/giphy.gif'],
+    fail: ['https://media.giphy.com/media/3ohc1aG3Z5rKobAjS4/giphy.gif']
+  },
+  seduce: {
+    success: ['https://media.giphy.com/media/3oEduSbSGpGaRX2Vri/giphy.gif','https://media.giphy.com/media/3o6Zt6ML6BklcajjsA/giphy.gif'],
+    fail: ['https://media.giphy.com/media/3o6gE8f3ZxZzQ0imeI/giphy.gif']
+  },
+  fuck: {
+    success: ['https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif','https://media.giphy.com/media/l0ExdMHUDKteztyfe/giphy.gif'],
+    fail: ['https://media.giphy.com/media/3oEduW2X6y83L1ZyBG/giphy.gif']
+  },
+  massage: {
+    success: ['https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif','https://media.giphy.com/media/l1J9sGZee7lU0w7M4/giphy.gif'],
+    fail: ['https://media.giphy.com/media/3o6Zt8zb1hQv5nYVxe/giphy.gif']
+  },
+  dance: {
+    success: ['https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif','https://media.giphy.com/media/l0IylOPCNkiqOgMyA/giphy.gif'],
+    fail: ['https://media.giphy.com/media/3o6Zt7Rfw1gXkZ0pO0/giphy.gif']
+  },
+  crime: {
+    success: ['https://media.giphy.com/media/l0K4lQZ9Fz3hX8qKc/giphy.gif','https://media.giphy.com/media/3o6ZsZLoN4RpmjQe3W/giphy.gif'],
+    fail: ['https://media.giphy.com/media/3o6Zt8j0Yk6y3o5cQg/giphy.gif']
+  }
+}
 
 client.on(Events.MessageCreate, async (message) => {
   try {
