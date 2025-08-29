@@ -4,23 +4,3 @@
 
 Login succeeded
 Logged in as Bag bot#8659
-(node:181442) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
-[td] add button: td_prompts_add_verite:nsfw
-[td_prompts_add_modal] customId: td_prompts_add_modal:nsfw:verite fieldIds: []
-Interaction handler error: TypeError [ModalSubmitInteractionFieldNotFound]: Required field with custom id "type" not found.
-    at ModalSubmitFields.getField (/workspace/node_modules/discord.js/src/structures/ModalSubmitFields.js:36:23)
-    at ModalSubmitFields.getTextInputValue (/workspace/node_modules/discord.js/src/structures/ModalSubmitFields.js:51:17)
-    at Client.<anonymous> (/workspace/src/bot.js:2063:42)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
-  code: 'ModalSubmitInteractionFieldNotFound'
-}
-[td] add button: td_prompts_add_verite:nsfw
-[td_prompts_add_modal] customId: td_prompts_add_modal:nsfw:verite fieldIds: []
-Interaction handler error: TypeError [ModalSubmitInteractionFieldNotFound]: Required field with custom id "type" not found.
-    at ModalSubmitFields.getField (/workspace/node_modules/discord.js/src/structures/ModalSubmitFields.js:36:23)
-    at ModalSubmitFields.getTextInputValue (/workspace/node_modules/discord.js/src/structures/ModalSubmitFields.js:51:17)
-    at Client.<anonymous> (/workspace/src/bot.js:2063:42)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
-  code: 'ModalSubmitInteractionFieldNotFound'
-}
