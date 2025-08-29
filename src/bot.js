@@ -1915,9 +1915,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setTitle('Choisir un style de couleurs')
         .setDescription(`Membre cible: <@${userId}>`)
         .addFields(
-          { name: 'Pastel', value: '#FFB3BA, #FFDFBA, #FFFFBA, #BAFFC9, #BAE1FF' },
-          { name: 'Vif', value: '#E91E63, #9C27B0, #2196F3, #4CAF50, #FF9800' },
-          { name: 'Sombre', value: '#263238, #37474F, #455A64, #546E7A, #607D8B' },
+          { name: 'Pastel', value: COLOR_PALETTES.pastel.slice(0,8).map(emojiForHex).join(' ') },
+          { name: 'Vif', value: COLOR_PALETTES.vif.slice(0,8).map(emojiForHex).join(' ') },
+          { name: 'Sombre', value: COLOR_PALETTES.sombre.slice(0,8).map(emojiForHex).join(' ') },
         );
       const styleSelect = new StringSelectMenuBuilder()
         .setCustomId(`color_style:${userId}`)
@@ -1934,12 +1934,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const userId = interaction.customId.split(':')[1];
       const style = interaction.values[0];
       try { await interaction.deferUpdate(); } catch (_) {}
-      const palettes = {
-        pastel: ['#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF'],
-        vif: ['#E91E63','#9C27B0','#2196F3','#4CAF50','#FF9800'],
-        sombre: ['#263238','#37474F','#455A64','#546E7A','#607D8B'],
-      };
-      const colors = palettes[style] || palettes.vif;
+      const colors = COLOR_PALETTES[style] || COLOR_PALETTES.vif;
       const preview = new EmbedBuilder().setColor(parseInt(colors[0].slice(1),16)).setTitle('Choisir la couleur').setDescription('Sélectionnez une pastille de couleur.');
       const colorSelect = new StringSelectMenuBuilder()
         .setCustomId(`color_pick:${userId}`)
@@ -2215,3 +2210,9 @@ function emojiForHex(hex) {
     return '🟤';
   } catch (_) { return '⬛'; }
 }
+
+const COLOR_PALETTES = {
+  pastel: ['#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF','#F8BBD0','#F48FB1','#E1BEE7','#D1C4E9','#C5CAE9','#BBDEFB','#B3E5FC','#B2EBF2','#C8E6C9','#DCEDC8'],
+  vif: ['#F44336','#E91E63','#9C27B0','#673AB7','#3F51B5','#2196F3','#03A9F4','#00BCD4','#009688','#4CAF50','#8BC34A','#CDDC39','#FFEB3B','#FFC107','#FF9800','#FF5722','#795548'],
+  sombre: ['#1B1B1B','#212121','#263238','#2E3440','#37474F','#3E4C59','#424242','#455A64','#4E5D6C','#546E7A','#5C6B73','#607D8B','#6B7C8C'],
+};
