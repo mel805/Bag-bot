@@ -776,7 +776,14 @@ client.once(Events.ClientReady, (readyClient) => {
       if (now - d.lastBumpAt >= TWO_HOURS) {
         const ch = guild.channels.cache.get(d.lastBumpChannelId) || await guild.channels.fetch(d.lastBumpChannelId).catch(()=>null);
         if (ch && ch.isTextBased?.()) {
-          await ch.send({ content: '⏰ Le délai de 2h est écoulé — pensez à refaire `/bump` sur Disboard !' }).catch(()=>{});
+          const embed = new EmbedBuilder()
+            .setColor(THEME_COLOR_ACCENT)
+            .setTitle('💋 Un petit bump, beau/belle gosse ?')
+            .setDescription('Deux heures se sont écoulées… Faites vibrer le serveur à nouveau avec `/bump` 😈🔥')
+            .setThumbnail(THEME_IMAGE)
+            .setFooter({ text: 'BAG • Disboard' })
+            .setTimestamp(new Date());
+          await ch.send({ embeds: [embed] }).catch(()=>{});
         }
         await updateDisboardConfig(guild.id, { reminded: true });
       }
