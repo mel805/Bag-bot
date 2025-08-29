@@ -666,7 +666,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'truthdare') {
-        const rows = await buildTruthDareRows(interaction.guild);
+        const rows = await buildTruthDareRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
@@ -2096,46 +2096,61 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: `✅ ${prompts.length} prompts supprimés.` });
     }
 
-    if (interaction.isChannelSelectMenu() && interaction.customId === 'td_channels_add') {
-      await addTdChannels(interaction.guild.id, interaction.values);
+    if (interaction.isStringSelectMenu() && interaction.customId === 'td_mode') {
+      const mode = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildTruthDareRows(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'td_channels_remove') {
+    if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('td_channels_add:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      await addTdChannels(interaction.guild.id, interaction.values, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_channels_remove:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
       if (interaction.values.includes('none')) return interaction.deferUpdate();
-      await removeTdChannels(interaction.guild.id, interaction.values);
+      await removeTdChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildTruthDareRows(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
-    if (interaction.isButton() && interaction.customId === 'td_prompts_add') {
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_add:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
       const modal = new ModalBuilder().setCustomId('td_prompts_add_modal').setTitle('Ajouter des prompts');
       const type = new StringSelectMenuBuilder().setCustomId('td_add_type');
       // Workaround: use text input to encode type and prompts
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('type').setLabel('Type (action/verite)').setStyle(TextInputStyle.Short).setRequired(true)));
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texts').setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(`type:${mode}`).setLabel('Type (action/verite)').setStyle(TextInputStyle.Short).setRequired(true)));
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(`texts:${mode}`).setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
       await interaction.showModal(modal);
       return;
     }
     if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_add_modal') {
       await interaction.deferReply({ ephemeral: true });
-      const type = (interaction.fields.getTextInputValue('type')||'').toLowerCase().includes('ver') ? 'verite' : 'action';
-      const textsRaw = interaction.fields.getTextInputValue('texts')||'';
+      const mode = Object.keys(interaction.fields.fields).find(k => k.startsWith('texts:'))?.split(':')[1] || 'sfw';
+      const typeKey = Object.keys(interaction.fields.fields).find(k => k.startsWith('type:')) || 'type:sfw';
+      const typeVal = interaction.fields.getTextInputValue(typeKey) || '';
+      const type = typeVal.toLowerCase().includes('ver') ? 'verite' : 'action';
+      const textsKey = Object.keys(interaction.fields.fields).find(k => k.startsWith('texts:')) || 'texts:sfw';
+      const textsRaw = interaction.fields.getTextInputValue(textsKey) || '';
       const texts = textsRaw.split('\n').map(s => s.trim()).filter(Boolean);
-      await addTdPrompts(interaction.guild.id, type, texts);
-      return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}).` });
+      await addTdPrompts(interaction.guild.id, type, texts, mode);
+      return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}, ${mode.toUpperCase()}).` });
     }
-    if (interaction.isButton() && interaction.customId === 'td_prompts_delete') {
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
       const td = await getTruthDareConfig(interaction.guild.id);
-      const opts = (td.prompts||[]).slice(0,25).map(p => ({ label: `${p.type === 'action' ? 'A' : 'V'}:${p.id}`, value: String(p.id), description: p.text.slice(0,80) }));
-      const sel = new StringSelectMenuBuilder().setCustomId('td_prompts_delete_select').setPlaceholder('Choisir des prompts à supprimer…').setMinValues(1).setMaxValues(Math.max(1, opts.length));
+      const opts = (td[mode].prompts||[]).slice(0,25).map(p => ({ label: `${p.type === 'action' ? 'A' : 'V'}:${p.id}`, value: String(p.id), description: p.text.slice(0,80) }));
+      const sel = new StringSelectMenuBuilder().setCustomId(`td_prompts_delete_select:${mode}`).setPlaceholder('Choisir des prompts à supprimer…').setMinValues(1).setMaxValues(Math.max(1, opts.length));
       if (opts.length) sel.addOptions(...opts); else sel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
       return interaction.reply({ content: 'Sélection de suppression:', components: [new ActionRowBuilder().addComponents(sel)], ephemeral: true });
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'td_prompts_delete_select') {
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_prompts_delete_select:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
       if (interaction.values.includes('none')) return interaction.deferUpdate();
-      await deleteTdPrompts(interaction.guild.id, interaction.values);
+      await deleteTdPrompts(interaction.guild.id, interaction.values, mode);
       return interaction.update({ content: '✅ Prompts supprimés.', components: [] });
     }
   } catch (err) {
@@ -2379,18 +2394,22 @@ const COLOR_PALETTES = {
   sombre: ['#1B1B1B','#212121','#263238','#2E3440','#37474F','#3E4C59','#424242','#455A64','#4E5D6C','#546E7A','#5C6B73','#607D8B','#6B7C8C'],
 };
 
-async function buildTruthDareRows(guild) {
+async function buildTruthDareRows(guild, mode = 'sfw') {
   const td = await getTruthDareConfig(guild.id);
-  const channelAdd = new ChannelSelectMenuBuilder().setCustomId('td_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
-  const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td.channels||[]).length || 1)));
-  const opts = (td.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  const modeSelect = new StringSelectMenuBuilder().setCustomId('td_mode').setPlaceholder('Mode…').addOptions(
+    { label: 'Action/Vérité', value: 'sfw', default: mode === 'sfw' },
+    { label: 'Action/Vérité NSFW', value: 'nsfw', default: mode === 'nsfw' },
+  );
+  const channelAdd = new ChannelSelectMenuBuilder().setCustomId(`td_channels_add:${mode}`).setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
+  const channelRemove = new StringSelectMenuBuilder().setCustomId(`td_channels_remove:${mode}`).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td[mode].channels||[]).length || 1)));
+  const opts = (td[mode].channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
   if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-  const promptsAddBtn = new ButtonBuilder().setCustomId('td_prompts_add').setLabel('Ajouter des prompts').setStyle(ButtonStyle.Primary);
-  const promptsEditBtn = new ButtonBuilder().setCustomId('td_prompts_edit').setLabel('Modifier prompt').setStyle(ButtonStyle.Secondary);
-  const promptsDelBtn = new ButtonBuilder().setCustomId('td_prompts_delete').setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
+  const promptsAddBtn = new ButtonBuilder().setCustomId(`td_prompts_add:${mode}`).setLabel('Ajouter des prompts').setStyle(ButtonStyle.Primary);
+  const promptsDelBtn = new ButtonBuilder().setCustomId(`td_prompts_delete:${mode}`).setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
   return [
+    new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
-    new ActionRowBuilder().addComponents(promptsAddBtn, promptsEditBtn, promptsDelBtn),
+    new ActionRowBuilder().addComponents(promptsAddBtn, promptsDelBtn),
   ];
 }

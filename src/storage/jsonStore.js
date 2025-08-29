@@ -310,9 +310,14 @@ function ensureEconomyShape(g) {
 function ensureTruthDareShape(g) {
   if (!g.truthdare || typeof g.truthdare !== 'object') g.truthdare = {};
   const td = g.truthdare;
-  if (!Array.isArray(td.channels)) td.channels = [];
-  if (!Array.isArray(td.prompts)) td.prompts = []; // {id, type:'action'|'verite', text}
-  if (typeof td.nextId !== 'number') td.nextId = 1;
+  if (!td.sfw || typeof td.sfw !== 'object') td.sfw = { channels: [], prompts: [], nextId: 1 };
+  if (!td.nsfw || typeof td.nsfw !== 'object') td.nsfw = { channels: [], prompts: [], nextId: 1 };
+  if (!Array.isArray(td.sfw.channels)) td.sfw.channels = [];
+  if (!Array.isArray(td.sfw.prompts)) td.sfw.prompts = [];
+  if (typeof td.sfw.nextId !== 'number') td.sfw.nextId = 1;
+  if (!Array.isArray(td.nsfw.channels)) td.nsfw.channels = [];
+  if (!Array.isArray(td.nsfw.prompts)) td.nsfw.prompts = [];
+  if (typeof td.nsfw.nextId !== 'number') td.nsfw.nextId = 1;
 }
 
 async function getTruthDareConfig(guildId) {
@@ -331,28 +336,30 @@ async function updateTruthDareConfig(guildId, partial) {
   return cfg.guilds[guildId].truthdare;
 }
 
-async function addTdChannels(guildId, channelIds) {
+async function addTdChannels(guildId, channelIds, mode = 'sfw') {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureTruthDareShape(cfg.guilds[guildId]);
-  const set = new Set(cfg.guilds[guildId].truthdare.channels);
+  const td = cfg.guilds[guildId].truthdare;
+  const set = new Set(td[mode].channels || []);
   for (const id of channelIds) set.add(String(id));
-  cfg.guilds[guildId].truthdare.channels = Array.from(set);
+  td[mode].channels = Array.from(set);
   await writeConfig(cfg);
-  return cfg.guilds[guildId].truthdare.channels;
+  return td[mode].channels;
 }
 
-async function removeTdChannels(guildId, channelIds) {
+async function removeTdChannels(guildId, channelIds, mode = 'sfw') {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) return [];
   ensureTruthDareShape(cfg.guilds[guildId]);
+  const td = cfg.guilds[guildId].truthdare;
   const toRemove = new Set(channelIds.map(String));
-  cfg.guilds[guildId].truthdare.channels = (cfg.guilds[guildId].truthdare.channels||[]).filter(id => !toRemove.has(String(id)));
+  td[mode].channels = (td[mode].channels||[]).filter(id => !toRemove.has(String(id)));
   await writeConfig(cfg);
-  return cfg.guilds[guildId].truthdare.channels;
+  return td[mode].channels;
 }
 
-async function addTdPrompts(guildId, type, texts) {
+async function addTdPrompts(guildId, type, texts, mode = 'sfw') {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureTruthDareShape(cfg.guilds[guildId]);
@@ -360,20 +367,21 @@ async function addTdPrompts(guildId, type, texts) {
   for (const t of texts) {
     const text = String(t).trim();
     if (!text) continue;
-    td.prompts.push({ id: td.nextId++, type, text });
+    td[mode].prompts.push({ id: td[mode].nextId++, type, text });
   }
   await writeConfig(cfg);
-  return td.prompts;
+  return td[mode].prompts;
 }
 
-async function deleteTdPrompts(guildId, ids) {
+async function deleteTdPrompts(guildId, ids, mode = 'sfw') {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) return [];
   ensureTruthDareShape(cfg.guilds[guildId]);
+  const td = cfg.guilds[guildId].truthdare;
   const del = new Set(ids.map(n => Number(n)));
-  cfg.guilds[guildId].truthdare.prompts = (cfg.guilds[guildId].truthdare.prompts||[]).filter(p => !del.has(Number(p.id)));
+  td[mode].prompts = (td[mode].prompts||[]).filter(p => !del.has(Number(p.id)));
   await writeConfig(cfg);
-  return cfg.guilds[guildId].truthdare.prompts;
+  return td[mode].prompts;
 }
 
 // Ensure economy shape on getGuildConfig and getEconomyConfig
