@@ -356,6 +356,13 @@ function ensureCountingShape(g) {
   if (typeof c.state.current !== 'number') c.state.current = 0;
   if (typeof c.state.lastUserId !== 'string') c.state.lastUserId = '';
 }
+function ensureDisboardShape(g) {
+  if (!g.disboard || typeof g.disboard !== 'object') g.disboard = {};
+  const d = g.disboard;
+  if (typeof d.lastBumpAt !== 'number') d.lastBumpAt = 0;
+  if (typeof d.lastBumpChannelId !== 'string') d.lastBumpChannelId = '';
+  if (typeof d.reminded !== 'boolean') d.reminded = false;
+}
 
 function ensureGeoShape(g) {
   if (!g.geo || typeof g.geo !== 'object') g.geo = {};
@@ -401,6 +408,21 @@ async function setCountingState(guildId, state) {
   cfg.guilds[guildId].counting.state = { ...(cfg.guilds[guildId].counting.state || {}), ...state };
   await writeConfig(cfg);
   return cfg.guilds[guildId].counting.state;
+}
+async function getDisboardConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureDisboardShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].disboard;
+}
+async function updateDisboardConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureDisboardShape(cfg.guilds[guildId]);
+  const cur = cfg.guilds[guildId].disboard || {};
+  cfg.guilds[guildId].disboard = { ...cur, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].disboard;
 }
 
 async function getAutoThreadConfig(guildId) {
@@ -591,6 +613,8 @@ module.exports = {
   getCountingConfig,
   updateCountingConfig,
   setCountingState,
+  getDisboardConfig,
+  updateDisboardConfig,
   // Confess
   getConfessConfig,
   updateConfessConfig,

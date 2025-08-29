@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -763,6 +763,25 @@ client.once(Events.ClientReady, (readyClient) => {
       }
     } catch (eOuter) { console.error('[AutoKick] tick failed', eOuter?.message||eOuter); }
   }, 60 * 60 * 1000);
+
+  // Disboard bump reminder check every 1 minute
+  setInterval(async () => {
+    try {
+      const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
+      if (!guild) return;
+      const d = await getDisboardConfig(guild.id);
+      if (!d?.lastBumpAt || d.reminded === true) return;
+      const now = Date.now();
+      const TWO_HOURS = 2 * 60 * 60 * 1000;
+      if (now - d.lastBumpAt >= TWO_HOURS) {
+        const ch = guild.channels.cache.get(d.lastBumpChannelId) || await guild.channels.fetch(d.lastBumpChannelId).catch(()=>null);
+        if (ch && ch.isTextBased?.()) {
+          await ch.send({ content: '⏰ Le délai de 2h est écoulé — pensez à refaire `/bump` sur Disboard !' }).catch(()=>{});
+        }
+        await updateDisboardConfig(guild.id, { reminded: true });
+      }
+    } catch (_) {}
+  }, 60 * 1000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -3026,6 +3045,17 @@ const ACTION_GIFS = {
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild || message.author.bot) return;
+    // Disboard bump detection
+    try {
+      // Disboard bot ID
+      const DISBOARD_ID = '302050872383242240';
+      if (message.author.id === DISBOARD_ID) {
+        const content = (message.content || '').toLowerCase();
+        if (content.includes('bump done') || content.includes('bump effectué') || content.includes('bump done!')) {
+          await updateDisboardConfig(message.guild.id, { lastBumpAt: Date.now(), lastBumpChannelId: message.channel.id, reminded: false });
+        }
+      }
+    } catch (_) {}
     // AutoThread runtime: if message is in a configured channel, create a thread if none exists
     try {
       const at = await getAutoThreadConfig(message.guild.id);
