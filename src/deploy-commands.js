@@ -90,7 +90,6 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setDMPermission(false)
     .addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true))
-    .addStringOption(o=>o.setName('hex').setDescription('Couleur hex (ex: #FF00AA)').setRequired(true))
     .toJSON(),
 ];
 
