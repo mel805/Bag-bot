@@ -2137,3 +2137,28 @@ async function buildShopRows(guild) {
 }
 
 let SUITE_EMOJI = '💞';
+
+function emojiForHex(hex) {
+  try {
+    const h = hex.startsWith('#') ? hex.slice(1) : hex;
+    const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    const d = max - min;
+    let hue = 0;
+    if (d === 0) hue = 0;
+    else if (max === r) hue = ((g - b) / d) % 6;
+    else if (max === g) hue = (b - r) / d + 2;
+    else hue = (r - g) / d + 4;
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+    // map to nearest color emoji
+    if (max < 60) return '⚫️';
+    if (hue < 15 || hue >= 345) return '🔴';
+    if (hue < 45) return '🟠';
+    if (hue < 75) return '🟡';
+    if (hue < 165) return '🟢';
+    if (hue < 255) return '🔵';
+    if (hue < 315) return '🟣';
+    return '🟤';
+  } catch (_) { return '⬛'; }
+}
