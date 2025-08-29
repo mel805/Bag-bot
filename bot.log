@@ -4,3 +4,24 @@
 
 Login succeeded
 Logged in as Bag bot#8659
+(node:171115) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Interaction handler error: DiscordAPIError[50035]: Invalid Form Body
+data.components[2].components[0].max_values[NUMBER_TYPE_MIN]: int value should be greater than or equal to 1.
+    at handleErrors (/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async BurstHandler.runRequest (/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async StringSelectMenuInteraction.update (/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:361:22)
+    at async Client.<anonymous> (/workspace/src/bot.js:670:9) {
+  requestBody: { files: [], json: { type: 7, data: [Object] } },
+  rawError: {
+    message: 'Invalid Form Body',
+    code: 50035,
+    errors: { data: [Object] }
+  },
+  code: 50035,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1410878479234236416/aW50ZXJhY3Rpb246MTQxMDg3ODQ3OTIzNDIzNjQxNjpaZUlLaUJTRDVkYTY5bGV1dmhIRGZYT2xqRkVpRmFhdEFreHphU3JqSU4zbTZOQjZqckZWaUtoRTNNcHc0aGp6SHd2T2ltQzFrUW5OdjFQUmNYSFN0R1RUUmUzOFNyY3loVE9HRGZWUVF4TjBudlpnRmk4SXlOWkIwT04zSUZsOA/callback?with_response=false'
+}
