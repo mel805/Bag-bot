@@ -2410,12 +2410,13 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
   const channelRemove = new StringSelectMenuBuilder().setCustomId(`td_channels_remove:${mode}`).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td[mode].channels||[]).length || 1)));
   const opts = (td[mode].channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
   if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-  const promptsAddBtn = new ButtonBuilder().setCustomId(`td_prompts_add:${mode}`).setLabel('Ajouter des prompts').setStyle(ButtonStyle.Primary);
+  const addActionBtn = new ButtonBuilder().setCustomId(`td_prompts_add_action:${mode}`).setLabel('Ajouter ACTION').setStyle(ButtonStyle.Primary);
+  const addTruthBtn = new ButtonBuilder().setCustomId(`td_prompts_add_verite:${mode}`).setLabel('Ajouter VERITE').setStyle(ButtonStyle.Success);
   const promptsDelBtn = new ButtonBuilder().setCustomId(`td_prompts_delete:${mode}`).setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
   return [
     new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
-    new ActionRowBuilder().addComponents(promptsAddBtn, promptsDelBtn),
+    new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn),
   ];
 }
