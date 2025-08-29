@@ -2993,8 +2993,16 @@ client.on(Events.MessageCreate, async (message) => {
         if (/[a-zA-Z]/.test(raw)) {
           return;
         }
+        // If no digit at all, ignore silently
+        if (!/\d/.test(onlyDigitsAndOps)) {
+          return;
+        }
         let value = NaN;
-        if (cfg.allowFormulas) {
+        // Fast path: plain integer
+        const intMatch = onlyDigitsAndOps.match(/^-?\d+$/);
+        if (intMatch) {
+          value = Number(intMatch[0]);
+        } else if (cfg.allowFormulas) {
           const expr0 = onlyDigitsAndOps.replace(/√/g, 'Math.sqrt').replace(/\^/g,'**');
           const testable = expr0.replace(/Math\.sqrt/g,'');
           const ok = /^[0-9+\-*/().\s]*$/.test(testable);
@@ -3009,7 +3017,7 @@ client.on(Events.MessageCreate, async (message) => {
           const digitsOnly = onlyDigitsAndOps.replace(/[^0-9]/g,'');
           if (digitsOnly.length > 0) value = Number(digitsOnly);
         }
-        // Final fallback: first integer in the original message
+        // Final fallback: first integer sequence
         if (!Number.isFinite(value)) {
           const m = onlyDigitsAndOps.match(/-?\d+/);
           if (m) value = Number(m[0]);
