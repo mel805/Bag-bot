@@ -2987,14 +2987,12 @@ client.on(Events.MessageCreate, async (message) => {
         const raw = (message.content || '').trim();
         // Keep only digits, operators, parentheses, spaces, caret, and sqrt symbol
         const onlyDigitsAndOps = raw.replace(/[^0-9+\-*/().\s^√]/g, '');
-        // If any letters are present in the original message, hard reset (no letters allowed)
-        if (/[a-zA-Z]/.test(raw)) {
-          await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-          await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Mauvais comptage').setDescription(`Attendu: **${expected0}**\nRemise à zéro → **1**\n<@${message.author.id}>, pas de lettres ici.`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
-          return;
-        }
+        // If any letters are present in the original message, ignore (do not reset)
         const state0 = cfg.state || { current: 0, lastUserId: '' };
         const expected0 = (state0.current || 0) + 1;
+        if (/[a-zA-Z]/.test(raw)) {
+          return;
+        }
         let value = NaN;
         if (cfg.allowFormulas) {
           const expr0 = onlyDigitsAndOps.replace(/√/g, 'Math.sqrt').replace(/\^/g,'**');
@@ -3013,7 +3011,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
         // Final fallback: first integer in the original message
         if (!Number.isFinite(value)) {
-          const m = raw.match(/-?\d+/);
+          const m = onlyDigitsAndOps.match(/-?\d+/);
           if (m) value = Number(m[0]);
         }
         if (!Number.isFinite(value)) {
