@@ -3040,6 +3040,7 @@ client.on(Events.MessageCreate, async (message) => {
             await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Mauvais numéro').setDescription(`Attendu: **${expected}**\nRemise à zéro → **1**\n<@${message.author.id}>, on se retrouve au début 💕`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
           } else {
             await setCountingState(message.guild.id, { current: next, lastUserId: message.author.id });
+            try { await message.react('✅'); } catch (_) {}
           }
         }
       }
