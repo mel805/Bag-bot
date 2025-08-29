@@ -4,7 +4,3 @@
 
 Login succeeded
 Logged in as Bag bot#8659
-(node:185248) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
-[td] add button: td_prompts_add_verite:sfw
-[td] submit: td_prompts_add_modal:sfw:verite fieldIds: []

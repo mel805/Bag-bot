@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -142,6 +142,7 @@ function buildTopSectionRow() {
       { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
       { label: 'Économie', value: 'economy', description: "Configurer l'économie" },
       { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' },
+      { label: 'Confessions', value: 'confess', description: 'Configurer les confessions anonymes' },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -526,6 +527,27 @@ async function buildEconomySettingsRows(guild) {
   return [row];
 }
 
+async function buildConfessRows(guild, mode = 'sfw') {
+  const cf = await getConfessConfig(guild.id);
+  const modeSelect = new StringSelectMenuBuilder().setCustomId('confess_mode').setPlaceholder('Mode…').addOptions(
+    { label: 'Confessions', value: 'sfw', default: mode === 'sfw' },
+    { label: 'Confessions NSFW', value: 'nsfw', default: mode === 'nsfw' },
+  );
+  const channelAdd = new ChannelSelectMenuBuilder().setCustomId(`confess_channels_add:${mode}`).setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
+  const channelRemove = new StringSelectMenuBuilder().setCustomId(`confess_channels_remove:${mode}`).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (cf[mode].channels||[]).length || 1)));
+  const opts = (cf[mode].channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+  const logBtn = new ButtonBuilder().setCustomId('confess_set_log').setLabel(`Log: ${cf.logChannelId ? `<#${cf.logChannelId}>` : '—'}`).setStyle(ButtonStyle.Secondary);
+  const replyToggle = new ButtonBuilder().setCustomId('confess_toggle_replies').setLabel(cf.allowReplies ? 'Réponses: ON' : 'Réponses: OFF').setStyle(cf.allowReplies ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const nameToggle = new ButtonBuilder().setCustomId('confess_toggle_naming').setLabel(cf.threadNaming === 'nsfw' ? 'Nom de fil: NSFW+' : 'Nom de fil: Normal').setStyle(ButtonStyle.Secondary);
+  return [
+    new ActionRowBuilder().addComponents(modeSelect),
+    new ActionRowBuilder().addComponents(channelAdd),
+    new ActionRowBuilder().addComponents(channelRemove),
+    new ActionRowBuilder().addComponents(logBtn, replyToggle, nameToggle),
+  ];
+}
+
 function actionKeyToLabel(key) {
   const map = { steal: 'voler', kiss: 'embrasser', flirt: 'flirter', seduce: 'séduire', fuck: 'fuck', massage: 'masser', dance: 'danser', crime: 'crime' };
   return map[key] || key;
@@ -668,6 +690,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (section === 'truthdare') {
         const rows = await buildTruthDareRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } else if (section === 'confess') {
+        const rows = await buildConfessRows(interaction.guild, 'sfw');
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
@@ -687,6 +712,58 @@ client.on(Events.InteractionCreate, async (interaction) => {
         rows = await buildEconomyMenuRows(interaction.guild, page);
       }
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
+    }
+
+    // Confess config handlers
+    if (interaction.isStringSelectMenu() && interaction.customId === 'confess_mode') {
+      const mode = interaction.values[0];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildConfessRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('confess_channels_add:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      await addConfessChannels(interaction.guild.id, interaction.values, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildConfessRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('confess_channels_remove:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      await removeConfessChannels(interaction.guild.id, interaction.values, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildConfessRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'confess_set_log') {
+      const modal = new ModalBuilder().setCustomId('confess_log_modal').setTitle('Salon de logs');
+      const select = new ChannelSelectMenuBuilder().setCustomId('confess_log_channel').setPlaceholder('Choisir un salon…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+      modal.addComponents(select);
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'confess_log_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const channelId = interaction.fields.getChannelValues('confess_log_channel')?.[0];
+      await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
+      return interaction.editReply({ content: `✅ Salon de logs: ${channelId ? `<#${channelId}>` : '—'}` });
+    }
+    if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
+      const cf = await getConfessConfig(interaction.guild.id);
+      const allow = !cf.allowReplies;
+      await updateConfessConfig(interaction.guild.id, { allowReplies: allow });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildConfessRows(interaction.guild, 'sfw');
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'confess_toggle_naming') {
+      const cf = await getConfessConfig(interaction.guild.id);
+      const next = cf.threadNaming === 'nsfw' ? 'normal' : 'nsfw';
+      await updateConfessConfig(interaction.guild.id, { threadNaming: next });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildConfessRows(interaction.guild, 'sfw');
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
@@ -1267,6 +1344,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: '✅ Cooldowns mis à jour.' });
     }
 
+    // Anonymous reply button → modal
+    if (interaction.isButton() && interaction.customId === 'confess_reply') {
+      const modal = new ModalBuilder().setCustomId('confess_reply_modal').setTitle('Répondre anonymement');
+      const input = new TextInputBuilder().setCustomId('text').setLabel('Votre réponse').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(1000);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'confess_reply_modal') {
+      const text = interaction.fields.getTextInputValue('text');
+      await interaction.deferReply({ ephemeral: true });
+      const msg = interaction.message || null;
+      let thread = null;
+      try { thread = msg && msg.hasThread ? msg.thread : null; } catch (_) { thread = null; }
+      if (!thread) {
+        try { thread = await msg.startThread({ name: 'Discussion', autoArchiveDuration: 1440 }); } catch (_) {}
+      }
+      if (thread) {
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setAuthor({ name: 'Réponse anonyme' }).setDescription(text).setTimestamp(new Date());
+        await thread.send({ embeds: [embed] }).catch(()=>{});
+        return interaction.editReply({ content: '✅ Réponse envoyée dans le fil.' });
+      } else {
+        await interaction.channel.send({ content: `Réponse anonyme: ${text}` }).catch(()=>{});
+        return interaction.editReply({ content: '✅ Réponse envoyée.' });
+      }
+    }
+
     if (interaction.isChatInputCommand() && interaction.commandName === 'eco') {
       const sub = interaction.options.getSubcommand();
       const eco = await getEconomyConfig(interaction.guild.id);
@@ -1314,6 +1418,63 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Boutique BAG').setDescription('Sélectionnez un article à acheter.').setThumbnail(THEME_IMAGE);
       const rows = await buildBoutiqueRows(interaction.guild);
       return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+    }
+
+    // /confess command
+    if (interaction.isChatInputCommand() && interaction.commandName === 'confess') {
+      const cf = await getConfessConfig(interaction.guild.id);
+      const chId = interaction.channel.id;
+      const mode = (Array.isArray(cf?.nsfw?.channels) && cf.nsfw.channels.includes(chId)) ? 'nsfw'
+        : ((Array.isArray(cf?.sfw?.channels) && cf.sfw.channels.includes(chId)) ? 'sfw' : null);
+      if (!mode) return interaction.reply({ content: '⛔ Ce salon ne permet pas les confessions. Configurez-les dans /config → Confessions.', ephemeral: true });
+      const text = interaction.options.getString('texte');
+      const attach = interaction.options.getAttachment('image');
+      if ((!text || text.trim() === '') && !attach) return interaction.reply({ content: 'Veuillez fournir un texte ou une image.', ephemeral: true });
+      // Post anonymously in current channel
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_ACCENT)
+        .setAuthor({ name: 'Confession anonyme' })
+        .setDescription(text || null)
+        .setThumbnail(THEME_IMAGE)
+        .setTimestamp(new Date())
+        .setFooter({ text: 'BAG • Confessions' });
+      const files = [];
+      if (attach && attach.url) files.push(attach.url);
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('confess_reply').setLabel('Répondre anonymement').setStyle(ButtonStyle.Secondary).setDisabled(!cf.allowReplies)
+      );
+      const msg = await interaction.channel.send({ embeds: [embed], components: [row], files: files.length ? files : undefined }).catch(()=>null);
+      // Create discussion thread if replies allowed
+      if (msg && cf.allowReplies) {
+        try {
+          const index = await incrementConfessCounter(interaction.guild.id);
+          let threadName = `Confession #${index}`;
+          if (mode === 'nsfw' && cf.threadNaming === 'nsfw') {
+            const base = (cf.nsfwNames || ['Velours','Nuit Rouge','Écarlate','Aphrodite','Énigme','Saphir','Nocturne','Scarlett','Mystique','Aphrodisia'])[Math.floor(Math.random()*10)];
+            const num = Math.floor(100 + Math.random()*900);
+            threadName = `${base}-${num}`;
+          }
+          await msg.startThread({ name: threadName, autoArchiveDuration: 1440 }).catch(()=>{});
+        } catch (_) {}
+      }
+      // Admin log
+      if (cf.logChannelId) {
+        const log = interaction.guild.channels.cache.get(cf.logChannelId);
+        if (log && log.isTextBased?.()) {
+          const admin = new EmbedBuilder()
+            .setColor(0xff7043)
+            .setTitle('Nouvelle confession')
+            .addFields(
+              { name: 'Auteur', value: `${interaction.user} (${interaction.user.id})` },
+              { name: 'Salon', value: `<#${interaction.channel.id}>` },
+            )
+            .setDescription(text || '—')
+            .setTimestamp(new Date());
+          const content = attach && attach.url ? { embeds: [admin], files: [attach.url] } : { embeds: [admin] };
+          log.send(content).catch(()=>{});
+        }
+      }
+      return interaction.reply({ content: '✅ Confession envoyée.', ephemeral: true });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'boutique_select') {

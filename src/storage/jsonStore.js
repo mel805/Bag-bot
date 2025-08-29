@@ -320,11 +320,32 @@ function ensureTruthDareShape(g) {
   if (typeof td.nsfw.nextId !== 'number') td.nsfw.nextId = 1;
 }
 
+function ensureConfessShape(g) {
+  if (!g.confess || typeof g.confess !== 'object') g.confess = {};
+  const cf = g.confess;
+  if (!cf.sfw || typeof cf.sfw !== 'object') cf.sfw = { channels: [] };
+  if (!cf.nsfw || typeof cf.nsfw !== 'object') cf.nsfw = { channels: [] };
+  if (!Array.isArray(cf.sfw.channels)) cf.sfw.channels = [];
+  if (!Array.isArray(cf.nsfw.channels)) cf.nsfw.channels = [];
+  if (typeof cf.logChannelId !== 'string') cf.logChannelId = '';
+  if (typeof cf.allowReplies !== 'boolean') cf.allowReplies = true;
+  if (cf.threadNaming !== 'nsfw' && cf.threadNaming !== 'normal') cf.threadNaming = 'normal';
+  if (!Array.isArray(cf.nsfwNames)) cf.nsfwNames = ['Velours', 'Nuit Rouge', 'Écarlate', 'Aphrodite', 'Énigme', 'Saphir', 'Nocturne', 'Scarlett', 'Mystique', 'Aphrodisia'];
+  if (typeof cf.counter !== 'number') cf.counter = 1;
+}
+
 async function getTruthDareConfig(guildId) {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureTruthDareShape(cfg.guilds[guildId]);
   return cfg.guilds[guildId].truthdare;
+}
+
+async function getConfessConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].confess;
 }
 
 async function updateTruthDareConfig(guildId, partial) {
@@ -334,6 +355,15 @@ async function updateTruthDareConfig(guildId, partial) {
   cfg.guilds[guildId].truthdare = { ...cfg.guilds[guildId].truthdare, ...partial };
   await writeConfig(cfg);
   return cfg.guilds[guildId].truthdare;
+}
+
+async function updateConfessConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].confess = { ...cfg.guilds[guildId].confess, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].confess;
 }
 
 async function addTdChannels(guildId, channelIds, mode = 'sfw') {
@@ -348,6 +378,18 @@ async function addTdChannels(guildId, channelIds, mode = 'sfw') {
   return td[mode].channels;
 }
 
+async function addConfessChannels(guildId, channelIds, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  const cf = cfg.guilds[guildId].confess;
+  const set = new Set(cf[mode].channels || []);
+  for (const id of channelIds) set.add(String(id));
+  cf[mode].channels = Array.from(set);
+  await writeConfig(cfg);
+  return cf[mode].channels;
+}
+
 async function removeTdChannels(guildId, channelIds, mode = 'sfw') {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) return [];
@@ -357,6 +399,27 @@ async function removeTdChannels(guildId, channelIds, mode = 'sfw') {
   td[mode].channels = (td[mode].channels||[]).filter(id => !toRemove.has(String(id)));
   await writeConfig(cfg);
   return td[mode].channels;
+}
+
+async function removeConfessChannels(guildId, channelIds, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return [];
+  ensureConfessShape(cfg.guilds[guildId]);
+  const cf = cfg.guilds[guildId].confess;
+  const toRemove = new Set(channelIds.map(String));
+  cf[mode].channels = (cf[mode].channels||[]).filter(id => !toRemove.has(String(id)));
+  await writeConfig(cfg);
+  return cf[mode].channels;
+}
+
+async function incrementConfessCounter(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  const cf = cfg.guilds[guildId].confess;
+  cf.counter = (typeof cf.counter === 'number' ? cf.counter : 0) + 1;
+  await writeConfig(cfg);
+  return cf.counter;
 }
 
 async function addTdPrompts(guildId, type, texts, mode = 'sfw') {
@@ -413,6 +476,12 @@ module.exports = {
   removeTdChannels,
   addTdPrompts,
   deleteTdPrompts,
+  // Confess
+  getConfessConfig,
+  updateConfessConfig,
+  addConfessChannels,
+  removeConfessChannels,
+  incrementConfessCounter,
   paths: { DATA_DIR, CONFIG_PATH },
 };
 

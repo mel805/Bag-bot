@@ -91,6 +91,12 @@ const commands = [
     .setDMPermission(false)
     .toJSON(),
   new SlashCommandBuilder().setName('actionverite').setDescription('Démarrer Action ou Vérité dans ce salon autorisé').toJSON(),
+  new SlashCommandBuilder()
+    .setName('confess')
+    .setDescription('Envoyer une confession anonyme')
+    .addStringOption(o=>o.setName('texte').setDescription('Votre confession (optionnel)').setRequired(false))
+    .addAttachmentOption(o=>o.setName('image').setDescription('Image (optionnel)').setRequired(false))
+    .toJSON(),
 ];
 
 async function main() {
