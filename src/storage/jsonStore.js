@@ -334,6 +334,19 @@ function ensureConfessShape(g) {
   if (typeof cf.counter !== 'number') cf.counter = 1;
 }
 
+function ensureAutoThreadShape(g) {
+  if (!g.autothread || typeof g.autothread !== 'object') g.autothread = {};
+  const at = g.autothread;
+  if (!Array.isArray(at.channels)) at.channels = [];
+  if (!at.naming || typeof at.naming !== 'object') at.naming = { mode: 'member_num', customPattern: '' };
+  if (!['member_num','custom','nsfw','numeric','date_num'].includes(at.naming.mode)) at.naming.mode = 'member_num';
+  if (typeof at.naming.customPattern !== 'string') at.naming.customPattern = '';
+  if (!at.archive || typeof at.archive !== 'object') at.archive = { policy: '7d' };
+  if (!['1d','7d','1m','max'].includes(at.archive.policy)) at.archive.policy = '7d';
+  if (typeof at.counter !== 'number') at.counter = 1;
+  if (!Array.isArray(at.nsfwNames)) at.nsfwNames = ['Velours','Nuit Rouge','Écarlate','Aphrodite','Énigme','Saphir','Nocturne','Scarlett','Mystique','Aphrodisia'];
+}
+
 function ensureGeoShape(g) {
   if (!g.geo || typeof g.geo !== 'object') g.geo = {};
   const geo = g.geo;
@@ -352,6 +365,13 @@ async function getGeoConfig(guildId) {
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureGeoShape(cfg.guilds[guildId]);
   return cfg.guilds[guildId].geo;
+}
+
+async function getAutoThreadConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoThreadShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].autothread;
 }
 
 async function getConfessConfig(guildId) {
@@ -519,6 +539,7 @@ module.exports = {
   setUserLocation,
   getUserLocation,
   getAllLocations,
+  getAutoThreadConfig,
   // Confess
   getConfessConfig,
   updateConfessConfig,

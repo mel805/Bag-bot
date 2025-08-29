@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -143,6 +143,7 @@ function buildTopSectionRow() {
       { label: 'Économie', value: 'economy', description: "Configurer l'économie" },
       { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' },
       { label: 'Confessions', value: 'confess', description: 'Configurer les confessions anonymes' },
+      { label: 'AutoThread', value: 'autothread', description: 'Créer des fils automatiquement' },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -528,6 +529,35 @@ async function buildEconomySettingsRows(guild) {
   return [row];
 }
 
+async function buildAutoThreadRows(guild) {
+  const cfg = await getAutoThreadConfig(guild.id);
+  const channelsAdd = new ChannelSelectMenuBuilder().setCustomId('autothread_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(5).addChannelTypes(ChannelType.GuildText);
+  const channelsRemove = new StringSelectMenuBuilder().setCustomId('autothread_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (cfg.channels||[]).length || 1)));
+  const opts = (cfg.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  if (opts.length) channelsRemove.addOptions(...opts); else channelsRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+  const naming = new StringSelectMenuBuilder().setCustomId('autothread_naming').setPlaceholder('Nom du fil…').addOptions(
+    { label: 'Membre + numéro', value: 'member_num', default: cfg.naming?.mode === 'member_num' },
+    { label: 'Personnalisé (pattern)', value: 'custom', default: cfg.naming?.mode === 'custom' },
+    { label: 'NSFW aléatoire + numéro', value: 'nsfw', default: cfg.naming?.mode === 'nsfw' },
+    { label: 'Numérique', value: 'numeric', default: cfg.naming?.mode === 'numeric' },
+    { label: 'Date + numéro', value: 'date_num', default: cfg.naming?.mode === 'date_num' },
+  );
+  const archive = new StringSelectMenuBuilder().setCustomId('autothread_archive').setPlaceholder('Délai d\'archivage…').addOptions(
+    { label: '1 jour', value: '1d', default: cfg.archive?.policy === '1d' },
+    { label: '7 jours', value: '7d', default: cfg.archive?.policy === '7d' },
+    { label: '1 mois', value: '1m', default: cfg.archive?.policy === '1m' },
+    { label: 'Illimité', value: 'max', default: cfg.archive?.policy === 'max' },
+  );
+  const customBtn = new ButtonBuilder().setCustomId('autothread_custom_pattern').setLabel(`Pattern: ${cfg.naming?.customPattern ? cfg.naming.customPattern.slice(0,20) : 'non défini'}`).setStyle(ButtonStyle.Secondary);
+  return [
+    new ActionRowBuilder().addComponents(channelsAdd),
+    new ActionRowBuilder().addComponents(channelsRemove),
+    new ActionRowBuilder().addComponents(naming),
+    new ActionRowBuilder().addComponents(archive),
+    new ActionRowBuilder().addComponents(customBtn),
+  ];
+}
+
 async function buildConfessRows(guild, mode = 'sfw') {
   const cf = await getConfessConfig(guild.id);
   const modeSelect = new StringSelectMenuBuilder().setCustomId('confess_mode').setPlaceholder('Mode…').addOptions(
@@ -713,6 +743,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (section === 'confess') {
         const rows = await buildConfessRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [...rows] });
+      } else if (section === 'autothread') {
+        const rows = await buildAutoThreadRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
@@ -894,6 +927,56 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const akRows = await buildAutokickRows(interaction.guild);
       try { await interaction.editReply({ embeds: [embed], components: [top, ...akRows] }); } catch (_) {}
       return;
+    }
+
+    // AutoThread config handlers
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'autothread_channels_add') {
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      const set = new Set(cfg.channels || []);
+      for (const id of interaction.values) set.add(String(id));
+      cfg.channels = Array.from(set);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildAutoThreadRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_channels_remove') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      const remove = new Set(interaction.values.map(String));
+      cfg.channels = (cfg.channels||[]).filter(id => !remove.has(String(id)));
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildAutoThreadRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_naming') {
+      const mode = interaction.values[0];
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      cfg.naming = { ...(cfg.naming||{}), mode };
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildAutoThreadRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_archive') {
+      const policy = interaction.values[0];
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      cfg.archive = { ...(cfg.archive||{}), policy };
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildAutoThreadRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'autothread_custom_pattern') {
+      const modal = new ModalBuilder().setCustomId('autothread_custom_modal').setTitle('Pattern de nom de fil');
+      const input = new TextInputBuilder().setCustomId('pattern').setLabel('Pattern (ex: Sujet-{num})').setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(80).setPlaceholder('Sujet-{num}');
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'autothread_custom_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const pattern = interaction.fields.getTextInputValue('pattern') || '';
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      cfg.naming = { ...(cfg.naming||{}), customPattern: pattern };
+      return interaction.editReply({ content: '✅ Pattern mis à jour.' });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'levels_action') {
@@ -2780,6 +2863,31 @@ const ACTION_GIFS = {
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild || message.author.bot) return;
+    // AutoThread runtime: if message is in a configured channel, create a thread if none exists
+    try {
+      const at = await getAutoThreadConfig(message.guild.id);
+      if (at.channels && at.channels.includes(message.channel.id)) {
+        if (!message.hasThread) {
+          const now = new Date();
+          const num = (at.counter || 1);
+          let name = `Sujet-${num}`;
+          const mode = at.naming?.mode || 'member_num';
+          if (mode === 'member_num') name = `${message.member?.displayName || message.author.username}-${num}`;
+          else if (mode === 'custom' && at.naming?.customPattern) name = (at.naming.customPattern || '').replace('{num}', String(num)).replace('{user}', message.member?.displayName || message.author.username).substring(0, 90);
+          else if (mode === 'nsfw') {
+            const base = (at.nsfwNames||['Velours','Nuit Rouge','Écarlate','Aphrodite','Énigme','Saphir','Nocturne','Scarlett','Mystique','Aphrodisia'])[Math.floor(Math.random()*10)];
+            const suffix = Math.floor(100 + Math.random()*900);
+            name = `${base}-${suffix}`;
+          } else if (mode === 'numeric') name = `${num}`;
+          else if (mode === 'date_num') name = `${now.toISOString().slice(0,10)}-${num}`;
+          const policy = at.archive?.policy || '7d';
+          const archiveMap = { '1d': 1440, '7d': 10080, '1m': 43200, 'max': 10080 };
+          const autoArchiveDuration = archiveMap[policy] || 10080;
+          await message.startThread({ name, autoArchiveDuration }).catch(()=>{});
+          at.counter = num + 1;
+        }
+      }
+    } catch (_) {}
     const levels = await getLevelsConfig(message.guild.id);
     if (!levels?.enabled) return;
     const stats = await getUserStats(message.guild.id, message.author.id);
