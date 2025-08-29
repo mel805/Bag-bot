@@ -2015,7 +2015,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const pool = (td?.[mode]?.prompts || []).filter(p => p.type === (kind === 'action' ? 'action' : 'verite'));
       if (!pool.length) return interaction.reply({ content: 'Aucun prompt disponible pour ce type.', ephemeral: true });
       const pick = pool[Math.floor(Math.random() * pool.length)];
-      return interaction.reply({ content: `🎯 ${kind === 'action' ? 'Action' : 'Vérité'}: ${pick.text}` });
+      const followRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('td:action').setLabel('Action').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('td:verite').setLabel('Vérité').setStyle(ButtonStyle.Primary),
+      );
+      return interaction.reply({ content: `🎯 ${kind === 'action' ? 'Action' : 'Vérité'}: ${pick.text}` , components: [followRow] });
     }
 
     // Removed legacy global channel add/remove modals; handled via per-mode selectors elsewhere
