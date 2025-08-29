@@ -41,3 +41,10 @@ Interaction handler error: TypeError [ModalSubmitInteractionFieldNotFound]: Requ
     at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
   code: 'ModalSubmitInteractionFieldNotFound'
 }
+Interaction handler error: TypeError [ModalSubmitInteractionFieldNotFound]: Required field with custom id "type" not found.
+    at ModalSubmitFields.getField (/workspace/node_modules/discord.js/src/structures/ModalSubmitFields.js:36:23)
+    at ModalSubmitFields.getTextInputValue (/workspace/node_modules/discord.js/src/structures/ModalSubmitFields.js:51:17)
+    at Client.<anonymous> (/workspace/src/bot.js:2060:42)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ModalSubmitInteractionFieldNotFound'
+}
