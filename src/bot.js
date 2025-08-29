@@ -1899,73 +1899,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'couleur') {
       const isAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
       if (!isAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
-      const cible = interaction.options.getUser('membre', true);
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_ACCENT)
+        .setTitle('Choisir un membre puis un style de couleurs')
+        .setDescription('Sélectionnez d\'abord le membre à qui attribuer la couleur.');
+      const userSelect = new (require('discord.js').UserSelectMenuBuilder)().setCustomId('color_user_pick').setPlaceholder('Sélectionner un membre…').setMinValues(1).setMaxValues(1);
+      return interaction.reply({ embeds: [embed], components: [new ActionRowBuilder().addComponents(userSelect)] });
+    }
+
+    if (interaction.isUserSelectMenu && interaction.isUserSelectMenu() && interaction.customId === 'color_user_pick') {
+      const userId = interaction.values[0];
       const embed = new EmbedBuilder()
         .setColor(THEME_COLOR_ACCENT)
         .setTitle('Choisir un style de couleurs')
-        .setDescription(`Membre cible: ${cible}`)
+        .setDescription(`Membre cible: <@${userId}>`)
         .addFields(
           { name: 'Pastel', value: '#FFB3BA, #FFDFBA, #FFFFBA, #BAFFC9, #BAE1FF' },
           { name: 'Vif', value: '#E91E63, #9C27B0, #2196F3, #4CAF50, #FF9800' },
           { name: 'Sombre', value: '#263238, #37474F, #455A64, #546E7A, #607D8B' },
         );
       const styleSelect = new StringSelectMenuBuilder()
-        .setCustomId(`color_style:${cible.id}`)
+        .setCustomId(`color_style:${userId}`)
         .setPlaceholder('Style…')
         .addOptions(
           { label: 'Pastel', value: 'pastel' },
           { label: 'Vif', value: 'vif' },
           { label: 'Sombre', value: 'sombre' },
         );
-      const row = new ActionRowBuilder().addComponents(styleSelect);
-      return interaction.reply({ embeds: [embed], components: [row] });
-    }
-
-    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('color_style:')) {
-      const userId = interaction.customId.split(':')[1];
-      const style = interaction.values[0];
-      const palettes = {
-        pastel: ['#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF'],
-        vif: ['#E91E63','#9C27B0','#2196F3','#4CAF50','#FF9800'],
-        sombre: ['#263238','#37474F','#455A64','#546E7A','#607D8B'],
-      };
-      const colors = palettes[style] || palettes.vif;
-      const preview = new EmbedBuilder().setColor(parseInt(colors[0].slice(1),16)).setTitle('Choisir la couleur').setDescription(colors.join(' • '));
-      const colorSelect = new StringSelectMenuBuilder()
-        .setCustomId(`color_pick:${userId}`)
-        .setPlaceholder('Couleur…')
-        .addOptions(colors.map(hex => ({ label: hex.toUpperCase(), value: hex })));
-      const rolePicker = new RoleSelectMenuBuilder().setCustomId(`color_role:${userId}`).setPlaceholder('Rôle existant (optionnel)…').setMinValues(0).setMaxValues(1);
-      return interaction.update({ embeds: [preview], components: [new ActionRowBuilder().addComponents(colorSelect), new ActionRowBuilder().addComponents(rolePicker)] });
-    }
-
-    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('color_pick:')) {
-      const userId = interaction.customId.split(':')[1];
-      const hex = interaction.values[0];
-      const embed = new EmbedBuilder().setColor(parseInt(hex.slice(1),16)).setTitle(`Couleur sélectionnée: ${hex}`).setDescription('Sélectionnez un rôle existant (facultatif) puis appuyez sur ce bouton pour créer/attribuer.');
-      const confirm = new ButtonBuilder().setCustomId(`color_confirm:${userId}:${hex}`).setLabel('Créer/Attribuer').setStyle(ButtonStyle.Primary);
-      return interaction.update({ embeds: [embed], components: [new ActionRowBuilder().addComponents(confirm)] });
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith('color_confirm:')) {
-      const [, userId, hex] = interaction.customId.split(':');
-      await interaction.deferReply();
-      const guild = interaction.guild;
-      const colorInt = parseInt(hex.substring(1), 16);
-      const roleName = `Couleur ${hex.toUpperCase()}`;
-      let role = guild.roles.cache.find(r => r.name === roleName) || null;
-      if (!role) {
-        const highest = guild.roles.highest;
-        role = await guild.roles.create({ name: roleName, color: colorInt, reason: 'Couleur personnalisée', hoist: false, mentionable: false });
-        try { await role.setPosition(highest.position); } catch (_) {}
-      } else {
-        try { await role.edit({ color: colorInt, reason: 'Mise à jour couleur' }); } catch (_) {}
-      }
-      try {
-        const member = await guild.members.fetch(userId);
-        await member.roles.add(role);
-      } catch (_) {}
-      return interaction.editReply({ content: `✅ Rôle ${roleName} attribué à <@${userId}>.` });
+      return interaction.update({ embeds: [embed], components: [new ActionRowBuilder().addComponents(styleSelect)] });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);

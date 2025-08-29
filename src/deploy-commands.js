@@ -89,7 +89,6 @@ const commands = [
     .setDescription('Attribuer une couleur de rôle à un membre')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setDMPermission(false)
-    .addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true))
     .toJSON(),
 ];
 
