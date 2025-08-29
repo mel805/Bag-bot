@@ -2046,20 +2046,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton() && interaction.customId === 'td_prompts_add') {
+      const mode = 'sfw';
       const modal = new ModalBuilder().setCustomId('td_prompts_add_modal').setTitle('Ajouter des prompts');
-      const promptsAddBtn = new ButtonBuilder().setCustomId('td_prompts_add').setLabel('Ajouter des prompts').setStyle(ButtonStyle.Primary);
-      modal.addComponents(promptsAddBtn);
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(`type:${mode}`).setLabel('Type (action/verite)').setStyle(TextInputStyle.Short).setRequired(true)));
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(`texts:${mode}`).setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
       await interaction.showModal(modal);
       return;
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_add_modal') {
       await interaction.deferReply({ ephemeral: true });
-      const prompts = interaction.fields.getTextInputValue('td_prompts_add');
-      const td = await getTruthDareConfig(interaction.guild.id);
-      const newPrompts = [...td.prompts, ...prompts.split('\n').filter(p => p.trim() !== '')];
-      await updateTruthDareConfig(interaction.guild.id, { prompts: newPrompts });
-      return interaction.editReply({ content: `✅ ${newPrompts.length} prompts ajoutés.` });
+      const mode = Object.keys(interaction.fields.fields).find(k => k.startsWith('texts:'))?.split(':')[1] || 'sfw';
+      const typeKey = Object.keys(interaction.fields.fields).find(k => k.startsWith('type:')) || 'type:sfw';
+      const typeVal = interaction.fields.getTextInputValue(typeKey) || '';
+      const type = typeVal.toLowerCase().includes('ver') ? 'verite' : 'action';
+      const textsKey = Object.keys(interaction.fields.fields).find(k => k.startsWith('texts:')) || 'texts:sfw';
+      const textsRaw = interaction.fields.getTextInputValue(textsKey) || '';
+      const texts = textsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+      await addTdPrompts(interaction.guild.id, type, texts, mode);
+      return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}, ${mode.toUpperCase()}).` });
     }
 
     if (interaction.isButton() && interaction.customId === 'td_prompts_edit') {
