@@ -683,7 +683,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'confess') {
         const rows = await buildConfessRows(interaction.guild, 'sfw');
-        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
@@ -710,14 +710,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const mode = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('confess_channels_add:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       await addConfessChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('confess_channels_remove:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
@@ -725,14 +725,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await removeConfessChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'confess_log_select') {
       const channelId = interaction.values[0];
       await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
       const cf = await getConfessConfig(interaction.guild.id);
@@ -740,7 +740,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateConfessConfig(interaction.guild.id, { allowReplies: allow });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_naming') {
       const cf = await getConfessConfig(interaction.guild.id);
@@ -748,7 +748,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateConfessConfig(interaction.guild.id, { threadNaming: next });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
