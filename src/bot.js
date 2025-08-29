@@ -32,6 +32,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers,
   ],
   partials: [Partials.GuildMember],
 });
@@ -731,6 +732,35 @@ client.once(Events.ClientReady, (readyClient) => {
       }
     } catch (_) {}
   }, 10 * 60 * 1000);
+
+  // AutoKick enforcement every 2 minutes
+  setInterval(async () => {
+    try {
+      const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
+      if (!guild) return;
+      const ak = await getAutoKickConfig(guild.id);
+      if (!ak?.enabled || !ak.delayMs || ak.delayMs <= 0) return;
+      const now = Date.now();
+      const roleId = String(ak.roleId || '');
+      for (const [userId, joinedAt] of Object.entries(ak.pendingJoiners || {})) {
+        if (!joinedAt || now - Number(joinedAt) < ak.delayMs) continue;
+        let shouldKick = true;
+        try {
+          const member = await guild.members.fetch(userId).catch(()=>null);
+          if (!member) {
+            await removePendingJoiner(guild.id, userId).catch(()=>{});
+            continue;
+          }
+          if (roleId && member.roles.cache.has(roleId)) shouldKick = false;
+          if (shouldKick) {
+            await member.kick('AutoKick: délai dépassé sans rôle requis').catch(()=>{});
+          }
+        } finally {
+          await removePendingJoiner(guild.id, userId).catch(()=>{});
+        }
+      }
+    } catch (_) {}
+  }, 2 * 60 * 1000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -3235,3 +3265,11 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
     new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn, promptsDelAllBtn),
   ];
 }
+
+client.on(Events.GuildMemberAdd, async (member) => {
+  try {
+    const ak = await getAutoKickConfig(member.guild.id);
+    if (!ak?.enabled) return;
+    await addPendingJoiner(member.guild.id, member.id, Date.now());
+  } catch (_) {}
+});
