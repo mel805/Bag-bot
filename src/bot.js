@@ -2458,47 +2458,118 @@ const STEAL_FAIL = ['Pris la main dans le sac !','Tentative avortée.','La cible
 // GIFs per action (success/fail)
 const ACTION_GIFS = {
   work: {
-    success: ['https://media.giphy.com/media/3o6ZtaO9BZHcOjmErm/giphy.gif','https://media.giphy.com/media/l2Sq0oQbAJGEGZmLe/giphy.gif'],
-    fail: ['https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/3o6ZtaO9BZHcOjmErm/giphy.gif',
+      'https://media.giphy.com/media/3ohs7KViFv2Q1k6Q9O/giphy.gif',
+      'https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif',
+      'https://media.giphy.com/media/3o6ZtpxSZbQRRnwCKQ/giphy.gif'
+    ]
   },
   fish: {
-    success: ['https://media.giphy.com/media/xT9IgIc0lryrxvqVGM/giphy.gif','https://media.giphy.com/media/3ohhwIDbJnb5jWRVja/giphy.gif'],
-    fail: ['https://media.giphy.com/media/3o6ZsUT0G3jvm7FQ5S/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/xT9IgIc0lryrxvqVGM/giphy.gif',
+      'https://media.giphy.com/media/3ohhwIDbJnb5jWRVja/giphy.gif',
+      'https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/3o6ZsUT0G3jvm7FQ5S/giphy.gif',
+      'https://media.giphy.com/media/3o7bu8sRnYpTOGQJkM/giphy.gif'
+    ]
   },
   give: {
-    success: ['https://media.giphy.com/media/3ohhwf34cGDoFFhRzi/giphy.gif','https://media.giphy.com/media/xUNd9HZq1itMki3jhC/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/3ohhwf34cGDoFFhRzi/giphy.gif',
+      'https://media.giphy.com/media/xUNd9HZq1itMki3jhC/giphy.gif',
+      'https://media.giphy.com/media/l2JhLz2W1pVhU4X1y/giphy.gif'
+    ]
   },
   steal: {
-    success: ['https://media.giphy.com/media/26u4b45b8KlgAB7iM/giphy.gif'],
-    fail: ['https://media.giphy.com/media/26tPplGWjN0xLybiU/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/26u4b45b8KlgAB7iM/giphy.gif',
+      'https://media.giphy.com/media/l0MYEw0GzQJQ2FqJW/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/26tPplGWjN0xLybiU/giphy.gif',
+      'https://media.giphy.com/media/3o6Zt6ML6BklcajjsA/giphy.gif'
+    ]
   },
   kiss: {
-    success: ['https://media.giphy.com/media/G3va31oEEnIkM/giphy.gif','https://media.giphy.com/media/12VXIxKaIEarL2/giphy.gif'],
-    fail: ['https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/G3va31oEEnIkM/giphy.gif',
+      'https://media.giphy.com/media/12VXIxKaIEarL2/giphy.gif',
+      'https://media.giphy.com/media/3o6gE5aY7e5Wfhm9H6/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif',
+      'https://media.giphy.com/media/3o85xpxuE5fJcm7k7K/giphy.gif'
+    ]
   },
   flirt: {
-    success: ['https://media.giphy.com/media/l0HUqsz2jdQYElRm0/giphy.gif','https://media.giphy.com/media/l3vR85PnGsBwu1PFK/giphy.gif'],
-    fail: ['https://media.giphy.com/media/3ohc1aG3Z5rKobAjS4/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/l0HUqsz2jdQYElRm0/giphy.gif',
+      'https://media.giphy.com/media/l3vR85PnGsBwu1PFK/giphy.gif',
+      'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/3ohc1aG3Z5rKobAjS4/giphy.gif',
+      'https://media.giphy.com/media/l46C6sdSa5YyE1Uuk/giphy.gif'
+    ]
   },
   seduce: {
-    success: ['https://media.giphy.com/media/3oEduSbSGpGaRX2Vri/giphy.gif','https://media.giphy.com/media/3o6Zt6ML6BklcajjsA/giphy.gif'],
-    fail: ['https://media.giphy.com/media/3o6gE8f3ZxZzQ0imeI/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/3oEduSbSGpGaRX2Vri/giphy.gif',
+      'https://media.giphy.com/media/3o6Zt2bYkS6vCuxoXu/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/3o6gE8f3ZxZzQ0imeI/giphy.gif',
+      'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif'
+    ]
   },
   fuck: {
-    success: ['https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif','https://media.giphy.com/media/l0ExdMHUDKteztyfe/giphy.gif'],
-    fail: ['https://media.giphy.com/media/3oEduW2X6y83L1ZyBG/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/3o6ZsY3qZKqRR3YK9m/giphy.gif',
+      'https://media.giphy.com/media/3o7btYIYbW0nJwF0dK/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/3oEduW2X6y83L1ZyBG/giphy.gif',
+      'https://media.giphy.com/media/3o6Zt8j0Yk6y3o5cQg/giphy.gif'
+    ]
   },
   massage: {
-    success: ['https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif','https://media.giphy.com/media/l1J9sGZee7lU0w7M4/giphy.gif'],
-    fail: ['https://media.giphy.com/media/3o6Zt8zb1hQv5nYVxe/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif',
+      'https://media.giphy.com/media/l1J9sGZee7lU0w7M4/giphy.gif',
+      'https://media.giphy.com/media/3o6ZsZ0GQztrU1Vf3a/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/3o6Zt8zb1hQv5nYVxe/giphy.gif',
+      'https://media.giphy.com/media/3ohhwH4gN1ZkzQeKkg/giphy.gif'
+    ]
   },
   dance: {
-    success: ['https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif','https://media.giphy.com/media/l0IylOPCNkiqOgMyA/giphy.gif'],
-    fail: ['https://media.giphy.com/media/3o6Zt7Rfw1gXkZ0pO0/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif',
+      'https://media.giphy.com/media/l0IylOPCNkiqOgMyA/giphy.gif',
+      'https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/3o6Zt7Rfw1gXkZ0pO0/giphy.gif',
+      'https://media.giphy.com/media/3o6Zt1YwS2rCA3VvGk/giphy.gif'
+    ]
   },
   crime: {
-    success: ['https://media.giphy.com/media/l0K4lQZ9Fz3hX8qKc/giphy.gif','https://media.giphy.com/media/3o6ZsZLoN4RpmjQe3W/giphy.gif'],
-    fail: ['https://media.giphy.com/media/3o6Zt8j0Yk6y3o5cQg/giphy.gif']
+    success: [
+      'https://media.giphy.com/media/l0K4lQZ9Fz3hX8qKc/giphy.gif',
+      'https://media.giphy.com/media/3o6ZsZLoN4RpmjQe3W/giphy.gif',
+      'https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif'
+    ],
+    fail: [
+      'https://media.giphy.com/media/3o6Zt8j0Yk6y3o5cQg/giphy.gif',
+      'https://media.giphy.com/media/3ohfFh9d4dZ3n8m3Gk/giphy.gif'
+    ]
   }
 }
 
