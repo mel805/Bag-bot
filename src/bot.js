@@ -2742,7 +2742,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const type = interaction.customId.startsWith('td_prompts_add_action:') ? 'action' : 'verite';
       const title = type === 'action' ? 'Ajouter des ACTIONS' : 'Ajouter des VERITES';
       const modal = new ModalBuilder().setCustomId(`td_prompts_add_modal:${mode}:${type}`).setTitle(title);
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texts').setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texts').setLabel('Prompts (séparés par sauts de ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
       try {
         await interaction.showModal(modal);
       } catch (e) {
@@ -2758,7 +2758,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const mode = parts[1] || 'sfw';
       const type = parts[2] || 'action';
       const textsRaw = interaction.fields.getTextInputValue('texts') || '';
-      const texts = textsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+      const texts = textsRaw.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
       await addTdPrompts(interaction.guild.id, type, texts, mode);
       return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}, ${mode.toUpperCase()}).` });
     }
