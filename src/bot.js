@@ -2067,12 +2067,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (d <= distMax) nearby.push({ uid, ...loc, dist: Math.round(d) });
       }
       if (nearby.length === 0) return interaction.reply({ content: `Aucun membre proche (≤ ${distMax} km).`, ephemeral: true });
-      // Build URL with repeated markers parameters
-      let map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&format=png`;
-      map += `&markers=${encodeURIComponent(`${me.lat},${me.lon}`)}`;
-      for (const n of nearby.slice(0, 20)) {
-        map += `&markers=${encodeURIComponent(`${n.lat},${n.lon}`)}`;
-      }
+      // Build URL with a single markers parameter using pipe-separated coordinates
+      const parts = [`${me.lat},${me.lon}`].concat(nearby.slice(0,20).map(n => `${n.lat},${n.lon}`));
+      const markersParam = encodeURIComponent(parts.join('|'));
+      const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&format=png&markers=${markersParam}`;
       const lines = nearby.sort((a,b)=>a.dist-b.dist).slice(0, 20).map(n => `• <@${n.uid}> — ${n.city||''} (${n.dist} km)`).join('\n');
       const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle(`🗺️ Membres proches (≤${distMax} km)`).setDescription(lines).setImage(map).setTimestamp(new Date());
       return interaction.reply({ embeds: [embed] });
@@ -2105,11 +2103,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         const centerLat = count ? (sumLat / count) : 48.8566;
         const centerLon = count ? (sumLon / count) : 2.3522;
-        let map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${centerLat},${centerLon}&zoom=4&size=800x500&format=png`;
-        for (const m of marks.slice(0, 50)) {
+        const partsAll = marks.slice(0,50).map(m => {
           const [_, lat, lon] = m.split(',');
-          map += `&markers=${encodeURIComponent(`${lat},${lon}`)}`;
-        }
+          return `${lat},${lon}`;
+        });
+        const markersAll = encodeURIComponent(partsAll.join('|'));
+        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${centerLat},${centerLon}&zoom=4&size=800x500&format=png&markers=${markersAll}`;
         const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🗺️ Localisation des membres').setDescription(`Membres localisés: ${count}`).setImage(map).setTimestamp(new Date());
         return interaction.reply({ embeds: [embed] });
       }
