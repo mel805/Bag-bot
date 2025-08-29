@@ -92,6 +92,22 @@ const commands = [
     .toJSON(),
   new SlashCommandBuilder().setName('actionverite').setDescription('Démarrer Action ou Vérité dans ce salon autorisé').toJSON(),
   new SlashCommandBuilder()
+    .setName('map')
+    .setDescription('Définir ou voir votre localisation (ville)')
+    .addStringOption(o=>o.setName('ville').setDescription('Votre ville (ex: Paris)').setRequired(true))
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('proche')
+    .setDescription('Voir les membres proches (≤ 200 km) sur une carte')
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('localisation')
+    .setDescription('Admin: voir la localisation des membres (carte ou par membre)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addUserOption(o=>o.setName('membre').setDescription('Membre spécifique (optionnel)').setRequired(false))
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('confess')
     .setDescription('Envoyer une confession anonyme')
     .addStringOption(o=>o.setName('texte').setDescription('Votre confession (optionnel)').setRequired(false))

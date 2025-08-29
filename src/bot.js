@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -2015,6 +2015,92 @@ client.on(Events.InteractionCreate, async (interaction) => {
         console.error('/economie failed (defer/edit):', e1);
         try { return await interaction.editReply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) {}
         try { return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) { return; }
+      }
+    }
+
+    // /map: user sets their city, we geocode via LocationIQ
+    if (interaction.isChatInputCommand() && interaction.commandName === 'map') {
+      const city = interaction.options.getString('ville', true);
+      const apiKey = process.env.LOCATIONIQ_TOKEN || process.env.LOCATIONIQ_KEY || '';
+      if (!apiKey) return interaction.reply({ content: 'Clé API LocationIQ manquante. Ajoutez LOCATIONIQ_TOKEN au .env', ephemeral: true });
+      try {
+        await interaction.deferReply({ ephemeral: true });
+        const url = `https://us1.locationiq.com/v1/search.php?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(city)}&format=json&limit=1`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Geocoding HTTP ${res.status}`);
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) return interaction.editReply({ content: 'Ville introuvable. Vérifiez l\'orthographe.' });
+        const { lat, lon, display_name } = data[0];
+        await setUserLocation(interaction.guild.id, interaction.user.id, lat, lon, display_name || city);
+        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${lat},${lon}&zoom=10&size=640x400&markers=icon:large-blue||${lat},${lon}`;
+        return interaction.editReply({ content: `✅ Localisation enregistrée: ${display_name || city}`, files: [map] });
+      } catch (e) {
+        console.error('/map error', e);
+        return interaction.editReply({ content: 'Erreur lors de la géolocalisation. Réessayez plus tard.' });
+      }
+    }
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const toRad = (d) => d * Math.PI / 180;
+      const R = 6371; // Earth radius km
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // /proche: show members within 200km on a static map with markers
+    if (interaction.isChatInputCommand() && interaction.commandName === 'proche') {
+      const apiKey = process.env.LOCATIONIQ_TOKEN || process.env.LOCATIONIQ_KEY || '';
+      if (!apiKey) return interaction.reply({ content: 'Clé API LocationIQ manquante. Ajoutez LOCATIONIQ_TOKEN au .env', ephemeral: true });
+      const me = await getUserLocation(interaction.guild.id, interaction.user.id);
+      if (!me) return interaction.reply({ content: 'Définissez d\'abord votre ville avec /map.', ephemeral: true });
+      const all = await getAllLocations(interaction.guild.id);
+      const nearby = [];
+      for (const [uid, loc] of Object.entries(all)) {
+        if (uid === String(interaction.user.id)) continue;
+        if (!loc || typeof loc.lat !== 'number' || typeof loc.lon !== 'number') continue;
+        const d = haversineKm(me.lat, me.lon, loc.lat, loc.lon);
+        if (d <= 200) nearby.push({ uid, ...loc, dist: Math.round(d) });
+      }
+      if (nearby.length === 0) return interaction.reply({ content: 'Aucun membre proche (≤ 200 km).', ephemeral: true });
+      const markers = [`icon:large-blue||${me.lat},${me.lon}`].concat(nearby.slice(0, 20).map(n => `icon:small-red||${n.lat},${n.lon}`));
+      const markersParam = encodeURIComponent(markers.join('|'));
+      const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&markers=${markersParam}`;
+      const lines = nearby.sort((a,b)=>a.dist-b.dist).slice(0, 20).map(n => `• <@${n.uid}> — ${n.city||''} (${n.dist} km)`).join('\n');
+      return interaction.reply({ content: `Membres proches (≤200 km):\n${lines}`, files: [map] });
+    }
+
+    // /localisation (admin): show all members on a map, or one member
+    if (interaction.isChatInputCommand() && interaction.commandName === 'localisation') {
+      const isAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
+      if (!isAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+      const apiKey = process.env.LOCATIONIQ_TOKEN || process.env.LOCATIONIQ_KEY || '';
+      if (!apiKey) return interaction.reply({ content: 'Clé API LocationIQ manquante. Ajoutez LOCATIONIQ_TOKEN au .env', ephemeral: true });
+      const pick = interaction.options.getUser('membre');
+      if (pick) {
+        const loc = await getUserLocation(interaction.guild.id, pick.id);
+        if (!loc) return interaction.reply({ content: 'Aucune localisation pour ce membre.' });
+        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${loc.lat},${loc.lon}&zoom=8&size=800x500&markers=${encodeURIComponent(`icon:large-red||${loc.lat},${loc.lon}`)}`;
+        return interaction.reply({ content: `Localisation de ${pick}: ${loc.city||''}`, files: [map] });
+      } else {
+        const all = await getAllLocations(interaction.guild.id);
+        const entries = Object.entries(all);
+        if (entries.length === 0) return interaction.reply({ content: 'Aucune localisation enregistrée.' });
+        // center at guild approximate center: mean lat/lon
+        let sumLat=0, sumLon=0, count=0;
+        const marks = [];
+        for (const [uid, loc] of entries) {
+          if (!loc || typeof loc.lat !== 'number' || typeof loc.lon !== 'number') continue;
+          sumLat += loc.lat; sumLon += loc.lon; count++;
+          marks.push(`icon:small-blue||${loc.lat},${loc.lon}`);
+        }
+        const centerLat = count ? (sumLat / count) : 48.8566;
+        const centerLon = count ? (sumLon / count) : 2.3522;
+        const markersParam = encodeURIComponent(marks.slice(0, 50).join('|'));
+        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${centerLat},${centerLon}&zoom=4&size=800x500&markers=${markersParam}`;
+        return interaction.reply({ content: `Localisations enregistrées: ${count} membres`, files: [map] });
       }
     }
 

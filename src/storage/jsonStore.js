@@ -334,11 +334,24 @@ function ensureConfessShape(g) {
   if (typeof cf.counter !== 'number') cf.counter = 1;
 }
 
+function ensureGeoShape(g) {
+  if (!g.geo || typeof g.geo !== 'object') g.geo = {};
+  const geo = g.geo;
+  if (!geo.locations || typeof geo.locations !== 'object') geo.locations = {}; // userId -> { lat, lon, city, updatedAt }
+}
+
 async function getTruthDareConfig(guildId) {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureTruthDareShape(cfg.guilds[guildId]);
   return cfg.guilds[guildId].truthdare;
+}
+
+async function getGeoConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureGeoShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].geo;
 }
 
 async function getConfessConfig(guildId) {
@@ -355,6 +368,31 @@ async function updateTruthDareConfig(guildId, partial) {
   cfg.guilds[guildId].truthdare = { ...cfg.guilds[guildId].truthdare, ...partial };
   await writeConfig(cfg);
   return cfg.guilds[guildId].truthdare;
+}
+
+async function setUserLocation(guildId, userId, lat, lon, city) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureGeoShape(cfg.guilds[guildId]);
+  const geo = cfg.guilds[guildId].geo;
+  geo.locations[String(userId)] = { lat: Number(lat), lon: Number(lon), city: city || '', updatedAt: Date.now() };
+  await writeConfig(cfg);
+  return geo.locations[String(userId)];
+}
+
+async function getUserLocation(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return null;
+  ensureGeoShape(cfg.guilds[guildId]);
+  const geo = cfg.guilds[guildId].geo;
+  return geo.locations[String(userId)] || null;
+}
+
+async function getAllLocations(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return {};
+  ensureGeoShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].geo.locations || {};
 }
 
 async function updateConfessConfig(guildId, partial) {
@@ -476,6 +514,11 @@ module.exports = {
   removeTdChannels,
   addTdPrompts,
   deleteTdPrompts,
+  // Geo
+  getGeoConfig,
+  setUserLocation,
+  getUserLocation,
+  getAllLocations,
   // Confess
   getConfessConfig,
   updateConfessConfig,
