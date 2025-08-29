@@ -1792,6 +1792,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
     }
 
+    // Premium music player UI (static demo; animated controls)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'lecteur') {
+      const bg = THEME_IMAGE;
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_ACCENT)
+        .setTitle('🎧 Lecteur • Boy and Girls (BAG)')
+        .setDescription('Un lecteur premium, sensuel et animé. Utilisez les boutons pour contrôler la lecture.')
+        .setImage(bg)
+        .setFooter({ text: 'BAG • Lecteur' })
+        .setTimestamp(new Date());
+      const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('music_play').setEmoji('▶️').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('music_pause').setEmoji('⏸️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('music_next').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
+      );
+      const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('music_queue').setLabel('File').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('music_radio').setLabel('Radio').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('music_leave').setLabel('Quitter').setStyle(ButtonStyle.Secondary),
+      );
+      return interaction.reply({ embeds: [embed], components: [row1, row2] });
+    }
+
     // /confess command
     if (interaction.isChatInputCommand() && interaction.commandName === 'confess') {
       const cf = await getConfessConfig(interaction.guild.id);
