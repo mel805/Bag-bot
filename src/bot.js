@@ -742,6 +742,17 @@ client.once(Events.ClientReady, (readyClient) => {
       if (!ak?.enabled || !ak.delayMs || ak.delayMs <= 0) return;
       const now = Date.now();
       const roleId = String(ak.roleId || '');
+      // Seed pendingJoiners with existing members missing the role (first run)
+      try {
+        if (ak.pendingJoiners && Object.keys(ak.pendingJoiners).length === 0) {
+          const members = await guild.members.fetch();
+          for (const m of members.values()) {
+            if (m.user.bot) continue;
+            if (roleId && m.roles.cache.has(roleId)) continue;
+            ak.pendingJoiners[m.id] = now - ak.delayMs - 1000; // make them immediately eligible
+          }
+        }
+      } catch (_) {}
       for (const [userId, joinedAt] of Object.entries(ak.pendingJoiners || {})) {
         if (!joinedAt || now - Number(joinedAt) < ak.delayMs) continue;
         let shouldKick = true;
