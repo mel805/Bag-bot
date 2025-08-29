@@ -523,7 +523,8 @@ async function buildEconomySettingsRows(guild) {
   const curBtn = new ButtonBuilder().setCustomId('economy_set_currency').setLabel(`Devise: ${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`).setStyle(ButtonStyle.Secondary);
   const baseBtn = new ButtonBuilder().setCustomId('economy_set_base').setLabel(`Gains: work ${eco.settings?.baseWorkReward || 50} / fish ${eco.settings?.baseFishReward || 30}`).setStyle(ButtonStyle.Secondary);
   const cdBtn = new ButtonBuilder().setCustomId('economy_set_cooldowns').setLabel('Cooldowns des actions (rapide)').setStyle(ButtonStyle.Secondary);
-  const row = new ActionRowBuilder().addComponents(curBtn, baseBtn, cdBtn);
+  const gifsBtn = new ButtonBuilder().setCustomId('economy_gifs').setLabel('GIF actions').setStyle(ButtonStyle.Primary);
+  const row = new ActionRowBuilder().addComponents(curBtn, baseBtn, cdBtn, gifsBtn);
   return [row];
 }
 
@@ -566,6 +567,34 @@ async function buildEconomyActionsRows(guild) {
   const select = new StringSelectMenuBuilder().setCustomId('economy_actions_pick').setPlaceholder('Choisir une action à modifier…').addOptions(...options);
   const row = new ActionRowBuilder().addComponents(select);
   return [row];
+}
+
+// Build rows for managing action GIFs
+async function buildEconomyGifRows(guild, currentKey) {
+  const eco = await getEconomyConfig(guild.id);
+  const allKeys = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
+  const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
+  const pick = new StringSelectMenuBuilder().setCustomId('economy_gifs_action').setPlaceholder('Choisir une action…').addOptions(...opts);
+  const rows = [new ActionRowBuilder().addComponents(pick)];
+  if (currentKey && allKeys.includes(currentKey)) {
+    const conf = eco.actions?.gifs?.[currentKey] || { success: [], fail: [] };
+    const addSucc = new ButtonBuilder().setCustomId(`economy_gifs_add:success:${currentKey}`).setLabel('Ajouter GIF succès').setStyle(ButtonStyle.Success);
+    const addFail = new ButtonBuilder().setCustomId(`economy_gifs_add:fail:${currentKey}`).setLabel('Ajouter GIF échec').setStyle(ButtonStyle.Danger);
+    rows.push(new ActionRowBuilder().addComponents(addSucc, addFail));
+    // Remove selects (success)
+    const succList = Array.isArray(conf.success) ? conf.success.slice(0, 25) : [];
+    const succSel = new StringSelectMenuBuilder().setCustomId(`economy_gifs_remove_success:${currentKey}`).setPlaceholder('Supprimer GIFs succès…').setMinValues(1).setMaxValues(Math.max(1, succList.length || 1));
+    if (succList.length) succSel.addOptions(...succList.map((url, i) => ({ label: `Succès #${i+1}`, value: String(i), description: url.slice(0, 80) })));
+    else succSel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+    rows.push(new ActionRowBuilder().addComponents(succSel));
+    // Remove selects (fail)
+    const failList = Array.isArray(conf.fail) ? conf.fail.slice(0, 25) : [];
+    const failSel = new StringSelectMenuBuilder().setCustomId(`economy_gifs_remove_fail:${currentKey}`).setPlaceholder('Supprimer GIFs échec…').setMinValues(1).setMaxValues(Math.max(1, failList.length || 1));
+    if (failList.length) failSel.addOptions(...failList.map((url, i) => ({ label: `Échec #${i+1}`, value: String(i), description: url.slice(0, 80) })));
+    else failSel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+    rows.push(new ActionRowBuilder().addComponents(failSel));
+  }
+  return rows;
 }
 
 process.on('unhandledRejection', (reason) => {
@@ -1316,6 +1345,71 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.isButton() && interaction.customId === 'economy_gifs') {
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyGifRows(interaction.guild, 'work');
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'economy_gifs_action') {
+      const key = interaction.values[0];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyGifRows(interaction.guild, key);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('economy_gifs_add:')) {
+      const parts = interaction.customId.split(':');
+      const kind = parts[1]; // success | fail
+      const key = parts[2];
+      const modal = new ModalBuilder().setCustomId(`economy_gifs_add_modal:${kind}:${key}`).setTitle(`Ajouter GIFs ${kind} — ${actionKeyToLabel(key)}`);
+      const input = new TextInputBuilder().setCustomId('urls').setLabel('URLs (une par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true).setPlaceholder('https://...gif\nhttps://...gif');
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_gifs_add_modal:')) {
+      await interaction.deferReply({ ephemeral: true });
+      const parts = interaction.customId.split(':');
+      const kind = parts[1];
+      const key = parts[2];
+      const text = interaction.fields.getTextInputValue('urls') || '';
+      const urls = text.split('\n').map(s => s.trim()).filter(u => /^https?:\/\//i.test(u));
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const gifs = { ...(eco.actions?.gifs || {}) };
+      const entry = gifs[key] || { success: [], fail: [] };
+      entry[kind] = Array.from(new Set([...(Array.isArray(entry[kind]) ? entry[kind] : []), ...urls])).slice(0, 100);
+      gifs[key] = entry;
+      await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), gifs } });
+      return interaction.editReply({ content: `✅ Ajouté ${urls.length} GIF(s) à ${actionKeyToLabel(key)} (${kind}).` });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('economy_gifs_remove_success:')) {
+      const key = interaction.customId.split(':')[1];
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const idxs = interaction.values.map(v => Number(v)).filter(n => Number.isFinite(n));
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const gifs = { ...(eco.actions?.gifs || {}) };
+      const entry = gifs[key] || { success: [], fail: [] };
+      entry.success = (entry.success||[]).filter((_, i) => !idxs.includes(i));
+      gifs[key] = entry;
+      await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), gifs } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyGifRows(interaction.guild, key);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('economy_gifs_remove_fail:')) {
+      const key = interaction.customId.split(':')[1];
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const idxs = interaction.values.map(v => Number(v)).filter(n => Number.isFinite(n));
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const gifs = { ...(eco.actions?.gifs || {}) };
+      const entry = gifs[key] || { success: [], fail: [] };
+      entry.fail = (entry.fail||[]).filter((_, i) => !idxs.includes(i));
+      gifs[key] = entry;
+      await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), gifs } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyGifRows(interaction.guild, key);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+
     if (interaction.isModalSubmit() && interaction.customId === 'economy_cd_modal') {
       await interaction.deferReply({ ephemeral: true });
       const eco = await getEconomyConfig(interaction.guild.id);
@@ -1762,7 +1856,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
       // Attach an action-appropriate GIF if available
       try {
-        const gifs = ACTION_GIFS[key] || {};
+        const ecoForGif = await getEconomyConfig(interaction.guild.id);
+        const confGif = ecoForGif.actions?.gifs?.[key] || {};
+        const gifs = { success: confGif.success || (ACTION_GIFS[key]?.success||[]), fail: confGif.fail || (ACTION_GIFS[key]?.fail||[]) };
         const pickGif = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null);
         const url = isSuccess ? pickGif(gifs.success) : pickGif(gifs.fail);
         if (url) embed.setImage(url);
