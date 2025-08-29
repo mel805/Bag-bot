@@ -549,13 +549,20 @@ async function buildAutoThreadRows(guild) {
     { label: 'Illimité', value: 'max', default: cfg.archive?.policy === 'max' },
   );
   const customBtn = new ButtonBuilder().setCustomId('autothread_custom_pattern').setLabel(`Pattern: ${cfg.naming?.customPattern ? cfg.naming.customPattern.slice(0,20) : 'non défini'}`).setStyle(ButtonStyle.Secondary);
-  return [
+  const rows = [
     new ActionRowBuilder().addComponents(channelsAdd),
     new ActionRowBuilder().addComponents(channelsRemove),
     new ActionRowBuilder().addComponents(naming),
     new ActionRowBuilder().addComponents(archive),
-    new ActionRowBuilder().addComponents(customBtn),
   ];
+  if ((cfg.naming?.mode || 'member_num') === 'custom') {
+    rows.push(new ActionRowBuilder().addComponents(customBtn));
+  } else if ((cfg.naming?.mode || 'member_num') === 'nsfw') {
+    const addBtn = new ButtonBuilder().setCustomId('autothread_nsfw_add').setLabel('Ajouter noms NSFW').setStyle(ButtonStyle.Primary);
+    const remBtn = new ButtonBuilder().setCustomId('autothread_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
+    rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
+  }
+  return rows;
 }
 
 async function buildConfessRows(guild, mode = 'sfw') {
@@ -978,6 +985,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getAutoThreadConfig(interaction.guild.id);
       await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), customPattern: pattern } });
       return interaction.editReply({ content: '✅ Pattern mis à jour.' });
+    }
+    if (interaction.isButton() && interaction.customId === 'autothread_nsfw_add') {
+      const modal = new ModalBuilder().setCustomId('autothread_nsfw_add_modal').setTitle('Ajouter noms NSFW');
+      const input = new TextInputBuilder().setCustomId('names').setLabel('Noms (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'autothread_nsfw_add_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const text = interaction.fields.getTextInputValue('names') || '';
+      const add = text.split('\n').map(s => s.trim()).filter(Boolean);
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      const set = new Set([...(cfg.nsfwNames||[]), ...add]);
+      await updateAutoThreadConfig(interaction.guild.id, { nsfwNames: Array.from(set) });
+      return interaction.editReply({ content: `✅ Ajouté ${add.length} nom(s) NSFW.` });
+    }
+    if (interaction.isButton() && interaction.customId === 'autothread_nsfw_remove') {
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      const list = (cfg.nsfwNames||[]).slice(0,25);
+      const sel = new StringSelectMenuBuilder().setCustomId('autothread_nsfw_remove_select').setPlaceholder('Supprimer des noms NSFW…').setMinValues(1).setMaxValues(Math.max(1, list.length || 1));
+      if (list.length) sel.addOptions(...list.map((n,i)=>({ label: n.slice(0,80), value: String(i) })));
+      else sel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+      return interaction.reply({ components: [new ActionRowBuilder().addComponents(sel)], ephemeral: true });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_nsfw_remove_select') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      const idxs = new Set(interaction.values.map(v=>Number(v)).filter(n=>Number.isFinite(n)));
+      const next = (cfg.nsfwNames||[]).filter((_,i)=>!idxs.has(i));
+      await updateAutoThreadConfig(interaction.guild.id, { nsfwNames: next });
+      return interaction.update({ content: '✅ Noms NSFW supprimés.', components: [] });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'levels_action') {
