@@ -642,7 +642,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff' },
           { label: 'AutoKick', value: 'autokick', description: 'Configurer l\'auto-kick' },
           { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
-          { label: 'Économie', value: 'economy', description: 'Configurer l\'économie' }
+          { label: 'Économie', value: 'economy', description: 'Configurer l\'économie' },
+          { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' }
         );
       const row = new ActionRowBuilder().addComponents(sectionSelect);
       await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
