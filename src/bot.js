@@ -2990,35 +2990,36 @@ client.on(Events.MessageCreate, async (message) => {
         const expected0 = (state0.current || 0) + 1;
         if (/[a-z]/i.test(raw)) {
           await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-          await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription(`Lettres détectées. Attendu: ${expected0}. Remise à zéro → 1.`)] }).catch(()=>{});
+          await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Oups… mauvais comptage').setDescription(`Attendu: **${expected0}**\nRemise à zéro → **1**`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
         } else {
           let value = NaN;
           if (cfg.allowFormulas) {
             // Safe evaluation: digits, operators, parentheses, decimal, spaces, sqrt symbol
-            const expr = raw.replace(/√/g, 'Math.sqrt');
-            if (/^[0-9+\-*/().\s^]*$/.test(expr.replace(/Math\.sqrt/g,''))) {
-              try {
-                // Replace ^ with ** for exponent
-                const js = expr.replace(/\^/g,'**');
-                value = Number(eval(js));
-              } catch (_) { value = NaN; }
+            const expr0 = raw.replace(/√/g, 'Math.sqrt');
+            const expr = expr0.replace(/\^/g,'**');
+            const testable = expr.replace(/Math\.sqrt/g,'');
+            const ok = /^[0-9+\-*/().\s]*$/.test(testable);
+            if (ok) {
+              try { value = Number(eval(expr)); } catch (_) { value = NaN; }
             }
+            // Fallback: plain integer
+            if (!Number.isFinite(value) && /^\d+$/.test(raw)) value = Number(raw);
           } else {
             value = Number(raw);
           }
           if (!Number.isFinite(value)) {
             await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-            await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription(`Valeur invalide. Attendu: ${expected0}. Remise à zéro → 1.`)] }).catch(()=>{});
+            await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Oups… valeur invalide').setDescription(`Attendu: **${expected0}**\nRemise à zéro → **1**`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
           } else {
             const next = Math.trunc(value);
             const state = cfg.state || { current: 0, lastUserId: '' };
             const expected = (state.current || 0) + 1;
             if ((state.lastUserId||'') === message.author.id) {
               await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Double comptage').setDescription(`Deux chiffres de suite par la même personne. Attendu: ${expected}. Remise à zéro → 1.`)] }).catch(()=>{});
+              await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Doucement, un à la fois…').setDescription(`Attendu: **${expected}**\nRemise à zéro → **1**`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
             } else if (next !== expected) {
               await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais numéro').setDescription(`Attendu: ${expected}. Remise à zéro → 1.`)] }).catch(()=>{});
+              await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Mauvais numéro').setDescription(`Attendu: **${expected}**\nRemise à zéro → **1**`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
             } else {
               await setCountingState(message.guild.id, { current: next, lastUserId: message.author.id });
             }
