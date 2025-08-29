@@ -2686,16 +2686,54 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       const td = await getTruthDareConfig(interaction.guild.id);
-      const opts = (td[mode].prompts||[]).slice(0,25).map(p => ({ label: `${p.type === 'action' ? 'A' : 'V'}:${p.id}`, value: String(p.id), description: p.text.slice(0,80) }));
-      const sel = new StringSelectMenuBuilder().setCustomId(`td_prompts_delete_select:${mode}`).setPlaceholder('Choisir des prompts à supprimer…').setMinValues(1).setMaxValues(Math.max(1, opts.length));
+      const page = 0;
+      const perPage = 25;
+      const list = (td[mode].prompts||[]);
+      const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+      const slice = list.slice(page*perPage, page*perPage + perPage);
+      const opts = slice.map(p => ({ label: `${p.type === 'action' ? 'A' : 'V'}:${p.id}`, value: String(p.id), description: p.text.slice(0,80) }));
+      const sel = new StringSelectMenuBuilder().setCustomId(`td_prompts_delete_select:${mode}:${page}`).setPlaceholder('Choisir des prompts à supprimer…').setMinValues(1).setMaxValues(Math.max(1, opts.length || 1));
       if (opts.length) sel.addOptions(...opts); else sel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-      return interaction.reply({ content: 'Sélection de suppression:', components: [new ActionRowBuilder().addComponents(sel)], ephemeral: true });
+      const nav = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`td_prompts_del_prev:${mode}:${page}`).setLabel('⟨').setStyle(ButtonStyle.Secondary).setDisabled(page<=0),
+        new ButtonBuilder().setCustomId(`td_prompts_del_next:${mode}:${page}`).setLabel('⟩').setStyle(ButtonStyle.Secondary).setDisabled(page>=totalPages-1)
+      );
+      return interaction.reply({ content: `Suppression (page ${page+1}/${totalPages})`, components: [new ActionRowBuilder().addComponents(sel), nav], ephemeral: true });
+    }
+    if (interaction.isButton() && (interaction.customId.startsWith('td_prompts_del_prev:') || interaction.customId.startsWith('td_prompts_del_next:'))) {
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
+      let page = Number(parts[2]) || 0;
+      page += interaction.customId.startsWith('td_prompts_del_next:') ? 1 : -1;
+      if (page < 0) page = 0;
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const perPage = 25;
+      const list = (td[mode].prompts||[]);
+      const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+      if (page > totalPages-1) page = totalPages-1;
+      const slice = list.slice(page*perPage, page*perPage + perPage);
+      const opts = slice.map(p => ({ label: `${p.type === 'action' ? 'A' : 'V'}:${p.id}`, value: String(p.id), description: p.text.slice(0,80) }));
+      const sel = new StringSelectMenuBuilder().setCustomId(`td_prompts_delete_select:${mode}:${page}`).setPlaceholder('Choisir des prompts à supprimer…').setMinValues(1).setMaxValues(Math.max(1, opts.length || 1));
+      if (opts.length) sel.addOptions(...opts); else sel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+      const nav = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`td_prompts_del_prev:${mode}:${page}`).setLabel('⟨').setStyle(ButtonStyle.Secondary).setDisabled(page<=0),
+        new ButtonBuilder().setCustomId(`td_prompts_del_next:${mode}:${page}`).setLabel('⟩').setStyle(ButtonStyle.Secondary).setDisabled(page>=totalPages-1)
+      );
+      return interaction.update({ content: `Suppression (page ${page+1}/${totalPages})`, components: [new ActionRowBuilder().addComponents(sel), nav] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_prompts_delete_select:')) {
-      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
       if (interaction.values.includes('none')) return interaction.deferUpdate();
       await deleteTdPrompts(interaction.guild.id, interaction.values, mode);
       return interaction.update({ content: '✅ Prompts supprimés.', components: [] });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete_all:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const ids = (td[mode].prompts||[]).map(p=>String(p.id));
+      await deleteTdPrompts(interaction.guild.id, ids, mode);
+      return interaction.reply({ content: '🗑️ Tous les prompts ont été supprimés.', ephemeral: true });
     }
     if (interaction.isButton() && (interaction.customId.startsWith('td_prompts_add_action:') || interaction.customId.startsWith('td_prompts_add_verite:'))) {
       try { console.log('[td] add button:', interaction.customId); } catch (_) {}
@@ -3189,10 +3227,11 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
   const addActionBtn = new ButtonBuilder().setCustomId(`td_prompts_add_action:${mode}`).setLabel('Ajouter ACTION').setStyle(ButtonStyle.Primary);
   const addTruthBtn = new ButtonBuilder().setCustomId(`td_prompts_add_verite:${mode}`).setLabel('Ajouter VERITE').setStyle(ButtonStyle.Success);
   const promptsDelBtn = new ButtonBuilder().setCustomId(`td_prompts_delete:${mode}`).setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
+  const promptsDelAllBtn = new ButtonBuilder().setCustomId(`td_prompts_delete_all:${mode}`).setLabel('Tout supprimer').setStyle(ButtonStyle.Danger);
   return [
     new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
-    new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn),
+    new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn, promptsDelAllBtn),
   ];
 }
