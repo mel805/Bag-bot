@@ -1895,6 +1895,35 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Emoji des suites mis à jour.' });
     }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'couleur') {
+      const isAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
+      if (!isAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+      const cible = interaction.options.getUser('membre', true);
+      let hex = interaction.options.getString('hex', true).trim();
+      if (!/^#?[0-9A-Fa-f]{6}$/.test(hex)) return interaction.reply({ content: 'Couleur invalide. Exemple: #FF00AA', ephemeral: true });
+      if (!hex.startsWith('#')) hex = `#${hex}`;
+      await interaction.deferReply();
+      const guild = interaction.guild;
+      const colorInt = parseInt(hex.substring(1), 16);
+      const roleName = `Couleur ${hex.toUpperCase()}`;
+      let role = guild.roles.cache.find(r => r.name === roleName) || null;
+      if (!role) {
+        // Create at top
+        const highest = guild.roles.highest;
+        role = await guild.roles.create({ name: roleName, color: colorInt, reason: 'Couleur personnalisée', hoist: false, mentionable: false });
+        try {
+          await role.setPosition(highest.position);
+        } catch (_) {}
+      } else {
+        try { await role.edit({ color: colorInt, reason: 'Mise à jour couleur' }); } catch (_) {}
+      }
+      try {
+        const member = await guild.members.fetch(cible.id);
+        await member.roles.add(role);
+      } catch (_) {}
+      return interaction.editReply({ content: `✅ Rôle ${roleName} attribué à ${cible}.` });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');

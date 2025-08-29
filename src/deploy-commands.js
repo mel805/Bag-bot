@@ -84,6 +84,14 @@ const commands = [
       .addIntegerOption(o=>o.setName('montant').setDescription('Montant à ajouter').setRequired(true).setMinValue(1))
     )
     .toJSON(),
+  new SlashCommandBuilder()
+    .setName('couleur')
+    .setDescription('Attribuer une couleur de rôle à un membre')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true))
+    .addStringOption(o=>o.setName('hex').setDescription('Couleur hex (ex: #FF00AA)').setRequired(true))
+    .toJSON(),
 ];
 
 async function main() {
