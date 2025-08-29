@@ -2066,7 +2066,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const d = haversineKm(me.lat, me.lon, loc.lat, loc.lon);
         if (d <= distMax) nearby.push({ uid, ...loc, dist: Math.round(d) });
       }
-      if (nearby.length === 0) return interaction.reply({ content: `Aucun membre proche (≤ ${distMax} km).`, ephemeral: true });
+      if (nearby.length === 0) {
+        // Show map centered on user with their own marker
+        let map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&format=png`;
+        map += `&markers=${encodeURIComponent(`${me.lat},${me.lon}`)}`;
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_ACCENT)
+          .setTitle(`🗺️ Membres proches (≤${distMax} km)`)
+          .setDescription('Aucun membre proche trouvé. Voici votre position.')
+          .setImage(map)
+          .setTimestamp(new Date());
+        return interaction.reply({ embeds: [embed] });
+      }
       // Build URL with repeated markers parameters (works reliably)
       let map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&format=png`;
       map += `&markers=${encodeURIComponent(`${me.lat},${me.lon}`)}`;
