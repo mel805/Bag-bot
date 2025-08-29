@@ -657,17 +657,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '⛔ Cette commande est réservée à l\'équipe de modération.', ephemeral: true });
       }
       const embed = await buildConfigEmbed(interaction.guild);
-      const sectionSelect = new StringSelectMenuBuilder()
-        .setCustomId('config_section')
-        .setPlaceholder('Choisir une section…')
-        .addOptions(
-          { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff' },
-          { label: 'AutoKick', value: 'autokick', description: 'Configurer l\'auto-kick' },
-          { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
-          { label: 'Économie', value: 'economy', description: 'Configurer l\'économie' },
-          { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' }
-        );
-      const row = new ActionRowBuilder().addComponents(sectionSelect);
+      const row = buildTopSectionRow();
       await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       return;
     }
@@ -1813,16 +1803,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isButton() && interaction.customId === 'config_back_home') {
       const embed = await buildConfigEmbed(interaction.guild);
-      const sectionSelect = new StringSelectMenuBuilder()
-        .setCustomId('config_section')
-        .setPlaceholder('Choisir une section…')
-        .addOptions(
-          { label: 'Staff', value: 'staff', description: 'Gérer les rôles Staff' },
-          { label: 'AutoKick', value: 'autokick', description: 'Configurer l\'auto-kick' },
-          { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
-          { label: 'Économie', value: 'economy', description: 'Configurer l\'économie' }
-        );
-      const row = new ActionRowBuilder().addComponents(sectionSelect);
+      const row = buildTopSectionRow();
       return interaction.update({ embeds: [embed], components: [row] });
     }
 
