@@ -1909,6 +1909,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isUserSelectMenu && interaction.isUserSelectMenu() && interaction.customId === 'color_user_pick') {
       const userId = interaction.values[0];
+      try { await interaction.deferUpdate(); } catch (_) {}
       const embed = new EmbedBuilder()
         .setColor(THEME_COLOR_ACCENT)
         .setTitle('Choisir un style de couleurs')
@@ -1926,7 +1927,35 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { label: 'Vif', value: 'vif' },
           { label: 'Sombre', value: 'sombre' },
         );
-      return interaction.update({ embeds: [embed], components: [new ActionRowBuilder().addComponents(styleSelect)] });
+      return interaction.editReply({ embeds: [embed], components: [new ActionRowBuilder().addComponents(styleSelect)] });
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('color_style:')) {
+      const userId = interaction.customId.split(':')[1];
+      const style = interaction.values[0];
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const palettes = {
+        pastel: ['#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF'],
+        vif: ['#E91E63','#9C27B0','#2196F3','#4CAF50','#FF9800'],
+        sombre: ['#263238','#37474F','#455A64','#546E7A','#607D8B'],
+      };
+      const colors = palettes[style] || palettes.vif;
+      const preview = new EmbedBuilder().setColor(parseInt(colors[0].slice(1),16)).setTitle('Choisir la couleur').setDescription('Sélectionnez une pastille de couleur.');
+      const colorSelect = new StringSelectMenuBuilder()
+        .setCustomId(`color_pick:${userId}`)
+        .setPlaceholder('Couleur…')
+        .addOptions(colors.map(hex => ({ label: emojiForHex(hex), value: hex })));
+      const rolePicker = new RoleSelectMenuBuilder().setCustomId(`color_role:${userId}`).setPlaceholder('Rôle existant (optionnel)…').setMinValues(0).setMaxValues(1);
+      return interaction.editReply({ embeds: [preview], components: [new ActionRowBuilder().addComponents(colorSelect), new ActionRowBuilder().addComponents(rolePicker)] });
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('color_pick:')) {
+      const userId = interaction.customId.split(':')[1];
+      const hex = interaction.values[0];
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const embed = new EmbedBuilder().setColor(parseInt(hex.slice(1),16)).setTitle('Couleur sélectionnée').setDescription('Sélectionnez un rôle existant (facultatif) puis appuyez sur ce bouton pour créer/attribuer.');
+      const confirm = new ButtonBuilder().setCustomId(`color_confirm:${userId}:${hex}`).setLabel('Créer/Attribuer').setStyle(ButtonStyle.Primary);
+      return interaction.editReply({ embeds: [embed], components: [new ActionRowBuilder().addComponents(confirm)] });
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
