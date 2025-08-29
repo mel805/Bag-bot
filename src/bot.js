@@ -537,14 +537,15 @@ async function buildConfessRows(guild, mode = 'sfw') {
   const channelRemove = new StringSelectMenuBuilder().setCustomId(`confess_channels_remove:${mode}`).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (cf[mode].channels||[]).length || 1)));
   const opts = (cf[mode].channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
   if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-  const logBtn = new ButtonBuilder().setCustomId('confess_set_log').setLabel(`Log: ${cf.logChannelId ? `<#${cf.logChannelId}>` : '—'}`).setStyle(ButtonStyle.Secondary);
+  const logSelect = new ChannelSelectMenuBuilder().setCustomId('confess_log_select').setPlaceholder(cf.logChannelId ? `Salon de logs actuel: <#${cf.logChannelId}>` : 'Choisir le salon de logs…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const replyToggle = new ButtonBuilder().setCustomId('confess_toggle_replies').setLabel(cf.allowReplies ? 'Réponses: ON' : 'Réponses: OFF').setStyle(cf.allowReplies ? ButtonStyle.Success : ButtonStyle.Secondary);
   const nameToggle = new ButtonBuilder().setCustomId('confess_toggle_naming').setLabel(cf.threadNaming === 'nsfw' ? 'Nom de fil: NSFW+' : 'Nom de fil: Normal').setStyle(ButtonStyle.Secondary);
   return [
     new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
-    new ActionRowBuilder().addComponents(logBtn, replyToggle, nameToggle),
+    new ActionRowBuilder().addComponents(logSelect),
+    new ActionRowBuilder().addComponents(replyToggle, nameToggle),
   ];
 }
 
@@ -726,18 +727,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildConfessRows(interaction.guild, mode);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
-    if (interaction.isButton() && interaction.customId === 'confess_set_log') {
-      const modal = new ModalBuilder().setCustomId('confess_log_modal').setTitle('Salon de logs');
-      const select = new ChannelSelectMenuBuilder().setCustomId('confess_log_channel').setPlaceholder('Choisir un salon…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
-      modal.addComponents(select);
-      await interaction.showModal(modal);
-      return;
-    }
-    if (interaction.isModalSubmit() && interaction.customId === 'confess_log_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const channelId = interaction.fields.getChannelValues('confess_log_channel')?.[0];
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'confess_log_select') {
+      const channelId = interaction.values[0];
       await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
-      return interaction.editReply({ content: `✅ Salon de logs: ${channelId ? `<#${channelId}>` : '—'}` });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildConfessRows(interaction.guild, 'sfw');
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
       const cf = await getConfessConfig(interaction.guild.id);
