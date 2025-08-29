@@ -1957,6 +1957,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const confirm = new ButtonBuilder().setCustomId(`color_confirm:${userId}:${hex}`).setLabel('Créer/Attribuer').setStyle(ButtonStyle.Primary);
       return interaction.editReply({ embeds: [embed], components: [new ActionRowBuilder().addComponents(confirm)] });
     }
+
+    if (interaction.isButton() && interaction.customId.startsWith('color_confirm:')) {
+      const [, userId, hex] = interaction.customId.split(':');
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const guild = interaction.guild;
+      const colorInt = parseInt(hex.substring(1), 16);
+      const roleName = `Couleur ${hex.toUpperCase()}`;
+      let role = guild.roles.cache.find(r => r.name === roleName) || null;
+      if (!role) {
+        const highest = guild.roles.highest;
+        role = await guild.roles.create({ name: roleName, color: colorInt, reason: 'Couleur personnalisée', hoist: false, mentionable: false });
+        try { await role.setPosition(highest.position); } catch (_) {}
+      } else {
+        try { await role.edit({ color: colorInt, reason: 'Mise à jour couleur' }); } catch (_) {}
+      }
+      try {
+        const member = await guild.members.fetch(userId);
+        await member.roles.add(role);
+      } catch (_) {}
+      const done = new EmbedBuilder().setColor(colorInt).setTitle('✅ Rôle attribué').setDescription(`Rôle ${roleName} → <@${userId}>`);
+      return interaction.editReply({ embeds: [done], components: [] });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
