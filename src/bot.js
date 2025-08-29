@@ -1984,7 +1984,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'actionverite') {
       const td = await getTruthDareConfig(interaction.guild.id);
-      if (!td.channels.includes(interaction.channel.id)) {
+      const chId = interaction.channel.id;
+      const mode = (Array.isArray(td?.nsfw?.channels) && td.nsfw.channels.includes(chId))
+        ? 'nsfw'
+        : ((Array.isArray(td?.sfw?.channels) && td.sfw.channels.includes(chId)) ? 'sfw' : null);
+      if (!mode) {
         return interaction.reply({ content: '⛔ Ce salon n\'est pas autorisé pour Action/Vérité. Configurez-le dans /config.', ephemeral: true });
       }
       const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎲 Action ou Vérité').setDescription('Cliquez pour recevoir un prompt.');
@@ -2003,47 +2007,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
       const td = await getTruthDareConfig(interaction.guild.id);
-      const pool = (td.prompts||[]).filter(p => p.type === (kind === 'action' ? 'action' : 'verite'));
+      const chId = interaction.channel.id;
+      const mode = (Array.isArray(td?.nsfw?.channels) && td.nsfw.channels.includes(chId))
+        ? 'nsfw'
+        : ((Array.isArray(td?.sfw?.channels) && td.sfw.channels.includes(chId)) ? 'sfw' : null);
+      if (!mode) return interaction.reply({ content: '⛔ Ce salon n\'est pas autorisé pour Action/Vérité.', ephemeral: true });
+      const pool = (td?.[mode]?.prompts || []).filter(p => p.type === (kind === 'action' ? 'action' : 'verite'));
       if (!pool.length) return interaction.reply({ content: 'Aucun prompt disponible pour ce type.', ephemeral: true });
       const pick = pool[Math.floor(Math.random() * pool.length)];
       return interaction.reply({ content: `🎯 ${kind === 'action' ? 'Action' : 'Vérité'}: ${pick.text}` });
     }
 
-    if (interaction.isButton() && interaction.customId === 'td_channels_add') {
-      const modal = new ModalBuilder().setCustomId('td_channels_add_modal').setTitle('Ajouter des salons');
-      const channelAdd = new ChannelSelectMenuBuilder().setCustomId('td_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
-      modal.addComponents(channelAdd);
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId === 'td_channels_add_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const channels = interaction.fields.getChannelValues('td_channels_add');
-      const td = await getTruthDareConfig(interaction.guild.id);
-      const newChannels = [...new Set([...td.channels, ...channels])];
-      await updateTruthDareConfig(interaction.guild.id, { channels: newChannels });
-      return interaction.editReply({ content: `✅ ${channels.length} salons ajoutés.` });
-    }
-
-    if (interaction.isButton() && interaction.customId === 'td_channels_remove') {
-      const modal = new ModalBuilder().setCustomId('td_channels_remove_modal').setTitle('Retirer des salons');
-      const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td.channels||[]).length || 1)));
-      const opts = (td.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
-      if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-      modal.addComponents(channelRemove);
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId === 'td_channels_remove_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const channels = interaction.fields.getStringValues('td_channels_remove');
-      const td = await getTruthDareConfig(interaction.guild.id);
-      const newChannels = td.channels.filter(id => !channels.includes(id));
-      await updateTruthDareConfig(interaction.guild.id, { channels: newChannels });
-      return interaction.editReply({ content: `✅ ${channels.length} salons retirés.` });
-    }
+    // Removed legacy global channel add/remove modals; handled via per-mode selectors elsewhere
 
     // removed legacy td_prompts_add handler that required a 'type' field; new flow uses distinct buttons and encodes mode/type in customId
 
