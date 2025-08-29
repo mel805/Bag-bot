@@ -1965,12 +1965,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const colorInt = parseInt(hex.substring(1), 16);
       const roleName = `Couleur ${hex.toUpperCase()}`;
       let role = guild.roles.cache.find(r => r.name === roleName) || null;
+      const botTop = guild.members?.me?.roles?.highest;
+      const targetPos = Math.max(1, (botTop?.position ?? guild.roles.highest.position) - 1);
       if (!role) {
-        const highest = guild.roles.highest;
         role = await guild.roles.create({ name: roleName, color: colorInt, reason: 'Couleur personnalisée', hoist: false, mentionable: false });
-        try { await role.setPosition(highest.position); } catch (_) {}
+        try { await role.setPosition(targetPos); } catch (_) {}
       } else {
         try { await role.edit({ color: colorInt, reason: 'Mise à jour couleur' }); } catch (_) {}
+        try { await role.setPosition(targetPos); } catch (_) {}
       }
       try {
         const member = await guild.members.fetch(userId);
