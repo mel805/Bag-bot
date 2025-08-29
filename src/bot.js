@@ -2986,9 +2986,11 @@ client.on(Events.MessageCreate, async (message) => {
       if (cfg.channels && cfg.channels.includes(message.channel.id)) {
         const raw = (message.content || '').trim();
         // Reject if letters a-z present
+        const state0 = cfg.state || { current: 0, lastUserId: '' };
+        const expected0 = (state0.current || 0) + 1;
         if (/[a-z]/i.test(raw)) {
           await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-          await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription('Lettres détectées. Remise à zéro → 1.')] }).catch(()=>{});
+          await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription(`Lettres détectées. Attendu: ${expected0}. Remise à zéro → 1.`)] }).catch(()=>{});
         } else {
           let value = NaN;
           if (cfg.allowFormulas) {
@@ -3006,16 +3008,17 @@ client.on(Events.MessageCreate, async (message) => {
           }
           if (!Number.isFinite(value)) {
             await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-            await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription('Valeur invalide. Remise à zéro → 1.')] }).catch(()=>{});
+            await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription(`Valeur invalide. Attendu: ${expected0}. Remise à zéro → 1.`)] }).catch(()=>{});
           } else {
             const next = Math.trunc(value);
             const state = cfg.state || { current: 0, lastUserId: '' };
+            const expected = (state.current || 0) + 1;
             if ((state.lastUserId||'') === message.author.id) {
               await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Double comptage').setDescription('Deux chiffres de suite par la même personne. Remise à zéro → 1.')] }).catch(()=>{});
-            } else if (next !== (state.current||0) + 1) {
+              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Double comptage').setDescription(`Deux chiffres de suite par la même personne. Attendu: ${expected}. Remise à zéro → 1.`)] }).catch(()=>{});
+            } else if (next !== expected) {
               await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais numéro').setDescription(`Attendu: ${(state.current||0)+1}. Remise à zéro → 1.`)] }).catch(()=>{});
+              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais numéro').setDescription(`Attendu: ${expected}. Remise à zéro → 1.`)] }).catch(()=>{});
             } else {
               await setCountingState(message.guild.id, { current: next, lastUserId: message.author.id });
             }

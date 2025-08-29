@@ -4,5 +4,3 @@
 
 Login succeeded
 Logged in as Bag bot#8659
-(node:202745) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
