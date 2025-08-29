@@ -2028,7 +2028,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isButton() && interaction.customId === 'td_channels_remove') {
       const modal = new ModalBuilder().setCustomId('td_channels_remove_modal').setTitle('Retirer des salons');
-      const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(0).setMaxValues(Math.min(25, (td.channels||[]).length));
+      const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td.channels||[]).length || 1)));
       const opts = (td.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
       if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
       modal.addComponents(channelRemove);
@@ -2382,7 +2382,7 @@ const COLOR_PALETTES = {
 async function buildTruthDareRows(guild) {
   const td = await getTruthDareConfig(guild.id);
   const channelAdd = new ChannelSelectMenuBuilder().setCustomId('td_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
-  const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(0).setMaxValues(Math.min(25, (td.channels||[]).length));
+  const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td.channels||[]).length || 1)));
   const opts = (td.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
   if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
   const promptsAddBtn = new ButtonBuilder().setCustomId('td_prompts_add').setLabel('Ajouter des prompts').setStyle(ButtonStyle.Primary);
