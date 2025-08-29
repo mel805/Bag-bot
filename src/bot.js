@@ -3003,7 +3003,10 @@ client.on(Events.MessageCreate, async (message) => {
         if (intMatch) {
           value = Number(intMatch[0]);
         } else if (cfg.allowFormulas) {
-          const expr0 = onlyDigitsAndOps.replace(/√/g, 'Math.sqrt').replace(/\^/g,'**');
+          let expr0 = onlyDigitsAndOps;
+          expr0 = expr0.replace(/√\s*\(/g, 'Math.sqrt(');
+          expr0 = expr0.replace(/√\s*([0-9]+(?:\.[0-9]+)?)/g, 'Math.sqrt($1)');
+          expr0 = expr0.replace(/\^/g,'**');
           const testable = expr0.replace(/Math\.sqrt/g,'');
           const ok = /^[0-9+\-*/().\s]*$/.test(testable);
           if (ok && expr0.length > 0) {
