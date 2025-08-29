@@ -733,44 +733,35 @@ client.once(Events.ClientReady, (readyClient) => {
     } catch (_) {}
   }, 10 * 60 * 1000);
 
-  // AutoKick enforcement every 2 minutes
+  // AutoKick enforcement every 2 minutes (scans members by join date)
   setInterval(async () => {
     try {
       const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
       if (!guild) return;
       const ak = await getAutoKickConfig(guild.id);
-      if (!ak?.enabled || !ak.delayMs || ak.delayMs <= 0) return;
+      if (!ak?.enabled || !ak.delayMs || ak.delayMs <= 0 || !ak.roleId) return;
       const now = Date.now();
-      const roleId = String(ak.roleId || '');
-      // Seed pendingJoiners with existing members missing the role (first run)
-      try {
-        if (ak.pendingJoiners && Object.keys(ak.pendingJoiners).length === 0) {
-          const members = await guild.members.fetch();
-          for (const m of members.values()) {
-            if (m.user.bot) continue;
-            if (roleId && m.roles.cache.has(roleId)) continue;
-            ak.pendingJoiners[m.id] = now - ak.delayMs - 1000; // make them immediately eligible
-          }
-        }
-      } catch (_) {}
-      for (const [userId, joinedAt] of Object.entries(ak.pendingJoiners || {})) {
-        if (!joinedAt || now - Number(joinedAt) < ak.delayMs) continue;
-        let shouldKick = true;
-        try {
-          const member = await guild.members.fetch(userId).catch(()=>null);
-          if (!member) {
-            await removePendingJoiner(guild.id, userId).catch(()=>{});
-            continue;
-          }
-          if (roleId && member.roles.cache.has(roleId)) shouldKick = false;
-          if (shouldKick) {
-            await member.kick('AutoKick: délai dépassé sans rôle requis').catch(()=>{});
-          }
-        } finally {
-          await removePendingJoiner(guild.id, userId).catch(()=>{});
-        }
+      const roleId = String(ak.roleId);
+      let members;
+      try { members = await guild.members.fetch(); } catch (e) { console.error('[AutoKick] fetch members failed', e); return; }
+      const me = guild.members.me;
+      if (!me?.permissions?.has(PermissionsBitField.Flags.KickMembers)) {
+        console.warn('[AutoKick] Missing KickMembers permission');
+        return;
       }
-    } catch (_) {}
+      for (const m of members.values()) {
+        try {
+          if (!m || m.user.bot) continue;
+          if (m.roles.cache.has(roleId)) continue; // has required role
+          const joinedAt = m.joinedTimestamp || (m.joinedAt ? m.joinedAt.getTime?.() : 0);
+          if (!joinedAt) continue;
+          if (now - joinedAt < ak.delayMs) continue;
+          // role hierarchy check: can we kick?
+          if (!m.kickable) continue;
+          await m.kick('AutoKick: délai dépassé sans rôle requis').catch((e)=>console.error('[AutoKick] kick failed', m.id, e?.message||e));
+        } catch (e) { console.error('[AutoKick] loop error', e?.message||e); }
+      }
+    } catch (eOuter) { console.error('[AutoKick] tick failed', eOuter?.message||eOuter); }
   }, 2 * 60 * 1000);
 });
 
