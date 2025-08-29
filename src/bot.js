@@ -934,7 +934,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getAutoThreadConfig(interaction.guild.id);
       const set = new Set(cfg.channels || []);
       for (const id of interaction.values) set.add(String(id));
-      cfg.channels = Array.from(set);
+      await updateAutoThreadConfig(interaction.guild.id, { channels: Array.from(set) });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
@@ -943,7 +943,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.values.includes('none')) return interaction.deferUpdate();
       const cfg = await getAutoThreadConfig(interaction.guild.id);
       const remove = new Set(interaction.values.map(String));
-      cfg.channels = (cfg.channels||[]).filter(id => !remove.has(String(id)));
+      const next = (cfg.channels||[]).filter(id => !remove.has(String(id)));
+      await updateAutoThreadConfig(interaction.guild.id, { channels: next });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
@@ -951,7 +952,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_naming') {
       const mode = interaction.values[0];
       const cfg = await getAutoThreadConfig(interaction.guild.id);
-      cfg.naming = { ...(cfg.naming||{}), mode };
+      await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), mode } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
@@ -959,7 +960,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_archive') {
       const policy = interaction.values[0];
       const cfg = await getAutoThreadConfig(interaction.guild.id);
-      cfg.archive = { ...(cfg.archive||{}), policy };
+      await updateAutoThreadConfig(interaction.guild.id, { archive: { ...(cfg.archive||{}), policy } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
@@ -975,7 +976,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const pattern = interaction.fields.getTextInputValue('pattern') || '';
       const cfg = await getAutoThreadConfig(interaction.guild.id);
-      cfg.naming = { ...(cfg.naming||{}), customPattern: pattern };
+      await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), customPattern: pattern } });
       return interaction.editReply({ content: '✅ Pattern mis à jour.' });
     }
 
@@ -2884,7 +2885,7 @@ client.on(Events.MessageCreate, async (message) => {
           const archiveMap = { '1d': 1440, '7d': 10080, '1m': 43200, 'max': 10080 };
           const autoArchiveDuration = archiveMap[policy] || 10080;
           await message.startThread({ name, autoArchiveDuration }).catch(()=>{});
-          at.counter = num + 1;
+          await updateAutoThreadConfig(message.guild.id, { counter: num + 1 });
         }
       }
     } catch (_) {}
