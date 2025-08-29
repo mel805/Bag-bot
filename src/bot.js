@@ -2056,6 +2056,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isModalSubmit() && interaction.customId.startsWith('td_prompts_add_modal:')) {
       await interaction.deferReply({ ephemeral: true });
+      try {
+        console.log('[td_prompts_add_modal] customId:', interaction.customId, 'fieldIds:', Object.keys(interaction.fields.fields || {}));
+      } catch (_) {}
       const mode = interaction.customId.split(':')[1] || 'sfw';
       const typeVal = interaction.fields.getTextInputValue('type') || '';
       const type = typeVal.toLowerCase().includes('ver') ? 'verite' : 'action';
