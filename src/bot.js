@@ -2985,7 +2985,8 @@ client.on(Events.MessageCreate, async (message) => {
       const cfg = await getCountingConfig(message.guild.id);
       if (cfg.channels && cfg.channels.includes(message.channel.id)) {
         const raw = (message.content || '').trim();
-        const onlyDigitsAndOps = raw.replace(/[a-zA-Z]+/g, '');
+        // Keep only digits, operators, parentheses, spaces, caret, and sqrt symbol
+        const onlyDigitsAndOps = raw.replace(/[^0-9+\-*/().\s^√]/g, '');
         const state0 = cfg.state || { current: 0, lastUserId: '' };
         const expected0 = (state0.current || 0) + 1;
         let value = NaN;
@@ -2994,7 +2995,7 @@ client.on(Events.MessageCreate, async (message) => {
           const testable = expr0.replace(/Math\.sqrt/g,'');
           const ok = /^[0-9+\-*/().\s]*$/.test(testable);
           if (ok && expr0.length > 0) {
-            try { value = Number(Function('return (' + expr0 + ')')()); } catch (_) { value = NaN; }
+            try { value = Number(Function('"use strict";return (' + expr0 + ')')()); } catch (_) { value = NaN; }
           }
           if (!Number.isFinite(value)) {
             const digitsOnly = onlyDigitsAndOps.replace(/[^0-9]/g,'');
@@ -3003,6 +3004,11 @@ client.on(Events.MessageCreate, async (message) => {
         } else {
           const digitsOnly = onlyDigitsAndOps.replace(/[^0-9]/g,'');
           if (digitsOnly.length > 0) value = Number(digitsOnly);
+        }
+        // Final fallback: first integer in the original message
+        if (!Number.isFinite(value)) {
+          const m = raw.match(/-?\d+/);
+          if (m) value = Number(m[0]);
         }
         if (!Number.isFinite(value)) {
           await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
