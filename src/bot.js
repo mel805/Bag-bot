@@ -2045,28 +2045,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: `✅ ${channels.length} salons retirés.` });
     }
 
-    if (interaction.isButton() && interaction.customId === 'td_prompts_add') {
-      const mode = 'sfw';
-      const modal = new ModalBuilder().setCustomId(`td_prompts_add_modal:${mode}`).setTitle('Ajouter des prompts');
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('type').setLabel('Type (action/verite)').setStyle(TextInputStyle.Short).setRequired(true)));
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texts').setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('td_prompts_add_modal:')) {
-      await interaction.deferReply({ ephemeral: true });
-      try {
-        console.log('[td_prompts_add_modal] customId:', interaction.customId, 'fieldIds:', Object.keys(interaction.fields.fields || {}));
-      } catch (_) {}
-      const mode = interaction.customId.split(':')[1] || 'sfw';
-      const typeVal = interaction.fields.getTextInputValue('type') || '';
-      const type = typeVal.toLowerCase().includes('ver') ? 'verite' : 'action';
-      const textsRaw = interaction.fields.getTextInputValue('texts') || '';
-      const texts = textsRaw.split('\n').map(s => s.trim()).filter(Boolean);
-      await addTdPrompts(interaction.guild.id, type, texts, mode);
-      return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}, ${mode.toUpperCase()}).` });
-    }
+    // removed legacy td_prompts_add handler that required a 'type' field; new flow uses distinct buttons and encodes mode/type in customId
 
     if (interaction.isButton() && interaction.customId === 'td_prompts_edit') {
       const modal = new ModalBuilder().setCustomId('td_prompts_edit_modal').setTitle('Modifier prompt');
@@ -2123,28 +2102,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildTruthDareRows(interaction.guild, mode);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
-    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_add:')) {
-      const mode = interaction.customId.split(':')[1] || 'sfw';
-      const modal = new ModalBuilder().setCustomId(`td_prompts_add_modal:${mode}`).setTitle('Ajouter des prompts');
-      const type = new StringSelectMenuBuilder().setCustomId('td_add_type');
-      // Workaround: use text input to encode type and prompts
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(`type:${mode}`).setLabel('Type (action/verite)').setStyle(TextInputStyle.Short).setRequired(true)));
-      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(`texts:${mode}`).setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
-      await interaction.showModal(modal);
-      return;
-    }
-    if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_add_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const mode = Object.keys(interaction.fields.fields).find(k => k.startsWith('texts:'))?.split(':')[1] || 'sfw';
-      const typeKey = Object.keys(interaction.fields.fields).find(k => k.startsWith('type:')) || 'type:sfw';
-      const typeVal = interaction.fields.getTextInputValue(typeKey) || '';
-      const type = typeVal.toLowerCase().includes('ver') ? 'verite' : 'action';
-      const textsKey = Object.keys(interaction.fields.fields).find(k => k.startsWith('texts:')) || 'texts:sfw';
-      const textsRaw = interaction.fields.getTextInputValue(textsKey) || '';
-      const texts = textsRaw.split('\n').map(s => s.trim()).filter(Boolean);
-      await addTdPrompts(interaction.guild.id, type, texts, mode);
-      return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}, ${mode.toUpperCase()}).` });
-    }
+    // removed intermediary variant that used prefixed text input ids; keep only the final unified handler below
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       const td = await getTruthDareConfig(interaction.guild.id);
