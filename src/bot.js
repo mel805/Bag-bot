@@ -141,6 +141,7 @@ function buildTopSectionRow() {
       { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick" },
       { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
       { label: 'Économie', value: 'economy', description: "Configurer l'économie" },
+      { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -662,6 +663,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'economy') {
         const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } else if (section === 'truthdare') {
+        const rows = await buildTruthDareRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
@@ -1976,6 +1980,163 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const done = new EmbedBuilder().setColor(colorInt).setTitle('✅ Rôle attribué').setDescription(`Rôle ${roleName} → <@${userId}>`);
       return interaction.editReply({ embeds: [done], components: [] });
     }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'actionverite') {
+      const td = await getTruthDareConfig(interaction.guild.id);
+      if (!td.channels.includes(interaction.channel.id)) {
+        return interaction.reply({ content: '⛔ Ce salon n\'est pas autorisé pour Action/Vérité. Configurez-le dans /config.', ephemeral: true });
+      }
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎲 Action ou Vérité').setDescription('Cliquez pour recevoir un prompt.');
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('td:action').setLabel('Action').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('td:verite').setLabel('Vérité').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('td:stop').setLabel('Arrêter').setStyle(ButtonStyle.Danger)
+      );
+      return interaction.reply({ embeds: [embed], components: [row] });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('td:')) {
+      const kind = interaction.customId.split(':')[1];
+      if (kind === 'stop') {
+        try { await interaction.update({ content: 'Jeu arrêté.', embeds: [], components: [] }); } catch (_) {}
+        return;
+      }
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const pool = (td.prompts||[]).filter(p => p.type === (kind === 'action' ? 'action' : 'verite'));
+      if (!pool.length) return interaction.reply({ content: 'Aucun prompt disponible pour ce type.', ephemeral: true });
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      return interaction.reply({ content: `🎯 ${kind === 'action' ? 'Action' : 'Vérité'}: ${pick.text}` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'td_channels_add') {
+      const modal = new ModalBuilder().setCustomId('td_channels_add_modal').setTitle('Ajouter des salons');
+      const channelAdd = new ChannelSelectMenuBuilder().setCustomId('td_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
+      modal.addComponents(channelAdd);
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'td_channels_add_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const channels = interaction.fields.getChannelValues('td_channels_add');
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const newChannels = [...new Set([...td.channels, ...channels])];
+      await updateTruthDareConfig(interaction.guild.id, { channels: newChannels });
+      return interaction.editReply({ content: `✅ ${channels.length} salons ajoutés.` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'td_channels_remove') {
+      const modal = new ModalBuilder().setCustomId('td_channels_remove_modal').setTitle('Retirer des salons');
+      const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(0).setMaxValues(Math.min(25, (td.channels||[]).length));
+      const opts = (td.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+      if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+      modal.addComponents(channelRemove);
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'td_channels_remove_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const channels = interaction.fields.getStringValues('td_channels_remove');
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const newChannels = td.channels.filter(id => !channels.includes(id));
+      await updateTruthDareConfig(interaction.guild.id, { channels: newChannels });
+      return interaction.editReply({ content: `✅ ${channels.length} salons retirés.` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'td_prompts_add') {
+      const modal = new ModalBuilder().setCustomId('td_prompts_add_modal').setTitle('Ajouter des prompts');
+      const promptsAddBtn = new ButtonBuilder().setCustomId('td_prompts_add').setLabel('Ajouter des prompts').setStyle(ButtonStyle.Primary);
+      modal.addComponents(promptsAddBtn);
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_add_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const prompts = interaction.fields.getTextInputValue('td_prompts_add');
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const newPrompts = [...td.prompts, ...prompts.split('\n').filter(p => p.trim() !== '')];
+      await updateTruthDareConfig(interaction.guild.id, { prompts: newPrompts });
+      return interaction.editReply({ content: `✅ ${newPrompts.length} prompts ajoutés.` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'td_prompts_edit') {
+      const modal = new ModalBuilder().setCustomId('td_prompts_edit_modal').setTitle('Modifier prompt');
+      const promptsEditBtn = new ButtonBuilder().setCustomId('td_prompts_edit').setLabel('Modifier prompt').setStyle(ButtonStyle.Secondary);
+      modal.addComponents(promptsEditBtn);
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_edit_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const prompts = interaction.fields.getTextInputValue('td_prompts_edit');
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const newPrompts = prompts.split('\n').filter(p => p.trim() !== '');
+      await updateTruthDareConfig(interaction.guild.id, { prompts: newPrompts });
+      return interaction.editReply({ content: `✅ ${newPrompts.length} prompts modifiés.` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'td_prompts_delete') {
+      const modal = new ModalBuilder().setCustomId('td_prompts_delete_modal').setTitle('Supprimer prompt');
+      const promptsDelBtn = new ButtonBuilder().setCustomId('td_prompts_delete').setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
+      modal.addComponents(promptsDelBtn);
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_delete_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const prompts = interaction.fields.getStringValues('td_prompts_delete');
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const newPrompts = td.prompts.filter(p => !prompts.includes(p.text));
+      await updateTruthDareConfig(interaction.guild.id, { prompts: newPrompts });
+      return interaction.editReply({ content: `✅ ${prompts.length} prompts supprimés.` });
+    }
+
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'td_channels_add') {
+      await addTdChannels(interaction.guild.id, interaction.values);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'td_channels_remove') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      await removeTdChannels(interaction.guild.id, interaction.values);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'td_prompts_add') {
+      const modal = new ModalBuilder().setCustomId('td_prompts_add_modal').setTitle('Ajouter des prompts');
+      const type = new StringSelectMenuBuilder().setCustomId('td_add_type');
+      // Workaround: use text input to encode type and prompts
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('type').setLabel('Type (action/verite)').setStyle(TextInputStyle.Short).setRequired(true)));
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texts').setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_add_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const type = (interaction.fields.getTextInputValue('type')||'').toLowerCase().includes('ver') ? 'verite' : 'action';
+      const textsRaw = interaction.fields.getTextInputValue('texts')||'';
+      const texts = textsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+      await addTdPrompts(interaction.guild.id, type, texts);
+      return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}).` });
+    }
+    if (interaction.isButton() && interaction.customId === 'td_prompts_delete') {
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const opts = (td.prompts||[]).slice(0,25).map(p => ({ label: `${p.type === 'action' ? 'A' : 'V'}:${p.id}`, value: String(p.id), description: p.text.slice(0,80) }));
+      const sel = new StringSelectMenuBuilder().setCustomId('td_prompts_delete_select').setPlaceholder('Choisir des prompts à supprimer…').setMinValues(1).setMaxValues(Math.max(1, opts.length));
+      if (opts.length) sel.addOptions(...opts); else sel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+      return interaction.reply({ content: 'Sélection de suppression:', components: [new ActionRowBuilder().addComponents(sel)], ephemeral: true });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'td_prompts_delete_select') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      await deleteTdPrompts(interaction.guild.id, interaction.values);
+      return interaction.update({ content: '✅ Prompts supprimés.', components: [] });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
@@ -2216,3 +2377,19 @@ const COLOR_PALETTES = {
   vif: ['#F44336','#E91E63','#9C27B0','#673AB7','#3F51B5','#2196F3','#03A9F4','#00BCD4','#009688','#4CAF50','#8BC34A','#CDDC39','#FFEB3B','#FFC107','#FF9800','#FF5722','#795548'],
   sombre: ['#1B1B1B','#212121','#263238','#2E3440','#37474F','#3E4C59','#424242','#455A64','#4E5D6C','#546E7A','#5C6B73','#607D8B','#6B7C8C'],
 };
+
+async function buildTruthDareRows(guild) {
+  const td = await getTruthDareConfig(guild.id);
+  const channelAdd = new ChannelSelectMenuBuilder().setCustomId('td_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
+  const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(0).setMaxValues(Math.min(25, (td.channels||[]).length));
+  const opts = (td.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+  const promptsAddBtn = new ButtonBuilder().setCustomId('td_prompts_add').setLabel('Ajouter des prompts').setStyle(ButtonStyle.Primary);
+  const promptsEditBtn = new ButtonBuilder().setCustomId('td_prompts_edit').setLabel('Modifier prompt').setStyle(ButtonStyle.Secondary);
+  const promptsDelBtn = new ButtonBuilder().setCustomId('td_prompts_delete').setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
+  return [
+    new ActionRowBuilder().addComponents(channelAdd),
+    new ActionRowBuilder().addComponents(channelRemove),
+    new ActionRowBuilder().addComponents(promptsAddBtn, promptsEditBtn, promptsDelBtn),
+  ];
+}
