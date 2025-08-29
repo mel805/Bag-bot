@@ -374,6 +374,16 @@ async function getAutoThreadConfig(guildId) {
   return cfg.guilds[guildId].autothread;
 }
 
+async function updateAutoThreadConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoThreadShape(cfg.guilds[guildId]);
+  const current = cfg.guilds[guildId].autothread;
+  cfg.guilds[guildId].autothread = { ...current, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].autothread;
+}
+
 async function getConfessConfig(guildId) {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
@@ -540,6 +550,7 @@ module.exports = {
   getUserLocation,
   getAllLocations,
   getAutoThreadConfig,
+  updateAutoThreadConfig,
   // Confess
   getConfessConfig,
   updateConfessConfig,
