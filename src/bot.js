@@ -2033,7 +2033,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const { lat, lon, display_name } = data[0];
         await setUserLocation(interaction.guild.id, interaction.user.id, lat, lon, display_name || city);
         const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${lat},${lon}&zoom=10&size=640x400&markers=icon:large-blue||${lat},${lon}`;
-        return interaction.editReply({ content: `✅ Localisation enregistrée: ${display_name || city}`, files: [map] });
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('📍 Localisation enregistrée').setDescription(`${display_name || city}`).setImage(map).setTimestamp(new Date());
+        return interaction.editReply({ embeds: [embed] });
       } catch (e) {
         console.error('/map error', e);
         return interaction.editReply({ content: 'Erreur lors de la géolocalisation. Réessayez plus tard.' });
@@ -2069,7 +2070,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const markersParam = encodeURIComponent(markers.join('|'));
       const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&markers=${markersParam}`;
       const lines = nearby.sort((a,b)=>a.dist-b.dist).slice(0, 20).map(n => `• <@${n.uid}> — ${n.city||''} (${n.dist} km)`).join('\n');
-      return interaction.reply({ content: `Membres proches (≤200 km):\n${lines}`, files: [map] });
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🗺️ Membres proches (≤200 km)').setDescription(lines).setImage(map).setTimestamp(new Date());
+      return interaction.reply({ embeds: [embed] });
     }
 
     // /localisation (admin): show all members on a map, or one member
@@ -2083,7 +2085,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const loc = await getUserLocation(interaction.guild.id, pick.id);
         if (!loc) return interaction.reply({ content: 'Aucune localisation pour ce membre.' });
         const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${loc.lat},${loc.lon}&zoom=8&size=800x500&markers=${encodeURIComponent(`icon:large-red||${loc.lat},${loc.lon}`)}`;
-        return interaction.reply({ content: `Localisation de ${pick}: ${loc.city||''}`, files: [map] });
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(`📍 Localisation de ${pick.username || pick.tag || pick.id}`).setDescription(loc.city||'').setImage(map).setTimestamp(new Date());
+        return interaction.reply({ embeds: [embed] });
       } else {
         const all = await getAllLocations(interaction.guild.id);
         const entries = Object.entries(all);
@@ -2100,7 +2103,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const centerLon = count ? (sumLon / count) : 2.3522;
         const markersParam = encodeURIComponent(marks.slice(0, 50).join('|'));
         const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${centerLat},${centerLon}&zoom=4&size=800x500&markers=${markersParam}`;
-        return interaction.reply({ content: `Localisations enregistrées: ${count} membres`, files: [map] });
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🗺️ Localisation des membres').setDescription(`Membres localisés: ${count}`).setImage(map).setTimestamp(new Date());
+        return interaction.reply({ embeds: [embed] });
       }
     }
 
