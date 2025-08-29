@@ -347,6 +347,16 @@ function ensureAutoThreadShape(g) {
   if (!Array.isArray(at.nsfwNames)) at.nsfwNames = ['Velours','Nuit Rouge','Écarlate','Aphrodite','Énigme','Saphir','Nocturne','Scarlett','Mystique','Aphrodisia'];
 }
 
+function ensureCountingShape(g) {
+  if (!g.counting || typeof g.counting !== 'object') g.counting = {};
+  const c = g.counting;
+  if (!Array.isArray(c.channels)) c.channels = [];
+  if (typeof c.allowFormulas !== 'boolean') c.allowFormulas = true;
+  if (!c.state || typeof c.state !== 'object') c.state = { current: 0, lastUserId: '' };
+  if (typeof c.state.current !== 'number') c.state.current = 0;
+  if (typeof c.state.lastUserId !== 'string') c.state.lastUserId = '';
+}
+
 function ensureGeoShape(g) {
   if (!g.geo || typeof g.geo !== 'object') g.geo = {};
   const geo = g.geo;
@@ -365,6 +375,32 @@ async function getGeoConfig(guildId) {
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureGeoShape(cfg.guilds[guildId]);
   return cfg.guilds[guildId].geo;
+}
+
+async function getCountingConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureCountingShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].counting;
+}
+
+async function updateCountingConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureCountingShape(cfg.guilds[guildId]);
+  const cur = cfg.guilds[guildId].counting;
+  cfg.guilds[guildId].counting = { ...cur, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].counting;
+}
+
+async function setCountingState(guildId, state) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureCountingShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].counting.state = { ...(cfg.guilds[guildId].counting.state || {}), ...state };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].counting.state;
 }
 
 async function getAutoThreadConfig(guildId) {
@@ -551,6 +587,10 @@ module.exports = {
   getAllLocations,
   getAutoThreadConfig,
   updateAutoThreadConfig,
+  // Counting
+  getCountingConfig,
+  updateCountingConfig,
+  setCountingState,
   // Confess
   getConfessConfig,
   updateConfessConfig,

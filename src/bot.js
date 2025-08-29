@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -144,6 +144,7 @@ function buildTopSectionRow() {
       { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' },
       { label: 'Confessions', value: 'confess', description: 'Configurer les confessions anonymes' },
       { label: 'AutoThread', value: 'autothread', description: 'Créer des fils automatiquement' },
+      { label: 'Comptage', value: 'counting', description: 'Configurer le salon de comptage' },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -565,6 +566,21 @@ async function buildAutoThreadRows(guild) {
   return rows;
 }
 
+async function buildCountingRows(guild) {
+  const cfg = await getCountingConfig(guild.id);
+  const chAdd = new ChannelSelectMenuBuilder().setCustomId('counting_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
+  const chRem = new StringSelectMenuBuilder().setCustomId('counting_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (cfg.channels||[]).length || 1)));
+  const opts = (cfg.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  if (opts.length) chRem.addOptions(...opts); else chRem.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+  const formulas = new ButtonBuilder().setCustomId('counting_toggle_formulas').setLabel(cfg.allowFormulas ? 'Formules: ON' : 'Formules: OFF').setStyle(cfg.allowFormulas ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const reset = new ButtonBuilder().setCustomId('counting_reset').setLabel(`Remise à zéro (actuel: ${cfg.state?.current||0})`).setStyle(ButtonStyle.Danger);
+  return [
+    new ActionRowBuilder().addComponents(chAdd),
+    new ActionRowBuilder().addComponents(chRem),
+    new ActionRowBuilder().addComponents(formulas, reset),
+  ];
+}
+
 async function buildConfessRows(guild, mode = 'sfw') {
   const cf = await getConfessConfig(guild.id);
   const modeSelect = new StringSelectMenuBuilder().setCustomId('confess_mode').setPlaceholder('Mode…').addOptions(
@@ -752,6 +768,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'autothread') {
         const rows = await buildAutoThreadRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...rows] });
+      } else if (section === 'counting') {
+        const rows = await buildCountingRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
@@ -985,6 +1004,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getAutoThreadConfig(interaction.guild.id);
       await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), customPattern: pattern } });
       return interaction.editReply({ content: '✅ Pattern mis à jour.' });
+    }
+    // Counting config handlers
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'counting_channels_add') {
+      const cfg = await getCountingConfig(interaction.guild.id);
+      const set = new Set(cfg.channels || []);
+      for (const id of interaction.values) set.add(String(id));
+      await updateCountingConfig(interaction.guild.id, { channels: Array.from(set) });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildCountingRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'counting_channels_remove') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const cfg = await getCountingConfig(interaction.guild.id);
+      const remove = new Set(interaction.values.map(String));
+      const next = (cfg.channels||[]).filter(id => !remove.has(String(id)));
+      await updateCountingConfig(interaction.guild.id, { channels: next });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildCountingRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'counting_toggle_formulas') {
+      const cfg = await getCountingConfig(interaction.guild.id);
+      await updateCountingConfig(interaction.guild.id, { allowFormulas: !cfg.allowFormulas });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildCountingRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'counting_reset') {
+      await setCountingState(interaction.guild.id, { current: 0, lastUserId: '' });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildCountingRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'autothread_nsfw_add') {
       const modal = new ModalBuilder().setCustomId('autothread_nsfw_add_modal').setTitle('Ajouter noms NSFW');
@@ -2928,6 +2980,50 @@ client.on(Events.MessageCreate, async (message) => {
         }
       }
     } catch (_) {}
+    // Counting runtime
+    try {
+      const cfg = await getCountingConfig(message.guild.id);
+      if (cfg.channels && cfg.channels.includes(message.channel.id)) {
+        const raw = (message.content || '').trim();
+        // Reject if letters a-z present
+        if (/[a-z]/i.test(raw)) {
+          await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
+          await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription('Lettres détectées. Remise à zéro → 1.')] }).catch(()=>{});
+        } else {
+          let value = NaN;
+          if (cfg.allowFormulas) {
+            // Safe evaluation: digits, operators, parentheses, decimal, spaces, sqrt symbol
+            const expr = raw.replace(/√/g, 'Math.sqrt');
+            if (/^[0-9+\-*/().\s^]*$/.test(expr.replace(/Math\.sqrt/g,''))) {
+              try {
+                // Replace ^ with ** for exponent
+                const js = expr.replace(/\^/g,'**');
+                value = Number(eval(js));
+              } catch (_) { value = NaN; }
+            }
+          } else {
+            value = Number(raw);
+          }
+          if (!Number.isFinite(value)) {
+            await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
+            await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais comptage').setDescription('Valeur invalide. Remise à zéro → 1.')] }).catch(()=>{});
+          } else {
+            const next = Math.trunc(value);
+            const state = cfg.state || { current: 0, lastUserId: '' };
+            if ((state.lastUserId||'') === message.author.id) {
+              await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
+              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Double comptage').setDescription('Deux chiffres de suite par la même personne. Remise à zéro → 1.')] }).catch(()=>{});
+            } else if (next !== (state.current||0) + 1) {
+              await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
+              await message.reply({ embeds: [new EmbedBuilder().setColor(0xef5350).setTitle('❌ Mauvais numéro').setDescription(`Attendu: ${(state.current||0)+1}. Remise à zéro → 1.`)] }).catch(()=>{});
+            } else {
+              await setCountingState(message.guild.id, { current: next, lastUserId: message.author.id });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
     const levels = await getLevelsConfig(message.guild.id);
     if (!levels?.enabled) return;
     const stats = await getUserStats(message.guild.id, message.author.id);
