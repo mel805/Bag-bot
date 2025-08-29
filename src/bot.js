@@ -1348,10 +1348,51 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       if (thread) {
         const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setAuthor({ name: 'Réponse anonyme' }).setDescription(text).setTimestamp(new Date());
-        await thread.send({ embeds: [embed] }).catch(()=>{});
+        const sent = await thread.send({ embeds: [embed] }).catch(()=>null);
+        // Admin log for anonymous reply
+        try {
+          const cf = await getConfessConfig(interaction.guild.id);
+          if (cf.logChannelId) {
+            const log = interaction.guild.channels.cache.get(cf.logChannelId);
+            if (log && log.isTextBased?.()) {
+              const admin = new EmbedBuilder()
+                .setColor(0xff7043)
+                .setTitle('Réponse anonyme')
+                .addFields(
+                  { name: 'Auteur', value: `${interaction.user} (${interaction.user.id})` },
+                  { name: 'Salon', value: `<#${interaction.channel.id}>` },
+                  { name: 'Fil', value: thread ? `<#${thread.id}>` : '—' },
+                  ...(sent && sent.url ? [{ name: 'Lien', value: sent.url }] : []),
+                )
+                .setDescription(text || '—')
+                .setTimestamp(new Date());
+              await log.send({ embeds: [admin] }).catch(()=>{});
+            }
+          }
+        } catch (_) {}
         return interaction.editReply({ content: '✅ Réponse envoyée dans le fil.' });
       } else {
-        await interaction.channel.send({ content: `Réponse anonyme: ${text}` }).catch(()=>{});
+        const sent = await interaction.channel.send({ content: `Réponse anonyme: ${text}` }).catch(()=>null);
+        // Admin log fallback
+        try {
+          const cf = await getConfessConfig(interaction.guild.id);
+          if (cf.logChannelId) {
+            const log = interaction.guild.channels.cache.get(cf.logChannelId);
+            if (log && log.isTextBased?.()) {
+              const admin = new EmbedBuilder()
+                .setColor(0xff7043)
+                .setTitle('Réponse anonyme (sans fil)')
+                .addFields(
+                  { name: 'Auteur', value: `${interaction.user} (${interaction.user.id})` },
+                  { name: 'Salon', value: `<#${interaction.channel.id}>` },
+                  ...(sent && sent.url ? [{ name: 'Lien', value: sent.url }] : []),
+                )
+                .setDescription(text || '—')
+                .setTimestamp(new Date());
+              await log.send({ embeds: [admin] }).catch(()=>{});
+            }
+          }
+        } catch (_) {}
         return interaction.editReply({ content: '✅ Réponse envoyée.' });
       }
     }
