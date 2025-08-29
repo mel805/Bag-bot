@@ -2159,6 +2159,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await deleteTdPrompts(interaction.guild.id, interaction.values, mode);
       return interaction.update({ content: '✅ Prompts supprimés.', components: [] });
     }
+    if (interaction.isButton() && (interaction.customId.startsWith('td_prompts_add_action:') || interaction.customId.startsWith('td_prompts_add_verite:'))) {
+      try { console.log('[td] add button:', interaction.customId); } catch (_) {}
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
+      const type = interaction.customId.startsWith('td_prompts_add_action:') ? 'action' : 'verite';
+      const title = type === 'action' ? 'Ajouter des ACTIONS' : 'Ajouter des VERITES';
+      const modal = new ModalBuilder().setCustomId(`td_prompts_add_modal:${mode}:${type}`).setTitle(title);
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texts').setLabel('Prompts (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true)));
+      try {
+        await interaction.showModal(modal);
+      } catch (e) {
+        try { console.error('[td] showModal failed:', e); } catch (_) {}
+        try { await interaction.reply({ content: 'Impossible d\'ouvrir le formulaire, réessayez.', ephemeral: true }); } catch (_) {}
+      }
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('td_prompts_add_modal:')) {
+      await interaction.deferReply({ ephemeral: true });
+      try { console.log('[td] submit:', interaction.customId, 'fieldIds:', Object.keys(interaction.fields.fields||{})); } catch (_) {}
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
+      const type = parts[2] || 'action';
+      const textsRaw = interaction.fields.getTextInputValue('texts') || '';
+      const texts = textsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+      await addTdPrompts(interaction.guild.id, type, texts, mode);
+      return interaction.editReply({ content: `✅ Ajouté ${texts.length} prompts (${type}, ${mode.toUpperCase()}).` });
+    }
   } catch (err) {
     console.error('Interaction handler error:', err);
     const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
