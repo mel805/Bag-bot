@@ -1330,8 +1330,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // Anonymous reply button → modal
-    if (interaction.isButton() && interaction.customId === 'confess_reply') {
-      const msgId = interaction.message?.id || '0';
+    if (interaction.isButton() && (interaction.customId === 'confess_reply' || interaction.customId.startsWith('confess_reply_thread:'))) {
+      let msgId = interaction.message?.id || '0';
+      if (interaction.customId.startsWith('confess_reply_thread:')) {
+        // Use the thread id from the button so we can post directly there
+        const threadId = interaction.customId.split(':')[1];
+        msgId = `thread-${threadId}`;
+      }
       const modal = new ModalBuilder().setCustomId(`confess_reply_modal:${msgId}`).setTitle('Répondre anonymement');
       const input = new TextInputBuilder().setCustomId('text').setLabel('Votre réponse').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(1000);
       modal.addComponents(new ActionRowBuilder().addComponents(input));
@@ -1346,12 +1351,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // If we are already in a thread, post there directly
       try { if (interaction.channel && interaction.channel.isThread?.()) thread = interaction.channel; } catch (_) {}
       if (!thread) {
-        // Fetch the base message in this channel and use/create its thread
-        let baseMsg = null;
-        try { baseMsg = await interaction.channel.messages.fetch(msgId).catch(()=>null); } catch (_) { baseMsg = null; }
-        try { thread = baseMsg && baseMsg.hasThread ? baseMsg.thread : null; } catch (_) { thread = null; }
-        if (!thread && baseMsg) {
-          try { thread = await baseMsg.startThread({ name: 'Discussion', autoArchiveDuration: 1440 }); } catch (_) { thread = null; }
+        if (msgId.startsWith('thread-')) {
+          const tid = msgId.split('-')[1];
+          try { thread = await interaction.client.channels.fetch(tid).catch(()=>null); } catch (_) { thread = null; }
+        } else {
+          // Fetch the base message in this channel and use/create its thread
+          let baseMsg = null;
+          try { baseMsg = await interaction.channel.messages.fetch(msgId).catch(()=>null); } catch (_) { baseMsg = null; }
+          try { thread = baseMsg && baseMsg.hasThread ? baseMsg.thread : null; } catch (_) { thread = null; }
+          if (!thread && baseMsg) {
+            try { thread = await baseMsg.startThread({ name: 'Discussion', autoArchiveDuration: 1440 }); } catch (_) { thread = null; }
+          }
         }
       }
       if (thread) {
@@ -1483,12 +1493,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try {
           const index = await incrementConfessCounter(interaction.guild.id);
           let threadName = `Confession #${index}`;
-          if (mode === 'nsfw' && cf.threadNaming === 'nsfw') {
+          if (cf.threadNaming === 'nsfw') {
             const base = (cf.nsfwNames || ['Velours','Nuit Rouge','Écarlate','Aphrodite','Énigme','Saphir','Nocturne','Scarlett','Mystique','Aphrodisia'])[Math.floor(Math.random()*10)];
             const num = Math.floor(100 + Math.random()*900);
             threadName = `${base}-${num}`;
           }
-          await msg.startThread({ name: threadName, autoArchiveDuration: 1440 }).catch(()=>{});
+          const thread = await msg.startThread({ name: threadName, autoArchiveDuration: 1440 }).catch(()=>null);
+          // Add an in-thread helper with its own reply button
+          if (thread) {
+            const thrRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId(`confess_reply_thread:${thread.id}`).setLabel('Répondre anonymement').setStyle(ButtonStyle.Secondary)
+            );
+            await thread.send({ content: 'Répondez anonymement avec le bouton ci-dessous.', components: [thrRow] }).catch(()=>{});
+          }
         } catch (_) {}
       }
       // Admin log
