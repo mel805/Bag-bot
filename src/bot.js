@@ -2032,7 +2032,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!Array.isArray(data) || data.length === 0) return interaction.editReply({ content: 'Ville introuvable. Vérifiez l\'orthographe.' });
         const { lat, lon, display_name } = data[0];
         await setUserLocation(interaction.guild.id, interaction.user.id, lat, lon, display_name || city);
-        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${lat},${lon}&zoom=10&size=640x400&markers=icon:large-blue||${lat},${lon}`;
+        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${lat},${lon}&zoom=10&size=640x400&markers=${encodeURIComponent(`icon:large-blue,${lat},${lon}`)}`;
         const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('📍 Localisation enregistrée').setDescription(`${display_name || city}`).setImage(map).setTimestamp(new Date());
         return interaction.editReply({ embeds: [embed] });
       } catch (e) {
@@ -2057,20 +2057,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!apiKey) return interaction.reply({ content: 'Clé API LocationIQ manquante. Ajoutez LOCATIONIQ_TOKEN au .env', ephemeral: true });
       const me = await getUserLocation(interaction.guild.id, interaction.user.id);
       if (!me) return interaction.reply({ content: 'Définissez d\'abord votre ville avec /map.', ephemeral: true });
+      const distMax = Math.max(10, Math.min(1000, interaction.options.getInteger('distance') || 200));
       const all = await getAllLocations(interaction.guild.id);
       const nearby = [];
       for (const [uid, loc] of Object.entries(all)) {
         if (uid === String(interaction.user.id)) continue;
         if (!loc || typeof loc.lat !== 'number' || typeof loc.lon !== 'number') continue;
         const d = haversineKm(me.lat, me.lon, loc.lat, loc.lon);
-        if (d <= 200) nearby.push({ uid, ...loc, dist: Math.round(d) });
+        if (d <= distMax) nearby.push({ uid, ...loc, dist: Math.round(d) });
       }
-      if (nearby.length === 0) return interaction.reply({ content: 'Aucun membre proche (≤ 200 km).', ephemeral: true });
-      const markers = [`icon:large-blue||${me.lat},${me.lon}`].concat(nearby.slice(0, 20).map(n => `icon:small-red||${n.lat},${n.lon}`));
+      if (nearby.length === 0) return interaction.reply({ content: `Aucun membre proche (≤ ${distMax} km).`, ephemeral: true });
+      // Build markers string (comma-separated per marker, separated by '|') and ensure encoding safe
+      const markers = [`icon:large-blue,${me.lat},${me.lon}`].concat(nearby.slice(0, 20).map(n => `icon:small-red,${n.lat},${n.lon}`));
       const markersParam = encodeURIComponent(markers.join('|'));
       const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&markers=${markersParam}`;
       const lines = nearby.sort((a,b)=>a.dist-b.dist).slice(0, 20).map(n => `• <@${n.uid}> — ${n.city||''} (${n.dist} km)`).join('\n');
-      const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🗺️ Membres proches (≤200 km)').setDescription(lines).setImage(map).setTimestamp(new Date());
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle(`🗺️ Membres proches (≤${distMax} km)`).setDescription(lines).setImage(map).setTimestamp(new Date());
       return interaction.reply({ embeds: [embed] });
     }
 
@@ -2084,7 +2086,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (pick) {
         const loc = await getUserLocation(interaction.guild.id, pick.id);
         if (!loc) return interaction.reply({ content: 'Aucune localisation pour ce membre.' });
-        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${loc.lat},${loc.lon}&zoom=8&size=800x500&markers=${encodeURIComponent(`icon:large-red||${loc.lat},${loc.lon}`)}`;
+        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${loc.lat},${loc.lon}&zoom=8&size=800x500&markers=${encodeURIComponent(`icon:large-red,${loc.lat},${loc.lon}`)}`;
         const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(`📍 Localisation de ${pick.username || pick.tag || pick.id}`).setDescription(loc.city||'').setImage(map).setTimestamp(new Date());
         return interaction.reply({ embeds: [embed] });
       } else {
@@ -2097,7 +2099,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         for (const [uid, loc] of entries) {
           if (!loc || typeof loc.lat !== 'number' || typeof loc.lon !== 'number') continue;
           sumLat += loc.lat; sumLon += loc.lon; count++;
-          marks.push(`icon:small-blue||${loc.lat},${loc.lon}`);
+          marks.push(`icon:small-blue,${loc.lat},${loc.lon}`);
         }
         const centerLat = count ? (sumLat / count) : 48.8566;
         const centerLon = count ? (sumLon / count) : 2.3522;
