@@ -762,7 +762,7 @@ client.once(Events.ClientReady, (readyClient) => {
         } catch (e) { console.error('[AutoKick] loop error', e?.message||e); }
       }
     } catch (eOuter) { console.error('[AutoKick] tick failed', eOuter?.message||eOuter); }
-  }, 2 * 60 * 1000);
+  }, 60 * 60 * 1000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
