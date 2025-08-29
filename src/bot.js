@@ -2019,7 +2019,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         new ButtonBuilder().setCustomId('td:action').setLabel('Action').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('td:verite').setLabel('Vérité').setStyle(ButtonStyle.Primary),
       );
-      return interaction.reply({ content: `🎯 ${kind === 'action' ? 'Action' : 'Vérité'}: ${pick.text}` , components: [followRow] });
+      const avatar = client.user && client.user.displayAvatarURL ? client.user.displayAvatarURL() : undefined;
+      const title = kind === 'action' ? '🎯 Action' : '🎯 Vérité';
+      const color = kind === 'action' ? THEME_COLOR_PRIMARY : THEME_COLOR_ACCENT;
+      const embed = new EmbedBuilder()
+        .setColor(color)
+        .setAuthor({ name: 'Action/Vérité • Boy and Girls (BAG)', iconURL: avatar })
+        .setTitle(title)
+        .setDescription(pick.text)
+        .setThumbnail(THEME_IMAGE)
+        .setFooter({ text: 'Cliquez pour un nouveau prompt' })
+        .setTimestamp(new Date());
+      return interaction.reply({ embeds: [embed], components: [followRow] });
     }
 
     // Removed legacy global channel add/remove modals; handled via per-mode selectors elsewhere
