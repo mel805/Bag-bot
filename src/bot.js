@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
@@ -1903,7 +1903,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(THEME_COLOR_ACCENT)
         .setTitle('Choisir un membre puis un style de couleurs')
         .setDescription('Sélectionnez d\'abord le membre à qui attribuer la couleur.');
-      const userSelect = new (require('discord.js').UserSelectMenuBuilder)().setCustomId('color_user_pick').setPlaceholder('Sélectionner un membre…').setMinValues(1).setMaxValues(1);
+      const userSelect = new UserSelectMenuBuilder().setCustomId('color_user_pick').setPlaceholder('Sélectionner un membre…').setMinValues(1).setMaxValues(1);
       return interaction.reply({ embeds: [embed], components: [new ActionRowBuilder().addComponents(userSelect)] });
     }
 
