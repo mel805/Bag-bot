@@ -1331,20 +1331,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Anonymous reply button → modal
     if (interaction.isButton() && interaction.customId === 'confess_reply') {
-      const modal = new ModalBuilder().setCustomId('confess_reply_modal').setTitle('Répondre anonymement');
+      const msgId = interaction.message?.id || '0';
+      const modal = new ModalBuilder().setCustomId(`confess_reply_modal:${msgId}`).setTitle('Répondre anonymement');
       const input = new TextInputBuilder().setCustomId('text').setLabel('Votre réponse').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(1000);
       modal.addComponents(new ActionRowBuilder().addComponents(input));
       await interaction.showModal(modal);
       return;
     }
-    if (interaction.isModalSubmit() && interaction.customId === 'confess_reply_modal') {
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('confess_reply_modal:')) {
       const text = interaction.fields.getTextInputValue('text');
       await interaction.deferReply({ ephemeral: true });
-      const msg = interaction.message || null;
+      const msgId = interaction.customId.split(':')[1] || '0';
       let thread = null;
-      try { thread = msg && msg.hasThread ? msg.thread : null; } catch (_) { thread = null; }
+      // If we are already in a thread, post there directly
+      try { if (interaction.channel && interaction.channel.isThread?.()) thread = interaction.channel; } catch (_) {}
       if (!thread) {
-        try { thread = await msg.startThread({ name: 'Discussion', autoArchiveDuration: 1440 }); } catch (_) {}
+        // Fetch the base message in this channel and use/create its thread
+        let baseMsg = null;
+        try { baseMsg = await interaction.channel.messages.fetch(msgId).catch(()=>null); } catch (_) { baseMsg = null; }
+        try { thread = baseMsg && baseMsg.hasThread ? baseMsg.thread : null; } catch (_) { thread = null; }
+        if (!thread && baseMsg) {
+          try { thread = await baseMsg.startThread({ name: 'Discussion', autoArchiveDuration: 1440 }); } catch (_) { thread = null; }
+        }
       }
       if (thread) {
         const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setAuthor({ name: 'Réponse anonyme' }).setDescription(text).setTimestamp(new Date());
