@@ -5,14 +5,3 @@
 Login succeeded
 Logged in as Bag bot#8659
 [Music] Node error 127.0.0.1 Unexpected server response: 200
-[Music] Node error 127.0.0.1 Unexpected server response: 200
-[Music] Node error 127.0.0.1 Unexpected server response: 200
-[Music] Node error 127.0.0.1 Unexpected server response: 200
-[Music] Node error 127.0.0.1 Unexpected server response: 200
-[Music] Node error 127.0.0.1 Unable to connect after 5 attempts.
-UnhandledRejection: Error: No available nodes.
-    at /workspace/node_modules/erela.js/dist/structures/Manager.js:145:23
-    at new Promise (<anonymous>)
-    at Manager.search (/workspace/node_modules/erela.js/dist/structures/Manager.js:142:16)
-    at Client.<anonymous> (/workspace/src/bot.js:1854:40)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)

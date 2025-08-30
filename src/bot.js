@@ -1850,8 +1850,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferReply();
         const query = interaction.options.getString('recherche', true);
         if (!interaction.member?.voice?.channel) return interaction.editReply('Rejoignez un salon vocal.');
-        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible pour le moment.');
-        const res = await client.music.search(query, interaction.user);
+        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible pour le moment (module).');
+        const hasNode = (() => {
+          try { return client.music.nodes && Array.from(client.music.nodes.values()).some(n => n.connected); } catch (_) { return false; }
+        })();
+        if (!hasNode) return interaction.editReply('Lecteur indisponible pour le moment (nœud non connecté).');
+        // Timeout wrapper to avoid indefinite pending
+        const searchWithTimeout = (q, user) => {
+          const t = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 7000));
+          return Promise.race([client.music.search(q, user), t]);
+        };
+        const res = await searchWithTimeout(query, interaction.user).catch(() => null);
         if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat.');
         let player = client.music.players.get(interaction.guild.id);
         if (!player) {
@@ -1866,7 +1875,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.editReply({ embeds: [embed] });
       } catch (e) {
         console.error('/play failed', e);
-        return interaction.editReply('Erreur de lecture.');
+        try { return await interaction.editReply('Erreur de lecture.'); } catch (_) { return; }
       }
     }
 
