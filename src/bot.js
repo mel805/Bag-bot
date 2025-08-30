@@ -5,6 +5,26 @@ const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAuto
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 let ytDlp;
 try { ytDlp = require('yt-dlp-exec'); } catch (_) { ytDlp = null; }
+
+async function getPipedAudioUrl(videoId) {
+  const hosts = [
+    'https://piped.video',
+    'https://pipedapi.kavin.rocks',
+    'https://pipedapi.mha.fi',
+  ];
+  for (const host of hosts) {
+    try {
+      const r = await fetch(`${host}/streams/${videoId}`);
+      if (!r.ok) continue;
+      const j = await r.json();
+      const streams = Array.isArray(j?.audioStreams) ? j.audioStreams : (Array.isArray(j?.audio) ? j.audio : []);
+      if (!Array.isArray(streams) || !streams.length) continue;
+      const best = streams.sort((a,b)=> (b.bitrate||0)-(a.bitrate||0))[0];
+      if (best && typeof best.url === 'string' && best.url) return best.url;
+    } catch (_) { /* try next host */ }
+  }
+  return null;
+}
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
 async function getCachedImage(url) {
@@ -1897,15 +1917,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 // Piped fallback to audio stream URL
                 if ((!res || !res.tracks?.length) && typeof fetch === 'function') {
                   try {
-                    const r = await fetch(`https://piped.video/streams/${vid}`);
-                    if (r.ok) {
-                      const j = await r.json();
-                      const audio = Array.isArray(j?.audioStreams) ? j.audioStreams.sort((a,b)=> (a.bitrate||0)-(b.bitrate||0))[0] : null;
-                      const aurl = audio?.url;
-                      if (aurl) {
-                        const httpRes = await client.music.search(aurl, interaction.user).catch(()=>null);
-                        if (httpRes && httpRes.tracks?.length) res = httpRes;
-                      }
+                    const aurl = await getPipedAudioUrl(vid);
+                    if (aurl) {
+                      const httpRes = await client.music.search(aurl, interaction.user).catch(()=>null);
+                      if (httpRes && httpRes.tracks?.length) res = httpRes;
                     }
                   } catch (_) {}
                 }
