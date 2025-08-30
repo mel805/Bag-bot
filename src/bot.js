@@ -3457,7 +3457,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return [new ActionRowBuilder().addComponents(catSelect), new ActionRowBuilder().addComponents(pricesBtn, emojiBtn)];
     }
 
-    if (interaction.isChannelSelectMenu && interaction.customId === 'suites_category_select') {
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'suites_category_select') {
       const catId = interaction.values[0];
       const eco = await getEconomyConfig(interaction.guild.id);
       eco.suites = { ...(eco.suites||{}), categoryId: catId };
@@ -3489,12 +3489,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
     }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
       try {
         await interaction.reply({ content: '⏳ Génération de la carte…' });
       } catch (_) {}
       try {
-        const target = interaction.options.getUser('membre') || interaction.user;
+        const target = interaction.options.getUser('membre') || interaction.options.getUser('member') || interaction.user;
         const member = await interaction.guild.members.fetch(target.id).catch(()=>null);
         const levels = await getLevelsConfig(interaction.guild.id);
         const stats = await getUserStats(interaction.guild.id, target.id);
@@ -3865,7 +3865,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
-    const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
+    const errorText = (() => {
+      if (typeof err === 'string') return err;
+      if (err && err.message) return err.message;
+      try { return JSON.stringify(err); } catch (_) { /* noop */ }
+      return 'Erreur inconnue';
+    })();
     try {
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({ content: `Une erreur est survenue: ${errorText}`, ephemeral: true });
