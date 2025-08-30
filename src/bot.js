@@ -687,10 +687,8 @@ client.once(Events.ClientReady, (readyClient) => {
   try {
     if (ErelaManager) {
       const nodes = [
-        // Prefer Lavalink v3 local node
+        // Use Lavalink v3 only for now (YouTube OK)
         { host: '127.0.0.1', port: 2340, password: 'youshallnotpass', secure: false },
-        // Fallback to v4 via proxy
-        { host: '127.0.0.1', port: 2334, password: 'youshallnotpass', secure: false },
       ];
       const manager = new ErelaManager({
         nodes,
@@ -1896,6 +1894,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
               if (vid && /^[A-Za-z0-9_-]{8,}$/.test(vid)) {
                 const direct = await searchWithTimeout(`https://www.youtube.com/watch?v=${vid}`, interaction.user, 12000).catch(()=>null);
                 if (direct && direct.tracks?.length) res = direct;
+                // Piped fallback to audio stream URL
+                if ((!res || !res.tracks?.length) && typeof fetch === 'function') {
+                  try {
+                    const r = await fetch(`https://piped.video/streams/${vid}`);
+                    if (r.ok) {
+                      const j = await r.json();
+                      const audio = Array.isArray(j?.audioStreams) ? j.audioStreams.sort((a,b)=> (a.bitrate||0)-(b.bitrate||0))[0] : null;
+                      const aurl = audio?.url;
+                      if (aurl) {
+                        const httpRes = await client.music.search(aurl, interaction.user).catch(()=>null);
+                        if (httpRes && httpRes.tracks?.length) res = httpRes;
+                      }
+                    }
+                  } catch (_) {}
+                }
               }
             }
           } catch (_) {}
