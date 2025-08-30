@@ -1799,3 +1799,14 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30T09:40:11.586Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:33860
 2025-08-30T09:40:11.587Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
 2025-08-30T09:40:11.588Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-1] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:57346 with id verkkaj1n5jw84nb -- CloseStatus[code=1006, reason=]
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:50602 with id nmh4odjs4tk54iuy -- CloseStatus[code=1006, reason=]
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-1] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:57216 with id gzzlz5agt6817c9c -- CloseStatus[code=1006, reason=]
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:33860 with id yov64g2awi07wy1a -- CloseStatus[code=1006, reason=]
+2025-08-30T09:41:26.494Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:41:45.571Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:48788
+2025-08-30T09:41:45.572Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:41:45.574Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js

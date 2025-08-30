@@ -138,6 +138,7 @@ wsServer.on('connection', (client, req) => {
   let lavaSessionId = null;
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   const httpBase = `http://${TARGET_HOST}:${TARGET_PORT}`;
+  const pendingVoiceByGuild = new Map();
   const patchPlayer = (guildId, body) => new Promise((resolve) => {
     if (!lavaSessionId) return resolve(false);
     try {
@@ -194,7 +195,12 @@ wsServer.on('connection', (client, req) => {
         if (json && typeof json === 'object' && json.op) {
           // Translate v3 WS ops to v4 REST where needed
           if (json.op === 'voiceUpdate' && json.guildId && json.event && json.sessionId) {
-            await patchPlayer(json.guildId, { voice: { token: json.event.token, endpoint: json.event.endpoint, sessionId: json.sessionId } });
+            const voice = { token: json.event.token, endpoint: json.event.endpoint, sessionId: json.sessionId };
+            if (!lavaSessionId) {
+              pendingVoiceByGuild.set(json.guildId, voice);
+            } else {
+              await patchPlayer(json.guildId, { voice });
+            }
             return; // do not forward
           }
           if (json.op === 'play' && json.guildId && json.track) {
@@ -202,6 +208,11 @@ wsServer.on('connection', (client, req) => {
             if (typeof json.startTime === 'number') body.position = json.startTime;
             if (typeof json.endTime === 'number') body.endTime = json.endTime;
             if (typeof json.volume === 'number') body.volume = json.volume;
+            const pv = pendingVoiceByGuild.get(json.guildId);
+            if (pv && lavaSessionId) {
+              await patchPlayer(json.guildId, { voice: pv });
+              pendingVoiceByGuild.delete(json.guildId);
+            }
             await patchPlayer(json.guildId, body);
             return;
           }
