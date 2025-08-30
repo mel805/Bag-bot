@@ -6,3 +6,7 @@ Login succeeded
 Logged in as Bag bot#8659
 [Music] Node connected: 127.0.0.1
 [Music] Node error 127.0.0.1 Unexpected op "ready" with data: [object Object]
+[Music]/play after add current= true size= 1 length= 1
+[Music] button queue -> En lecture: Unknown title
+1. NINAO
+[Music]/play after add current= true size= 0 length= 0
