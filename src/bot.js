@@ -2064,10 +2064,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
               new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('music_queue').setLabel('File').setStyle(ButtonStyle.Secondary),
-              new ButtonBuilder().setCustomId('music_radio').setLabel('Radio').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('music_vol_down').setEmoji('🔉').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('music_vol_up').setEmoji('🔊').setStyle(ButtonStyle.Secondary),
+            );
+            const row3 = new ActionRowBuilder().addComponents(
               new ButtonBuilder().setCustomId('music_leave').setLabel('Quitter').setStyle(ButtonStyle.Secondary),
             );
-            await interaction.followUp({ embeds: [ui], components: [row1, row2] });
+            await interaction.followUp({ embeds: [ui], components: [row1, row2, row3] });
           } catch (_) {}
         }
         return;
@@ -2226,6 +2229,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const content = lines.join('\n') || 'File vide.';
           try { console.log('[Music] button queue ->', content); } catch (_) {}
           try { await interaction.followUp({ content, ephemeral: true }); } catch (_) {}
+        } else if (id === 'music_vol_down') {
+          try { const v = Math.max(0, (player.volume || 100) - 10); player.setVolume(v); } catch (_) {}
+        } else if (id === 'music_vol_up') {
+          try { const v = Math.min(200, (player.volume || 100) + 10); player.setVolume(v); } catch (_) {}
         }
       } catch (_) {}
       return;
