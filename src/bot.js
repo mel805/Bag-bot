@@ -100,16 +100,22 @@ function startYtProxyServer() {
         const vid = url.pathname.split('/')[2] || '';
         if (!vid || !/^[A-Za-z0-9_-]{8,}$/.test(vid)) { res.statusCode = 400; return res.end('Bad id'); }
         const target = `https://www.youtube.com/watch?v=${vid}`;
-        const args = ['-f','bestaudio[ext=m4a]/bestaudio/best','--no-warnings','--no-check-certificates','-o','-','-'];
-        // yt-dlp reads from stdin when '-' given; we pass URL via stdin to avoid shell issues
-        const child = spawn('/workspace/bin/yt-dlp', args);
-        child.stdin.write(target + '\n');
-        child.stdin.end();
-        res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Transfer-Encoding': 'chunked' });
-        child.stdout.pipe(res);
-        child.on('error', () => { try { res.end(); } catch (_) {} });
-        child.on('close', () => { try { res.end(); } catch (_) {} });
-        req.on('close', () => { try { child.kill('SIGKILL'); } catch (_) {} });
+        const args = ['-f','bestaudio[ext=m4a]/bestaudio/best','--no-warnings','--no-check-certificates','--dump-single-json', target];
+        const child = spawn('/workspace/bin/yt-dlp', args, { stdio: ['ignore','pipe','pipe'] });
+        let out = '';
+        child.stdout.on('data', d => { out += d.toString('utf8'); });
+        child.on('close', () => {
+          try {
+            const j = JSON.parse(out);
+            const fmts = Array.isArray(j?.formats) ? j.formats : [];
+            const cand = fmts.filter(f => (!f.vcodec || f.vcodec === 'none') && f.acodec && f.url).sort((a,b)=> (b.tbr||0)-(a.tbr||0))[0];
+            if (cand?.url) {
+              res.writeHead(302, { Location: cand.url });
+              return res.end();
+            }
+          } catch (_) {}
+          res.statusCode = 502; res.end('No audio');
+        });
       } catch (_) {
         res.statusCode = 500; res.end('ERR');
       }

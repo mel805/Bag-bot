@@ -1378,3 +1378,30 @@ com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Unknown file format.
   java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
   java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
 
+2025-08-30 11:18:59.763  INFO 233769 --- [XNIO-1 task-1] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "http://127.0.0.1:8765/yt/QJaNG0ITb6Y"
+2025-08-30 11:19:00.698 ERROR 233769 --- [lava-daemon-pool-info-loader-2-thread-1] lavalink.server.player.AudioLoader       : Load failed
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Unknown file format.
+	at com.sedmelluq.discord.lavaplayer.source.ProbingAudioSourceManager.handleLoadResult(ProbingAudioSourceManager.java:35) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.http.HttpAudioSourceManager.loadItem(HttpAudioSourceManager.java:73) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItemOnce(DefaultAudioPlayerManager.java:406) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItem(DefaultAudioPlayerManager.java:388) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:183) ~[lavaplayer-1.5.2.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+	Suppressed: com.sedmelluq.discord.lavaplayer.tools.exception.EnvironmentInformation: 
+  lavaplayer.version: 1.5.2
+  os.arch: amd64
+  os.name: Linux
+  os.version: 6.1.147
+  java.vendor: Ubuntu
+  java.version: 21.0.7
+  java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+  java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+
+2025-08-30 11:19:39.149  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:36092 -- CloseStatus[code=1006, reason=]
+2025-08-30 11:19:39.150  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30 11:19:39.885  INFO 233769 --- [XNIO-1 task-1] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:37286
+2025-08-30 11:19:39.890  INFO 233769 --- [XNIO-1 task-1] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
