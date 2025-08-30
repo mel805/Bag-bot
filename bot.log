@@ -190,3 +190,35 @@ Logged in as Bag bot#8659
   ch_ok: true
 }
 [Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+Client error: DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async BurstHandler.runRequest (/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1411465951056105535/aW50ZXJhY3Rpb246MTQxMTQ2NTk1MTA1NjEwNTUzNTp1eXE4QktJSTh5dW1Bbk1QUlV2OHBmbVBhRzVzQXNIZGxYc0w5bjA4NlM5VFNtVERMZVB5UXpZMlhpM1pQOEo1dThUcXhYelhQZ2xQdlp6MFA4MWtDVGlpRzR4OUFrTWg4ZDRNS0FIc0x6WHRYRHo5bFNvY1NWREJvZkdkRklZaA/callback?with_response=false'
+}
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
