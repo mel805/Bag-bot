@@ -1,38 +1,87 @@
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+require('dotenv').config();
+let Pool;
+try { ({ Pool } = require('pg')); } catch (_) { Pool = null; }
+const DATABASE_URL = process.env.DATABASE_URL || '';
+const USE_PG = !!(DATABASE_URL && Pool);
+let pgPool = null;
+async function getPg() {
+  if (!USE_PG) return null;
+  if (!pgPool) pgPool = new Pool({ connectionString: DATABASE_URL, max: 5 });
+  return pgPool;
+}
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 
 async function ensureStorageExists() {
-  await fsp.mkdir(DATA_DIR, { recursive: true });
-  try {
-    await fsp.access(CONFIG_PATH, fs.constants.F_OK);
-  } catch (_) {
-    const initial = { guilds: {} };
-    await fsp.writeFile(CONFIG_PATH, JSON.stringify(initial, null, 2), 'utf8');
+  if (USE_PG) {
+    const pool = await getPg();
+    const client = await pool.connect();
+    try {
+      await client.query('CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+      const res = await client.query('SELECT 1 FROM app_config WHERE id = 1');
+      if (res.rowCount === 0) {
+        await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [{ guilds: {} }]);
+      }
+    } finally {
+      client.release();
+    }
+  } else {
+    await fsp.mkdir(DATA_DIR, { recursive: true });
+    try {
+      await fsp.access(CONFIG_PATH, fs.constants.F_OK);
+    } catch (_) {
+      const initial = { guilds: {} };
+      await fsp.writeFile(CONFIG_PATH, JSON.stringify(initial, null, 2), 'utf8');
+    }
   }
 }
 
 async function readConfig() {
   await ensureStorageExists();
-  try {
-    const raw = await fsp.readFile(CONFIG_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { guilds: {} };
-    if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
-    return parsed;
-  } catch (_) {
-    return { guilds: {} };
+  if (USE_PG) {
+    const pool = await getPg();
+    const client = await pool.connect();
+    try {
+      const { rows } = await client.query('SELECT data FROM app_config WHERE id = 1');
+      const data = rows?.[0]?.data || { guilds: {} };
+      if (!data || typeof data !== 'object') return { guilds: {} };
+      if (!data.guilds || typeof data.guilds !== 'object') data.guilds = {};
+      return data;
+    } finally {
+      client.release();
+    }
+  } else {
+    try {
+      const raw = await fsp.readFile(CONFIG_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return { guilds: {} };
+      if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
+      return parsed;
+    } catch (_) {
+      return { guilds: {} };
+    }
   }
 }
 
 async function writeConfig(cfg) {
   await ensureStorageExists();
-  const tmpPath = CONFIG_PATH + '.tmp';
-  await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
-  await fsp.rename(tmpPath, CONFIG_PATH);
+  if (USE_PG) {
+    const pool = await getPg();
+    const client = await pool.connect();
+    try {
+      await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [cfg]);
+    } finally {
+      client.release();
+    }
+  } else {
+    const tmpPath = CONFIG_PATH + '.tmp';
+    await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
+    await fsp.rename(tmpPath, CONFIG_PATH);
+  }
 }
 
 async function getGuildConfig(guildId) {
