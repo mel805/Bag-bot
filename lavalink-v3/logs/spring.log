@@ -1841,3 +1841,5 @@ com.sedmelluq.discord.lavaplayer.tools.FriendlyException: That URL is not playab
 Caused by: java.lang.IllegalStateException: Status code 502
 	... 10 common frames omitted
 
+2025-08-30 11:45:46.857  INFO 233769 --- [XNIO-1 I/O-1] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:51368 -- CloseStatus[code=1006, reason=]
+2025-08-30 11:45:46.857  INFO 233769 --- [XNIO-1 I/O-1] lavalink.server.io.SocketContext         : Shutting down 0 playing players.

@@ -790,6 +790,7 @@ client.once(Events.ClientReady, (readyClient) => {
           const guild = client.guilds.cache.get(id);
           if (guild) guild.shard.send(payload);
         },
+        autoPlay: true,
       });
       client.music = manager;
       manager.on('nodeConnect', node => console.log(`[Music] Node connected: ${node.options.host}`));
@@ -2031,9 +2032,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const wasPlaying = !!(player.playing || player.paused);
         const loadType = res.loadType || res.type;
         if (loadType === 'PLAYLIST_LOADED') player.queue.add(res.tracks);
-        else player.queue.add(res.tracks[0]);
+        else {
+          // Prefer highest bitrate track when multiple candidates are available
+          try {
+            const best = Array.isArray(res.tracks) ? res.tracks.sort((a,b)=> (b.info?.length||0)-(a.info?.length||0))[0] : res.tracks[0];
+            player.queue.add(best || res.tracks[0]);
+          } catch (_) {
+            player.queue.add(res.tracks[0]);
+          }
+        }
         try { console.log('[Music]/play after add current=', !!player.queue.current, 'size=', player.queue.size, 'length=', player.queue.length); } catch (_) {}
-        if (!player.playing && !player.paused) player.play();
+        if (!player.playing && !player.paused) player.play({ volume: 100 });
         const firstTrack = res.tracks[0] || { title: 'Inconnu', uri: '' };
         if (wasPlaying) {
           const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('➕ Ajouté à la file').setDescription(`[${firstTrack.title}](${firstTrack.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
