@@ -31,13 +31,31 @@ function convertV4LoadTracksToV3(v4) {
   const base = { loadType, tracks: [], playlistInfo: { name: '', selectedTrack: -1 } };
   if (!v4 || typeof v4 !== 'object') return base;
   const data = v4.data;
+  const ensureUri = (info = {}, pluginInfo = {}) => {
+    if (info.uri && typeof info.uri === 'string') return info;
+    const copy = { ...info };
+    try {
+      // Try to infer from identifier or pluginInfo
+      if (typeof copy.identifier === 'string') {
+        if (/^O:https?:\/\//.test(copy.identifier)) {
+          copy.uri = copy.identifier.replace(/^O:/, '');
+        } else if (/^[A-Za-z0-9_-]{8,}$/.test(copy.identifier)) {
+          copy.uri = `https://www.youtube.com/watch?v=${copy.identifier}`;
+        }
+      }
+      if (!copy.uri && pluginInfo && typeof pluginInfo.url === 'string') {
+        copy.uri = pluginInfo.url;
+      }
+    } catch (_) {}
+    return copy;
+  };
   if (loadType === 'TRACK_LOADED' && data && data.encoded) {
-    base.tracks = [{ track: data.encoded, info: data.info || {}, pluginInfo: data.pluginInfo || {} }];
+    base.tracks = [{ track: data.encoded, info: ensureUri(data.info, data.pluginInfo), pluginInfo: data.pluginInfo || {} }];
   } else if (loadType === 'SEARCH_RESULT' && Array.isArray(data)) {
-    base.tracks = data.map(t => ({ track: t.encoded, info: t.info || {}, pluginInfo: t.pluginInfo || {} }));
+    base.tracks = data.map(t => ({ track: t.encoded, info: ensureUri(t.info, t.pluginInfo), pluginInfo: t.pluginInfo || {} }));
   } else if (loadType === 'PLAYLIST_LOADED' && data && Array.isArray(data.tracks)) {
     base.playlistInfo = { name: (data.info && data.info.name) || '', selectedTrack: typeof data.info?.selectedTrack === 'number' ? data.info.selectedTrack : -1 };
-    base.tracks = data.tracks.map(t => ({ track: t.encoded, info: t.info || {}, pluginInfo: t.pluginInfo || {} }));
+    base.tracks = data.tracks.map(t => ({ track: t.encoded, info: ensureUri(t.info, t.pluginInfo), pluginInfo: t.pluginInfo || {} }));
   }
   if (loadType === 'NO_MATCHES' || loadType === 'LOAD_FAILED') {
     base.tracks = [];

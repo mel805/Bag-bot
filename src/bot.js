@@ -1872,7 +1872,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
             }
           }
         } catch (_) {}
-        const attempts = isUrl ? [normalized] : [`ytmsearch:${query}`, `scsearch:${query}`, `ytsearch:${query}`];
+        const attempts = isUrl ? [normalized] : [
+          { query, source: 'youtube music' },
+          { query, source: 'soundcloud' },
+          { query, source: 'youtube' },
+        ];
         let res = null;
         for (const attempt of attempts) {
           try {
@@ -1880,7 +1884,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
             if (res && Array.isArray(res.tracks) && res.tracks.length) break;
           } catch (_) { /* continue */ }
         }
-        if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat. Essayez un lien direct (YouTube/SoundCloud).');
+        if (!res || !res.tracks?.length) {
+          // Last-chance: YouTube Music URL normalization already tried; also try extracting v parameter if provided
+          try {
+            if (isUrl) {
+              const u2 = new URL(normalized);
+              const vid = u2.searchParams.get('v');
+              if (vid && /^[A-Za-z0-9_-]{8,}$/.test(vid)) {
+                const direct = await searchWithTimeout(`https://www.youtube.com/watch?v=${vid}`, interaction.user, 12000).catch(()=>null);
+                if (direct && direct.tracks?.length) res = direct;
+              }
+            }
+          } catch (_) {}
+        }
+        if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat. Essayez un lien YouTube complet (www.youtube.com).');
         let player = client.music.players.get(interaction.guild.id);
         if (!player) {
           player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true });

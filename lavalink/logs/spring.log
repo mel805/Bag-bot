@@ -1739,3 +1739,16 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 	... 77 common frames omitted
 
 2025-08-30T09:19:48.254Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DQJaNG0ITb6Y
+2025-08-30T09:21:49.529Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-1] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:39792 with id ayke2das2d2pwcrs -- CloseStatus[code=1006, reason=]
+2025-08-30T09:21:49.529Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:46060 with id 9dgv3r3x2rwq3l66 -- CloseStatus[code=1006, reason=]
+2025-08-30T09:21:49.529Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-1] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:21:49.529Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-2] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:21:54.830Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "ytmsearch:Gims"
+2025-08-30T09:21:55.225Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Loaded playlist Search results for: Gims
+2025-08-30T09:21:55.228Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=ytmsearch:Gims
+2025-08-30T09:22:19.545Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:57346
+2025-08-30T09:22:19.546Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:22:19.547Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:23:54.148Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:50384
+2025-08-30T09:23:54.149Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:23:54.150Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
