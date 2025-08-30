@@ -48,3 +48,26 @@ Logged in as Bag bot#8659
 [Music] Node error lava.luke.gg Unable to connect after 5 attempts.
 [Logs] MessageDelete evt { g: '1360897918504271882', cat: false, ch: '1360897920286855307' }
 [Logs] MessageDelete evt { g: '1360897918504271882', cat: false, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageDelete evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageDelete evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
