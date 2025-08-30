@@ -2028,32 +2028,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
           player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true });
           player.connect();
         }
+        const wasPlaying = !!(player.playing || player.paused);
         const loadType = res.loadType || res.type;
         if (loadType === 'PLAYLIST_LOADED') player.queue.add(res.tracks);
         else player.queue.add(res.tracks[0]);
         try { console.log('[Music]/play after add current=', !!player.queue.current, 'size=', player.queue.size, 'length=', player.queue.length); } catch (_) {}
         if (!player.playing && !player.paused) player.play();
-        const t = player.queue.current || res.tracks[0] || { title: 'Inconnu', uri: '' };
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${t.title}](${t.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
-        await interaction.editReply({ embeds: [embed] });
-        try {
-          const ui = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎧 Lecteur').setDescription('Contrôles de lecture').setImage(THEME_IMAGE).setFooter({ text: 'BAG • Lecteur' }).setTimestamp(new Date());
-          const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('music_play').setEmoji('▶️').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('music_pause').setEmoji('⏸️').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('music_next').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
-          );
-          const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('music_queue').setLabel('File').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('music_radio').setLabel('Radio').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('music_leave').setLabel('Quitter').setStyle(ButtonStyle.Secondary),
-          );
-          await interaction.followUp({ embeds: [ui], components: [row1, row2] });
-        } catch (_) {}
+        const firstTrack = res.tracks[0] || { title: 'Inconnu', uri: '' };
+        if (wasPlaying) {
+          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('➕ Ajouté à la file').setDescription(`[${firstTrack.title}](${firstTrack.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
+          await interaction.editReply({ embeds: [embed] });
+        } else {
+          const current = player.queue.current || firstTrack;
+          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${current.title}](${current.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
+          await interaction.editReply({ embeds: [embed] });
+          try {
+            const ui = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎧 Lecteur').setDescription('Contrôles de lecture').setImage(THEME_IMAGE).setFooter({ text: 'BAG • Lecteur' }).setTimestamp(new Date());
+            const row1 = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('music_play').setEmoji('▶️').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('music_pause').setEmoji('⏸️').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+              new ButtonBuilder().setCustomId('music_next').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
+            );
+            const row2 = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('music_queue').setLabel('File').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('music_radio').setLabel('Radio').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('music_leave').setLabel('Quitter').setStyle(ButtonStyle.Secondary),
+            );
+            await interaction.followUp({ embeds: [ui], components: [row1, row2] });
+          } catch (_) {}
+        }
         return;
       } catch (e) {
         console.error('/play failed', e);

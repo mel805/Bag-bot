@@ -1407,3 +1407,5 @@ com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Unknown file format.
 2025-08-30 11:19:39.890  INFO 233769 --- [  XNIO-1 task-1] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
 2025-08-30 11:24:26.295  INFO 233769 --- [   XNIO-1 I/O-4] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:37286 -- CloseStatus[code=1006, reason=]
 2025-08-30 11:24:26.295  INFO 233769 --- [   XNIO-1 I/O-4] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30 11:40:54.830  INFO 233769 --- [  XNIO-1 task-1] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:51368
+2025-08-30 11:40:54.834  INFO 233769 --- [  XNIO-1 task-1] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
