@@ -692,7 +692,8 @@ async function buildEconomyKarmaRows(guild) {
   const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('Ajouter grant').setStyle(ButtonStyle.Secondary);
   const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer sélection').setStyle(ButtonStyle.Danger);
   const clearBtn = new ButtonBuilder().setCustomId('eco_karma_clear').setLabel('Tout supprimer (type)').setStyle(ButtonStyle.Secondary);
-  const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, delBtn, clearBtn);
+  const editBtn = new ButtonBuilder().setCustomId('eco_karma_edit').setLabel('Modifier').setStyle(ButtonStyle.Secondary);
+  const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, editBtn, delBtn, clearBtn);
   return [rowType, rowRules, rowActions];
 }
 
@@ -1139,6 +1140,58 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
       return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'eco_karma_edit') {
+      const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
+      const sel = client._ecoKarmaSel?.get?.(`${interaction.guild.id}:${type}`) || [];
+      if (!sel.length) return interaction.reply({ content: 'Sélectionnez d\'abord une règle.', ephemeral: true });
+      const idx = Number(sel[0]);
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+      const rule = list[idx];
+      if (!rule) return interaction.reply({ content: 'Règle introuvable.', ephemeral: true });
+      if (type === 'grants') {
+        const modal = new ModalBuilder().setCustomId(`eco_karma_edit_grant:${idx}`).setTitle('Modifier grant');
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.money||0)))
+        );
+        try { return await interaction.showModal(modal); } catch (_) { return; }
+      } else {
+        const modal = new ModalBuilder().setCustomId(`eco_karma_edit_perc:${type}:${idx}`).setTitle('Modifier règle (%)');
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.percent||0)))
+        );
+        try { return await interaction.showModal(modal); } catch (_) { return; }
+      }
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('eco_karma_edit_grant:')) {
+      await interaction.deferReply({ ephemeral: true });
+      const idx = Number(interaction.customId.split(':')[1]);
+      const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
+      const money = Number((interaction.fields.getTextInputValue('money')||'0').trim());
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const list = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
+      if (!list[idx]) return interaction.editReply({ content: 'Règle introuvable.' });
+      list[idx] = { condition, money };
+      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), grants: list };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Grant modifié.' });
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('eco_karma_edit_perc:')) {
+      await interaction.deferReply({ ephemeral: true });
+      const [, type, idxStr] = interaction.customId.split(':');
+      const idx = Number(idxStr);
+      const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
+      const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+      if (!list[idx]) return interaction.editReply({ content: 'Règle introuvable.' });
+      list[idx] = { condition, percent };
+      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: list };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Règle modifiée.' });
     }
     if (interaction.isButton() && interaction.customId === 'eco_karma_clear') {
       const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
