@@ -2364,16 +2364,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    if (interaction.isChatInputCommand() && interaction.commandName === 'testlog') {
-      const ok = await isStaffMember(interaction.guild, interaction.member);
-      if (!ok) return interaction.reply({ content:'⛔ Staff uniquement.', ephemeral:true });
-      const cat = interaction.options.getString('categorie', true);
-      const cfg = await getLogsConfig(interaction.guild.id);
-      const embed = buildModEmbed(`[TEST] ${cat}`, `Test de logs catégorie: ${cat}`, [{ name:'Salon cible', value: (cfg.channels?.[cat] ? `<#${cfg.channels[cat]}>` : (cfg.channelId?`<#${cfg.channelId}>`:'non défini')) }]);
-      await sendLog(interaction.guild, cat, embed);
-      try { await interaction.channel.send({ embeds: [embed] }); } catch (_) {}
-      return interaction.reply({ content:'✅ Test envoyé (si configuré) + aperçu dans ce salon.', ephemeral:true });
-    }
+    // /testlog removed
 
     // Music: pause
     if (interaction.isChatInputCommand() && interaction.commandName === 'pause') {
@@ -2480,24 +2471,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } catch (e) { try { return await interaction.editReply('Erreur radio.'); } catch (_) { return; } }
     }
 
-    // Music: testaudio (debug known-good mp3)
-    if (interaction.isChatInputCommand() && interaction.commandName === 'testaudio') {
-      try {
-        await interaction.deferReply();
-        if (!interaction.member?.voice?.channel) return interaction.editReply('Rejoignez un salon vocal.');
-        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible.');
-        const hasNode = (() => { try { return client.music.nodes && Array.from(client.music.nodes.values()).some(n => n.connected); } catch (_) { return false; } })();
-        if (!hasNode) return interaction.editReply('Lecteur indisponible (nœud).');
-        let player = client.music.players.get(interaction.guild.id);
-        if (!player) { player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true }); player.connect(); }
-        const url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-        const res = await client.music.search(url, interaction.user).catch(()=>null);
-        if (!res || !res.tracks?.length) return interaction.editReply('Test audio indisponible.');
-        player.queue.add(res.tracks[0]);
-        if (!player.playing && !player.paused) player.play();
-        return interaction.editReply('🔊 Test audio en cours.');
-      } catch (e) { try { return await interaction.editReply('Erreur test audio.'); } catch (_) { return; } }
-    }
+    // /testaudio removed
 
     // Music player button controls
     if (interaction.isButton() && interaction.customId.startsWith('music_')) {
@@ -3810,6 +3784,17 @@ client.on(Events.MessageCreate, async (message) => {
         const content = (message.content || '').toLowerCase();
         if (content.includes('bump done') || content.includes('bump effectué') || content.includes('bump done!')) {
           await updateDisboardConfig(message.guild.id, { lastBumpAt: Date.now(), lastBumpChannelId: message.channel.id, reminded: false });
+          // Inform that cooldown started
+          try {
+            const embed = new EmbedBuilder()
+              .setColor(THEME_COLOR_ACCENT)
+              .setTitle('⏳ Cooldown lancé')
+              .setDescription('Merci pour le bump ! Rappel sensuel dans 2 heures… 😘')
+              .setThumbnail(THEME_IMAGE)
+              .setFooter({ text: 'BAG • Disboard' })
+              .setTimestamp(new Date());
+            await message.channel.send({ embeds: [embed] }).catch(()=>{});
+          } catch (_) {}
         }
       }
     } catch (_) {}

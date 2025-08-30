@@ -114,18 +114,6 @@ const commands = [
     .addStringOption(o=>o.setName('texte').setDescription('Votre confession (optionnel)').setRequired(false))
     .addAttachmentOption(o=>o.setName('image').setDescription('Image (optionnel)').setRequired(false))
     .toJSON(),
-  new SlashCommandBuilder()
-    .setName('testlog')
-    .setDescription('Test: envoyer un log dans la catégorie choisie (staff)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addStringOption(o=>o.setName('categorie').setDescription('Catégorie de logs').setRequired(true)
-      .addChoices(
-        { name:'messages', value:'messages' },
-        { name:'moderation', value:'moderation' },
-        { name:'threads', value:'threads' },
-        { name:'joinleave', value:'joinleave' }
-      ))
-    .toJSON(),
   // Moderation (staff-only)
   new SlashCommandBuilder().setName('ban').setDescription('Ban un membre').setDefaultMemberPermissions(PermissionFlagsBits.BanMembers).addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addStringOption(o=>o.setName('raison').setDescription('Raison').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('unban').setDescription('Déban un utilisateur').setDefaultMemberPermissions(PermissionFlagsBits.BanMembers).addStringOption(o=>o.setName('userid').setDescription('ID utilisateur').setRequired(true)).addStringOption(o=>o.setName('raison').setDescription('Raison')).toJSON(),
@@ -159,7 +147,6 @@ const commands = [
         { name: 'Jazz', value: 'jazz' }
       ))
     .toJSON(),
-  new SlashCommandBuilder().setName('testaudio').setDescription('Debug: jouer un MP3 de test').toJSON(),
 ];
 
 async function main() {
