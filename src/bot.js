@@ -3787,11 +3787,17 @@ client.on(Events.MessageCreate, async (message) => {
           // Inform that cooldown started
           try {
             const embed = new EmbedBuilder()
-              .setColor(THEME_COLOR_ACCENT)
-              .setTitle('⏳ Cooldown lancé')
-              .setDescription('Merci pour le bump ! Rappel sensuel dans 2 heures… 😘')
+              .setColor(THEME_COLOR_PRIMARY)
+              .setAuthor({ name: 'BAG • Disboard' })
+              .setTitle('✨ Merci pour le bump !')
+              .setDescription(`Votre soutien fait rayonner le serveur. Le cooldown de 2 heures démarre maintenant.
+
+• Prochain rappel automatique: dans 2h
+• Salon: <#${message.channel.id}>
+
+Restez sexy, beaux/belles gosses 😘`)
               .setThumbnail(THEME_IMAGE)
-              .setFooter({ text: 'BAG • Disboard' })
+              .setFooter({ text: 'BAG • Premium' })
               .setTimestamp(new Date());
             await message.channel.send({ embeds: [embed] }).catch(()=>{});
           } catch (_) {}
