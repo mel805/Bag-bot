@@ -2336,6 +2336,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
+    if (interaction.isChatInputCommand() && interaction.commandName === 'testlog') {
+      const ok = await isStaffMember(interaction.guild, interaction.member);
+      if (!ok) return interaction.reply({ content:'⛔ Staff uniquement.', ephemeral:true });
+      const cat = interaction.options.getString('categorie', true);
+      const cfg = await getLogsConfig(interaction.guild.id);
+      const embed = buildModEmbed(`[TEST] ${cat}`, `Test de logs catégorie: ${cat}`, [{ name:'Salon cible', value: (cfg.channels?.[cat] ? `<#${cfg.channels[cat]}>` : (cfg.channelId?`<#${cfg.channelId}>`:'non défini')) }]);
+      await sendLog(interaction.guild, cat, embed);
+      return interaction.reply({ content:'✅ Test envoyé (si configuré).', ephemeral:true });
+    }
+
     // Music: pause
     if (interaction.isChatInputCommand() && interaction.commandName === 'pause') {
       try {
