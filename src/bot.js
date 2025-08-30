@@ -690,10 +690,9 @@ async function buildEconomyKarmaRows(guild) {
   const addShop = new ButtonBuilder().setCustomId('eco_karma_add_shop').setLabel('Ajouter règle boutique').setStyle(ButtonStyle.Primary);
   const addAct = new ButtonBuilder().setCustomId('eco_karma_add_action').setLabel('Ajouter règle actions').setStyle(ButtonStyle.Primary);
   const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('Ajouter grant').setStyle(ButtonStyle.Secondary);
-  const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer sélection').setStyle(ButtonStyle.Danger);
-  const clearBtn = new ButtonBuilder().setCustomId('eco_karma_clear').setLabel('Tout supprimer (type)').setStyle(ButtonStyle.Secondary);
+  const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer').setStyle(ButtonStyle.Danger);
   const editBtn = new ButtonBuilder().setCustomId('eco_karma_edit').setLabel('Modifier').setStyle(ButtonStyle.Secondary);
-  const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, editBtn, delBtn, clearBtn);
+  const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, editBtn, delBtn);
   return [rowType, rowRules, rowActions];
 }
 
