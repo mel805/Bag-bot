@@ -364,6 +364,19 @@ function ensureDisboardShape(g) {
   if (typeof d.reminded !== 'boolean') d.reminded = false;
 }
 
+function ensureLogsShape(g) {
+  if (!g.logs || typeof g.logs !== 'object') {
+    g.logs = { enabled: false, channelId: '', pseudo: true, emoji: '📝', categories: { moderation: true, voice: true, economy: true, boosts: true, threads: true, joinleave: true, messages: true } };
+  } else {
+    if (typeof g.logs.enabled !== 'boolean') g.logs.enabled = false;
+    if (typeof g.logs.channelId !== 'string') g.logs.channelId = '';
+    if (typeof g.logs.pseudo !== 'boolean') g.logs.pseudo = true;
+    if (typeof g.logs.emoji !== 'string' || !g.logs.emoji) g.logs.emoji = '📝';
+    if (!g.logs.categories || typeof g.logs.categories !== 'object') g.logs.categories = { moderation: true, voice: true, economy: true, boosts: true, threads: true, joinleave: true, messages: true };
+    for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages']) if (typeof g.logs.categories[k] !== 'boolean') g.logs.categories[k] = true;
+  }
+}
+
 function ensureGeoShape(g) {
   if (!g.geo || typeof g.geo !== 'object') g.geo = {};
   const geo = g.geo;
@@ -382,6 +395,22 @@ async function getGeoConfig(guildId) {
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureGeoShape(cfg.guilds[guildId]);
   return cfg.guilds[guildId].geo;
+}
+
+async function getLogsConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLogsShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].logs;
+}
+
+async function updateLogsConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLogsShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].logs = { ...cfg.guilds[guildId].logs, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].logs;
 }
 
 async function getCountingConfig(guildId) {
@@ -609,6 +638,8 @@ module.exports = {
   getAllLocations,
   getAutoThreadConfig,
   updateAutoThreadConfig,
+  getLogsConfig,
+  updateLogsConfig,
   // Counting
   getCountingConfig,
   updateCountingConfig,

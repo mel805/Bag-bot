@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
 let ErelaManager;
 try { ({ Manager: ErelaManager } = require('erela.js')); } catch (_) { ErelaManager = null; }
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig, getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 let ytDlp;
 try { ytDlp = require('yt-dlp-exec'); } catch (_) { ytDlp = null; }
@@ -259,6 +259,7 @@ function buildTopSectionRow() {
       { label: 'Confessions', value: 'confess', description: 'Configurer les confessions anonymes' },
       { label: 'AutoThread', value: 'autothread', description: 'Créer des fils automatiquement' },
       { label: 'Comptage', value: 'counting', description: 'Configurer le salon de comptage' },
+      { label: 'Logs', value: 'logs', description: "Configurer les journaux d'activité" },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -826,6 +827,43 @@ client.once(Events.ClientReady, (readyClient) => {
   } catch (e) {
     console.error('Music init failed', e);
   }
+  // Logs: register listeners
+  client.on(Events.GuildMemberAdd, async (m) => {
+    const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
+    const ch = m.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const embed = buildModEmbed(`${cfg.emoji} Arrivée`, `${m.user} a rejoint le serveur.`, []);
+    ch.send({ embeds: [embed] }).catch(()=>{});
+  });
+  client.on(Events.GuildMemberRemove, async (m) => {
+    const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
+    const ch = m.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const embed = buildModEmbed(`${cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
+    ch.send({ embeds: [embed] }).catch(()=>{});
+  });
+  client.on(Events.MessageDelete, async (msg) => {
+    if (!msg.guild) return; const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    const ch = msg.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Contenu', value: msg.content || '—' }]);
+    ch.send({ embeds: [embed] }).catch(()=>{});
+  });
+  client.on(Events.MessageUpdate, async (oldMsg, newMsg) => {
+    const msg = newMsg; if (!msg.guild) return; const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    const ch = msg.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: oldMsg?.content || '—' }, { name:'Après', value: msg.content || '—' } ]);
+    ch.send({ embeds: [embed] }).catch(()=>{});
+  });
+  client.on(Events.ThreadCreate, async (thread) => {
+    if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
+    const ch = thread.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const embed = buildModEmbed(`${cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
+    ch.send({ embeds: [embed] }).catch(()=>{});
+  });
+  client.on(Events.ThreadDelete, async (thread) => {
+    if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
+    const ch = thread.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const embed = buildModEmbed(`${cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
+    ch.send({ embeds: [embed] }).catch(()=>{});
+  });
   // Suites cleanup every 5 minutes
   setInterval(async () => {
     try {
@@ -978,6 +1016,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (section === 'counting') {
         const rows = await buildCountingRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [...rows] });
+      } else if (section === 'logs') {
+        const rows = await buildLogsRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
@@ -1026,6 +1067,50 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+
+    // Logs config handlers
+    if (interaction.isButton() && interaction.customId === 'logs_toggle') {
+      const cfg = await getLogsConfig(interaction.guild.id);
+      await updateLogsConfig(interaction.guild.id, { enabled: !cfg.enabled });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'logs_pseudo') {
+      const cfg = await getLogsConfig(interaction.guild.id);
+      await updateLogsConfig(interaction.guild.id, { pseudo: !cfg.pseudo });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'logs_emoji') {
+      // Simple rotate among a set
+      const cfg = await getLogsConfig(interaction.guild.id);
+      const set = ['📝','🔔','🛡️','📢','🎧','💸','🧵','➕'];
+      const idx = Math.max(0, set.indexOf(cfg.emoji||'📝'));
+      const next = set[(idx+1)%set.length];
+      await updateLogsConfig(interaction.guild.id, { emoji: next });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'logs_channel') {
+      const id = interaction.values[0];
+      await updateLogsConfig(interaction.guild.id, { channelId: id });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('logs_cat:')) {
+      const key = interaction.customId.split(':')[1];
+      const cfg = await getLogsConfig(interaction.guild.id);
+      const cats = { ...(cfg.categories||{}) };
+      cats[key] = !cats[key];
+      await updateLogsConfig(interaction.guild.id, { categories: cats });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
@@ -3431,6 +3516,29 @@ async function buildEconomyMenuRows(guild, page) {
 function buildBackRow() {
   const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
   return new ActionRowBuilder().addComponents(back);
+}
+
+async function buildLogsRows(guild) {
+  const cfg = await getLogsConfig(guild.id);
+  const toggle = new ButtonBuilder().setCustomId('logs_toggle').setLabel(cfg.enabled ? 'Logs: ON' : 'Logs: OFF').setStyle(cfg.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const pseudo = new ButtonBuilder().setCustomId('logs_pseudo').setLabel(cfg.pseudo ? 'Pseudo: ON' : 'Pseudo: OFF').setStyle(cfg.pseudo ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const emojiBtn = new ButtonBuilder().setCustomId('logs_emoji').setLabel(`Emoji: ${cfg.emoji || '📝'}`).setStyle(ButtonStyle.Primary);
+  const rowTog = new ActionRowBuilder().addComponents(toggle, pseudo, emojiBtn);
+  const channelSelect = new ChannelSelectMenuBuilder().setCustomId('logs_channel').setPlaceholder('Salon de logs…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+  const rowChan = new ActionRowBuilder().addComponents(channelSelect);
+  const cat = cfg.categories || {};
+  const catRow1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('logs_cat:moderation').setLabel(`Modération: ${cat.moderation?'ON':'OFF'}`).setStyle(cat.moderation?ButtonStyle.Success:ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('logs_cat:voice').setLabel(`Vocal: ${cat.voice?'ON':'OFF'}`).setStyle(cat.voice?ButtonStyle.Success:ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('logs_cat:economy').setLabel(`Économie: ${cat.economy?'ON':'OFF'}`).setStyle(cat.economy?ButtonStyle.Success:ButtonStyle.Secondary)
+  );
+  const catRow2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('logs_cat:boosts').setLabel(`Boosts: ${cat.boosts?'ON':'OFF'}`).setStyle(cat.boosts?ButtonStyle.Success:ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('logs_cat:threads').setLabel(`Threads: ${cat.threads?'ON':'OFF'}`).setStyle(cat.threads?ButtonStyle.Success:ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('logs_cat:joinleave').setLabel(`Arrivée/Départ: ${cat.joinleave?'ON':'OFF'}`).setStyle(cat.joinleave?ButtonStyle.Success:ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('logs_cat:messages').setLabel(`Messages: ${cat.messages?'ON':'OFF'}`).setStyle(cat.messages?ButtonStyle.Success:ButtonStyle.Secondary)
+  );
+  return [buildBackRow(), rowTog, rowChan, catRow1, catRow2];
 }
 
 function buildEcoEmbed({ title, description, fields, color }) {
