@@ -1818,32 +1818,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
     }
 
-    // Premium music player UI (static demo; animated controls)
-    if (interaction.isChatInputCommand() && interaction.commandName === 'lecteur') {
-      const bg = THEME_IMAGE;
-      const embed = new EmbedBuilder()
-        .setColor(THEME_COLOR_ACCENT)
-        .setTitle('🎧 Lecteur • Boy and Girls (BAG)')
-        .setDescription('Utilisez les boutons pour contrôler la lecture.')
-        .setImage(bg)
-        .setFooter({ text: 'BAG • Lecteur' })
-        .setTimestamp(new Date());
-      const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('music_play').setEmoji('▶️').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('music_pause').setEmoji('⏸️').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('music_next').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
-      );
-      const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('music_queue').setLabel('File').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('music_radio').setLabel('Radio').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('music_leave').setLabel('Quitter').setStyle(ButtonStyle.Secondary),
-      );
-      return interaction.reply({ embeds: [embed], components: [row1, row2] });
-    }
+    // Lecteur manuel supprimé: UI s'ouvrira automatiquement au /play
 
     // Basic /play (join + search + play)
     if (interaction.isChatInputCommand() && interaction.commandName === 'play') {
@@ -1909,7 +1884,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!player.playing && !player.paused) player.play();
         const t = player.queue.current || res.tracks[0];
         const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${t.title}](${t.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
+        try {
+          const ui = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎧 Lecteur').setDescription('Contrôles de lecture').setImage(THEME_IMAGE).setFooter({ text: 'BAG • Lecteur' }).setTimestamp(new Date());
+          const row1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('music_play').setEmoji('▶️').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('music_pause').setEmoji('⏸️').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('music_next').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
+          );
+          const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('music_queue').setLabel('File').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('music_radio').setLabel('Radio').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('music_leave').setLabel('Quitter').setStyle(ButtonStyle.Secondary),
+          );
+          await interaction.followUp({ embeds: [ui], components: [row1, row2] });
+        } catch (_) {}
+        return;
       } catch (e) {
         console.error('/play failed', e);
         try { return await interaction.editReply('Erreur de lecture.'); } catch (_) { return; }
@@ -2211,7 +2205,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const montant = Math.max(1, interaction.options.getInteger('montant', true));
       if ((u.amount||0) < montant) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
       u.amount = (u.amount||0) - montant;
-      await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+      await setEconomyUser(interaction.guild.id, userId, u);
       const tu = await getEconomyUser(interaction.guild.id, cible.id);
       tu.amount = (tu.amount||0) + montant;
       await setEconomyUser(interaction.guild.id, cible.id, tu);

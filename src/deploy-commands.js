@@ -91,7 +91,6 @@ const commands = [
     .setDMPermission(false)
     .toJSON(),
   new SlashCommandBuilder().setName('actionverite').setDescription('Démarrer Action ou Vérité dans ce salon autorisé').toJSON(),
-  new SlashCommandBuilder().setName('lecteur').setDescription('Afficher le lecteur musique premium (démo)').toJSON(),
   new SlashCommandBuilder()
     .setName('map')
     .setDescription('Définir ou voir votre localisation (ville)')

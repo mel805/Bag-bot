@@ -135,6 +135,45 @@ const httpServer = http.createServer((req, res) => {
 const wsServer = new WebSocket.Server({ noServer: true });
 
 wsServer.on('connection', (client, req) => {
+  let lavaSessionId = null;
+  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+  const httpBase = `http://${TARGET_HOST}:${TARGET_PORT}`;
+  const patchPlayer = (guildId, body) => new Promise((resolve) => {
+    if (!lavaSessionId) return resolve(false);
+    try {
+      const data = Buffer.from(JSON.stringify(body));
+      const options = {
+        host: TARGET_HOST,
+        port: TARGET_PORT,
+        method: 'PATCH',
+        path: `/v4/sessions/${lavaSessionId}/players/${guildId}`,
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+          'Content-Length': data.length
+        }
+      };
+      const r = http.request(options, (pr) => { pr.on('data', ()=>{}); pr.on('end', ()=>resolve(true)); });
+      r.on('error', ()=>resolve(false));
+      r.write(data);
+      r.end();
+    } catch (_) { resolve(false); }
+  });
+  const deletePlayer = (guildId) => new Promise((resolve) => {
+    if (!lavaSessionId) return resolve(false);
+    try {
+      const options = {
+        host: TARGET_HOST,
+        port: TARGET_PORT,
+        method: 'DELETE',
+        path: `/v4/sessions/${lavaSessionId}/players/${guildId}`,
+        headers: { Authorization: authHeader }
+      };
+      const r = http.request(options, (pr) => { pr.on('data', ()=>{}); pr.on('end', ()=>resolve(true)); });
+      r.on('error', ()=>resolve(false));
+      r.end();
+    } catch (_) { resolve(false); }
+  });
   const headers = {
     Authorization: req.headers['authorization'] || req.headers['Authorization'],
     'Num-Shards': req.headers['num-shards'] || req.headers['Num-Shards'] || '1',
@@ -148,13 +187,55 @@ wsServer.on('connection', (client, req) => {
     try { if (client.readyState === WebSocket.OPEN) client.close(code, reason); } catch (_) {}
   };
   upstream.on('open', () => {
-    client.on('message', (data) => { if (upstream.readyState === WebSocket.OPEN) upstream.send(data); });
+    client.on('message', async (data) => {
+      try {
+        const text = data.toString();
+        const json = JSON.parse(text);
+        if (json && typeof json === 'object' && json.op) {
+          // Translate v3 WS ops to v4 REST where needed
+          if (json.op === 'voiceUpdate' && json.guildId && json.event && json.sessionId) {
+            await patchPlayer(json.guildId, { voice: { token: json.event.token, endpoint: json.event.endpoint, sessionId: json.sessionId } });
+            return; // do not forward
+          }
+          if (json.op === 'play' && json.guildId && json.track) {
+            const body = { encodedTrack: (typeof json.track === 'string' ? json.track : json.track.track) };
+            if (typeof json.startTime === 'number') body.position = json.startTime;
+            if (typeof json.endTime === 'number') body.endTime = json.endTime;
+            if (typeof json.volume === 'number') body.volume = json.volume;
+            await patchPlayer(json.guildId, body);
+            return;
+          }
+          if (json.op === 'pause' && json.guildId && typeof json.pause === 'boolean') {
+            await patchPlayer(json.guildId, { paused: json.pause });
+            return;
+          }
+          if (json.op === 'stop' && json.guildId) {
+            await patchPlayer(json.guildId, { encodedTrack: null });
+            return;
+          }
+          if (json.op === 'seek' && json.guildId && typeof json.position === 'number') {
+            await patchPlayer(json.guildId, { position: json.position });
+            return;
+          }
+          if (json.op === 'volume' && json.guildId && typeof json.volume === 'number') {
+            await patchPlayer(json.guildId, { volume: json.volume });
+            return;
+          }
+          if (json.op === 'destroy' && json.guildId) {
+            await deletePlayer(json.guildId);
+            return;
+          }
+        }
+      } catch (_) {}
+      if (upstream.readyState === WebSocket.OPEN) upstream.send(data);
+    });
     upstream.on('message', (data) => {
       try {
         const text = data.toString();
         const json = JSON.parse(text);
         if (json && json.op === 'ready') {
-          // Drop v4 'ready' op that Erela.js does not understand
+          // Capture v4 session id, drop for client compatibility
+          if (json.sessionId) lavaSessionId = json.sessionId;
           return;
         }
       } catch (_) {}

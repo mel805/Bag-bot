@@ -1807,3 +1807,13 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30T09:33:24.679Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:57708
 2025-08-30T09:33:24.680Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
 2025-08-30T09:33:24.681Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:34:12.221Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-2] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:57708 with id xo6jhbhnfldd7kb8 -- CloseStatus[code=1003, reason=Binary messages not supported]
+2025-08-30T09:34:12.222Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-2] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:34:42.230Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:50602
+2025-08-30T09:34:42.231Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:34:42.232Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:36:42.155Z ERROR 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Missing User-Id header from /127.0.0.1:47402
+2025-08-30T09:36:42.155Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:36:53.382Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:52014
+2025-08-30T09:36:53.383Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:36:53.384Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
