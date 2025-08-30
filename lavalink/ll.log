@@ -289,3 +289,6 @@ Caused by: java.io.IOException: Invalid status code for search response: 400
 	... 75 common frames omitted
 
 2025-08-30T08:58:51.910Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=ytsearch%3Adadju
+2025-08-30T09:00:15.762Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:52084
+2025-08-30T09:00:15.763Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:00:15.765Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js

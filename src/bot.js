@@ -1856,19 +1856,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
           try { return client.music.nodes && Array.from(client.music.nodes.values()).some(n => n.connected); } catch (_) { return false; }
         })();
         if (!hasNode) return interaction.editReply('Lecteur indisponible pour le moment (nœud non connecté).');
-        // Timeout wrapper to avoid indefinite pending
-        const searchWithTimeout = (q, user) => {
-          const t = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 7000));
+        // Timeout + multi-source fallback
+        const searchWithTimeout = (q, user, ms = 15000) => {
+          const t = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
           return Promise.race([client.music.search(q, user), t]);
         };
-        const res = await searchWithTimeout(query, interaction.user).catch(() => null);
-        if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat.');
+        const isUrl = /^https?:\/\//i.test(query);
+        const attempts = isUrl ? [query] : [`ytsearch:${query}`, `ytmsearch:${query}`, `scsearch:${query}`];
+        let res = null;
+        for (const attempt of attempts) {
+          try {
+            res = await searchWithTimeout(attempt, interaction.user, 15000);
+            if (res && Array.isArray(res.tracks) && res.tracks.length) break;
+          } catch (_) { /* continue */ }
+        }
+        if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat. Essayez un lien direct (YouTube/SoundCloud).');
         let player = client.music.players.get(interaction.guild.id);
         if (!player) {
           player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true });
           player.connect();
         }
-        if (res.type === 'PLAYLIST') player.queue.add(res.tracks);
+        const loadType = res.loadType || res.type;
+        if (loadType === 'PLAYLIST_LOADED') player.queue.add(res.tracks);
         else player.queue.add(res.tracks[0]);
         if (!player.playing && !player.paused) player.play();
         const t = player.queue.current || res.tracks[0];
