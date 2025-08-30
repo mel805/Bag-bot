@@ -172,7 +172,7 @@ function buildModEmbed(title, description, extras) {
 async function sendLog(guild, categoryKey, embed) {
   try {
     const cfg = await getLogsConfig(guild.id);
-    if (!cfg?.enabled || !cfg.categories?.[categoryKey]) return;
+    if (!cfg?.categories?.[categoryKey]) return;
     const channelId = (cfg.channels && cfg.channels[categoryKey]) || cfg.channelId;
     if (!channelId) return;
     const ch = guild.channels.cache.get(channelId);
