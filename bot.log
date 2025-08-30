@@ -1,12 +1,12 @@
 
-> bag-discord-bot@0.1.0 start
+> bag-discord-bot@0.1.1 start
 > node src/bot.js
 
-/workspace/src/bot.js:3370
-            await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Doucement, un à la fois…').setDescription(`Deux chiffres d'affilée 😉\nAttendu: **${expected}**\nRemise à zéro → **1**\n<@${message.author.id}>, à toi de rejouer.`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
-                                                                                                                                        ^^^^
+/workspace/src/bot.js:3480
+    options.push({ label: `Objet: ${it.name || it.id} — ${it.price||0}`, value: `item:${it.id}` });
+                           ^^^^^
 
-SyntaxError: Unexpected identifier 'Deux'
+SyntaxError: Unexpected identifier 'Objet'
     at wrapSafe (node:internal/modules/cjs/loader:1662:18)
     at Module._compile (node:internal/modules/cjs/loader:1704:20)
     at Object..js (node:internal/modules/cjs/loader:1895:10)
