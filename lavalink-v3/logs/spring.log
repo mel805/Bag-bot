@@ -972,3 +972,232 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30 11:08:05.709  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
 2025-08-30 11:08:06.477  INFO 233769 --- [XNIO-1 task-1] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:37318
 2025-08-30 11:08:06.482  INFO 233769 --- [XNIO-1 task-1] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30 11:11:30.808  INFO 233769 --- [XNIO-1 task-1] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "https://www.youtube.com/watch?v=QJaNG0ITb6Y"
+2025-08-30 11:11:30.867 ERROR 233769 --- [lava-daemon-pool-info-loader-2-thread-1] c.s.d.l.p.DefaultAudioPlayerManager      : Error in loading item https://www.youtube.com/watch?v=QJaNG0ITb6Y
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Loading information for a YouTube track failed.
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:242) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:254) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:250) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromUrlWithVideoId(DefaultYoutubeLinkRouter.java:102) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromMainDomain(DefaultYoutubeLinkRouter.java:67) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.route(DefaultYoutubeLinkRouter.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItemOnce(YoutubeAudioSourceManager.java:218) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItem(YoutubeAudioSourceManager.java:149) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItemOnce(DefaultAudioPlayerManager.java:406) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItem(DefaultAudioPlayerManager.java:388) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:183) ~[lavaplayer-1.5.2.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+	Suppressed: com.sedmelluq.discord.lavaplayer.tools.exception.EnvironmentInformation: 
+  lavaplayer.version: 1.5.2
+  os.arch: amd64
+  os.name: Linux
+  os.version: 6.1.147
+  java.vendor: Ubuntu
+  java.version: 21.0.7
+  java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+  java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+Caused by: java.lang.IllegalStateException: Must find action functions from script: /s/player/6742b2b9/player_ias.vflset/en_US/base.js
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.extractFromScript(YoutubeSignatureCipherManager.java:216) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.getExtractedScript(YoutubeSignatureCipherManager.java:167) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadTrackInfoFromInnertube(DefaultYoutubeTrackDetailsLoader.java:204) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.load(DefaultYoutubeTrackDetailsLoader.java:48) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadDetails(DefaultYoutubeTrackDetailsLoader.java:36) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:230) ~[lavaplayer-1.5.2.jar!/:na]
+	... 14 common frames omitted
+
+2025-08-30 11:11:30.868 ERROR 233769 --- [lava-daemon-pool-info-loader-2-thread-1] lavalink.server.player.AudioLoader       : Load failed
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Loading information for a YouTube track failed.
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:242) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:254) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:250) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromUrlWithVideoId(DefaultYoutubeLinkRouter.java:102) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromMainDomain(DefaultYoutubeLinkRouter.java:67) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.route(DefaultYoutubeLinkRouter.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItemOnce(YoutubeAudioSourceManager.java:218) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItem(YoutubeAudioSourceManager.java:149) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItemOnce(DefaultAudioPlayerManager.java:406) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItem(DefaultAudioPlayerManager.java:388) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:183) ~[lavaplayer-1.5.2.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+	Suppressed: com.sedmelluq.discord.lavaplayer.tools.exception.EnvironmentInformation: 
+  lavaplayer.version: 1.5.2
+  os.arch: amd64
+  os.name: Linux
+  os.version: 6.1.147
+  java.vendor: Ubuntu
+  java.version: 21.0.7
+  java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+  java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+Caused by: java.lang.IllegalStateException: Must find action functions from script: /s/player/6742b2b9/player_ias.vflset/en_US/base.js
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.extractFromScript(YoutubeSignatureCipherManager.java:216) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.getExtractedScript(YoutubeSignatureCipherManager.java:167) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadTrackInfoFromInnertube(DefaultYoutubeTrackDetailsLoader.java:204) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.load(DefaultYoutubeTrackDetailsLoader.java:48) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadDetails(DefaultYoutubeTrackDetailsLoader.java:36) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:230) ~[lavaplayer-1.5.2.jar!/:na]
+	... 14 common frames omitted
+
+2025-08-30 11:11:30.875  INFO 233769 --- [XNIO-1 task-1] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "https://www.youtube.com/watch?v=QJaNG0ITb6Y"
+2025-08-30 11:11:30.921 ERROR 233769 --- [lava-daemon-pool-info-loader-2-thread-1] c.s.d.l.p.DefaultAudioPlayerManager      : Error in loading item https://www.youtube.com/watch?v=QJaNG0ITb6Y
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Loading information for a YouTube track failed.
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:242) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:254) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:250) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromUrlWithVideoId(DefaultYoutubeLinkRouter.java:102) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromMainDomain(DefaultYoutubeLinkRouter.java:67) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.route(DefaultYoutubeLinkRouter.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItemOnce(YoutubeAudioSourceManager.java:218) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItem(YoutubeAudioSourceManager.java:149) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItemOnce(DefaultAudioPlayerManager.java:406) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItem(DefaultAudioPlayerManager.java:388) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:183) ~[lavaplayer-1.5.2.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+	Suppressed: com.sedmelluq.discord.lavaplayer.tools.exception.EnvironmentInformation: 
+  lavaplayer.version: 1.5.2
+  os.arch: amd64
+  os.name: Linux
+  os.version: 6.1.147
+  java.vendor: Ubuntu
+  java.version: 21.0.7
+  java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+  java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+Caused by: java.lang.IllegalStateException: Must find action functions from script: /s/player/6742b2b9/player_ias.vflset/en_US/base.js
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.extractFromScript(YoutubeSignatureCipherManager.java:216) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.getExtractedScript(YoutubeSignatureCipherManager.java:167) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadTrackInfoFromInnertube(DefaultYoutubeTrackDetailsLoader.java:204) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.load(DefaultYoutubeTrackDetailsLoader.java:48) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadDetails(DefaultYoutubeTrackDetailsLoader.java:36) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:230) ~[lavaplayer-1.5.2.jar!/:na]
+	... 14 common frames omitted
+
+2025-08-30 11:11:30.921 ERROR 233769 --- [lava-daemon-pool-info-loader-2-thread-1] lavalink.server.player.AudioLoader       : Load failed
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Loading information for a YouTube track failed.
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:242) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:254) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.track(YoutubeAudioSourceManager.java:250) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromUrlWithVideoId(DefaultYoutubeLinkRouter.java:102) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.routeFromMainDomain(DefaultYoutubeLinkRouter.java:67) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.route(DefaultYoutubeLinkRouter.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItemOnce(YoutubeAudioSourceManager.java:218) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItem(YoutubeAudioSourceManager.java:149) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItemOnce(DefaultAudioPlayerManager.java:406) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItem(DefaultAudioPlayerManager.java:388) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:183) ~[lavaplayer-1.5.2.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+	Suppressed: com.sedmelluq.discord.lavaplayer.tools.exception.EnvironmentInformation: 
+  lavaplayer.version: 1.5.2
+  os.arch: amd64
+  os.name: Linux
+  os.version: 6.1.147
+  java.vendor: Ubuntu
+  java.version: 21.0.7
+  java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+  java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+Caused by: java.lang.IllegalStateException: Must find action functions from script: /s/player/6742b2b9/player_ias.vflset/en_US/base.js
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.extractFromScript(YoutubeSignatureCipherManager.java:216) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.getExtractedScript(YoutubeSignatureCipherManager.java:167) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadTrackInfoFromInnertube(DefaultYoutubeTrackDetailsLoader.java:204) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.load(DefaultYoutubeTrackDetailsLoader.java:48) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadDetails(DefaultYoutubeTrackDetailsLoader.java:36) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:230) ~[lavaplayer-1.5.2.jar!/:na]
+	... 14 common frames omitted
+
+2025-08-30 11:12:05.397  INFO 233769 --- [XNIO-1 task-1] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "ytmsearch:gims"
+2025-08-30 11:12:05.431 ERROR 233769 --- [lava-daemon-pool-info-loader-2-thread-1] c.s.d.l.p.DefaultAudioPlayerManager      : Error in loading item ytmsearch:gims
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Something went wrong when looking up the track
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.dispatchItemLoadFailure(DefaultAudioPlayerManager.java:202) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:191) ~[lavaplayer-1.5.2.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+	Suppressed: com.sedmelluq.discord.lavaplayer.tools.exception.EnvironmentInformation: 
+  lavaplayer.version: 1.5.2
+  os.arch: amd64
+  os.name: Linux
+  os.version: 6.1.147
+  java.vendor: Ubuntu
+  java.version: 21.0.7
+  java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+  java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+Caused by: java.lang.RuntimeException: java.io.IOException: Invalid status code for search music response: 404
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:59) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSearchMusicProvider.loadSearchMusicResult(YoutubeSearchMusicProvider.java:71) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.searchMusic(YoutubeAudioSourceManager.java:295) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.searchMusic(YoutubeAudioSourceManager.java:250) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.route(DefaultYoutubeLinkRouter.java:40) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItemOnce(YoutubeAudioSourceManager.java:218) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItem(YoutubeAudioSourceManager.java:149) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItemOnce(DefaultAudioPlayerManager.java:406) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItem(DefaultAudioPlayerManager.java:388) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:183) ~[lavaplayer-1.5.2.jar!/:na]
+	... 4 common frames omitted
+Caused by: java.io.IOException: Invalid status code for search music response: 404
+	at com.sedmelluq.discord.lavaplayer.tools.io.HttpClientTools.assertSuccessWithContent(HttpClientTools.java:154) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSearchMusicProvider.loadSearchMusicResult(YoutubeSearchMusicProvider.java:63) ~[lavaplayer-1.5.2.jar!/:na]
+	... 12 common frames omitted
+
+2025-08-30 11:12:05.432 ERROR 233769 --- [lava-daemon-pool-info-loader-2-thread-1] lavalink.server.player.AudioLoader       : Load failed
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Something went wrong when looking up the track
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.dispatchItemLoadFailure(DefaultAudioPlayerManager.java:202) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:191) ~[lavaplayer-1.5.2.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+	Suppressed: com.sedmelluq.discord.lavaplayer.tools.exception.EnvironmentInformation: 
+  lavaplayer.version: 1.5.2
+  os.arch: amd64
+  os.name: Linux
+  os.version: 6.1.147
+  java.vendor: Ubuntu
+  java.version: 21.0.7
+  java.runtime.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+  java.vm.version: 21.0.7+6-Ubuntu-0ubuntu125.04
+Caused by: java.lang.RuntimeException: java.io.IOException: Invalid status code for search music response: 404
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:59) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSearchMusicProvider.loadSearchMusicResult(YoutubeSearchMusicProvider.java:71) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.searchMusic(YoutubeAudioSourceManager.java:295) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager$LoadingRoutes.searchMusic(YoutubeAudioSourceManager.java:250) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeLinkRouter.route(DefaultYoutubeLinkRouter.java:40) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItemOnce(YoutubeAudioSourceManager.java:218) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadItem(YoutubeAudioSourceManager.java:149) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItemOnce(DefaultAudioPlayerManager.java:406) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.checkSourcesForItem(DefaultAudioPlayerManager.java:388) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$createItemLoader$0(DefaultAudioPlayerManager.java:183) ~[lavaplayer-1.5.2.jar!/:na]
+	... 4 common frames omitted
+Caused by: java.io.IOException: Invalid status code for search music response: 404
+	at com.sedmelluq.discord.lavaplayer.tools.io.HttpClientTools.assertSuccessWithContent(HttpClientTools.java:154) ~[lavaplayer-1.5.2.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSearchMusicProvider.loadSearchMusicResult(YoutubeSearchMusicProvider.java:63) ~[lavaplayer-1.5.2.jar!/:na]
+	... 12 common frames omitted
+
+2025-08-30 11:12:05.438  INFO 233769 --- [XNIO-1 task-1] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "scsearch:gims"
+2025-08-30 11:12:05.652  INFO 233769 --- [lava-daemon-pool-info-loader-2-thread-1] lavalink.server.player.AudioLoader       : Loaded playlist Search results for: gims
+2025-08-30 11:12:05.657  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketServer          : {"op":"volume","guildId":"1360897918504271882","volume":100}
+2025-08-30 11:12:05.657  WARN 233769 --- [XNIO-1 I/O-4] lavalink.server.io.WebSocketHandler      : Sending websocket commands to Lavalink has been deprecated and will be removed in API version 4. API version 3 will be removed in Lavalink 5. Please use the new REST endpoints instead.
+2025-08-30 11:12:05.658  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketServer          : {"op":"play","guildId":"1360897918504271882","track":"QAAA2wIABU5JTkFPAAxNYcOudHJlIEdpbXMAAAAAAAKPtwByTzpodHRwczovL2FwaS12Mi5zb3VuZGNsb3VkLmNvbS9tZWRpYS9zb3VuZGNsb3VkOnRyYWNrczoyMDM5MDc2MzQ0LzU0MWFhOGMwLTM4NDItNGViMS1iZTE1LWRkNjRjYzI3NTFkOS9zdHJlYW0vaGxzAAEAMWh0dHBzOi8vc291bmRjbG91ZC5jb20vbWFpdHJlLWdpbXMtb2ZmaWNpYWwvbmluYW8ACnNvdW5kY2xvdWQAAAAAAAAAAA=="}
+2025-08-30 11:12:05.823  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketServer          : {"op":"voiceUpdate","guildId":"1360897918504271882","sessionId":"ac6b74360fa4e3f032cb51186de80475","event":{"token":"f768872dda1f0c37","guild_id":"1360897918504271882","endpoint":"c-cdg01-17661326.discord.media:8443"}}
