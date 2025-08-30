@@ -4,8 +4,7 @@
 
 Login succeeded
 Logged in as Bag bot#8659
+[Music] Using nodes from LAVALINK_NODES env
 [YTProxy] listening on 127.0.0.1:8765
-[Music] Node connected: 127.0.0.1
-[Music] Node error 127.0.0.1 Unexpected op "ready" with data: [object Object]
-(node:240596) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
+[Music] Node error lava.link getaddrinfo ENOTFOUND lava.link
+[Music] Node error lavalink.oops.wtf Hostname/IP does not match certificate's altnames: Host: lavalink.oops.wtf. is not in the cert's altnames: DNS:rxmarine.com, DNS:www.rxmarine.com
