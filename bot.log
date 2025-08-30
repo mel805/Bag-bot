@@ -6,3 +6,9 @@ Login succeeded
 Logged in as Bag bot#8659
 (node:215224) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
 (Use `node --trace-warnings ...` to show where the warning was created)
+[AutoKick] fetch members failed Error [GuildMembersTimeout]: Members didn't arrive in time.
+    at Timeout._onTimeout (/workspace/node_modules/discord.js/src/managers/GuildMemberManager.js:268:16)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7) {
+  code: 'GuildMembersTimeout'
+}
