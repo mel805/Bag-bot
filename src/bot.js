@@ -6,7 +6,8 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 let ytDlp;
 try { ytDlp = require('yt-dlp-exec'); } catch (_) { ytDlp = null; }
 
-const YTDLP_BIN = '/workspace/bin/yt-dlp';
+const fs2 = require('fs');
+const YTDLP_BIN = process.env.YTDLP_BIN || '/workspace/bin/yt-dlp';
 async function getLocalYtDlpAudioUrl(urlOrId) {
   const target = /^https?:\/\//.test(urlOrId) ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`;
   try {
@@ -88,8 +89,13 @@ const client = new Client({
 
 // Local YT audio proxy for Lavalink (streams bestaudio via yt-dlp)
 let ytProxyStarted = false;
+function shouldStartYtProxy() {
+  if (String(process.env.ENABLE_YTDLP_PROXY || 'true').toLowerCase() === 'false') return false;
+  try { return fs2.existsSync(YTDLP_BIN); } catch (_) { return false; }
+}
 function startYtProxyServer() {
   if (ytProxyStarted) return;
+  if (!shouldStartYtProxy()) return;
   try {
     const http = require('http');
     const { spawn } = require('node:child_process');
@@ -101,7 +107,7 @@ function startYtProxyServer() {
         if (!vid || !/^[A-Za-z0-9_-]{8,}$/.test(vid)) { res.statusCode = 400; return res.end('Bad id'); }
         const target = `https://www.youtube.com/watch?v=${vid}`;
         const args = ['-f','bestaudio[ext=m4a]/bestaudio/best','--no-warnings','--no-check-certificates','--dump-single-json', target];
-        const child = spawn('/workspace/bin/yt-dlp', args, { stdio: ['ignore','pipe','pipe'] });
+        const child = spawn(YTDLP_BIN, args, { stdio: ['ignore','pipe','pipe'] });
         let out = '';
         child.stdout.on('data', d => { out += d.toString('utf8'); });
         child.on('close', () => {
