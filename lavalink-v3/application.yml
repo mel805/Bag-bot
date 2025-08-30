@@ -1,0 +1,19 @@
+server:
+  port: 2340
+lavalink:
+  server:
+    password: "youshallnotpass"
+    sources:
+      youtube: true
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+    bufferDurationMs: 400
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
+    gc-warnings: true
+logging:
+  file:
+    path: ./logs/

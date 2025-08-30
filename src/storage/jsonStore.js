@@ -1,0 +1,748 @@
+const fs = require('fs');
+const fsp = require('fs/promises');
+const path = require('path');
+require('dotenv').config();
+let Pool;
+try { ({ Pool } = require('pg')); } catch (_) { Pool = null; }
+const DATABASE_URL = process.env.DATABASE_URL || '';
+const USE_PG = !!(DATABASE_URL && Pool);
+let pgPool = null;
+async function getPg() {
+  if (!USE_PG) return null;
+  if (!pgPool) pgPool = new Pool({ connectionString: DATABASE_URL, max: 5 });
+  return pgPool;
+}
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
+
+async function ensureStorageExists() {
+  if (USE_PG) {
+    const pool = await getPg();
+    const client = await pool.connect();
+    try {
+      await client.query('CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+      const res = await client.query('SELECT 1 FROM app_config WHERE id = 1');
+      if (res.rowCount === 0) {
+        await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [{ guilds: {} }]);
+      }
+    } finally {
+      client.release();
+    }
+  } else {
+    await fsp.mkdir(DATA_DIR, { recursive: true });
+    try {
+      await fsp.access(CONFIG_PATH, fs.constants.F_OK);
+    } catch (_) {
+      const initial = { guilds: {} };
+      await fsp.writeFile(CONFIG_PATH, JSON.stringify(initial, null, 2), 'utf8');
+    }
+  }
+}
+
+async function readConfig() {
+  await ensureStorageExists();
+  if (USE_PG) {
+    const pool = await getPg();
+    const client = await pool.connect();
+    try {
+      const { rows } = await client.query('SELECT data FROM app_config WHERE id = 1');
+      const data = rows?.[0]?.data || { guilds: {} };
+      if (!data || typeof data !== 'object') return { guilds: {} };
+      if (!data.guilds || typeof data.guilds !== 'object') data.guilds = {};
+      return data;
+    } finally {
+      client.release();
+    }
+  } else {
+    try {
+      const raw = await fsp.readFile(CONFIG_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return { guilds: {} };
+      if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
+      return parsed;
+    } catch (_) {
+      return { guilds: {} };
+    }
+  }
+}
+
+async function writeConfig(cfg) {
+  await ensureStorageExists();
+  if (USE_PG) {
+    const pool = await getPg();
+    const client = await pool.connect();
+    try {
+      await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [cfg]);
+    } finally {
+      client.release();
+    }
+  } else {
+    const tmpPath = CONFIG_PATH + '.tmp';
+    await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
+    await fsp.rename(tmpPath, CONFIG_PATH);
+  }
+}
+
+async function getGuildConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!Array.isArray(cfg.guilds[guildId].staffRoleIds)) cfg.guilds[guildId].staffRoleIds = [];
+  if (!cfg.guilds[guildId].levels) {
+    cfg.guilds[guildId].levels = {
+      enabled: false,
+      xpPerMessage: 10,
+      xpPerVoiceMinute: 5,
+      levelCurve: { base: 100, factor: 1.2 },
+      rewards: {},
+      users: {},
+      announce: {
+        levelUp: { enabled: false, channelId: '' },
+        roleAward: { enabled: false, channelId: '' },
+      },
+      cards: {
+        femaleRoleIds: [],
+        certifiedRoleIds: [],
+        backgrounds: { default: '', female: '', certified: '' },
+        perRoleBackgrounds: {},
+      },
+    };
+  }
+  ensureEconomyShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId];
+}
+
+async function getGuildStaffRoleIds(guildId) {
+  const g = await getGuildConfig(guildId);
+  return Array.isArray(g.staffRoleIds) ? g.staffRoleIds : [];
+}
+
+async function setGuildStaffRoleIds(guildId, roleIds) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  cfg.guilds[guildId].staffRoleIds = Array.from(new Set(roleIds.map(String)));
+  await writeConfig(cfg);
+}
+
+// --- AutoKick config helpers ---
+function ensureAutoKickShape(g) {
+  if (!g.autokick) {
+    g.autokick = { enabled: false, roleId: '', delayMs: 3600000, pendingJoiners: {} };
+  } else {
+    if (typeof g.autokick.enabled !== 'boolean') g.autokick.enabled = false;
+    if (typeof g.autokick.roleId !== 'string') g.autokick.roleId = '';
+    if (typeof g.autokick.delayMs !== 'number') g.autokick.delayMs = 3600000;
+    if (!g.autokick.pendingJoiners || typeof g.autokick.pendingJoiners !== 'object') g.autokick.pendingJoiners = {};
+  }
+}
+
+async function getAutoKickConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].autokick;
+}
+
+async function updateAutoKickConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].autokick = { ...cfg.guilds[guildId].autokick, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].autokick;
+}
+
+async function addPendingJoiner(guildId, userId, joinedAtMs) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].autokick.pendingJoiners[userId] = joinedAtMs;
+  await writeConfig(cfg);
+}
+
+async function removePendingJoiner(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return;
+  ensureAutoKickShape(cfg.guilds[guildId]);
+  delete cfg.guilds[guildId].autokick.pendingJoiners[userId];
+  await writeConfig(cfg);
+}
+
+// --- Levels helpers ---
+function ensureLevelsShape(g) {
+  if (!g.levels) {
+    g.levels = {
+      enabled: false,
+      xpPerMessage: 10,
+      xpPerVoiceMinute: 5,
+      levelCurve: { base: 100, factor: 1.2 },
+      rewards: {},
+      users: {},
+      announce: {
+        levelUp: { enabled: false, channelId: '' },
+        roleAward: { enabled: false, channelId: '' },
+      },
+      cards: {
+        femaleRoleIds: [],
+        certifiedRoleIds: [],
+        backgrounds: { default: '', female: '', certified: '' },
+      },
+    };
+  } else {
+    if (typeof g.levels.enabled !== 'boolean') g.levels.enabled = false;
+    if (typeof g.levels.xpPerMessage !== 'number') g.levels.xpPerMessage = 10;
+    if (typeof g.levels.xpPerVoiceMinute !== 'number') g.levels.xpPerVoiceMinute = 5;
+    if (!g.levels.levelCurve || typeof g.levels.levelCurve !== 'object') g.levels.levelCurve = { base: 100, factor: 1.2 };
+    if (typeof g.levels.levelCurve.base !== 'number') g.levels.levelCurve.base = 100;
+    if (typeof g.levels.levelCurve.factor !== 'number') g.levels.levelCurve.factor = 1.2;
+    if (!g.levels.rewards || typeof g.levels.rewards !== 'object') g.levels.rewards = {};
+    if (!g.levels.users || typeof g.levels.users !== 'object') g.levels.users = {};
+    if (!g.levels.announce || typeof g.levels.announce !== 'object') g.levels.announce = {};
+    if (!g.levels.announce.levelUp || typeof g.levels.announce.levelUp !== 'object') g.levels.announce.levelUp = { enabled: false, channelId: '' };
+    if (!g.levels.announce.roleAward || typeof g.levels.announce.roleAward !== 'object') g.levels.announce.roleAward = { enabled: false, channelId: '' };
+    if (typeof g.levels.announce.levelUp.enabled !== 'boolean') g.levels.announce.levelUp.enabled = false;
+    if (typeof g.levels.announce.levelUp.channelId !== 'string') g.levels.announce.levelUp.channelId = '';
+    if (typeof g.levels.announce.roleAward.enabled !== 'boolean') g.levels.announce.roleAward.enabled = false;
+    if (typeof g.levels.announce.roleAward.channelId !== 'string') g.levels.announce.roleAward.channelId = '';
+    if (!g.levels.cards || typeof g.levels.cards !== 'object') g.levels.cards = { femaleRoleIds: [], certifiedRoleIds: [], backgrounds: { default: '', female: '', certified: '' } };
+    if (!g.levels.cards.perRoleBackgrounds || typeof g.levels.cards.perRoleBackgrounds !== 'object') g.levels.cards.perRoleBackgrounds = {};
+    if (!Array.isArray(g.levels.cards.femaleRoleIds)) g.levels.cards.femaleRoleIds = [];
+    if (!Array.isArray(g.levels.cards.certifiedRoleIds)) g.levels.cards.certifiedRoleIds = [];
+    if (!g.levels.cards.backgrounds || typeof g.levels.cards.backgrounds !== 'object') g.levels.cards.backgrounds = { default: '', female: '', certified: '' };
+    if (typeof g.levels.cards.backgrounds.default !== 'string') g.levels.cards.backgrounds.default = '';
+    if (typeof g.levels.cards.backgrounds.female !== 'string') g.levels.cards.backgrounds.female = '';
+    if (typeof g.levels.cards.backgrounds.certified !== 'string') g.levels.cards.backgrounds.certified = '';
+  }
+}
+
+async function getLevelsConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].levels;
+}
+
+async function getEconomyConfig(guildId) {
+  const g = await getGuildConfig(guildId);
+  ensureEconomyShape(g);
+  return g.economy;
+}
+
+async function updateEconomyConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = {};
+  cfg.guilds[guildId].economy = { ...cfg.guilds[guildId].economy, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].economy;
+}
+
+async function updateLevelsConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].levels = { ...cfg.guilds[guildId].levels, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].levels;
+}
+
+async function getUserStats(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  const existing = cfg.guilds[guildId].levels.users[userId];
+  const u = existing || { xp: 0, level: 0, xpSinceLevel: 0, lastMessageAt: 0, voiceMsAccum: 0, voiceJoinedAt: 0 };
+  if (typeof u.xp !== 'number') u.xp = 0;
+  if (typeof u.level !== 'number') u.level = 0;
+  if (typeof u.xpSinceLevel !== 'number') u.xpSinceLevel = 0;
+  if (typeof u.lastMessageAt !== 'number') u.lastMessageAt = 0;
+  if (typeof u.voiceMsAccum !== 'number') u.voiceMsAccum = 0;
+  if (typeof u.voiceJoinedAt !== 'number') u.voiceJoinedAt = 0;
+  return u;
+}
+
+async function setUserStats(guildId, userId, stats) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLevelsShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].levels.users[userId] = stats;
+  await writeConfig(cfg);
+}
+
+async function getEconomyUser(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
+  const eco = cfg.guilds[guildId].economy;
+  const u = eco.balances?.[userId] || { amount: 0, cooldowns: {}, charm: 0, perversion: 0 };
+  if (typeof u.amount !== 'number') u.amount = 0;
+  if (!u.cooldowns || typeof u.cooldowns !== 'object') u.cooldowns = {};
+  if (typeof u.charm !== 'number') u.charm = 0;
+  if (typeof u.perversion !== 'number') u.perversion = 0;
+  return u;
+}
+
+async function setEconomyUser(guildId, userId, state) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
+  if (!cfg.guilds[guildId].economy.balances) cfg.guilds[guildId].economy.balances = {};
+  cfg.guilds[guildId].economy.balances[userId] = state;
+  await writeConfig(cfg);
+}
+
+function ensureEconomyShape(g) {
+  if (!g.economy || typeof g.economy !== 'object') {
+    g.economy = {};
+  }
+  const e = g.economy;
+  if (!e.currency || typeof e.currency !== 'object') e.currency = { symbol: '🪙', name: 'BAG$' };
+  if (!e.settings || typeof e.settings !== 'object') e.settings = {};
+  if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
+  if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
+  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120, crime: 1800 };
+  if (!e.actions || typeof e.actions !== 'object') e.actions = {};
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
+  if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
+  else {
+    for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
+  }
+  if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
+  const defaults = {
+    work: { moneyMin: 40, moneyMax: 90, karma: 'none', karmaDelta: 0, cooldown: 600, successRate: 0.9, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 0 },
+    fish: { moneyMin: 20, moneyMax: 60, karma: 'none', karmaDelta: 0, cooldown: 300, successRate: 0.65, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 0 },
+    give: { moneyMin: 0, moneyMax: 0, karma: 'charm', karmaDelta: 1, cooldown: 0, successRate: 1.0, failMoneyMin: 0, failMoneyMax: 0, failKarmaDelta: 0 },
+    steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800, successRate: 0.5, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 2 },
+    kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2 },
+    flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2 },
+    seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 3 },
+    fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 5 },
+    massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1 },
+    dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1 },
+    crime: { moneyMin: 30, moneyMax: 80, karma: 'perversion', karmaDelta: 4, cooldown: 1800, successRate: 0.6, failMoneyMin: 15, failMoneyMax: 30, failKarmaDelta: 4 },
+  };
+  for (const [k, d] of Object.entries(defaults)) {
+    if (!e.actions.config[k] || typeof e.actions.config[k] !== 'object') e.actions.config[k] = { ...d };
+    else {
+      const c = e.actions.config[k];
+      if (typeof c.moneyMin !== 'number') c.moneyMin = d.moneyMin;
+      if (typeof c.moneyMax !== 'number') c.moneyMax = d.moneyMax;
+      if (c.karma !== 'charm' && c.karma !== 'perversion' && c.karma !== 'none') c.karma = d.karma;
+      if (typeof c.karmaDelta !== 'number') c.karmaDelta = d.karmaDelta;
+      if (typeof c.cooldown !== 'number') c.cooldown = d.cooldown;
+      if (typeof c.successRate !== 'number') c.successRate = d.successRate;
+      if (typeof c.failMoneyMin !== 'number') c.failMoneyMin = d.failMoneyMin;
+      if (typeof c.failMoneyMax !== 'number') c.failMoneyMax = d.failMoneyMax;
+      if (typeof c.failKarmaDelta !== 'number') c.failKarmaDelta = d.failKarmaDelta;
+    }
+  }
+  if (!e.shop || typeof e.shop !== 'object') e.shop = { items: [], roles: [], grants: {} };
+  else {
+    if (!Array.isArray(e.shop.items)) e.shop.items = [];
+    if (!Array.isArray(e.shop.roles)) e.shop.roles = [];
+    if (!e.shop.grants || typeof e.shop.grants !== 'object') e.shop.grants = {};
+  }
+  if (!e.suites || typeof e.suites !== 'object') e.suites = { durations: { day: 1, week: 7, month: 30 }, categoryId: '', prices: { day: 1000, week: 5000, month: 20000 }, active: {}, emoji: '💞' };
+  else {
+    if (!e.suites.durations || typeof e.suites.durations !== 'object') e.suites.durations = { day: 1, week: 7, month: 30 };
+    if (typeof e.suites.categoryId !== 'string') e.suites.categoryId = '';
+    if (!e.suites.prices || typeof e.suites.prices !== 'object') e.suites.prices = { day: 1000, week: 5000, month: 20000 };
+    if (typeof e.suites.prices.day !== 'number') e.suites.prices.day = 1000;
+    if (typeof e.suites.prices.week !== 'number') e.suites.prices.week = 5000;
+    if (typeof e.suites.prices.month !== 'number') e.suites.prices.month = 20000;
+    if (!e.suites.active || typeof e.suites.active !== 'object') e.suites.active = {};
+    if (typeof e.suites.emoji !== 'string' || !e.suites.emoji) e.suites.emoji = '💞';
+  }
+  if (!e.balances || typeof e.balances !== 'object') e.balances = {};
+  if (!e.karmaModifiers || typeof e.karmaModifiers !== 'object') e.karmaModifiers = { shop: [], actions: [], grants: [] };
+  else {
+    if (!Array.isArray(e.karmaModifiers.shop)) e.karmaModifiers.shop = [];
+    if (!Array.isArray(e.karmaModifiers.actions)) e.karmaModifiers.actions = [];
+    if (!Array.isArray(e.karmaModifiers.grants)) e.karmaModifiers.grants = [];
+  }
+  if (!e.booster || typeof e.booster !== 'object') e.booster = { enabled: true, textXpMult: 2, voiceXpMult: 2, actionCooldownMult: 0.5, shopPriceMult: 0.5 };
+  else {
+    if (typeof e.booster.enabled !== 'boolean') e.booster.enabled = true;
+    if (typeof e.booster.textXpMult !== 'number') e.booster.textXpMult = 2;
+    if (typeof e.booster.voiceXpMult !== 'number') e.booster.voiceXpMult = 2;
+    if (typeof e.booster.actionCooldownMult !== 'number') e.booster.actionCooldownMult = 0.5;
+    if (typeof e.booster.shopPriceMult !== 'number') e.booster.shopPriceMult = 0.5;
+  }
+}
+
+function ensureTruthDareShape(g) {
+  if (!g.truthdare || typeof g.truthdare !== 'object') g.truthdare = {};
+  const td = g.truthdare;
+  if (!td.sfw || typeof td.sfw !== 'object') td.sfw = { channels: [], prompts: [], nextId: 1 };
+  if (!td.nsfw || typeof td.nsfw !== 'object') td.nsfw = { channels: [], prompts: [], nextId: 1 };
+  if (!Array.isArray(td.sfw.channels)) td.sfw.channels = [];
+  if (!Array.isArray(td.sfw.prompts)) td.sfw.prompts = [];
+  if (typeof td.sfw.nextId !== 'number') td.sfw.nextId = 1;
+  if (!Array.isArray(td.nsfw.channels)) td.nsfw.channels = [];
+  if (!Array.isArray(td.nsfw.prompts)) td.nsfw.prompts = [];
+  if (typeof td.nsfw.nextId !== 'number') td.nsfw.nextId = 1;
+}
+
+function ensureConfessShape(g) {
+  if (!g.confess || typeof g.confess !== 'object') g.confess = {};
+  const cf = g.confess;
+  if (!cf.sfw || typeof cf.sfw !== 'object') cf.sfw = { channels: [] };
+  if (!cf.nsfw || typeof cf.nsfw !== 'object') cf.nsfw = { channels: [] };
+  if (!Array.isArray(cf.sfw.channels)) cf.sfw.channels = [];
+  if (!Array.isArray(cf.nsfw.channels)) cf.nsfw.channels = [];
+  if (typeof cf.logChannelId !== 'string') cf.logChannelId = '';
+  if (typeof cf.allowReplies !== 'boolean') cf.allowReplies = true;
+  if (cf.threadNaming !== 'nsfw' && cf.threadNaming !== 'normal') cf.threadNaming = 'normal';
+  if (!Array.isArray(cf.nsfwNames)) cf.nsfwNames = ['Velours', 'Nuit Rouge', 'Écarlate', 'Aphrodite', 'Énigme', 'Saphir', 'Nocturne', 'Scarlett', 'Mystique', 'Aphrodisia'];
+  if (typeof cf.counter !== 'number') cf.counter = 1;
+}
+
+function ensureAutoThreadShape(g) {
+  if (!g.autothread || typeof g.autothread !== 'object') g.autothread = {};
+  const at = g.autothread;
+  if (!Array.isArray(at.channels)) at.channels = [];
+  if (!at.naming || typeof at.naming !== 'object') at.naming = { mode: 'member_num', customPattern: '' };
+  if (!['member_num','custom','nsfw','numeric','date_num'].includes(at.naming.mode)) at.naming.mode = 'member_num';
+  if (typeof at.naming.customPattern !== 'string') at.naming.customPattern = '';
+  if (!at.archive || typeof at.archive !== 'object') at.archive = { policy: '7d' };
+  if (!['1d','7d','1m','max'].includes(at.archive.policy)) at.archive.policy = '7d';
+  if (typeof at.counter !== 'number') at.counter = 1;
+  if (!Array.isArray(at.nsfwNames)) at.nsfwNames = ['Velours','Nuit Rouge','Écarlate','Aphrodite','Énigme','Saphir','Nocturne','Scarlett','Mystique','Aphrodisia'];
+}
+
+function ensureCountingShape(g) {
+  if (!g.counting || typeof g.counting !== 'object') g.counting = {};
+  const c = g.counting;
+  if (!Array.isArray(c.channels)) c.channels = [];
+  if (typeof c.allowFormulas !== 'boolean') c.allowFormulas = true;
+  if (!c.state || typeof c.state !== 'object') c.state = { current: 0, lastUserId: '' };
+  if (typeof c.state.current !== 'number') c.state.current = 0;
+  if (typeof c.state.lastUserId !== 'string') c.state.lastUserId = '';
+}
+function ensureDisboardShape(g) {
+  if (!g.disboard || typeof g.disboard !== 'object') g.disboard = {};
+  const d = g.disboard;
+  if (typeof d.lastBumpAt !== 'number') d.lastBumpAt = 0;
+  if (typeof d.lastBumpChannelId !== 'string') d.lastBumpChannelId = '';
+  if (typeof d.reminded !== 'boolean') d.reminded = false;
+}
+
+function ensureLogsShape(g) {
+  if (!g.logs || typeof g.logs !== 'object') {
+    g.logs = { enabled: false, channelId: '', pseudo: true, emoji: '📝', categories: { moderation: true, voice: true, economy: true, boosts: true, threads: true, joinleave: true, messages: true, backup: true }, channels: { moderation: '', voice: '', economy: '', boosts: '', threads: '', joinleave: '', messages: '', backup: '' } };
+  } else {
+    if (typeof g.logs.enabled !== 'boolean') g.logs.enabled = false;
+    if (typeof g.logs.channelId !== 'string') g.logs.channelId = '';
+    if (typeof g.logs.pseudo !== 'boolean') g.logs.pseudo = true;
+    if (typeof g.logs.emoji !== 'string' || !g.logs.emoji) g.logs.emoji = '📝';
+    if (!g.logs.categories || typeof g.logs.categories !== 'object') g.logs.categories = { moderation: true, voice: true, economy: true, boosts: true, threads: true, joinleave: true, messages: true, backup: true };
+    for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages','backup']) if (typeof g.logs.categories[k] !== 'boolean') g.logs.categories[k] = true;
+    if (!g.logs.channels || typeof g.logs.channels !== 'object') g.logs.channels = { moderation: '', voice: '', economy: '', boosts: '', threads: '', joinleave: '', messages: '', backup: '' };
+    for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages','backup']) if (typeof g.logs.channels[k] !== 'string') g.logs.channels[k] = '';
+  }
+}
+
+function ensureGeoShape(g) {
+  if (!g.geo || typeof g.geo !== 'object') g.geo = {};
+  const geo = g.geo;
+  if (!geo.locations || typeof geo.locations !== 'object') geo.locations = {}; // userId -> { lat, lon, city, updatedAt }
+}
+
+async function getTruthDareConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTruthDareShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].truthdare;
+}
+
+async function getGeoConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureGeoShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].geo;
+}
+
+async function getLogsConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLogsShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].logs;
+}
+
+async function updateLogsConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureLogsShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].logs = { ...cfg.guilds[guildId].logs, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].logs;
+}
+
+async function getCountingConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureCountingShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].counting;
+}
+
+async function updateCountingConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureCountingShape(cfg.guilds[guildId]);
+  const cur = cfg.guilds[guildId].counting;
+  cfg.guilds[guildId].counting = { ...cur, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].counting;
+}
+
+async function setCountingState(guildId, state) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureCountingShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].counting.state = { ...(cfg.guilds[guildId].counting.state || {}), ...state };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].counting.state;
+}
+async function getDisboardConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureDisboardShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].disboard;
+}
+async function updateDisboardConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureDisboardShape(cfg.guilds[guildId]);
+  const cur = cfg.guilds[guildId].disboard || {};
+  cfg.guilds[guildId].disboard = { ...cur, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].disboard;
+}
+
+async function getAutoThreadConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoThreadShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].autothread;
+}
+
+async function updateAutoThreadConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureAutoThreadShape(cfg.guilds[guildId]);
+  const current = cfg.guilds[guildId].autothread;
+  cfg.guilds[guildId].autothread = { ...current, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].autothread;
+}
+
+async function getConfessConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].confess;
+}
+
+async function updateTruthDareConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTruthDareShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].truthdare = { ...cfg.guilds[guildId].truthdare, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].truthdare;
+}
+
+async function setUserLocation(guildId, userId, lat, lon, city) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureGeoShape(cfg.guilds[guildId]);
+  const geo = cfg.guilds[guildId].geo;
+  geo.locations[String(userId)] = { lat: Number(lat), lon: Number(lon), city: city || '', updatedAt: Date.now() };
+  await writeConfig(cfg);
+  return geo.locations[String(userId)];
+}
+
+async function getUserLocation(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return null;
+  ensureGeoShape(cfg.guilds[guildId]);
+  const geo = cfg.guilds[guildId].geo;
+  return geo.locations[String(userId)] || null;
+}
+
+async function getAllLocations(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return {};
+  ensureGeoShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].geo.locations || {};
+}
+
+async function updateConfessConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].confess = { ...cfg.guilds[guildId].confess, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].confess;
+}
+
+async function addTdChannels(guildId, channelIds, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTruthDareShape(cfg.guilds[guildId]);
+  const td = cfg.guilds[guildId].truthdare;
+  const set = new Set(td[mode].channels || []);
+  for (const id of channelIds) set.add(String(id));
+  td[mode].channels = Array.from(set);
+  await writeConfig(cfg);
+  return td[mode].channels;
+}
+
+async function addConfessChannels(guildId, channelIds, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  const cf = cfg.guilds[guildId].confess;
+  const set = new Set(cf[mode].channels || []);
+  for (const id of channelIds) set.add(String(id));
+  cf[mode].channels = Array.from(set);
+  await writeConfig(cfg);
+  return cf[mode].channels;
+}
+
+async function removeTdChannels(guildId, channelIds, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return [];
+  ensureTruthDareShape(cfg.guilds[guildId]);
+  const td = cfg.guilds[guildId].truthdare;
+  const toRemove = new Set(channelIds.map(String));
+  td[mode].channels = (td[mode].channels||[]).filter(id => !toRemove.has(String(id)));
+  await writeConfig(cfg);
+  return td[mode].channels;
+}
+
+async function removeConfessChannels(guildId, channelIds, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return [];
+  ensureConfessShape(cfg.guilds[guildId]);
+  const cf = cfg.guilds[guildId].confess;
+  const toRemove = new Set(channelIds.map(String));
+  cf[mode].channels = (cf[mode].channels||[]).filter(id => !toRemove.has(String(id)));
+  await writeConfig(cfg);
+  return cf[mode].channels;
+}
+
+async function incrementConfessCounter(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureConfessShape(cfg.guilds[guildId]);
+  const cf = cfg.guilds[guildId].confess;
+  cf.counter = (typeof cf.counter === 'number' ? cf.counter : 0) + 1;
+  await writeConfig(cfg);
+  return cf.counter;
+}
+
+async function addTdPrompts(guildId, type, texts, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTruthDareShape(cfg.guilds[guildId]);
+  const td = cfg.guilds[guildId].truthdare;
+  for (const t of texts) {
+    const text = String(t).trim();
+    if (!text) continue;
+    td[mode].prompts.push({ id: td[mode].nextId++, type, text });
+  }
+  await writeConfig(cfg);
+  return td[mode].prompts;
+}
+
+async function deleteTdPrompts(guildId, ids, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return [];
+  ensureTruthDareShape(cfg.guilds[guildId]);
+  const td = cfg.guilds[guildId].truthdare;
+  const del = new Set(ids.map(n => Number(n)));
+  td[mode].prompts = (td[mode].prompts||[]).filter(p => !del.has(Number(p.id)));
+  await writeConfig(cfg);
+  return td[mode].prompts;
+}
+
+// Ensure economy shape on getGuildConfig and getEconomyConfig
+
+module.exports = {
+  ensureStorageExists,
+  readConfig,
+  writeConfig,
+  getGuildConfig,
+  getGuildStaffRoleIds,
+  setGuildStaffRoleIds,
+  getAutoKickConfig,
+  updateAutoKickConfig,
+  addPendingJoiner,
+  removePendingJoiner,
+  // Levels
+  getLevelsConfig,
+  updateLevelsConfig,
+  getUserStats,
+  setUserStats,
+  // Economy
+  getEconomyConfig,
+  updateEconomyConfig,
+  getEconomyUser,
+  setEconomyUser,
+  getTruthDareConfig,
+  updateTruthDareConfig,
+  addTdChannels,
+  removeTdChannels,
+  addTdPrompts,
+  deleteTdPrompts,
+  // Geo
+  getGeoConfig,
+  setUserLocation,
+  getUserLocation,
+  getAllLocations,
+  getAutoThreadConfig,
+  updateAutoThreadConfig,
+  getLogsConfig,
+  updateLogsConfig,
+  // Counting
+  getCountingConfig,
+  updateCountingConfig,
+  setCountingState,
+  getDisboardConfig,
+  updateDisboardConfig,
+  // Confess
+  getConfessConfig,
+  updateConfessConfig,
+  addConfessChannels,
+  removeConfessChannels,
+  incrementConfessCounter,
+  // Moderation
+  getWarns,
+  addWarn,
+  paths: { DATA_DIR, CONFIG_PATH },
+};
+
+// Moderation: warnings storage
+async function getWarns(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].moderation) cfg.guilds[guildId].moderation = {};
+  if (!cfg.guilds[guildId].moderation.warns) cfg.guilds[guildId].moderation.warns = {};
+  const list = cfg.guilds[guildId].moderation.warns[userId] || [];
+  return Array.isArray(list) ? list : [];
+}
+
+async function addWarn(guildId, userId, entry) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].moderation) cfg.guilds[guildId].moderation = {};
+  if (!cfg.guilds[guildId].moderation.warns) cfg.guilds[guildId].moderation.warns = {};
+  const now = Date.now();
+  const rec = { at: now, ...entry };
+  const prev = Array.isArray(cfg.guilds[guildId].moderation.warns[userId]) ? cfg.guilds[guildId].moderation.warns[userId] : [];
+  cfg.guilds[guildId].moderation.warns[userId] = [...prev, rec];
+  await writeConfig(cfg);
+  return rec;
+}
+
