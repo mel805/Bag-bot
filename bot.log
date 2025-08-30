@@ -47,3 +47,8 @@ data.components[BASE_TYPE_MAX_LENGTH]: Must be 5 or fewer in length.
   method: 'POST',
   url: 'https://discord.com/api/v10/interactions/1411329275914878996/aW50ZXJhY3Rpb246MTQxMTMyOTI3NTkxNDg3ODk5NjpQTGhwREVoRUx2RmN1ZGcwd2Q0TlkxNXJ1VXJBd2pMNWF6Q1M5SHhDaDQ2bmxMRjRwb2VoN3JUT1AzbkZSS0l6TWt2V0pCS2xoZFhOeTZrWXUyOVhBNUFxZzd2bDJSM0tFcG5VZXY4emw0ZFV0UDRIa0RpY3dqUEFyc0R1UTZWdw/callback?with_response=false'
 }
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
