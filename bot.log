@@ -8,3 +8,6 @@ Invalid LAVALINK_NODES env: Expected property name or '}' in JSON at position 2 
 [YTProxy] listening on 127.0.0.1:8765
 [Music] Node connected: 127.0.0.1
 [Music] Node error 127.0.0.1 Unexpected op "ready" with data: [object Object]
+[Music]/play creating player vc= 1411247658915332176 tc= 1411247658915332176
+[Music]/play after add current= true size= 0 length= 0
+[Music] button queue -> En lecture: NINAO
