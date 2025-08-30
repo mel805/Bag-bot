@@ -1,4 +1,6 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
+const { Kazagumo } = require('kazagumo');
+const { Shoukaku, Connectors } = require('shoukaku');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
@@ -679,6 +681,20 @@ client.login(token).then(() => {
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
+  // Init Lavalink (public nodes)
+  try {
+    const nodes = [
+      { name: 'lavalink-is-cool', url: 'lavalink.is-cool.dev:443', auth: 'pass', secure: true },
+      { name: 'lava.link', url: 'lava.link:80', auth: 'youshallnotpass', secure: false },
+    ];
+    const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), nodes.map(n=>({ name: n.name, url: n.url, auth: n.auth, secure: n.secure })));
+    client.music = new Kazagumo({ defaultSearchEngine: 'youtube', send: (guildId, payload) => {
+      const guild = client.guilds.cache.get(guildId);
+      if (guild) guild.shard.send(payload);
+    } }, shoukaku, []);
+  } catch (e) {
+    console.error('Music init failed', e);
+  }
   // Suites cleanup every 5 minutes
   setInterval(async () => {
     try {
@@ -1817,6 +1833,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
         new ButtonBuilder().setCustomId('music_leave').setLabel('Quitter').setStyle(ButtonStyle.Secondary),
       );
       return interaction.reply({ embeds: [embed], components: [row1, row2] });
+    }
+
+    // Basic /play (join + search + play)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'play') {
+      try {
+        await interaction.deferReply();
+        const query = interaction.options.getString('recherche', true);
+        if (!interaction.member?.voice?.channel) return interaction.editReply('Rejoignez un salon vocal.');
+        const player = await client.music?.createPlayer({ guildId: interaction.guild.id, textId: interaction.channel.id, voiceId: interaction.member.voice.channel.id, deaf: true });
+        if (!player) return interaction.editReply('Lecteur indisponible.');
+        const res = await client.music?.search(query, { requester: interaction.user });
+        if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat.');
+        if (res.type === 'PLAYLIST') {
+          for (const t of res.tracks) player.queue.add(t);
+        } else {
+          player.queue.add(res.tracks[0]);
+        }
+        if (!player.playing && !player.paused) await player.play();
+        const t = player.queue.current;
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${t.title}](${t.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
+        return interaction.editReply({ embeds: [embed] });
+      } catch (e) {
+        console.error('/play failed', e);
+        return interaction.editReply('Erreur de lecture.');
+      }
     }
 
     // /confess command
