@@ -5,3 +5,12 @@
 Login succeeded
 Logged in as Bag bot#8659
 [Music] Node connected: 127.0.0.1
+UnhandledRejection: TypeError: Cannot read properties of undefined (reading 'map')
+    at /workspace/node_modules/erela.js/dist/structures/Manager.js:161:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+UnhandledRejection: TypeError: Cannot read properties of undefined (reading 'map')
+    at /workspace/node_modules/erela.js/dist/structures/Manager.js:161:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+UnhandledRejection: TypeError: Cannot read properties of undefined (reading 'map')
+    at /workspace/node_modules/erela.js/dist/structures/Manager.js:161:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
