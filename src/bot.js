@@ -3477,12 +3477,12 @@ async function buildShopRows(guild) {
   );
   const options = [];
   for (const it of (eco.shop?.items || [])) {
-    options.push({ label: `Objet: ${it.name || it.id} — ${it.price||0}`, value: `item:${it.id}` });
+    options.push({ label: 'Objet: ' + (it.name || it.id) + ' — ' + (it.price||0), value: 'item:' + it.id });
   }
   for (const r of (eco.shop?.roles || [])) {
     const roleName = guild.roles.cache.get(r.roleId)?.name || r.name || r.roleId;
-    const dur = r.durationDays ? `${r.durationDays}j` : 'permanent';
-    options.push({ label: `Rôle: ${roleName} — ${r.price||0} (${dur})`, value: `role:${r.roleId}:${r.durationDays||0}` });
+    const dur = r.durationDays ? (r.durationDays + 'j') : 'permanent';
+    options.push({ label: 'Rôle: ' + roleName + ' — ' + (r.price||0) + ' (' + dur + ')', value: 'role:' + r.roleId + ':' + (r.durationDays||0) });
   }
   const remove = new StringSelectMenuBuilder().setCustomId('shop_remove_select').setPlaceholder('Supprimer des articles…').setMinValues(0).setMaxValues(Math.min(25, Math.max(1, options.length || 1)));
   if (options.length) remove.addOptions(...options); else remove.addOptions({ label: 'Aucun article', value: 'none' }).setDisabled(true);
