@@ -653,10 +653,8 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
 async function buildEconomySettingsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
   const curBtn = new ButtonBuilder().setCustomId('economy_set_currency').setLabel(`Devise: ${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`).setStyle(ButtonStyle.Secondary);
-  const baseBtn = new ButtonBuilder().setCustomId('economy_set_base').setLabel(`Gains: work ${eco.settings?.baseWorkReward || 50} / fish ${eco.settings?.baseFishReward || 30}`).setStyle(ButtonStyle.Secondary);
-  const cdBtn = new ButtonBuilder().setCustomId('economy_set_cooldowns').setLabel('Cooldowns des actions (rapide)').setStyle(ButtonStyle.Secondary);
   const gifsBtn = new ButtonBuilder().setCustomId('economy_gifs').setLabel('GIF actions').setStyle(ButtonStyle.Primary);
-  const row = new ActionRowBuilder().addComponents(curBtn, baseBtn, cdBtn, gifsBtn);
+  const row = new ActionRowBuilder().addComponents(curBtn, gifsBtn);
   return [row];
 }
 
@@ -2037,33 +2035,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: `✅ Devise mise à jour: ${eco.currency.symbol} ${eco.currency.name}` });
     }
 
-    if (interaction.isButton() && interaction.customId === 'economy_set_base') {
-      const modal = new ModalBuilder().setCustomId('economy_base_modal').setTitle('Gains de base');
-      const work = new TextInputBuilder().setCustomId('work').setLabel('work').setStyle(TextInputStyle.Short).setPlaceholder('50').setRequired(true);
-      const fish = new TextInputBuilder().setCustomId('fish').setLabel('fish').setStyle(TextInputStyle.Short).setPlaceholder('30').setRequired(true);
-      modal.addComponents(new ActionRowBuilder().addComponents(work), new ActionRowBuilder().addComponents(fish));
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId === 'economy_base_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const work = Number(interaction.fields.getTextInputValue('work')) || 0;
-      const fish = Number(interaction.fields.getTextInputValue('fish')) || 0;
-      const eco = await getEconomyConfig(interaction.guild.id);
-      eco.settings = { ...(eco.settings || {}), baseWorkReward: work, baseFishReward: fish };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      return interaction.editReply({ content: `✅ Gains: work ${work} / fish ${fish}` });
-    }
-
-    if (interaction.isButton() && interaction.customId === 'economy_set_cooldowns') {
-      const modal = new ModalBuilder().setCustomId('economy_cd_modal').setTitle('Cooldowns (secondes)');
-      const fields = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance'];
-      const rows = fields.map((f) => new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(f).setLabel(f).setStyle(TextInputStyle.Short).setPlaceholder('0/60/300...').setRequired(false)));
-      modal.addComponents(...rows.slice(0,5)); // Discord modal max 5 components
-      await interaction.showModal(modal);
-      return;
-    }
+    // removed economy_set_base and economy_set_cooldowns
 
     if (interaction.isButton() && interaction.customId === 'economy_gifs') {
       const embed = await buildConfigEmbed(interaction.guild);
