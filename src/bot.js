@@ -86,6 +86,39 @@ const client = new Client({
   partials: [Partials.GuildMember],
 });
 
+// Local YT audio proxy for Lavalink (streams bestaudio via yt-dlp)
+let ytProxyStarted = false;
+function startYtProxyServer() {
+  if (ytProxyStarted) return;
+  try {
+    const http = require('http');
+    const { spawn } = require('node:child_process');
+    const server = http.createServer((req, res) => {
+      try {
+        const url = new URL(req.url, 'http://localhost');
+        if (!url.pathname.startsWith('/yt/')) { res.statusCode = 404; return res.end('Not found'); }
+        const vid = url.pathname.split('/')[2] || '';
+        if (!vid || !/^[A-Za-z0-9_-]{8,}$/.test(vid)) { res.statusCode = 400; return res.end('Bad id'); }
+        const target = `https://www.youtube.com/watch?v=${vid}`;
+        const args = ['-f','bestaudio[ext=m4a]/bestaudio/best','--no-warnings','--no-check-certificates','-o','-','-'];
+        // yt-dlp reads from stdin when '-' given; we pass URL via stdin to avoid shell issues
+        const child = spawn('/workspace/bin/yt-dlp', args);
+        child.stdin.write(target + '\n');
+        child.stdin.end();
+        res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Transfer-Encoding': 'chunked' });
+        child.stdout.pipe(res);
+        child.on('error', () => { try { res.end(); } catch (_) {} });
+        child.on('close', () => { try { res.end(); } catch (_) {} });
+        req.on('close', () => { try { child.kill('SIGKILL'); } catch (_) {} });
+      } catch (_) {
+        res.statusCode = 500; res.end('ERR');
+      }
+    });
+    server.listen(8765, '127.0.0.1', () => { try { console.log('[YTProxy] listening on 127.0.0.1:8765'); } catch (_) {} });
+    ytProxyStarted = true;
+  } catch (_) { /* ignore */ }
+}
+
 const THEME_COLOR_PRIMARY = 0x1e88e5; // blue
 const THEME_COLOR_ACCENT = 0xec407a; // pink
 const THEME_IMAGE = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68b08cda&is=68af3b5a&hm=2e68cb9d7dfc7a60465aa74447b310348fc2d7236e74fa7c08f9434c110d7959&';
@@ -728,6 +761,7 @@ client.login(token).then(() => {
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
+  startYtProxyServer();
   // Init Erela.js (if available) with public nodes
   try {
     if (ErelaManager) {
@@ -1952,11 +1986,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
                 // Local yt-dlp fallback
                 if (!res || !res.tracks?.length) {
-                  const aurl2 = await getLocalYtDlpAudioUrl(vid).catch(()=>null);
-                  if (aurl2) {
-                    const httpRes2 = await client.music.search(aurl2, interaction.user).catch(()=>null);
-                    if (httpRes2 && httpRes2.tracks?.length) res = httpRes2;
-                  }
+                  const proxied = `http://127.0.0.1:8765/yt/${vid}`;
+                  const httpRes2 = await client.music.search(proxied, interaction.user).catch(()=>null);
+                  if (httpRes2 && httpRes2.tracks?.length) res = httpRes2;
                 }
               }
             }
