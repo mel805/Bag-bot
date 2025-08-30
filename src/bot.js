@@ -688,7 +688,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
   if (isCert) {
-    const bg = levels.cards?.backgrounds?.certified || THEME_IMAGE;
+    const bg = chooseCardBackgroundForMember(memberOrMention, levels);
     drawCertifiedCard({ backgroundUrl: bg, name, sublines: [`Rôle: ${roleName}`] }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
       else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
