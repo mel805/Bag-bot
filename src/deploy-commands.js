@@ -115,6 +115,29 @@ const commands = [
     .addStringOption(o=>o.setName('texte').setDescription('Votre confession (optionnel)').setRequired(false))
     .addAttachmentOption(o=>o.setName('image').setDescription('Image (optionnel)').setRequired(false))
     .toJSON(),
+  // Music commands
+  new SlashCommandBuilder()
+    .setName('play')
+    .setDescription('Lire une musique (URL ou recherche)')
+    .addStringOption(o=>o.setName('recherche').setDescription('URL ou mots-clés').setRequired(true))
+    .toJSON(),
+  new SlashCommandBuilder().setName('pause').setDescription('Mettre la musique en pause').toJSON(),
+  new SlashCommandBuilder().setName('resume').setDescription('Reprendre la musique').toJSON(),
+  new SlashCommandBuilder().setName('skip').setDescription('Passer au titre suivant').toJSON(),
+  new SlashCommandBuilder().setName('stop').setDescription('Arrêter et vider la file').toJSON(),
+  new SlashCommandBuilder().setName('queue').setDescription('Voir la file d\'attente').toJSON(),
+  new SlashCommandBuilder().setName('leave').setDescription('Quitter le salon vocal').toJSON(),
+  new SlashCommandBuilder()
+    .setName('radio')
+    .setDescription('Lancer une radio')
+    .addStringOption(o=>o.setName('station').setDescription('Station').setRequired(true)
+      .addChoices(
+        { name: 'Chillout', value: 'chillout' },
+        { name: 'LoFi', value: 'lofi' },
+        { name: 'EDM', value: 'edm' },
+        { name: 'Jazz', value: 'jazz' }
+      ))
+    .toJSON(),
 ];
 
 async function main() {
