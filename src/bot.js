@@ -1845,10 +1845,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try {
           if (isUrl) {
             const u = new URL(query);
-            if (u.hostname === 'music.youtube.com') {
-              u.hostname = 'www.youtube.com';
-              normalized = u.toString();
+            const host = u.hostname.replace(/^www\./, '');
+            // Normalize YouTube hosts
+            if (host === 'music.youtube.com' || host === 'm.youtube.com') u.hostname = 'www.youtube.com';
+            if (host === 'youtu.be') {
+              const id = u.pathname.replace(/^\//, '').split(/[?&#]/)[0];
+              if (id) {
+                u.hostname = 'www.youtube.com';
+                u.pathname = '/watch';
+                u.searchParams.set('v', id);
+              }
             }
+            // Map shorts/live/embed to watch
+            if (/^\/shorts\//.test(u.pathname)) {
+              const id = u.pathname.split('/')[2] || '';
+              u.pathname = '/watch';
+              if (id) u.searchParams.set('v', id);
+            }
+            if (/^\/live\//.test(u.pathname)) {
+              const id = u.pathname.split('/')[2] || '';
+              u.pathname = '/watch';
+              if (id) u.searchParams.set('v', id);
+            }
+            if (/^\/embed\//.test(u.pathname)) {
+              const id = u.pathname.split('/')[2] || '';
+              u.pathname = '/watch';
+              if (id) u.searchParams.set('v', id);
+            }
+            normalized = u.toString();
           }
         } catch (_) {}
         const attempts = isUrl ? [normalized] : [

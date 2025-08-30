@@ -358,3 +358,7 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 	... 14 common frames omitted
 
 2025-08-30 10:25:28.083  INFO 233769 --- [   XNIO-1 I/O-4] lavalink.server.io.SocketServer          : {"op":"stop","guildId":"1360897918504271882"}
+2025-08-30 10:26:53.094  INFO 233769 --- [   XNIO-1 I/O-4] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:34528 -- CloseStatus[code=1006, reason=]
+2025-08-30 10:26:53.095  INFO 233769 --- [   XNIO-1 I/O-4] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30 10:26:54.047  INFO 233769 --- [  XNIO-1 task-1] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:59044
+2025-08-30 10:26:54.051  INFO 233769 --- [  XNIO-1 task-1] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
