@@ -15,3 +15,55 @@ Logged in as Bag bot#8659
 [Music] Node error lavalinkv3.devxcode.in Unexpected op "ready" with data: [object Object]
 [Music] Node error lavalink.devxcode.in Unexpected server response: 200
 [Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+/niveau error ReferenceError: xpForLevel is not defined
+    at Client.<anonymous> (/workspace/src/bot.js:3647:31)
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+/niveau error ReferenceError: xpForLevel is not defined
+    at Client.<anonymous> (/workspace/src/bot.js:3647:31)
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Music] Node error lava.luke.gg Unexpected server response: 523
