@@ -868,6 +868,13 @@ client.once(Events.ClientReady, (readyClient) => {
     const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
+  client.on(Events.MessageCreate, async (msg) => {
+    try { if (!msg.guild) return; } catch (_) { return; }
+    if (msg.author?.bot) return;
+    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    const embed = buildModEmbed(`${cfg.emoji} Message créé`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Contenu', value: msg.content || '—' }, { name:'Message ID', value: String(msg.id) } ]);
+    await sendLog(msg.guild, 'messages', embed);
+  });
   client.on(Events.ThreadCreate, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
