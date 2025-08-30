@@ -93,3 +93,110 @@ Logged in as Bag bot#8659
 [Logs] sent OK
 (node:293518) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
 (Use `node --trace-warnings ...` to show where the warning was created)
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'joinleave',
+  channelId: '1360897920466948161',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageDelete evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageDelete evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+/niveau error ReferenceError: xpForLevel is not defined
+    at Client.<anonymous> (/workspace/src/bot.js:3647:31)
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+/niveau error ReferenceError: xpForLevel is not defined
+    at Client.<anonymous> (/workspace/src/bot.js:3647:31)
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+Client error: DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async BurstHandler.runRequest (/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1411469713871208640/aW50ZXJhY3Rpb246MTQxMTQ2OTcxMzg3MTIwODY0MDoycmRPWDY3R3NVakRlekRNS1R0WDJ3bUJkRlFzdmkzYTdZdm9lTENyN0tOdVdZaXFQN2JTc3ZTbzlQOEF5aVVSVU5LbE1OejYwaHlWRVpUb096emRwU3QyaTlNMmx4V0dRdDNreWxIRlRNTkYyM3NiNkVEQWhXWTFFT3lnMzQ0Yg/callback?with_response=false'
+}
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
