@@ -583,19 +583,62 @@ function memberHasCertifiedRole(memberOrMention, levels) {
   } catch (_) { return false; }
 }
 
+function fitText(ctx, text, maxWidth, baseSize, fontFamily) {
+  let size = baseSize;
+  for (; size >= 12; size -= 2) {
+    ctx.font = `700 ${size}px ${fontFamily}`;
+    if (ctx.measureText(text).width <= maxWidth) break;
+  }
+  return size;
+}
+
+function applyGoldStyles(ctx, x, y, text, maxWidth, size, variant = 'gold') {
+  const gold = variant === 'rosegold'
+    ? { light: '#F6C2D2', mid: '#E6A2B8', dark: '#B76E79' }
+    : { light: '#FFEEC7', mid: '#FFD700', dark: '#B8860B' };
+  const grad = ctx.createLinearGradient(x, y - size, x, y + size);
+  grad.addColorStop(0, gold.light);
+  grad.addColorStop(0.5, gold.mid);
+  grad.addColorStop(1, gold.dark);
+  ctx.lineJoin = 'round';
+  // Outer shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = Math.max(6, Math.round(size * 0.12));
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = Math.max(4, Math.round(size * 0.12));
+  ctx.strokeText(text, x, y);
+  ctx.restore();
+  // Inner highlight
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = Math.max(2, Math.round(size * 0.06));
+  ctx.strokeText(text, x, y - 1);
+  ctx.restore();
+  // Fill
+  ctx.fillStyle = grad;
+  ctx.fillText(text, x, y);
+}
+
 async function drawCertifiedCard(options) {
-  const { backgroundUrl, name, sublines, logoUrl } = options;
+  const { backgroundUrl, name, sublines, footerLines, logoUrl, useRoseGold } = options;
   try {
     const entry = await getCachedImage(backgroundUrl);
-    if (!entry) return null;
-    const maxW = 1024;
-    const scale = entry.width > maxW ? maxW / entry.width : 1;
-    const width = Math.max(640, Math.round(entry.width * scale));
-    const height = Math.max(360, Math.round(entry.height * scale));
+    const fallbackW = 1280, fallbackH = 720;
+    const maxW = 1280;
+    const width = entry ? Math.max(640, Math.round((entry.width > maxW ? maxW / entry.width : 1) * entry.width)) : fallbackW;
+    const height = entry ? Math.max(360, Math.round((entry.width > maxW ? maxW / entry.width : 1) * entry.height)) : fallbackH;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(entry.img, 0, 0, width, height);
+    if (entry) ctx.drawImage(entry.img, 0, 0, width, height);
+    else {
+      const bg = ctx.createLinearGradient(0, 0, 0, height);
+      bg.addColorStop(0, '#141414');
+      bg.addColorStop(1, '#1e1e1e');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, height);
+    }
     // Soft vignette
     const grd = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/6, width/2, height/2, Math.max(width,height)/1.1);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
@@ -615,24 +658,43 @@ async function drawCertifiedCard(options) {
         ctx.restore();
       }
     }
-    // Member name (center)
-    const titleY = Math.floor(height * 0.78);
+    const serif = '"Times New Roman", Garamond, Georgia, Serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillStyle = '#ffffff';
-    const pretty = String(name || '').toUpperCase();
-    ctx.font = '700 44px Georgia, Arial, Sans-Serif';
-    ctx.strokeText(pretty, width/2, titleY);
-    ctx.fillText(pretty, width/2, titleY);
-    // Sublines under name
-    if (Array.isArray(sublines) && sublines.length) {
-      ctx.font = '600 20px Georgia, Arial, Sans-Serif';
-      let y = titleY + 30;
-      for (const l of sublines.slice(0,2)) {
-        ctx.lineWidth = 4; ctx.strokeText(l, width/2, y); ctx.fillText(l, width/2, y); y += 24;
-      }
+    // Main title
+    const mainTitle = 'PROMOTION DE PRESTIGE';
+    let size = fitText(ctx, mainTitle, Math.floor(width*0.9), Math.floor(height*0.12), serif);
+    ctx.font = `700 ${size}px ${serif}`;
+    applyGoldStyles(ctx, Math.floor(width/2), Math.floor(height*0.18), mainTitle, Math.floor(width*0.9), size, useRoseGold?'rosegold':'gold');
+    // Sublines (user and message)
+    const baseY = Math.floor(height*0.35);
+    const userLine = String(name||'').toUpperCase();
+    size = fitText(ctx, userLine, Math.floor(width*0.85), Math.floor(height*0.07), serif);
+    ctx.font = `700 ${size}px ${serif}`;
+    applyGoldStyles(ctx, Math.floor(width/2), baseY, userLine, Math.floor(width*0.85), size, useRoseGold?'rosegold':'gold');
+    let y = baseY + Math.floor(size*1.1);
+    const lines = Array.isArray(sublines)?sublines:[];
+    for (const l of lines.slice(0,2)) {
+      const txt = String(l||'');
+      const s2 = fitText(ctx, txt, Math.floor(width*0.85), Math.floor(height*0.045), serif);
+      ctx.font = `600 ${s2}px ${serif}`;
+      applyGoldStyles(ctx, Math.floor(width/2), y, txt, Math.floor(width*0.85), s2, useRoseGold?'rosegold':'gold');
+      y += Math.floor(s2*1.2);
+    }
+    // Footer block
+    const footer = Array.isArray(footerLines) && footerLines.length ? footerLines : [
+      'Félicitations !',
+      'Tu rejoins l’élite de Boys and Girls. De nouveaux privilèges t’attendent… 🔥',
+      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES'
+    ];
+    let fy = Math.floor(height*0.75);
+    const fSizes = [Math.floor(height*0.09), Math.floor(height*0.05), Math.floor(height*0.055)];
+    for (let i=0;i<Math.min(footer.length,3);i++) {
+      const txt = String(footer[i]||'');
+      const fsz = fitText(ctx, txt, Math.floor(width*0.9), fSizes[i], serif);
+      ctx.font = `${i===0?'700':'600'} ${fsz}px ${serif}`;
+      applyGoldStyles(ctx, Math.floor(width/2), fy, txt, Math.floor(width*0.9), fsz, useRoseGold?'rosegold':'gold');
+      fy += Math.floor(fsz*1.15);
     }
     return canvas.toBuffer('image/png');
   } catch (_) { return null; }
