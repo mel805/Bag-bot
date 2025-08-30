@@ -3634,53 +3634,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
     }
 
-    if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
-      // Always defer to avoid InteractionNotReplied on slow render/generation
-      try { await interaction.deferReply(); } catch (_) { try { await interaction.reply({ content: '⏳ Génération de la carte…' }); } catch (_) {} }
-      try {
-        const levels = await getLevelsConfig(interaction.guild.id);
-        if (!levels.enabled) return interaction.editReply({ content: 'Les niveaux sont désactivés sur ce serveur.' });
-        const stats = await getUserStats(interaction.guild.id, interaction.user.id);
-        const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
-        const level = norm.level;
-        const xpSinceLevel = norm.xpSinceLevel;
-        const xpToNextLevel = xpForLevel(level + 1, levels.levelCurve || { base: 100, factor: 1.2 }) - xpForLevel(level, levels.levelCurve || { base: 100, factor: 1.2 });
-        const xpPercent = Math.floor(100 * xpSinceLevel / xpToNextLevel);
-        const xpBar = '▰'.repeat(Math.floor(xpPercent / 10)) + '▱'.repeat(10 - Math.floor(xpPercent / 10));
-        const rank = await getUserRank(interaction.guild.id, interaction.user.id);
-        const rankTotal = await getTotalUsersWithLevels(interaction.guild.id);
-        const rankPercent = Math.floor(100 * rank / rankTotal);
-        const rankBar = '▰'.repeat(Math.floor(rankPercent / 10)) + '▱'.repeat(10 - Math.floor(rankPercent / 10));
-        const embed = new EmbedBuilder()
-          .setColor(THEME_COLOR_PRIMARY)
-          .setTitle(`Niveau de ${interaction.user.username}`)
-          .setDescription(`
-            Niveau: ${level}
-            XP: ${stats.xp}
-            Prochain niveau: ${level + 1} (${xpSinceLevel}/${xpToNextLevel})
-            ${xpBar}
-            Classement: ${rank}/${rankTotal}
-            ${rankBar}
-          `)
-          .setTimestamp(new Date());
-        const canvas = createCanvas(600, 200);
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#222222';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '30px Arial';
-        ctx.fillText(`Niveau ${level}`, 20, 50);
-        ctx.fillText(`XP: ${stats.xp}`, 20, 100);
-        ctx.fillText(`Prochain niveau: ${level + 1} (${xpSinceLevel}/${xpToNextLevel})`, 20, 150);
-        ctx.fillText(`Classement: ${rank}/${rankTotal}`, 20, 200);
-        const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'level.png' });
-        embed.setImage('attachment://level.png');
-        return interaction.editReply({ embeds: [embed], files: [attachment] });
-      } catch (e) {
-        console.error('/niveau error', e);
-        return interaction.editReply({ content: 'Erreur lors de la génération de la carte de niveau.' });
-      }
-    }
+    
   } catch (e) {
     console.error('Interaction error', e);
     try { return await interaction.reply({ content: 'Erreur lors du traitement de la commande.', ephemeral: true }); } catch (_) { return; }
