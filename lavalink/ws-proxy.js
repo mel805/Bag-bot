@@ -204,10 +204,28 @@ wsServer.on('connection', (client, req) => {
             return; // do not forward
           }
           if (json.op === 'play' && json.guildId && json.track) {
-            const body = { encodedTrack: (typeof json.track === 'string' ? json.track : json.track.track) };
+            const encoded = (typeof json.track === 'string' ? json.track : json.track.track);
+            const body = { encodedTrack: encoded };
             if (typeof json.startTime === 'number') body.position = json.startTime;
             if (typeof json.endTime === 'number') body.endTime = json.endTime;
             if (typeof json.volume === 'number') body.volume = json.volume;
+            // Try to also provide identifier (URL) for better v4 compatibility
+            try {
+              const reqPath = `/v4/decodetrack?encoded=${encodeURIComponent(encoded)}`;
+              const opt = { host: TARGET_HOST, port: TARGET_PORT, method: 'GET', path: reqPath, headers: { Authorization: authHeader } };
+              await new Promise((resolve) => {
+                const r = http.request(opt, (pr) => {
+                  const chunks = [];
+                  pr.on('data', c => chunks.push(c));
+                  pr.on('end', () => {
+                    try { const j = JSON.parse(Buffer.concat(chunks).toString('utf8')); if (j && j.info && j.info.uri) body.identifier = j.info.uri; } catch (_) {}
+                    resolve();
+                  });
+                });
+                r.on('error', () => resolve());
+                r.end();
+              });
+            } catch (_) {}
             const pv = pendingVoiceByGuild.get(json.guildId);
             if (pv && lavaSessionId) {
               await patchPlayer(json.guildId, { voice: pv });

@@ -1898,3 +1898,10 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 
 2025-08-30T09:51:00.455Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/b6kx0yukr9c5o3o5/players/1360897918504271882, payload={"encodedTrack":null}
 2025-08-30T09:51:00.808Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/b6kx0yukr9c5o3o5/players/1360897918504271882, payload={"voice":{"token":"e82e638fed06adec","endpoint":"c-cdg11-1d5e74a5.discord.media:2053","sessionId":"949512123ed69ae51063f52d4c1e6b02"}}
+2025-08-30T09:55:18.219Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:48788 with id 8urd9t4bjq8h4aez -- CloseStatus[code=1006, reason=]
+2025-08-30T09:55:18.219Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-1] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:37698 with id b6kx0yukr9c5o3o5 -- CloseStatus[code=1006, reason=]
+2025-08-30T09:55:18.219Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:55:18.219Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-1] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:55:24.526Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:36150
+2025-08-30T09:55:24.527Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:55:24.528Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
