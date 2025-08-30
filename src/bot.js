@@ -2257,14 +2257,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const reason = interaction.options.getString('raison') || '—';
           try { await interaction.guild.members.ban(user.id, { reason }); } catch (e) { return interaction.reply({ content: 'Échec du ban.', ephemeral: true }); }
           const embed = buildModEmbed('Ban', `${user} a été banni.`, [{ name:'Raison', value: reason }]);
-          return interaction.reply({ embeds: [embed] });
+          await interaction.reply({ embeds: [embed] });
+          // log moderation
+          const cfg = await getLogsConfig(interaction.guild.id);
+          const log = buildModEmbed(`${cfg.emoji} Modération • Ban`, `${user} banni par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          await sendLog(interaction.guild, 'moderation', log);
+          return;
         }
         if (cmd === 'unban') {
           const userId = interaction.options.getString('userid', true);
           const reason = interaction.options.getString('raison') || '—';
           try { await interaction.guild.members.unban(userId, reason); } catch (e) { return interaction.reply({ content: 'Échec du déban.', ephemeral: true }); }
           const embed = buildModEmbed('Unban', `Utilisateur <@${userId}> débanni.`, [{ name:'Raison', value: reason }]);
-          return interaction.reply({ embeds: [embed] });
+          await interaction.reply({ embeds: [embed] });
+          const cfg = await getLogsConfig(interaction.guild.id);
+          const log = buildModEmbed(`${cfg.emoji} Modération • Unban`, `<@${userId}> débanni par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          await sendLog(interaction.guild, 'moderation', log);
+          return;
         }
         if (cmd === 'kick') {
           const user = interaction.options.getUser('membre', true);
@@ -2273,7 +2282,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           if (!m) return interaction.reply({ content:'Membre introuvable.', ephemeral:true });
           try { await m.kick(reason); } catch (e) { return interaction.reply({ content:'Échec du kick.', ephemeral:true }); }
           const embed = buildModEmbed('Kick', `${user} a été expulsé.`, [{ name:'Raison', value: reason }]);
-          return interaction.reply({ embeds: [embed] });
+          await interaction.reply({ embeds: [embed] });
+          const cfg = await getLogsConfig(interaction.guild.id);
+          const log = buildModEmbed(`${cfg.emoji} Modération • Kick`, `${user} expulsé par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          await sendLog(interaction.guild, 'moderation', log);
+          return;
         }
         if (cmd === 'mute') {
           const user = interaction.options.getUser('membre', true);
@@ -2284,7 +2297,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const ms = minutes * 60 * 1000;
           try { await m.timeout(ms, reason); } catch (e) { return interaction.reply({ content:'Échec du mute.', ephemeral:true }); }
           const embed = buildModEmbed('Mute', `${user} a été réduit au silence.`, [{ name:'Durée', value: `${minutes} min`, inline:true }, { name:'Raison', value: reason, inline:true }]);
-          return interaction.reply({ embeds: [embed] });
+          await interaction.reply({ embeds: [embed] });
+          const cfg = await getLogsConfig(interaction.guild.id);
+          const log = buildModEmbed(`${cfg.emoji} Modération • Mute`, `${user} muet par ${interaction.user}`, [{ name:'Durée', value: `${minutes} min` }, { name:'Raison', value: reason }]);
+          await sendLog(interaction.guild, 'moderation', log);
+          return;
         }
         if (cmd === 'unmute') {
           const user = interaction.options.getUser('membre', true);
@@ -2293,12 +2310,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
           if (!m) return interaction.reply({ content:'Membre introuvable.', ephemeral:true });
           try { await m.timeout(null, reason); } catch (e) { return interaction.reply({ content:'Échec du unmute.', ephemeral:true }); }
           const embed = buildModEmbed('Unmute', `${user} a retrouvé la parole.`, [{ name:'Raison', value: reason }]);
-          return interaction.reply({ embeds: [embed] });
+          await interaction.reply({ embeds: [embed] });
+          const cfg = await getLogsConfig(interaction.guild.id);
+          const log = buildModEmbed(`${cfg.emoji} Modération • Unmute`, `${user} unmute par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          await sendLog(interaction.guild, 'moderation', log);
+          return;
         }
         if (cmd === 'warn') {
           const user = interaction.options.getUser('membre', true);
           const reason = interaction.options.getString('raison', true);
-          try { const { addWarn, getWarns } = require('./storage/jsonStore'); await addWarn(interaction.guild.id, user.id, { by: interaction.user.id, reason }); const list = await getWarns(interaction.guild.id, user.id); const embed = buildModEmbed('Warn', `${user} a reçu un avertissement.`, [{ name:'Raison', value: reason }, { name:'Total avertissements', value: String(list.length) }]); return interaction.reply({ embeds: [embed] }); } catch (_) { return interaction.reply({ content:'Échec du warn.', ephemeral:true }); }
+          try { const { addWarn, getWarns } = require('./storage/jsonStore'); await addWarn(interaction.guild.id, user.id, { by: interaction.user.id, reason }); const list = await getWarns(interaction.guild.id, user.id); const embed = buildModEmbed('Warn', `${user} a reçu un avertissement.`, [{ name:'Raison', value: reason }, { name:'Total avertissements', value: String(list.length) }]); await interaction.reply({ embeds: [embed] }); const cfg = await getLogsConfig(interaction.guild.id); const log = buildModEmbed(`${cfg.emoji} Modération • Warn`, `${user} averti par ${interaction.user}`, [{ name:'Raison', value: reason }, { name:'Total', value: String(list.length) }]); await sendLog(interaction.guild, 'moderation', log); return; } catch (_) { return interaction.reply({ content:'Échec du warn.', ephemeral:true }); }
         }
         if (cmd === 'masskick' || cmd === 'massban') {
           const mode = interaction.options.getString('mode', true); // with/without
