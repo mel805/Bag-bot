@@ -70,6 +70,7 @@ require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
+const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || '';
 
 if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
@@ -689,7 +690,8 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
   if (isCert) {
     const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-    drawCertifiedCard({ backgroundUrl: bg, name, sublines: [`Rôle: ${roleName}`] }).then((img) => {
+    const logo = CERTIFIED_LOGO_URL || undefined;
+    drawCertifiedCard({ backgroundUrl: bg, name, sublines: [`Rôle: ${roleName}`], logoUrl: logo }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
       else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
     });
@@ -3575,9 +3577,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
-      try {
-        await interaction.reply({ content: '⏳ Génération de la carte…' });
-      } catch (_) {}
+      // Always defer to avoid InteractionNotReplied on slow render/generation
+      try { await interaction.deferReply(); } catch (_) { try { await interaction.reply({ content: '⏳ Génération de la carte…' }); } catch (_) {} }
       try {
         const target = interaction.options.getUser('membre') || interaction.user;
         const member = await interaction.guild.members.fetch(target.id).catch(()=>null);
@@ -3604,8 +3605,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return await interaction.editReply({ content: `${name} — Niveau ${lvl} (${stats.xpSinceLevel||0}/${required}) • Dernière récompense: ${roleName} • Messages: ${stats.messages||0} • Vocal: ${Math.floor((stats.voiceMsAccum||0)/60000)} min` });
       } catch (e) {
         console.error('/niveau failed:', e);
-        try { return await interaction.editReply({ content: 'Erreur lors de l\'affichage du niveau.' }); } catch (_) {}
-        try { return await interaction.reply({ content: 'Erreur lors de l\'affichage du niveau.', ephemeral: true }); } catch (_) { return; }
+        try { return await interaction.editReply({ content: 'Erreur lors de l\'affichage du niveau.' }); } catch (_) { return; }
       }
     }
 
