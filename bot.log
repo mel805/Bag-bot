@@ -44,3 +44,5 @@ Logged in as Bag bot#8659
 [Music] Node error pool-us.alfari.id Unable to connect after 5 attempts.
 [Music] Node error lavalink.devxcode.in Unable to connect after 5 attempts.
 [Music] Node error lava.luke.gg Unable to connect after 5 attempts.
+(node:252915) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
