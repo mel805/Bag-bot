@@ -87,6 +87,26 @@ const client = new Client({
   partials: [Partials.GuildMember, Partials.Message, Partials.Channel],
 });
 
+// Keepalive HTTP server for Render Web Services (bind PORT)
+function startKeepAliveServer() {
+  const port = Number(process.env.PORT || 0);
+  if (!port) return;
+  try {
+    const http = require('http');
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      if (req.url === '/health') return res.end('OK');
+      return res.end('BAG bot running');
+    });
+    server.listen(port, '0.0.0.0', () => {
+      try { console.log(`[KeepAlive] listening on ${port}`); } catch (_) {}
+    });
+  } catch (e) {
+    try { console.error('[KeepAlive] failed:', e?.message || e); } catch (_) {}
+  }
+}
+startKeepAliveServer();
+
 // Local YT audio proxy for Lavalink (streams bestaudio via yt-dlp)
 let ytProxyStarted = false;
 function shouldStartYtProxy() {
