@@ -14,9 +14,7 @@
   "dependencies": {
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
-    "@napi-rs/canvas": "^0.1.50",
-    "kazagumo": "^2.6.6",
-    "shoukaku": "^3.7.4"
+    "@napi-rs/canvas": "^0.1.50"
   }
 }
 

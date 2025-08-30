@@ -1,6 +1,4 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
-const { Kazagumo } = require('kazagumo');
-const { Shoukaku, Connectors } = require('shoukaku');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
@@ -681,20 +679,7 @@ client.login(token).then(() => {
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
-  // Init Lavalink (public nodes)
-  try {
-    const nodes = [
-      { name: 'lavalink-is-cool', url: 'lavalink.is-cool.dev:443', auth: 'pass', secure: true },
-      { name: 'lava.link', url: 'lava.link:80', auth: 'youshallnotpass', secure: false },
-    ];
-    const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), nodes.map(n=>({ name: n.name, url: n.url, auth: n.auth, secure: n.secure })));
-    client.music = new Kazagumo({ defaultSearchEngine: 'youtube', send: (guildId, payload) => {
-      const guild = client.guilds.cache.get(guildId);
-      if (guild) guild.shard.send(payload);
-    } }, shoukaku, []);
-  } catch (e) {
-    console.error('Music init failed', e);
-  }
+  // Lavalink init disabled until deps are installed
   // Suites cleanup every 5 minutes
   setInterval(async () => {
     try {
