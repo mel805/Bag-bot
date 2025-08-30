@@ -71,6 +71,7 @@ require('dotenv').config();
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
 const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || '';
+const CERTIFIED_ROSEGOLD = String(process.env.CERTIFIED_ROSEGOLD || 'false').toLowerCase() === 'true';
 
 if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
@@ -583,19 +584,61 @@ function memberHasCertifiedRole(memberOrMention, levels) {
   } catch (_) { return false; }
 }
 
+function fitText(ctx, text, maxWidth, baseSize, fontFamily) {
+  let size = baseSize;
+  for (; size >= 12; size -= 2) {
+    ctx.font = `700 ${size}px ${fontFamily}`;
+    if (ctx.measureText(text).width <= maxWidth) break;
+  }
+  return size;
+}
+
+function applyGoldStyles(ctx, x, y, text, maxWidth, size, variant = 'gold') {
+  const gold = variant === 'rosegold'
+    ? { light: '#F6C2D2', mid: '#E6A2B8', dark: '#B76E79' }
+    : { light: '#FFEEC7', mid: '#FFD700', dark: '#B8860B' };
+  const grad = ctx.createLinearGradient(x, y - size, x, y + size);
+  grad.addColorStop(0, gold.light);
+  grad.addColorStop(0.5, gold.mid);
+  grad.addColorStop(1, gold.dark);
+  ctx.lineJoin = 'round';
+  // Outer shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = Math.max(6, Math.round(size * 0.12));
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = Math.max(4, Math.round(size * 0.12));
+  ctx.strokeText(text, x, y);
+  ctx.restore();
+  // Inner highlight
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = Math.max(2, Math.round(size * 0.06));
+  ctx.strokeText(text, x, y - 1);
+  ctx.restore();
+  // Fill
+  ctx.fillStyle = grad;
+  ctx.fillText(text, x, y);
+}
 async function drawCertifiedCard(options) {
-  const { backgroundUrl, name, sublines, logoUrl } = options;
+  const { backgroundUrl, name, sublines, footerLines, logoUrl, useRoseGold } = options;
   try {
     const entry = await getCachedImage(backgroundUrl);
-    if (!entry) return null;
-    const maxW = 1024;
-    const scale = entry.width > maxW ? maxW / entry.width : 1;
-    const width = Math.max(640, Math.round(entry.width * scale));
-    const height = Math.max(360, Math.round(entry.height * scale));
+    const fallbackW = 1280, fallbackH = 720;
+    const maxW = 1280;
+    const width = entry ? Math.max(640, Math.round((entry.width > maxW ? maxW / entry.width : 1) * entry.width)) : fallbackW;
+    const height = entry ? Math.max(360, Math.round((entry.width > maxW ? maxW / entry.width : 1) * entry.height)) : fallbackH;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(entry.img, 0, 0, width, height);
+    if (entry) ctx.drawImage(entry.img, 0, 0, width, height);
+    else {
+      const bg = ctx.createLinearGradient(0, 0, 0, height);
+      bg.addColorStop(0, '#141414');
+      bg.addColorStop(1, '#1e1e1e');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, height);
+    }
     // Soft vignette
     const grd = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/6, width/2, height/2, Math.max(width,height)/1.1);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
@@ -615,24 +658,43 @@ async function drawCertifiedCard(options) {
         ctx.restore();
       }
     }
-    // Member name (center)
-    const titleY = Math.floor(height * 0.78);
+    const serif = '"Times New Roman", Garamond, Georgia, Serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillStyle = '#ffffff';
-    const pretty = String(name || '').toUpperCase();
-    ctx.font = '700 44px Georgia, Arial, Sans-Serif';
-    ctx.strokeText(pretty, width/2, titleY);
-    ctx.fillText(pretty, width/2, titleY);
-    // Sublines under name
-    if (Array.isArray(sublines) && sublines.length) {
-      ctx.font = '600 20px Georgia, Arial, Sans-Serif';
-      let y = titleY + 30;
-      for (const l of sublines.slice(0,2)) {
-        ctx.lineWidth = 4; ctx.strokeText(l, width/2, y); ctx.fillText(l, width/2, y); y += 24;
-      }
+    // Main title
+    const mainTitle = 'PROMOTION DE PRESTIGE';
+    let size = fitText(ctx, mainTitle, Math.floor(width*0.9), Math.floor(height*0.12), serif);
+    ctx.font = `700 ${size}px ${serif}`;
+    applyGoldStyles(ctx, Math.floor(width/2), Math.floor(height*0.18), mainTitle, Math.floor(width*0.9), size, useRoseGold?'rosegold':'gold');
+    // Sublines (user and message)
+    const baseY = Math.floor(height*0.35);
+    const userLine = String(name||'').toUpperCase();
+    size = fitText(ctx, userLine, Math.floor(width*0.85), Math.floor(height*0.07), serif);
+    ctx.font = `700 ${size}px ${serif}`;
+    applyGoldStyles(ctx, Math.floor(width/2), baseY, userLine, Math.floor(width*0.85), size, useRoseGold?'rosegold':'gold');
+    let y = baseY + Math.floor(size*1.1);
+    const lines = Array.isArray(sublines)?sublines:[];
+    for (const l of lines.slice(0,2)) {
+      const txt = String(l||'');
+      const s2 = fitText(ctx, txt, Math.floor(width*0.85), Math.floor(height*0.045), serif);
+      ctx.font = `600 ${s2}px ${serif}`;
+      applyGoldStyles(ctx, Math.floor(width/2), y, txt, Math.floor(width*0.85), s2, useRoseGold?'rosegold':'gold');
+      y += Math.floor(s2*1.2);
+    }
+    // Footer block
+    const footer = Array.isArray(footerLines) && footerLines.length ? footerLines : [
+      'Félicitations !',
+      `Tu rejoins l'élite de Boys and Girls. De nouveaux privilèges t'attendent… 🔥`,
+      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES'
+    ];
+    let fy = Math.floor(height*0.75);
+    const fSizes = [Math.floor(height*0.09), Math.floor(height*0.05), Math.floor(height*0.055)];
+    for (let i=0;i<Math.min(footer.length,3);i++) {
+      const txt = String(footer[i]||'');
+      const fsz = fitText(ctx, txt, Math.floor(width*0.9), fSizes[i], serif);
+      ctx.font = `${i===0?'700':'600'} ${fsz}px ${serif}`;
+      applyGoldStyles(ctx, Math.floor(width/2), fy, txt, Math.floor(width*0.9), fsz, useRoseGold?'rosegold':'gold');
+      fy += Math.floor(fsz*1.15);
     }
     return canvas.toBuffer('image/png');
   } catch (_) { return null; }
@@ -660,7 +722,17 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
   if (isCert) {
     const bg = levels.cards?.backgrounds?.certified || THEME_IMAGE;
-    drawCertifiedCard({ backgroundUrl: bg, name, sublines: [roleName?`Dernière récompense: ${roleName}`:''] }).then((img) => {
+    const sub = [
+      `${name.toUpperCase()} VIENT DE FRANCHIR UN NOUVEAU CAP !`,
+      `NIVEAU ATTEINT : ${String(newLevel)}`,
+      roleName ? `(Dernier rôle obtenu : ${roleName})` : ''
+    ].filter(Boolean);
+    const footer = [
+      'Félicitations !',
+      `Tu rejoins l'élite de Boys and Girls. De nouveaux privilèges t'attendent… 🔥`,
+      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES'
+    ];
+    drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, footerLines: footer, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
       else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
     });
@@ -3061,591 +3133,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         description: `
 **Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}
 **Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}
-        `.trim(),
-        fields: [ { name: 'Devise', value: `${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`, inline: true } ],
-      });
-      return interaction.reply({ embeds: [embed] });
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'travailler') {
-      return runEcoAction(interaction, 'work');
-    }
-    if (interaction.isChatInputCommand() && (interaction.commandName === 'pêcher' || interaction.commandName === 'pecher')) {
-      return runEcoAction(interaction, 'fish');
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'donner') {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const userId = interaction.user.id;
-      const u = await getEconomyUser(interaction.guild.id, userId);
-      const cible = interaction.options.getUser('membre', true);
-      const montant = Math.max(1, interaction.options.getInteger('montant', true));
-      if ((u.amount||0) < montant) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
-      u.amount = (u.amount||0) - montant;
-      await setEconomyUser(interaction.guild.id, userId, u);
-      const tu = await getEconomyUser(interaction.guild.id, cible.id);
-      tu.amount = (tu.amount||0) + montant;
-      await setEconomyUser(interaction.guild.id, cible.id, tu);
-      const embed = buildEcoEmbed({
-        title: 'Donner',
-        description: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}.`,
-        fields: [ { name: 'Votre solde', value: String(u.amount), inline: true } ],
-      });
-      return interaction.reply({ embeds: [embed] });
-    }
-
-    // Economy action executor (hoisted)
-    async function runEcoAction(interaction, key, targetUserOptional) {
-      try { console.log('[action]', key, 'start'); } catch (_) {}
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const userId = interaction.user.id;
-      const u = await getEconomyUser(interaction.guild.id, userId);
-      const now = Date.now();
-      const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
-      // Evaluate karma modifiers for actions (percentage multiplier)
-      const actorCharm = u.charm || 0;
-      const actorPerv = u.perversion || 0;
-      const actionPerc = (eco.karmaModifiers?.actions || []).reduce((acc, r) => {
-        try {
-          const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
-          // very basic safe eval: only numbers and operators
-          if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
-          // eslint-disable-next-line no-eval
-          const ok = !!eval(expr);
-          return ok ? acc + Number(r.percent||0) : acc;
-        } catch (_) { return acc; }
-      }, 0);
-      const actionFactor = Math.max(0, 1 + actionPerc / 100);
-      const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
-      if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.` });
-
-      // Defer first, then edit with final result
-      try { await interaction.deferReply(); } catch (_) {}
-
-      const successRate = typeof conf.successRate === 'number' ? conf.successRate : (key === 'fish' ? 0.65 : 0.8);
-      const isSuccess = Math.random() < successRate;
-
-      const next = { amount: u.amount||0, charm: u.charm||0, perversion: u.perversion||0, cooldowns: { ...(u.cooldowns||{}) } };
-      // Booster cooldown multiplier
-      try {
-        const b = eco.booster || {};
-        const mem = await interaction.guild.members.fetch(userId).catch(()=>null);
-        const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
-        if (b.enabled && isBooster && Number(b.actionCooldownMult) > 0) {
-          conf.cooldown = Math.max(0, Math.round((conf.cooldown||60) * Number(b.actionCooldownMult)));
-        }
-      } catch (_) {}
-      next.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
-
-      let title;
-      let descLine;
-      let targetField = null;
-      const hasTarget = targetUserOptional && targetUserOptional.id !== userId;
-      let targetEconNext = null;
-      let targetXpDelta = 0;
-      let targetMoneyDelta = 0;
-      let targetKarmaDelta = 0;
-      if (!isSuccess) {
-        let lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
-        lose = Math.floor(lose * actionFactor);
-        next.amount = Math.max(0, next.amount - lose);
-        if (conf.karma === 'charm') next.charm = Math.max(0, next.charm - Math.max(0, conf.failKarmaDelta || 0));
-        else if (conf.karma === 'perversion') next.perversion = Math.max(0, next.perversion - Math.max(0, conf.failKarmaDelta || 0));
-        if (hasTarget) {
-          const tgt = await getEconomyUser(interaction.guild.id, targetUserOptional.id);
-          targetEconNext = { amount: tgt.amount||0, charm: tgt.charm||0, perversion: tgt.perversion||0, cooldowns: { ...(tgt.cooldowns||{}) } };
-          const tLose = Math.floor(lose / 2);
-          targetEconNext.amount = Math.max(0, targetEconNext.amount - tLose);
-          targetMoneyDelta = -tLose;
-          const tK = Math.max(1, Math.ceil((conf.failKarmaDelta || conf.karmaDelta || 1)/2));
-          if (conf.karma === 'charm') { targetEconNext.charm = Math.max(0, targetEconNext.charm - tK); targetKarmaDelta = -tK; }
-          else if (conf.karma === 'perversion') { targetEconNext.perversion = Math.max(0, targetEconNext.perversion - tK); targetKarmaDelta = -tK; }
-          targetField = `Cible ${targetUserOptional}: ${tLose>0?`-${tLose} ${eco.currency?.name || 'BAG$'}`:'—'} • Karma ${conf.karma === 'perversion' ? '😈' : (conf.karma === 'none' ? '—' : '🫦')} ${targetKarmaDelta}`;
-        }
-        let failText = 'Action manquée… Réessayez plus tard.';
-        if (key === 'fish') failText = pickRandom(FISH_FAIL);
-        else if (key === 'work') failText = pickRandom(WORK_FAIL);
-        else if (key === 'kiss') failText = pickRandom(KISS_FAIL);
-        else if (key === 'flirt') failText = pickRandom(FLIRT_FAIL);
-        else if (key === 'seduce') failText = pickRandom(SEDUCE_FAIL);
-        else if (key === 'fuck') failText = pickRandom(FUCK_FAIL);
-        else if (key === 'massage') failText = pickRandom(MASSAGE_FAIL);
-        else if (key === 'dance') failText = pickRandom(DANCE_FAIL);
-        else if (key === 'crime') failText = pickRandom(CRIME_FAIL);
-        title = `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
-        descLine = `${failText}${(lose>0)?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`;
-      } else {
-        let gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
-        gain = Math.floor(gain * actionFactor);
-        next.amount = next.amount + gain;
-        if (conf.karma === 'charm') next.charm = next.charm + (conf.karmaDelta||0);
-        else if (conf.karma === 'perversion') next.perversion = next.perversion + (conf.karmaDelta||0);
-        if (hasTarget) {
-          const tgt = await getEconomyUser(interaction.guild.id, targetUserOptional.id);
-          targetEconNext = { amount: tgt.amount||0, charm: tgt.charm||0, perversion: tgt.perversion||0, cooldowns: { ...(tgt.cooldowns||{}) } };
-          const tK = Math.max(1, Math.ceil((conf.karmaDelta || 1)/2));
-          if (conf.karma === 'charm') { targetEconNext.charm = (targetEconNext.charm||0) + tK; targetKarmaDelta = tK; }
-          else if (conf.karma === 'perversion') { targetEconNext.perversion = (targetEconNext.perversion||0) + tK; targetKarmaDelta = tK; }
-          // Levels XP for target (small bonus)
-          const levels = await getLevelsConfig(interaction.guild.id);
-          if (levels?.enabled) {
-            const xpAdd = Math.max(1, Math.round((levels.xpPerMessage || 10) / 2));
-            const tStats = await getUserStats(interaction.guild.id, targetUserOptional.id);
-            const prevLevel = tStats.level || 0;
-            tStats.xp = (tStats.xp||0) + xpAdd;
-            const norm = xpToLevel(tStats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
-            tStats.level = norm.level;
-            tStats.xpSinceLevel = norm.xpSinceLevel;
-            await setUserStats(interaction.guild.id, targetUserOptional.id, tStats);
-            targetXpDelta = xpAdd;
-            if (tStats.level > prevLevel) {
-              const mem = await fetchMember(interaction.guild, targetUserOptional.id);
-              if (mem) {
-                maybeAnnounceLevelUp(interaction.guild, mem, levels, tStats.level);
-                const rid = (levels.rewards || {})[String(tStats.level)];
-                if (rid) {
-                  try { await mem.roles.add(rid); } catch (_) {}
-                  maybeAnnounceRoleAward(interaction.guild, mem, levels, rid);
-                }
-              }
-            }
-          }
-          targetField = `Cible ${targetUserOptional}: XP ${targetXpDelta||0} • Karma ${conf.karma === 'perversion' ? '😈' : (conf.karma === 'none' ? '—' : '🫦')} ${targetKarmaDelta}`;
-        }
-        const icon = conf.karma === 'perversion' ? '😈' : '🫦';
-        title = `${icon} ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
-        let line;
-        if (key === 'fish') line = pickRandom(FISH_SUCCESS);
-        else if (key === 'work') line = pickRandom(WORK_SUCCESS);
-        else if (key === 'kiss') line = pickRandom(KISS_SUCCESS);
-        else if (key === 'flirt') line = pickRandom(FLIRT_SUCCESS);
-        else if (key === 'seduce') line = pickRandom(SEDUCE_SUCCESS);
-        else if (key === 'fuck') line = pickRandom(FUCK_SUCCESS);
-        else if (key === 'massage') line = pickRandom(MASSAGE_SUCCESS);
-        else if (key === 'dance') line = pickRandom(DANCE_SUCCESS);
-        else if (key === 'crime') line = pickRandom(CRIME_SUCCESS);
-        else line = 'Action réussie.';
-        descLine = `${line}\n+${Math.max(0, next.amount - (u.amount||0))} ${eco.currency?.name || 'BAG$'}`;
-      }
-
-      const embed = buildEcoEmbed({
-        title,
-        description: descLine,
-        fields: [
-          { name: 'Karma', value: `${conf.karma === 'perversion' ? 'perversion 😈' : (conf.karma === 'none' ? '—' : 'charme 🫦')} ${conf.karma === 'none' ? '' : `${isSuccess?'+':'-'}${Math.max(0, isSuccess?(conf.karmaDelta||0):(conf.failKarmaDelta||0))}`}`.trim(), inline: true },
-          { name: 'Solde', value: String(next.amount), inline: true },
-          { name: 'Cooldown', value: `${Math.max(0, conf.cooldown || 60)}s`, inline: true },
-          ...(targetField ? [{ name: 'Effet cible', value: targetField, inline: false }] : []),
-        ],
-      });
-      // Attach an action-appropriate GIF if available
-      try {
-        const ecoForGif = await getEconomyConfig(interaction.guild.id);
-        const confGif = ecoForGif.actions?.gifs?.[key] || {};
-        const gifs = { success: confGif.success || (ACTION_GIFS[key]?.success||[]), fail: confGif.fail || (ACTION_GIFS[key]?.fail||[]) };
-        const pickGif = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null);
-        const url = isSuccess ? pickGif(gifs.success) : pickGif(gifs.fail);
-        if (url) embed.setImage(url);
-      } catch (_) {}
-
-      // Apply karma grants
-      try {
-        const grants = (eco.karmaModifiers?.grants || []);
-        if (grants.length) {
-          const actorCharm2 = next.charm || 0; const actorPerv2 = next.perversion || 0;
-          for (const g of grants) {
-            try {
-              const expr = String(g.condition||'').toLowerCase().replace(/charm/g, String(actorCharm2)).replace(/perversion/g, String(actorPerv2));
-              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) continue;
-              // eslint-disable-next-line no-eval
-              const ok = !!eval(expr);
-              if (ok) next.amount = Math.max(0, (next.amount||0) + Number(g.money||0));
-            } catch (_) {}
-          }
-        }
-      } catch (_) {}
-
-      // Persist state, then edit reply
-      try { await setEconomyUser(interaction.guild.id, userId, { amount: next.amount, charm: next.charm, perversion: next.perversion, cooldowns: next.cooldowns }); } catch (_) {}
-      if (targetEconNext) { setEconomyUser(interaction.guild.id, targetUserOptional.id, targetEconNext).catch(()=>{}); }
-      try { return await interaction.editReply({ embeds: [embed], content: '' }); } catch (e) {
-        console.error('[action] editReply failed', e);
-        return await interaction.editReply({ content: `${title}\n${descLine}\nSolde: ${next.amount}\nCooldown: ${Math.max(0, conf.cooldown || 60)}s${targetField?`\n${targetField}`:''}` });
-      }
-    }
-
-    if (interaction.isChatInputCommand() && interaction.commandName === 'voler') {
-      const cible = interaction.options.getUser('membre', true);
-      if (cible.id === interaction.user.id) return interaction.reply({ content: 'Impossible de vous voler vous-même.', ephemeral: true });
-      if (Math.random() < 0.5) {
-        return runEcoAction(interaction, 'steal', cible);
-      } else {
-        try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
-        const eco = await getEconomyConfig(interaction.guild.id);
-        const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-        const penalty = Math.min(u.amount||0, 10);
-        u.amount = (u.amount||0) - penalty;
-        if (!u.cooldowns) u.cooldowns={};
-        const conf = eco.actions?.config?.steal || { cooldown: 1800 };
-        u.cooldowns.steal = Date.now() + (Math.max(0, conf.cooldown || 1800))*1000;
-        setEconomyUser(interaction.guild.id, interaction.user.id, u).catch(()=>{});
-        const msg = `😵 Échec du vol\n${pickRandom(STEAL_FAIL)}\nAmende ${penalty} ${eco.currency?.name || 'BAG$'}\nSolde: ${u.amount}`;
-        try { return await interaction.editReply({ content: msg }); } catch (_) { return; }
-      }
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'embrasser') {
-      const cible = interaction.options.getUser('cible');
-      return runEcoAction(interaction, 'kiss', cible);
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'flirter') {
-      const cible = interaction.options.getUser('cible');
-      return runEcoAction(interaction, 'flirt', cible);
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'séduire') {
-      const cible = interaction.options.getUser('cible');
-      return runEcoAction(interaction, 'seduce', cible);
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'fuck') {
-      const cible = interaction.options.getUser('cible');
-      return runEcoAction(interaction, 'fuck', cible);
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'masser') {
-      const cible = interaction.options.getUser('cible');
-      return runEcoAction(interaction, 'massage', cible);
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'danser') {
-      const cible = interaction.options.getUser('cible');
-      return runEcoAction(interaction, 'dance', cible);
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'crime') {
-      const cible = interaction.options.getUser('complice');
-      return runEcoAction(interaction, 'crime', cible);
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith('economy_page:')) {
-      const page = interaction.customId.split(':')[1];
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = page === 'actions' ? await buildEconomyActionsRows(interaction.guild) : await buildEconomySettingsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
-    }
-
-    if (interaction.isStringSelectMenu() && interaction.customId === 'economy_actions_pick') {
-      const key = interaction.values[0];
-      if (key === 'none') return interaction.deferUpdate();
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const c = eco.actions?.config?.[key] || {};
-      const modal = new ModalBuilder().setCustomId(`economy_actions_modal:${key}`).setTitle(`Modifier: ${actionKeyToLabel(key)}`);
-      const moneyMin = new TextInputBuilder().setCustomId('moneyMin').setLabel('Argent min').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('5').setValue(String(c.moneyMin ?? ''));
-      const moneyMax = new TextInputBuilder().setCustomId('moneyMax').setLabel('Argent max').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('15').setValue(String(c.moneyMax ?? ''));
-      const karma = new TextInputBuilder().setCustomId('karma').setLabel('Karma (charme/perversion)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('charme').setValue(c.karma === 'perversion' ? 'perversion' : 'charme');
-      const karmaDelta = new TextInputBuilder().setCustomId('karmaDelta').setLabel('Variation karma').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('1').setValue(String(c.karmaDelta ?? ''));
-      const cooldown = new TextInputBuilder().setCustomId('cooldown').setLabel('Cooldown (s)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('60').setValue(String(c.cooldown ?? ''));
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(moneyMin),
-        new ActionRowBuilder().addComponents(moneyMax),
-        new ActionRowBuilder().addComponents(karma),
-        new ActionRowBuilder().addComponents(karmaDelta),
-        new ActionRowBuilder().addComponents(cooldown)
-      );
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_actions_modal:')) {
-      await interaction.deferReply({ ephemeral: true });
-      const key = interaction.customId.split(':')[1];
-      const moneyMin = Number(interaction.fields.getTextInputValue('moneyMin')) || 0;
-      const moneyMax = Number(interaction.fields.getTextInputValue('moneyMax')) || 0;
-      const karmaTxt = (interaction.fields.getTextInputValue('karma')||'').toLowerCase().includes('per') ? 'perversion' : 'charm';
-      const karmaDelta = Number(interaction.fields.getTextInputValue('karmaDelta')) || 0;
-      const cooldown = Number(interaction.fields.getTextInputValue('cooldown')) || 0;
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const conf = { ...(eco.actions?.config || {}) };
-      conf[key] = { moneyMin, moneyMax, karma: karmaTxt, karmaDelta, cooldown };
-      await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), config: conf } });
-      return interaction.editReply({ content: `✅ Action "${actionKeyToLabel(key)}" mise à jour.` });
-    }
-
-    if (interaction.isButton() && interaction.customId === 'config_back_home') {
-      const embed = await buildConfigEmbed(interaction.guild);
-      const row = buildTopSectionRow();
-      return interaction.update({ embeds: [embed], components: [row] });
-    }
-
-    if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
-      try {
-        try { await interaction.deferReply({ ephemeral: true }); console.log('/economie: deferred'); } catch (eDef) { console.error('/economie: defer failed', eDef); }
-        const eco = await getEconomyConfig(interaction.guild?.id || '');
-        const u = await getEconomyUser(interaction.guild?.id || '', interaction.user.id);
-        const embed = buildEcoEmbed({
-          title: `Économie de ${interaction.user.username}`,
-          fields: [
-            { name: 'Argent', value: String(u.amount || 0), inline: true },
-            { name: 'Charme 🫦', value: String(u.charm || 0), inline: true },
-            { name: 'Perversion 😈', value: String(u.perversion || 0), inline: true },
-          ],
-        });
-        try {
-          console.log('/economie: editing reply with embed');
-          return await interaction.editReply({ embeds: [embed] });
-        } catch (eEdit) {
-          console.error('/economie: editReply failed', eEdit);
-          const text = `Économie de ${interaction.user.username}\nArgent: ${u.amount||0} ${eco.currency?.name || 'BAG$'}\nCharme 🫦: ${u.charm||0}\nPerversion 😈: ${u.perversion||0}`;
-          try {
-            console.log('/economie: editing reply with text');
-            return await interaction.editReply({ content: text, allowedMentions: { parse: [] } });
-          } catch (eEdit2) {
-            console.error('/economie: editReply (text) failed', eEdit2);
-            try {
-              console.log('/economie: replying fresh with text');
-              return await interaction.reply({ content: text, ephemeral: true, allowedMentions: { parse: [] } });
-            } catch (eReply) {
-              console.error('/economie: reply failed', eReply);
-              try {
-                console.log('/economie: channel.send fallback');
-                await interaction.channel?.send({ content: text, allowedMentions: { parse: [] } });
-                return;
-              } catch (eSend) {
-                console.error('/economie: channel.send failed', eSend);
-                return;
-              }
-            }
-          }
-        }
-      } catch (e1) {
-        console.error('/economie failed (defer/edit):', e1);
-        try { return await interaction.editReply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) {}
-        try { return await interaction.reply({ content: 'Erreur lors de l\'affichage de votre économie.', ephemeral: true }); } catch (_) { return; }
-      }
-    }
-
-    // /map: user sets their city, we geocode via LocationIQ
-    if (interaction.isChatInputCommand() && interaction.commandName === 'map') {
-      const city = interaction.options.getString('ville', true);
-      const apiKey = process.env.LOCATIONIQ_TOKEN || process.env.LOCATIONIQ_KEY || '';
-      if (!apiKey) return interaction.reply({ content: 'Clé API LocationIQ manquante. Ajoutez LOCATIONIQ_TOKEN au .env', ephemeral: true });
-      try {
-        await interaction.deferReply({ ephemeral: true });
-        const url = `https://us1.locationiq.com/v1/search.php?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(city)}&format=json&limit=1`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Geocoding HTTP ${res.status}`);
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) return interaction.editReply({ content: 'Ville introuvable. Vérifiez l\'orthographe.' });
-        const { lat, lon, display_name } = data[0];
-        await setUserLocation(interaction.guild.id, interaction.user.id, lat, lon, display_name || city);
-        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${lat},${lon}&zoom=10&size=640x400&format=png&markers=${encodeURIComponent(`${lat},${lon}`)}`;
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('📍 Localisation enregistrée').setDescription(`${display_name || city}`).setImage(map).setTimestamp(new Date());
-        return interaction.editReply({ embeds: [embed] });
-      } catch (e) {
-        console.error('/map error', e);
-        return interaction.editReply({ content: 'Erreur lors de la géolocalisation. Réessayez plus tard.' });
-      }
-    }
-
-    function haversineKm(lat1, lon1, lat2, lon2) {
-      const toRad = (d) => d * Math.PI / 180;
-      const R = 6371; // Earth radius km
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
-    }
-
-    // /proche: show members within 200km on a static map with markers
-    if (interaction.isChatInputCommand() && interaction.commandName === 'proche') {
-      const apiKey = process.env.LOCATIONIQ_TOKEN || process.env.LOCATIONIQ_KEY || '';
-      if (!apiKey) return interaction.reply({ content: 'Clé API LocationIQ manquante. Ajoutez LOCATIONIQ_TOKEN au .env', ephemeral: true });
-      const me = await getUserLocation(interaction.guild.id, interaction.user.id);
-      if (!me) return interaction.reply({ content: 'Définissez d\'abord votre ville avec /map.', ephemeral: true });
-      const distMax = Math.max(10, Math.min(1000, interaction.options.getInteger('distance') || 200));
-      const all = await getAllLocations(interaction.guild.id);
-      const nearby = [];
-      for (const [uid, loc] of Object.entries(all)) {
-        if (uid === String(interaction.user.id)) continue;
-        if (!loc || typeof loc.lat !== 'number' || typeof loc.lon !== 'number') continue;
-        const d = haversineKm(me.lat, me.lon, loc.lat, loc.lon);
-        if (d <= distMax) nearby.push({ uid, ...loc, dist: Math.round(d) });
-      }
-      if (nearby.length === 0) {
-        // Show map centered on user with their own marker
-        let map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&format=png`;
-        map += `&markers=${encodeURIComponent(`${me.lat},${me.lon}`)}`;
-        const embed = new EmbedBuilder()
-          .setColor(THEME_COLOR_ACCENT)
-          .setTitle(`🗺️ Membres proches (≤${distMax} km)`)
-          .setDescription('Aucun membre proche trouvé. Voici votre position.')
-          .setImage(map)
-          .setTimestamp(new Date());
-        return interaction.reply({ embeds: [embed] });
-      }
-      // Build URL with repeated markers parameters (works reliably)
-      let map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${me.lat},${me.lon}&zoom=7&size=800x500&format=png`;
-      map += `&markers=${encodeURIComponent(`${me.lat},${me.lon}`)}`;
-      for (const n of nearby.slice(0, 20)) {
-        map += `&markers=${encodeURIComponent(`${n.lat},${n.lon}`)}`;
-      }
-      const lines = nearby.sort((a,b)=>a.dist-b.dist).slice(0, 20).map(n => `• <@${n.uid}> — ${n.city||''} (${n.dist} km)`).join('\n');
-      const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle(`🗺️ Membres proches (≤${distMax} km)`).setDescription(lines).setImage(map).setTimestamp(new Date());
-      return interaction.reply({ embeds: [embed] });
-    }
-
-    // /localisation (admin): show all members on a map, or one member
-    if (interaction.isChatInputCommand() && interaction.commandName === 'localisation') {
-      const isAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
-      if (!isAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
-      const apiKey = process.env.LOCATIONIQ_TOKEN || process.env.LOCATIONIQ_KEY || '';
-      if (!apiKey) return interaction.reply({ content: 'Clé API LocationIQ manquante. Ajoutez LOCATIONIQ_TOKEN au .env', ephemeral: true });
-      const pick = interaction.options.getUser('membre');
-      if (pick) {
-        const loc = await getUserLocation(interaction.guild.id, pick.id);
-        if (!loc) return interaction.reply({ content: 'Aucune localisation pour ce membre.' });
-        const map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${loc.lat},${loc.lon}&zoom=8&size=800x500&format=png&markers=${encodeURIComponent(`${loc.lat},${loc.lon}`)}`;
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(`📍 Localisation de ${pick.username || pick.tag || pick.id}`).setDescription(loc.city||'').setImage(map).setTimestamp(new Date());
-        return interaction.reply({ embeds: [embed] });
-      } else {
-        const all = await getAllLocations(interaction.guild.id);
-        const entries = Object.entries(all);
-        if (entries.length === 0) return interaction.reply({ content: 'Aucune localisation enregistrée.' });
-        // center at guild approximate center: mean lat/lon
-        let sumLat=0, sumLon=0, count=0;
-        const marks = [];
-        for (const [uid, loc] of entries) {
-          if (!loc || typeof loc.lat !== 'number' || typeof loc.lon !== 'number') continue;
-          sumLat += loc.lat; sumLon += loc.lon; count++;
-          marks.push(`icon:small-blue,${loc.lat},${loc.lon}`);
-        }
-        const centerLat = count ? (sumLat / count) : 48.8566;
-        const centerLon = count ? (sumLon / count) : 2.3522;
-        let map = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(apiKey)}&center=${centerLat},${centerLon}&zoom=4&size=800x500&format=png`;
-        for (const m of marks.slice(0, 50)) {
-          const [_, lat, lon] = m.split(',');
-          map += `&markers=${encodeURIComponent(`${lat},${lon}`)}`;
-        }
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🗺️ Localisation des membres').setDescription(`Membres localisés: ${count}`).setImage(map).setTimestamp(new Date());
-        return interaction.reply({ embeds: [embed] });
-      }
-    }
-
-    // Suites UI rows
-    async function buildSuitesRows(guild) {
-      const eco = await getEconomyConfig(guild.id);
-      const catSelect = new ChannelSelectMenuBuilder()
-        .setCustomId('suites_category_select')
-        .setPlaceholder('Choisir la catégorie parent des suites privées…')
-        .setMinValues(1)
-        .setMaxValues(1)
-        .addChannelTypes(ChannelType.GuildCategory);
-      const pricesBtn = new ButtonBuilder().setCustomId('suites_set_prices').setLabel(`Prix: 1j ${eco.suites?.prices?.day||0} • 1sem ${eco.suites?.prices?.week||0} • 1mois ${eco.suites?.prices?.month||0}`).setStyle(ButtonStyle.Secondary);
-      const emojiBtn = new ButtonBuilder().setCustomId('suites_set_emoji').setLabel(`Emoji: ${eco.suites?.emoji || '💞'}`).setStyle(ButtonStyle.Secondary);
-      return [new ActionRowBuilder().addComponents(catSelect), new ActionRowBuilder().addComponents(pricesBtn, emojiBtn)];
-    }
-
-    if (interaction.isChannelSelectMenu() && interaction.customId === 'suites_category_select') {
-      const catId = interaction.values[0];
-      const eco = await getEconomyConfig(interaction.guild.id);
-      eco.suites = { ...(eco.suites||{}), categoryId: catId };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
-      const rows = [buildEconomyMenuSelect('suites'), ...(await buildSuitesRows(interaction.guild))];
-      return interaction.update({ embeds: [embed], components: [top, ...rows] });
-    }
-
-    if (interaction.isButton() && interaction.customId === 'suites_set_prices') {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const modal = new ModalBuilder().setCustomId('suites_prices_modal').setTitle('Prix suites privées');
-      const day = new TextInputBuilder().setCustomId('day').setLabel('1 jour').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(eco.suites?.prices?.day||0));
-      const week = new TextInputBuilder().setCustomId('week').setLabel('1 semaine').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(eco.suites?.prices?.week||0));
-      const month = new TextInputBuilder().setCustomId('month').setLabel('1 mois').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(eco.suites?.prices?.month||0));
-      modal.addComponents(new ActionRowBuilder().addComponents(day), new ActionRowBuilder().addComponents(week), new ActionRowBuilder().addComponents(month));
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId === 'suites_prices_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const day = Math.max(0, Number(interaction.fields.getTextInputValue('day'))||0);
-      const week = Math.max(0, Number(interaction.fields.getTextInputValue('week'))||0);
-      const month = Math.max(0, Number(interaction.fields.getTextInputValue('month'))||0);
-      const eco = await getEconomyConfig(interaction.guild.id);
-      eco.suites = { ...(eco.suites||{}), prices: { day, week, month } };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
-    }
-
-    if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
-      // Always defer to avoid InteractionNotReplied on slow render/generation
-      try { await interaction.deferReply(); } catch (_) { try { await interaction.reply({ content: '⏳ Génération de la carte…' }); } catch (_) {} }
-      try {
-        const levels = await getLevelsConfig(interaction.guild.id);
-        if (!levels.enabled) return interaction.editReply({ content: 'Les niveaux sont désactivés sur ce serveur.' });
-        const stats = await getUserStats(interaction.guild.id, interaction.user.id);
-        const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
-        const level = norm.level;
-        const xpSinceLevel = norm.xpSinceLevel;
-        const xpToNextLevel = xpForLevel(level + 1, levels.levelCurve || { base: 100, factor: 1.2 }) - xpForLevel(level, levels.levelCurve || { base: 100, factor: 1.2 });
-        const xpPercent = Math.floor(100 * xpSinceLevel / xpToNextLevel);
-        const xpBar = '▰'.repeat(Math.floor(xpPercent / 10)) + '▱'.repeat(10 - Math.floor(xpPercent / 10));
-        const rank = await getUserRank(interaction.guild.id, interaction.user.id);
-        const rankTotal = await getTotalUsersWithLevels(interaction.guild.id);
-        const rankPercent = Math.floor(100 * rank / rankTotal);
-        const rankBar = '▰'.repeat(Math.floor(rankPercent / 10)) + '▱'.repeat(10 - Math.floor(rankPercent / 10));
-        const embed = new EmbedBuilder()
-          .setColor(THEME_COLOR_PRIMARY)
-          .setTitle(`Niveau de ${interaction.user.username}`)
-          .setDescription(`
-            Niveau: ${level}
-            XP: ${stats.xp}
-            Prochain niveau: ${level + 1} (${xpSinceLevel}/${xpToNextLevel})
-            ${xpBar}
-            Classement: ${rank}/${rankTotal}
-            ${rankBar}
-          `)
-          .setTimestamp(new Date());
-        const canvas = createCanvas(600, 200);
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#222222';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '30px Arial';
-        ctx.fillText(`Niveau ${level}`, 20, 50);
-        ctx.fillText(`XP: ${stats.xp}`, 20, 100);
-        ctx.fillText(`Prochain niveau: ${level + 1} (${xpSinceLevel}/${xpToNextLevel})`, 20, 150);
-        ctx.fillText(`Classement: ${rank}/${rankTotal}`, 20, 200);
-        const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'level.png' });
-        embed.setImage('attachment://level.png');
-        return interaction.editReply({ embeds: [embed], files: [attachment] });
-      } catch (e) {
-        console.error('/niveau error', e);
-        return interaction.editReply({ content: 'Erreur lors de la génération de la carte de niveau.' });
-      }
-    }
-  } catch (e) {
-    console.error('Interaction error', e);
-    try { return await interaction.reply({ content: 'Erreur lors du traitement de la commande.', ephemeral: true }); } catch (_) { return; }
-  }
-});
-client.login(process.env.DISCORD_TOKEN);
-function pickRandom(array) { return array[Math.floor(Math.random() * array.length)] }
-const WORK_SUCCESS = ['Belle journée de travail, mission accomplie !','Vous avez brillamment terminé votre tâche.','Prime méritée pour votre efficacité.','Vos efforts paient, bien joué !']
-const WORK_FAIL = ['Contretemps au bureau…','Le projet a été reporté, pas de gain aujourd\'hui.','Panne système, impossible de travailler.']
-const KISS_SUCCESS = ['Un doux moment partagé 💋','Baiser accepté 🫦','Tendresse réciproque.']
-const KISS_FAIL = ['Baiser esquivé…','Mauvais timing, désolé.','Refus poli.']
-const FLIRT_SUCCESS = ['Le charme opère ✨','Clin d\'œil réussi 😉','Conversation enflammée.']
-const FLIRT_FAIL = ['Le courant ne passe pas…','Tentative maladroite.','Message vu… ignoré.']
-const SEDUCE_SUCCESS = ['Séduction réussie 🔥','Alchimie évidente.','Étincelles dans l\'air.']
-const SEDUCE_FAIL = ['Pas aujourd\'hui…','Ça n\'a pas pris.','Tentation sans suite.']
-const FUCK_SUCCESS = ['Moment intense 😈','Passion déchaînée.','Nuit mémorable.']
-const FUCK_FAIL = ['Pas d\'humeur…','Fatigue, une autre fois.','Ambiance retombée.']
-const MASSAGE_SUCCESS = ['Détente absolue 💆','Tensions envolées.','Relaxation profonde.']
-const MASSAGE_FAIL = ['Crampes… raté.','Huile renversée, oups.','Nœud récalcitrant.']
-const DANCE_SUCCESS = ['Choré synchro 💃','Pas de danse parfaits.','Ambiance de folie.']
-const DANCE_FAIL = ['Deux pieds gauches…','Musique coupée !','Glissade imprévue.']
-const CRIME_SUCCESS = ['Coup monté réussi 🕶️','Plan sans faute.','Aucune trace laissée.']
-const CRIME_FAIL = ['Sirènes au loin… fuyez !','Plan compromis.','Informateur douteux.']
-const FISH_SUCCESS = ['Félicitations, vous avez pêché un thon !','Bravo, vous avez pêché un magnifique saumon !','Incroyable, une carpe dorée mord à l\'hameçon !','Quel talent ! Un brochet impressionnant !','Un bar splendide pour le dîner !']
-const FISH_FAIL = ['Aïe… la ligne s\'est emmêlée, rien attrapé.','Juste une vieille botte… pas de chance !','Le poisson s\'est échappé au dernier moment !','Silence radio sous l\'eau… aucun poisson aujourd\'hui.']
-const STEAL_SUCCESS = ['Vol réussi… mais restez discret.','Votre coup a payé.','Butin acquis sans être vu.']
-const STEAL_FAIL = ['Pris la main dans le sac !','Tentative avortée.','La cible vous a repéré.']
 // GIFs per action (success/fail)
 const ACTION_GIFS = {
   work: {
@@ -3792,7 +3279,7 @@ client.on(Events.MessageCreate, async (message) => {
               .setColor(THEME_COLOR_PRIMARY)
               .setAuthor({ name: 'BAG • Disboard' })
               .setTitle('✨ Merci pour le bump !')
-              .setDescription(`Votre soutien fait rayonner le serveur. Le cooldown de 2 heures démarre maintenant.\n\n• Prochain rappel automatique: dans 2h\n• Salon: <#${message.channel.id}>\n\nRestez sexy, beaux/belles gosses 😘`)
+              .setDescription('Votre soutien fait rayonner le serveur. Le cooldown de 2 heures démarre maintenant.\n\n• Prochain rappel automatique: dans 2h\n• Salon: <#' + message.channel.id + '>\n\nRestez sexy, beaux/belles gosses 😘')
               .setThumbnail(THEME_IMAGE)
               .setFooter({ text: 'BAG • Premium' })
               .setTimestamp(new Date());
@@ -3808,16 +3295,16 @@ client.on(Events.MessageCreate, async (message) => {
         if (!message.hasThread) {
           const now = new Date();
           const num = (at.counter || 1);
-          let name = `Sujet-${num}`;
+          let name = 'Sujet-' + num;
           const mode = at.naming?.mode || 'member_num';
-          if (mode === 'member_num') name = `${message.member?.displayName || message.author.username}-${num}`;
+          if (mode === 'member_num') name = (message.member?.displayName || message.author.username) + '-' + num;
           else if (mode === 'custom' && at.naming?.customPattern) name = (at.naming.customPattern || '').replace('{num}', String(num)).replace('{user}', message.member?.displayName || message.author.username).substring(0, 90);
           else if (mode === 'nsfw') {
             const base = (at.nsfwNames||['Velours','Nuit Rouge','Écarlate','Aphrodite','Énigme','Saphir','Nocturne','Scarlett','Mystique','Aphrodisia'])[Math.floor(Math.random()*10)];
             const suffix = Math.floor(100 + Math.random()*900);
-            name = `${base}-${suffix}`;
-          } else if (mode === 'numeric') name = `${num}`;
-          else if (mode === 'date_num') name = `${now.toISOString().slice(0,10)}-${num}`;
+            name = base + '-' + suffix;
+          } else if (mode === 'numeric') name = String(num);
+          else if (mode === 'date_num') name = now.toISOString().slice(0,10) + '-' + num;
           const policy = at.archive?.policy || '7d';
           const archiveMap = { '1d': 1440, '7d': 10080, '1m': 43200, 'max': 10080 };
           const autoArchiveDuration = archiveMap[policy] || 10080;
@@ -3873,7 +3360,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
         if (!Number.isFinite(value)) {
           await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-          await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Oups… valeur invalide').setDescription(`Attendu: **${expected0}**\nRemise à zéro → **1**\n<@${message.author.id}>, on repart en douceur.`).setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
+          await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Oups… valeur invalide').setDescription('Attendu: **' + expected0 + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, on repart en douceur.').setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
         } else {
           const next = Math.trunc(value);
           const state = cfg.state || { current: 0, lastUserId: '' };
