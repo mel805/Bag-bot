@@ -1862,7 +1862,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return Promise.race([client.music.search(q, user), t]);
         };
         const isUrl = /^https?:\/\//i.test(query);
-        const attempts = isUrl ? [query] : [`ytsearch:${query}`, `ytmsearch:${query}`, `scsearch:${query}`];
+        let normalized = query;
+        try {
+          if (isUrl) {
+            const u = new URL(query);
+            if (u.hostname === 'music.youtube.com') {
+              u.hostname = 'www.youtube.com';
+              normalized = u.toString();
+            }
+          }
+        } catch (_) {}
+        const attempts = isUrl ? [normalized] : [`ytmsearch:${query}`, `scsearch:${query}`, `ytsearch:${query}`];
         let res = null;
         for (const attempt of attempts) {
           try {
