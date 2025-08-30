@@ -153,8 +153,24 @@ function startYtProxyServer() {
   } catch (_) { /* ignore */ }
 }
 
-const THEME_COLOR_PRIMARY = 0x1e88e5; // blue
-const THEME_COLOR_ACCENT = 0xec407a; // pink
+// Enhanced color palette for better Discord rendering
+const THEME_COLORS = {
+  PRIMARY: 0x1e88e5,     // Blue
+  ACCENT: 0xec407a,      // Pink
+  SUCCESS: 0x4caf50,     // Green
+  WARNING: 0xff9800,     // Orange
+  ERROR: 0xf44336,       // Red
+  INFO: 0x2196f3,        // Light Blue
+  PURPLE: 0x9c27b0,      // Purple
+  TEAL: 0x009688,        // Teal
+  GOLD: 0xffd700,        // Gold
+  ROSE_GOLD: 0xe6a2b8,   // Rose Gold
+  DARK: 0x2c2f33,        // Dark Gray
+  LIGHT: 0xeceff4        // Light Gray
+};
+
+const THEME_COLOR_PRIMARY = THEME_COLORS.PRIMARY;
+const THEME_COLOR_ACCENT = THEME_COLORS.ACCENT;
 const THEME_IMAGE = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68b08cda&is=68af3b5a&hm=2e68cb9d7dfc7a60465aa74447b310348fc2d7236e74fa7c08f9434c110d7959&';
 
 const DELAY_OPTIONS = [
@@ -185,15 +201,41 @@ async function isStaffMember(guild, member) {
   return member?.permissions?.has?.(PermissionsBitField.Flags.ModerateMembers) || false;
 }
 
-function buildModEmbed(title, description, extras) {
+function buildModEmbed(title, description, extras, options = {}) {
+  // Determine color based on action type
+  let color = THEME_COLOR_ACCENT;
+  if (title.includes('Arrivée') || title.includes('créé')) color = THEME_COLORS.SUCCESS;
+  else if (title.includes('Départ') || title.includes('supprimé')) color = THEME_COLORS.WARNING;
+  else if (title.includes('Erreur') || title.includes('Échec')) color = THEME_COLORS.ERROR;
+  else if (title.includes('Sauvegarde') || title.includes('Info')) color = THEME_COLORS.INFO;
+  else if (options.color) color = options.color;
+
+  // Enhanced title with emoji context
+  let enhancedTitle = title;
+  if (!title.includes('•') && !title.includes('🎉') && !title.includes('💋')) {
+    if (title.includes('Arrivée')) enhancedTitle = `🎉 ${title}`;
+    else if (title.includes('Départ')) enhancedTitle = `👋 ${title}`;
+    else if (title.includes('Message supprimé')) enhancedTitle = `🗑️ ${title}`;
+    else if (title.includes('Message modifié')) enhancedTitle = `✏️ ${title}`;
+    else if (title.includes('Thread')) enhancedTitle = `🧵 ${title}`;
+    else if (title.includes('Sauvegarde')) enhancedTitle = `💾 ${title}`;
+  }
+
   const embed = new EmbedBuilder()
-    .setColor(THEME_COLOR_ACCENT)
-    .setTitle(title)
+    .setColor(color)
+    .setTitle(enhancedTitle)
     .setDescription(description || null)
     .setThumbnail(THEME_IMAGE)
     .setTimestamp(new Date())
-    .setFooter({ text: 'BAG • Modération' });
-  if (Array.isArray(extras) && extras.length) embed.addFields(extras);
+    .setFooter({ text: 'BAG • Modération', iconURL: options.footerIcon });
+  
+  if (Array.isArray(extras) && extras.length) {
+    embed.addFields(extras.map(field => ({
+      ...field,
+      inline: field.inline !== false // Default to inline for better layout
+    })));
+  }
+  
   return embed;
 }
 
@@ -268,22 +310,39 @@ async function buildConfigEmbed(guild) {
     return `• Niveau ${lvl} → ${role ? role : `<@&${rid}>`}`;
   }).join('\n') : '—';
 
-  const embed = new EmbedBuilder()
-    .setColor(THEME_COLOR_PRIMARY)
-    .setTitle('BAG · Configuration')
-    .setDescription("Choisissez une section puis ajustez les paramètres.")
-    .addFields(
-      { name: 'Rôles Staff', value: staffList },
-      { name: 'AutoKick', value: `État: ${ak.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nRôle requis: ${roleDisplay}\nDélai: ${formatDuration(ak.delayMs)}` },
-      { name: 'Levels', value: `État: ${levels.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\nXP texte: ${levels.xpPerMessage}\nXP vocal/min: ${levels.xpPerVoiceMinute}\nCourbe: base=${levels.levelCurve.base}, facteur=${levels.levelCurve.factor}` },
-      { name: 'Récompenses (niveau → rôle)', value: rewardsText }
-    )
-    .setThumbnail(THEME_IMAGE)
-    .setImage(THEME_IMAGE);
-
   const avatar = client.user && client.user.displayAvatarURL ? client.user.displayAvatarURL() : null;
-  if (avatar) embed.setFooter({ text: 'Boy and Girls (BAG) • Config', iconURL: avatar });
-  else embed.setFooter({ text: 'Boy and Girls (BAG) • Config' });
+  
+  const embed = createEnhancedEmbed({
+    title: '⚙️ BAG · Configuration',
+    description: '**Panneau de configuration avancé** 🎛️\n\n> Choisissez une section puis ajustez les paramètres\n\n*Personnalisez votre serveur selon vos besoins* ✨',
+    color: pickThemeColorForGuild(guild),
+    thumbnail: THEME_IMAGE,
+    image: THEME_IMAGE,
+    footerText: 'Boy and Girls (BAG) • Config',
+    footerIcon: avatar,
+    fields: [
+      { 
+        name: '👥 Rôles Staff', 
+        value: staffList || '*Aucun rôle configuré*', 
+        inline: true 
+      },
+      { 
+        name: '🚪 AutoKick', 
+        value: `**État:** ${ak.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\n**Rôle requis:** ${roleDisplay}\n**Délai:** ${formatDuration(ak.delayMs)}`, 
+        inline: true 
+      },
+      { 
+        name: '📊 Système de Niveaux', 
+        value: `**État:** ${levels.enabled ? 'Activé ✅' : 'Désactivé ⛔'}\n**XP texte:** ${levels.xpPerMessage}\n**XP vocal/min:** ${levels.xpPerVoiceMinute}\n**Courbe:** base=${levels.levelCurve.base}, facteur=${levels.levelCurve.factor}`, 
+        inline: true 
+      },
+      { 
+        name: '🏆 Récompenses (niveau → rôle)', 
+        value: rewardsText || '*Aucune récompense configurée*', 
+        inline: false 
+      }
+    ]
+  });
 
   return embed;
 }
@@ -465,6 +524,33 @@ function getLastRewardForLevel(levels, currentLevel) {
   }
   return best;
 }
+
+// Add subtle particle effects to enhance visual appeal
+function drawParticleEffects(ctx, width, height) {
+  ctx.save();
+  // Create subtle sparkle effects
+  const particleCount = 12;
+  for (let i = 0; i < particleCount; i++) {
+    const x = Math.random() * width;
+    const y = Math.random() * height;
+    const size = Math.random() * 3 + 1;
+    const opacity = Math.random() * 0.4 + 0.1;
+    
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = `rgba(30, 136, 229, ${opacity})`;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add a subtle glow
+    ctx.shadowColor = 'rgba(30, 136, 229, 0.3)';
+    ctx.shadowBlur = size * 2;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Enhanced card drawing with visual effects
 async function drawCard(backgroundUrl, title, lines, progressRatio, progressText, avatarUrl, centerText) {
   try {
     const entry = await getCachedImage(backgroundUrl);
@@ -477,9 +563,21 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(entry.img, 0, 0, width, height);
-    // overlay panel
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    
+    // Add subtle particle effects
+    drawParticleEffects(ctx, width, height);
+    // Enhanced overlay panel with gradient
+    const overlayGradient = ctx.createLinearGradient(24, 24, 24, height - 24);
+    overlayGradient.addColorStop(0, 'rgba(0,0,0,0.3)');
+    overlayGradient.addColorStop(0.5, 'rgba(0,0,0,0.6)');
+    overlayGradient.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = overlayGradient;
     ctx.fillRect(24, 24, width - 48, height - 48);
+    
+    // Add subtle border glow
+    ctx.strokeStyle = 'rgba(30, 136, 229, 0.3)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(24, 24, width - 48, height - 48);
     // optional avatar (top-right, larger)
     if (avatarUrl) {
       const av = await getCachedImage(avatarUrl);
@@ -496,31 +594,77 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
         ctx.clip();
         ctx.drawImage(av.img, x, y, size, size);
         ctx.restore();
-        // ring
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        // Enhanced ring with glow effect
+        ctx.save();
+        // Outer glow
+        ctx.shadowColor = 'rgba(30, 136, 229, 0.8)';
+        ctx.shadowBlur = 15;
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
         ctx.beginPath();
         ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
         ctx.stroke();
+        
+        // Inner highlight ring
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(30, 136, 229, 0.6)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, size / 2 - 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
     }
-    // title (slightly bigger)
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-    ctx.lineWidth = 2;
+    // Enhanced title with gradient and glow
+    ctx.save();
     ctx.font = '600 32px Georgia, "Times New Roman", Serif';
     ctx.textBaseline = 'top';
+    
+    // Create gradient for title text
+    const titleGradient = ctx.createLinearGradient(48, 48, 48, 80);
+    titleGradient.addColorStop(0, '#ffffff');
+    titleGradient.addColorStop(1, '#e3f2fd');
+    
+    // Outer glow
+    ctx.shadowColor = 'rgba(30, 136, 229, 0.6)';
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    ctx.lineWidth = 3;
     ctx.strokeText(title, 48, 48);
+    
+    // Reset shadow and apply gradient fill
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = titleGradient;
     ctx.fillText(title, 48, 48);
-    // content (slightly bigger)
-    ctx.font = '18px Georgia, "Times New Roman", Serif';
+    ctx.restore();
+    // Enhanced content with better styling
     let y = 100;
     for (const line of lines) {
       const isEmphasis = line.startsWith('Niveau:') || line.startsWith('Dernière récompense:');
+      ctx.save();
       ctx.font = isEmphasis ? '600 22px Georgia, "Times New Roman", Serif' : '18px Georgia, "Times New Roman", Serif';
-      ctx.lineWidth = 2;
+      
+      if (isEmphasis) {
+        // Gradient for emphasis lines
+        const emphasisGradient = ctx.createLinearGradient(48, y, 48, y + 22);
+        emphasisGradient.addColorStop(0, '#ffd700');
+        emphasisGradient.addColorStop(1, '#ffb300');
+        ctx.fillStyle = emphasisGradient;
+        
+        // Subtle glow for emphasis
+        ctx.shadowColor = 'rgba(255, 215, 0, 0.4)';
+        ctx.shadowBlur = 4;
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 2;
+      }
+      
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = isEmphasis ? 2 : 1;
       ctx.strokeText(line, 48, y);
       ctx.fillText(line, 48, y);
+      ctx.restore();
       y += isEmphasis ? 30 : 28;
     }
     // centered celebration text
@@ -560,16 +704,41 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
         ctx.strokeText(progressText, 48, barY - 22);
         ctx.fillText(progressText, 48, barY - 22);
       }
-      // bg
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      // Enhanced progress bar with gradients and glow
+      ctx.save();
+      
+      // Background with subtle gradient
+      const bgGradient = ctx.createLinearGradient(barX, barY, barX, barY + barH);
+      bgGradient.addColorStop(0, 'rgba(255,255,255,0.1)');
+      bgGradient.addColorStop(1, 'rgba(255,255,255,0.2)');
+      ctx.fillStyle = bgGradient;
       ctx.fillRect(barX, barY, barW, barH);
-      // fill
-      ctx.fillStyle = '#1e88e5';
-      ctx.fillRect(barX, barY, Math.round(barW * ratio), barH);
-      // border
+      
+      // Progress fill with animated gradient
+      if (ratio > 0) {
+        const progressGradient = ctx.createLinearGradient(barX, barY, barX, barY + barH);
+        progressGradient.addColorStop(0, '#42a5f5');
+        progressGradient.addColorStop(0.5, '#1e88e5');
+        progressGradient.addColorStop(1, '#1565c0');
+        ctx.fillStyle = progressGradient;
+        
+        // Add glow to progress bar
+        ctx.shadowColor = 'rgba(30, 136, 229, 0.5)';
+        ctx.shadowBlur = 6;
+        ctx.fillRect(barX, barY, Math.round(barW * ratio), barH);
+        ctx.shadowBlur = 0;
+      }
+      
+      // Enhanced border
       ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.strokeRect(barX, barY, barW, barH);
+      
+      // Inner border highlight
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(30, 136, 229, 0.4)';
+      ctx.strokeRect(barX + 1, barY + 1, barW - 2, barH - 2);
+      ctx.restore();
     }
     return canvas.toBuffer('image/png');
   } catch (_) {
@@ -633,10 +802,21 @@ async function drawCertifiedCard(options) {
     ctx.imageSmoothingEnabled = true;
     if (entry) ctx.drawImage(entry.img, 0, 0, width, height);
     else {
-      const bg = ctx.createLinearGradient(0, 0, 0, height);
-      bg.addColorStop(0, '#141414');
-      bg.addColorStop(1, '#1e1e1e');
+      // Enhanced fallback background with sophisticated gradient
+      const bg = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
+      bg.addColorStop(0, '#2a2a2a');
+      bg.addColorStop(0.3, '#1e1e1e');
+      bg.addColorStop(0.7, '#141414');
+      bg.addColorStop(1, '#0a0a0a');
       ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Add subtle texture overlay
+      const textureGradient = ctx.createLinearGradient(0, 0, width, height);
+      textureGradient.addColorStop(0, 'rgba(30, 136, 229, 0.05)');
+      textureGradient.addColorStop(0.5, 'rgba(236, 64, 122, 0.03)');
+      textureGradient.addColorStop(1, 'rgba(30, 136, 229, 0.05)');
+      ctx.fillStyle = textureGradient;
       ctx.fillRect(0, 0, width, height);
     }
     // Soft vignette
@@ -784,11 +964,156 @@ async function fetchMember(guild, userId) {
 }
 
 function pickThemeColorForGuild(guild) {
-  const palette = [0x1e88e5, 0xec407a, 0x26a69a, 0x8e24aa, 0xff7043];
+  const palette = [
+    THEME_COLORS.PRIMARY,   // Blue
+    THEME_COLORS.ACCENT,    // Pink
+    THEME_COLORS.TEAL,      // Teal
+    THEME_COLORS.PURPLE,    // Purple
+    THEME_COLORS.WARNING,   // Orange
+    THEME_COLORS.INFO,      // Light Blue
+    THEME_COLORS.GOLD       // Gold
+  ];
   const id = String(guild?.id || '0');
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 33 + id.charCodeAt(i)) >>> 0;
   return palette[hash % palette.length];
+}
+
+// Enhanced embed builder with rich visual effects
+function createEnhancedEmbed(options = {}) {
+  const {
+    title,
+    description,
+    color = THEME_COLOR_PRIMARY,
+    thumbnail = THEME_IMAGE,
+    footerText = 'Boy and Girls (BAG)',
+    footerIcon,
+    fields = [],
+    author,
+    image,
+    url,
+    timestamp = true
+  } = options;
+
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setDescription(description);
+
+  if (thumbnail) embed.setThumbnail(thumbnail);
+  if (image) embed.setImage(image);
+  if (url) embed.setURL(url);
+  if (timestamp) embed.setTimestamp(new Date());
+  if (footerText) embed.setFooter({ text: footerText, iconURL: footerIcon });
+  if (author) embed.setAuthor(author);
+  if (fields.length) embed.addFields(fields);
+
+  return embed;
+}
+
+// Enhanced status embed with visual indicators
+function createStatusEmbed(title, status, details = {}) {
+  const {
+    isEnabled = false,
+    description,
+    fields = [],
+    color,
+    icon = '⚙️'
+  } = details;
+
+  const statusColor = color || (isEnabled ? THEME_COLORS.SUCCESS : THEME_COLORS.WARNING);
+  const statusText = isEnabled ? '✅ Activé' : '⛔ Désactivé';
+  const statusIcon = isEnabled ? '🟢' : '🔴';
+
+  return createEnhancedEmbed({
+    title: `${icon} ${title}`,
+    description: `**Statut:** ${statusIcon} ${statusText}\n\n${description || '*Configuration du module*'}\n\n> ${isEnabled ? 'Module opérationnel' : 'Module désactivé'}`,
+    color: statusColor,
+    fields: [
+      { name: '📊 État', value: statusText, inline: true },
+      { name: '🔧 Module', value: title.replace(/[⚙️🎵🏆🛡️💰🎮🔒📝🧵💾]/g, '').trim(), inline: true },
+      { name: '⏰ Mis à jour', value: '<t:' + Math.floor(Date.now()/1000) + ':R>', inline: true },
+      ...fields
+    ],
+    footerText: 'BAG • Configuration'
+  });
+}
+
+// Specialized embed creators for different contexts
+function createSuccessEmbed(title, description, fields = []) {
+  return createEnhancedEmbed({
+    title: `✅ ${title}`,
+    description: `**Opération réussie !** 🎉\n\n${description}`,
+    color: THEME_COLORS.SUCCESS,
+    fields: fields
+  });
+}
+
+function createErrorEmbed(title, description, fields = []) {
+  return createEnhancedEmbed({
+    title: `❌ ${title}`,
+    description: `**Une erreur s'est produite** ⚠️\n\n${description}`,
+    color: THEME_COLORS.ERROR,
+    fields: fields
+  });
+}
+
+function createInfoEmbed(title, description, fields = []) {
+  return createEnhancedEmbed({
+    title: `ℹ️ ${title}`,
+    description: `**Information** 📋\n\n${description}`,
+    color: THEME_COLORS.INFO,
+    fields: fields
+  });
+}
+
+function createWarningEmbed(title, description, fields = []) {
+  return createEnhancedEmbed({
+    title: `⚠️ ${title}`,
+    description: `**Attention** 🚨\n\n${description}`,
+    color: THEME_COLORS.WARNING,
+    fields: fields
+  });
+}
+
+// Enhanced level-up embed with celebration effects
+function createLevelUpEmbed(memberName, level, guildName, options = {}) {
+  const {
+    xp = 0,
+    nextLevelXp = 0,
+    reward = null,
+    isFirstLevel = false
+  } = options;
+
+  const celebrationTitle = isFirstLevel 
+    ? '🎊 Premier Niveau Atteint !' 
+    : `🎉 Niveau ${level} Débloqué !`;
+    
+  const description = isFirstLevel
+    ? `**${memberName}** vient de débuter son aventure sur **${guildName}** ! 🚀\n\n> Bienvenue dans la communauté BAG !\n\n*C'est le début d'une grande aventure* ✨`
+    : `**${memberName}** continue son ascension ! 🌟\n\n> Niveau **${level}** atteint avec brio\n\n*L'excellence récompensée* 🏆`;
+
+  const fields = [
+    { name: '📊 Niveau', value: `**${level}**`, inline: true },
+    { name: '⭐ XP Total', value: xp.toLocaleString('fr-FR'), inline: true }
+  ];
+
+  if (reward) {
+    fields.push({ name: '🎁 Récompense', value: reward, inline: true });
+  }
+
+  if (nextLevelXp > 0) {
+    fields.push({ name: '🎯 Prochain Niveau', value: `${nextLevelXp.toLocaleString('fr-FR')} XP`, inline: true });
+  }
+
+  return createEnhancedEmbed({
+    title: celebrationTitle,
+    description: description,
+    color: isFirstLevel ? THEME_COLORS.SUCCESS : THEME_COLORS.GOLD,
+    thumbnail: THEME_IMAGE,
+    fields: fields,
+    footerText: 'BAG • Système de Niveaux'
+  });
 }
 
 async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
@@ -807,13 +1132,19 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
   }));
   const color = pickThemeColorForGuild(guild);
   const total = entriesSorted.length;
-  const embed = new EmbedBuilder()
-    .setColor(color)
-    .setAuthor({ name: `${guild.name} • Classement des niveaux`, iconURL: guild.iconURL?.() || undefined })
-    .setDescription(lines.join('\n') || '—')
-    .setThumbnail(THEME_IMAGE)
-    .setFooter({ text: `Boy and Girls (BAG) • ${offset + 1}-${Math.min(total, offset + limit)} sur ${total}` })
-    .setTimestamp(new Date());
+  const embed = createEnhancedEmbed({
+    title: '🏆 Classement des Niveaux',
+    description: `**Voici le top des membres les plus actifs !** 🌟\n\n${lines.join('\n') || '—'}\n\n*Continuez à être actifs pour grimper dans le classement !* 📈`,
+    color: color,
+    author: { name: `${guild.name} • Hall of Fame`, iconURL: guild.iconURL?.() || undefined },
+    thumbnail: THEME_IMAGE,
+    footerText: `Boy and Girls (BAG) • ${offset + 1}-${Math.min(total, offset + limit)} sur ${total}`,
+    fields: [
+      { name: '📊 Statistiques', value: `**Total:** ${total} membres\n**Page:** ${Math.floor(offset/limit)+1}/${Math.ceil(total/limit)}`, inline: true },
+      { name: '🎯 Légende', value: '🥇 Top 1\n🥈 Top 2\n🥉 Top 3', inline: true },
+      { name: '📈 Activité', value: 'Messages + Vocal', inline: true }
+    ]
+  });
 
   const components = [];
   const row = new ActionRowBuilder();
@@ -1209,13 +1540,17 @@ client.once(Events.ClientReady, (readyClient) => {
       if (now - d.lastBumpAt >= TWO_HOURS) {
         const ch = guild.channels.cache.get(d.lastBumpChannelId) || await guild.channels.fetch(d.lastBumpChannelId).catch(()=>null);
         if (ch && ch.isTextBased?.()) {
-          const embed = new EmbedBuilder()
-            .setColor(THEME_COLOR_ACCENT)
-            .setTitle('💋 Un petit bump, beau/belle gosse ?')
-            .setDescription('Deux heures se sont écoulées… Faites vibrer le serveur à nouveau avec `/bump` 😈🔥')
-            .setThumbnail(THEME_IMAGE)
-            .setFooter({ text: 'BAG • Disboard' })
-            .setTimestamp(new Date());
+                  const embed = createEnhancedEmbed({
+          title: '💋 Un petit bump, beau/belle gosse ?',
+          description: '**Deux heures se sont écoulées…** 🕐\n\n> Faites vibrer le serveur à nouveau avec `/bump` 😈🔥\n\n*Le serveur a besoin de votre énergie !* ✨',
+          color: THEME_COLORS.ACCENT,
+          footerText: 'BAG • Disboard',
+          fields: [
+            { name: '⏰ Temps écoulé', value: '2 heures', inline: true },
+            { name: '🎯 Action', value: 'Utilisez `/bump`', inline: true },
+            { name: '🔥 Boost', value: 'Remontez le serveur !', inline: true }
+          ]
+        });
           await ch.send({ embeds: [embed] }).catch(()=>{});
         }
         await updateDisboardConfig(guild.id, { reminded: true });
@@ -1230,9 +1565,11 @@ client.once(Events.ClientReady, (readyClient) => {
       if (!guild) return;
       const cfg = await getLogsConfig(guild.id);
       if (!cfg?.categories?.backup) return;
-      const embed = buildModEmbed(`${cfg.emoji} Sauvegarde`, `Snapshot de l'état du bot enregistré.`, [
-        { name: 'Horodatage', value: new Date().toLocaleString('fr-FR') }
-      ]);
+      const embed = buildModEmbed(`${cfg.emoji} Sauvegarde`, `**Snapshot de l'état du bot enregistré avec succès** 💾\n\n> Toutes les données ont été sauvegardées\n\n*Votre configuration est en sécurité* 🔒`, [
+        { name: '📅 Horodatage', value: new Date().toLocaleString('fr-FR'), inline: true },
+        { name: '💾 Type', value: 'Sauvegarde automatique', inline: true },
+        { name: '✅ Statut', value: 'Succès', inline: true }
+      ], { color: THEME_COLORS.SUCCESS });
       await sendLog(guild, 'backup', embed);
     } catch (_) {}
   }, 30 * 60 * 1000);
@@ -2404,7 +2741,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       }
       if (thread) {
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setAuthor({ name: 'Réponse anonyme' }).setDescription(text).setTimestamp(new Date());
+        const embed = createEnhancedEmbed({
+          title: '💬 Réponse Anonyme',
+          description: `> ${text}\n\n*Message posté de manière anonyme* 🕶️`,
+          color: THEME_COLORS.PURPLE,
+          author: { name: 'Système de Confession', iconURL: THEME_IMAGE },
+          footerText: 'BAG • Confession Anonyme',
+          fields: [
+            { name: '🔒 Confidentialité', value: 'Identité protégée', inline: true },
+            { name: '⏰ Posté', value: '<t:' + Math.floor(Date.now()/1000) + ':R>', inline: true }
+          ]
+        });
         const sent = await thread.send({ embeds: [embed] }).catch(()=>null);
         // Admin log for anonymous reply
         try {
@@ -2498,7 +2845,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
-      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Boutique BAG').setDescription('Sélectionnez un article à acheter.').setThumbnail(THEME_IMAGE);
+      const embed = createEnhancedEmbed({
+        title: '🛍️ Boutique BAG',
+        description: '**Bienvenue dans la boutique exclusive !** 💎\n\n> Sélectionnez un article à acheter ci-dessous\n\n*Découvrez nos articles premium et récompenses uniques* ✨',
+        color: THEME_COLORS.GOLD,
+        author: { name: 'Boutique Premium', iconURL: THEME_IMAGE },
+        fields: [
+          { name: '💰 Monnaie', value: 'Coins BAG', inline: true },
+          { name: '🎁 Récompenses', value: 'Articles exclusifs', inline: true },
+          { name: '⭐ Statut', value: 'Membre VIP', inline: true }
+        ]
+      });
       const rows = await buildBoutiqueRows(interaction.guild);
       return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
     }
@@ -2631,14 +2988,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!player.playing && !player.paused) player.play({ volume: 100 });
         const firstTrack = res.tracks[0] || { title: 'Inconnu', uri: '' };
         if (wasPlaying) {
-          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('➕ Ajouté à la file').setDescription(`[${firstTrack.title}](${firstTrack.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
+          const embed = createEnhancedEmbed({
+            title: '➕ Ajouté à la file',
+            description: `🎵 **[${firstTrack.title}](${firstTrack.uri})**\n\n*Piste ajoutée avec succès à la file d'attente*`,
+            color: THEME_COLORS.SUCCESS,
+            footerText: 'BAG • Musique',
+            fields: [
+              { name: '🎶 Statut', value: 'En file d\'attente', inline: true },
+              { name: '⏱️ Ajouté', value: '<t:' + Math.floor(Date.now()/1000) + ':R>', inline: true }
+            ]
+          });
           await interaction.editReply({ embeds: [embed] });
         } else {
           const current = player.queue.current || firstTrack;
-          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${current.title}](${current.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
+          const embed = createEnhancedEmbed({
+            title: '🎶 Lecture en cours',
+            description: `🎵 **[${current.title}](${current.uri})**\n\n*Profitez de cette magnifique mélodie !* 🎧`,
+            color: THEME_COLORS.PRIMARY,
+            footerText: 'BAG • Musique',
+            fields: [
+              { name: '▶️ Statut', value: 'En lecture', inline: true },
+              { name: '🎵 Piste', value: 'Actuelle', inline: true },
+              { name: '🔊 Volume', value: '100%', inline: true }
+            ]
+          });
           await interaction.editReply({ embeds: [embed] });
           try {
-            const ui = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎧 Lecteur').setDescription('Contrôles de lecture').setImage(THEME_IMAGE).setFooter({ text: 'BAG • Lecteur' }).setTimestamp(new Date());
+            const ui = createEnhancedEmbed({
+              title: '🎧 Lecteur Musical',
+              description: '**Contrôles de lecture avancés** 🎛️\n\n> Utilisez les boutons ci-dessous pour contrôler la musique\n\n*Interface intuitive pour une expérience optimale* 🎵',
+              color: THEME_COLORS.ACCENT,
+              image: THEME_IMAGE,
+              footerText: 'BAG • Lecteur',
+              fields: [
+                { name: '⏮️ Précédent', value: 'Piste précédente', inline: true },
+                { name: '▶️ Lecture', value: 'Jouer/Reprendre', inline: true },
+                { name: '⏸️ Pause', value: 'Mettre en pause', inline: true },
+                { name: '⏹️ Arrêt', value: 'Arrêter la lecture', inline: true },
+                { name: '⏭️ Suivant', value: 'Piste suivante', inline: true },
+                { name: '🔀 Aléatoire', value: 'Mode shuffle', inline: true }
+              ]
+            });
             const row1 = new ActionRowBuilder().addComponents(
               new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
               new ButtonBuilder().setCustomId('music_play').setEmoji('▶️').setStyle(ButtonStyle.Success),
@@ -2838,7 +3228,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const tr = player.queue[i];
           lines.push(`${i+1}. ${tr.title}`);
         }
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('File de lecture').setDescription(lines.join('\n')).setTimestamp(new Date());
+        const embed = createEnhancedEmbed({
+          title: '📋 File de Lecture',
+          description: `**Voici votre playlist actuelle** 🎵\n\n${lines.join('\n')}\n\n*${player.queue.length} piste(s) en attente* 🎶`,
+          color: THEME_COLORS.INFO,
+          author: { name: 'Gestionnaire de File', iconURL: THEME_IMAGE },
+          footerText: 'BAG • File de Lecture',
+          fields: [
+            { name: '🎵 En cours', value: player.queue.current?.title || 'Aucune', inline: true },
+            { name: '📊 Total', value: `${player.queue.length} pistes`, inline: true },
+            { name: '⏱️ Statut', value: player.playing ? 'En lecture' : 'En pause', inline: true }
+          ]
+        });
         return interaction.reply({ embeds: [embed] });
       } catch (e) { return interaction.reply('Erreur file.'); }
     }
@@ -2879,7 +3280,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!res || !res.tracks?.length) return interaction.editReply('Station indisponible.');
         player.queue.add(res.tracks[0]);
         if (!player.playing && !player.paused) player.play();
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('📻 Radio').setDescription(`Station: ${station}`).setTimestamp(new Date());
+        const embed = createEnhancedEmbed({
+          title: '📻 Radio en Direct',
+          description: `**Station sélectionnée:** ${station} 🎙️\n\n> Diffusion en cours...\n\n*Profitez de votre radio préférée !* 📡`,
+          color: THEME_COLORS.ACCENT,
+          author: { name: 'Radio BAG', iconURL: THEME_IMAGE },
+          footerText: 'BAG • Radio',
+          fields: [
+            { name: '📡 Station', value: station, inline: true },
+            { name: '🔴 Statut', value: 'En direct', inline: true },
+            { name: '🎵 Type', value: 'Radio live', inline: true }
+          ]
+        });
         return interaction.editReply({ embeds: [embed] });
       } catch (e) { try { return await interaction.editReply('Erreur radio.'); } catch (_) { return; } }
     }
