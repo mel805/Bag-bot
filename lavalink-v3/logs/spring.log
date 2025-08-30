@@ -968,3 +968,7 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.loadTrackWithVideoId(YoutubeAudioSourceManager.java:230) ~[lavaplayer-1.5.2.jar!/:na]
 	... 14 common frames omitted
 
+2025-08-30 11:08:05.709  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:52256 -- CloseStatus[code=1006, reason=]
+2025-08-30 11:08:05.709  INFO 233769 --- [XNIO-1 I/O-4] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30 11:08:06.477  INFO 233769 --- [XNIO-1 task-1] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:37318
+2025-08-30 11:08:06.482  INFO 233769 --- [XNIO-1 task-1] lavalink.server.io.SocketServer          : Connection successfully established from erela.js

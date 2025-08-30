@@ -6,6 +6,31 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 let ytDlp;
 try { ytDlp = require('yt-dlp-exec'); } catch (_) { ytDlp = null; }
 
+const YTDLP_BIN = '/workspace/bin/yt-dlp';
+async function getLocalYtDlpAudioUrl(urlOrId) {
+  const target = /^https?:\/\//.test(urlOrId) ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`;
+  try {
+    const { spawn } = require('node:child_process');
+    const args = [
+      '-f', 'bestaudio[ext=m4a]/bestaudio/best',
+      '--no-warnings', '--no-check-certificates', '--dump-single-json', target
+    ];
+    const child = spawn(YTDLP_BIN, args, { stdio: ['ignore','pipe','pipe'] });
+    let out = '';
+    await new Promise((resolve) => {
+      child.stdout.on('data', d => { out += d.toString('utf8'); });
+      child.on('close', () => resolve());
+      child.on('error', () => resolve());
+    });
+    try {
+      const j = JSON.parse(out);
+      const fmts = Array.isArray(j?.formats) ? j.formats : [];
+      const cand = fmts.filter(f => (!f.vcodec || f.vcodec === 'none') && f.acodec && f.url).sort((a,b)=> (b.tbr||0)-(a.tbr||0))[0];
+      return cand?.url || j?.url || null;
+    } catch (_) { return null; }
+  } catch (_) { return null; }
+}
+
 async function getPipedAudioUrl(videoId) {
   const hosts = [
     'https://piped.video',
@@ -1923,6 +1948,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
                       if (httpRes && httpRes.tracks?.length) res = httpRes;
                     }
                   } catch (_) {}
+                }
+
+                // Local yt-dlp fallback
+                if (!res || !res.tracks?.length) {
+                  const aurl2 = await getLocalYtDlpAudioUrl(vid).catch(()=>null);
+                  if (aurl2) {
+                    const httpRes2 = await client.music.search(aurl2, interaction.user).catch(()=>null);
+                    if (httpRes2 && httpRes2.tracks?.length) res = httpRes2;
+                  }
                 }
               }
             }
