@@ -663,19 +663,37 @@ async function buildEconomySettingsRows(guild) {
 // Build rows to manage karma-based discounts/penalties
 async function buildEconomyKarmaRows(guild) {
   const eco = await getEconomyConfig(guild.id);
-  const info = new EmbedBuilder()
-    .setColor(THEME_COLOR_PRIMARY)
-    .setTitle('Économie • Remises & Sanctions (karma)')
-    .setDescription('Définissez des règles basées sur le karma qui ajustent:\n• Les prix de la boutique (remise/sanction en %)\n• Les gains/pertes des actions (% sur money)\n• Grants directs (ajout/retrait d\'argent)\n')
-    .setTimestamp(new Date());
+  // Selected type
+  const type = client._ecoKarmaType?.get?.(guild.id) || 'shop';
+  const typeSelect = new StringSelectMenuBuilder()
+    .setCustomId('eco_karma_type')
+    .setPlaceholder('Type de règles…')
+    .addOptions(
+      { label: `Boutique (${eco.karmaModifiers?.shop?.length||0})`, value: 'shop', default: type === 'shop' },
+      { label: `Actions (${eco.karmaModifiers?.actions?.length||0})`, value: 'actions', default: type === 'actions' },
+      { label: `Grants (${eco.karmaModifiers?.grants?.length||0})`, value: 'grants', default: type === 'grants' },
+    );
+  const rowType = new ActionRowBuilder().addComponents(typeSelect);
+  const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+  const options = list.length ? list.map((r, idx) => {
+    const label = type === 'grants' ? `if ${r.condition} -> money ${r.money}` : `if ${r.condition} -> ${r.percent}%`;
+    return { label: label.slice(0, 100), value: String(idx) };
+  }) : [{ label: 'Aucune règle', value: 'none' }];
+  const rulesSelect = new StringSelectMenuBuilder()
+    .setCustomId(`eco_karma_rules:${type}`)
+    .setPlaceholder('Sélectionner des règles à supprimer…')
+    .setMinValues(0)
+    .setMaxValues(Math.min(25, Math.max(1, options.length)))
+    .addOptions(...options);
+  if (options.length === 1 && options[0].value === 'none') rulesSelect.setDisabled(true);
+  const rowRules = new ActionRowBuilder().addComponents(rulesSelect);
   const addShop = new ButtonBuilder().setCustomId('eco_karma_add_shop').setLabel('Ajouter règle boutique').setStyle(ButtonStyle.Primary);
   const addAct = new ButtonBuilder().setCustomId('eco_karma_add_action').setLabel('Ajouter règle actions').setStyle(ButtonStyle.Primary);
-  const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('Ajouter grant direct').setStyle(ButtonStyle.Secondary);
-  const rowAdd = new ActionRowBuilder().addComponents(addShop, addAct, addGrant);
-  // For brevity, show counts only
-  const counts = `Boutique: ${eco.karmaModifiers?.shop?.length||0} • Actions: ${eco.karmaModifiers?.actions?.length||0} • Grants: ${eco.karmaModifiers?.grants?.length||0}`;
-  const meta = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('Règles configurées').setDescription(counts).setTimestamp(new Date());
-  return [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('noop').setLabel('Voir ci-dessus').setStyle(ButtonStyle.Secondary).setDisabled(true)), rowAdd];
+  const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('Ajouter grant').setStyle(ButtonStyle.Secondary);
+  const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer sélection').setStyle(ButtonStyle.Danger);
+  const clearBtn = new ButtonBuilder().setCustomId('eco_karma_clear').setLabel('Tout supprimer (type)').setStyle(ButtonStyle.Secondary);
+  const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, delBtn, clearBtn);
+  return [rowType, rowRules, rowActions];
 }
 
 async function buildAutoThreadRows(guild) {
@@ -1090,6 +1108,46 @@ client.on(Events.InteractionCreate, async (interaction) => {
         rows = await buildEconomyMenuRows(interaction.guild, page);
       }
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
+    }
+    // Karma type switch
+    if (interaction.isStringSelectMenu() && interaction.customId === 'eco_karma_type') {
+      const type = interaction.values[0];
+      if (!client._ecoKarmaType) client._ecoKarmaType = new Map();
+      client._ecoKarmaType.set(interaction.guild.id, type);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    // Karma delete selected
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('eco_karma_rules:')) {
+      // store selection in memory until delete click
+      const type = interaction.customId.split(':')[1] || 'shop';
+      if (!client._ecoKarmaSel) client._ecoKarmaSel = new Map();
+      client._ecoKarmaSel.set(`${interaction.guild.id}:${type}`, interaction.values);
+      try { await interaction.deferUpdate(); } catch (_) {}
+    }
+    if (interaction.isButton() && interaction.customId === 'eco_karma_delete') {
+      const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
+      const key = `${interaction.guild.id}:${type}`;
+      const sel = client._ecoKarmaSel?.get?.(key) || [];
+      const eco = await getEconomyConfig(interaction.guild.id);
+      let list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+      const idxs = new Set(sel.map(v => Number(v)));
+      list = list.filter((_, i) => !idxs.has(i));
+      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: list };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'eco_karma_clear') {
+      const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
+      const eco = await getEconomyConfig(interaction.guild.id);
+      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: [] };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     // Karma rules creation: boutique
     if (interaction.isButton() && interaction.customId === 'eco_karma_add_shop') {
