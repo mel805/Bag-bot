@@ -1752,3 +1752,11 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30T09:23:54.148Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:50384
 2025-08-30T09:23:54.149Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
 2025-08-30T09:23:54.150Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:25:14.023Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "ytmsearch:gims"
+2025-08-30T09:25:14.418Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Loaded playlist Search results for: gims
+2025-08-30T09:25:14.420Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=ytmsearch%3Agims
+2025-08-30T09:25:14.433Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-4] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:50384 with id qix5yfdscok78b87 -- CloseStatus[code=1003, reason=Binary messages not supported]
+2025-08-30T09:25:14.433Z  INFO 224063 --- [Lavalink] [XNIO-1 I/O-4] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:25:44.443Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:46188
+2025-08-30T09:25:44.444Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:25:44.445Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
