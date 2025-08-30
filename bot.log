@@ -44,3 +44,30 @@ Logged in as Bag bot#8659
 [Music] Node error pool-sg.alfari.id Unable to connect after 5 attempts.
 [Music] Node error lavalink.devxcode.in Unable to connect after 5 attempts.
 [Music] Node error lava.luke.gg Unable to connect after 5 attempts.
+(node:280064) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Music]/play creating player vc= 1360897919204720731 tc= 1360897919204720731
+[Music]/play after add current= true size= 0 length= 0
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'backup',
+  channelId: '1360897920466948158',
+  ch_ok: true
+}
+[Logs] sent OK
