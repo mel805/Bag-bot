@@ -103,3 +103,11 @@ Client error: DiscordAPIError[40060]: Interaction has already been acknowledged.
   ch_ok: true
 }
 [Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
