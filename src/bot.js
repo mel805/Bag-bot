@@ -840,18 +840,18 @@ client.once(Events.ClientReady, (readyClient) => {
   }
   // Logs: register listeners
   client.on(Events.GuildMemberAdd, async (m) => {
-    const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
+    const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
     const embed = buildModEmbed(`${cfg.emoji} Arrivée`, `${m.user} a rejoint le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
   });
   client.on(Events.GuildMemberRemove, async (m) => {
-    const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
+    const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
     const embed = buildModEmbed(`${cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
   });
   client.on(Events.MessageDelete, async (msg) => {
     try { if (!msg.guild) return; } catch (_) { return; }
-    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.categories?.messages) return;
     const author = msg.author || (msg.partial ? null : null);
     const content = msg.partial ? '(partiel)' : (msg.content || '—');
     const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }, { name:'Message ID', value: String(msg.id) }]);
@@ -864,24 +864,24 @@ client.once(Events.ClientReady, (readyClient) => {
     try { if (msg?.partial) await msg.fetch(); } catch (_) {}
     const before = oldMsg?.partial ? '(partiel)' : (oldMsg?.content || '—');
     const after = msg?.partial ? '(partiel)' : (msg?.content || '—');
-    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.categories?.messages) return;
     const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.MessageCreate, async (msg) => {
     try { if (!msg.guild) return; } catch (_) { return; }
     if (msg.author?.bot) return;
-    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.categories?.messages) return;
     const embed = buildModEmbed(`${cfg.emoji} Message créé`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Contenu', value: msg.content || '—' }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.ThreadCreate, async (thread) => {
-    if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
+    if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.categories?.threads) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
   client.on(Events.ThreadDelete, async (thread) => {
-    if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
+    if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.categories?.threads) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
@@ -3591,7 +3591,6 @@ function buildEcoEmbed({ title, description, fields, color }) {
   if (Array.isArray(fields)) embed.addFields(fields);
   return embed;
 }
-
 async function buildBoutiqueRows(guild) {
   const eco = await getEconomyConfig(guild.id);
   const items = Array.isArray(eco.shop?.items) ? eco.shop.items : [];
