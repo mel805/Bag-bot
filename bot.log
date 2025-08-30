@@ -14,3 +14,61 @@ Logged in as Bag bot#8659
 [Music] Node connected: lavalinkv3.devxcode.in
 [Music] Node error lavalinkv3.devxcode.in Unexpected op "ready" with data: [object Object]
 [Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v4.muzykant.xyz Unable to connect after 5 attempts.
+[Music] Node error lavalink_v3.muzykant.xyz Unable to connect after 5 attempts.
+[Music] Node error pool-sg.alfari.id Unable to connect after 5 attempts.
+[Music] Node error pool-us.alfari.id Unable to connect after 5 attempts.
+[Music] Node error lavalink.devxcode.in Unable to connect after 5 attempts.
+[Music] Node error lava.luke.gg Unable to connect after 5 attempts.
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+(node:269499) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Client error: DiscordAPIError[50035]: Invalid Form Body
+data.components[4].components[BASE_TYPE_BAD_LENGTH]: Must be between 1 and 5 in length.
+    at handleErrors (/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async BurstHandler.runRequest (/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async StringSelectMenuInteraction.update (/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:361:22) {
+  requestBody: { files: [], json: { type: 7, data: [Object] } },
+  rawError: {
+    message: 'Invalid Form Body',
+    code: 50035,
+    errors: { data: [Object] }
+  },
+  code: 50035,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1411393408622133309/aW50ZXJhY3Rpb246MTQxMTM5MzQwODYyMjEzMzMwOTphZFM4V3JHZ2ZQNW1sZUVTUzRCb2lOdVhpTHNhMkZadTJDMmhvMjhsdm1NRWdPbTVRVE9TQ1FYY1A4ejFpTENMTXo4Rzg3VlBKRlpObXpBcWhKbmFzQmZmYmI4dWpCU0lvRTRVTFQzcmNPcEVSZ1dTQllWMUdRdlowU2RWaFJRQw/callback?with_response=false'
+}
