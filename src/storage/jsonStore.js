@@ -25,7 +25,14 @@ async function ensureStorageExists() {
         await client.query('CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
         const res = await client.query('SELECT 1 FROM app_config WHERE id = 1');
         if (res.rowCount === 0) {
-          await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [{ guilds: {} }]);
+          // Bootstrap from file if available
+          let bootstrap = { guilds: {} };
+          try {
+            const raw = await fsp.readFile(CONFIG_PATH, 'utf8');
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') bootstrap = parsed;
+          } catch (_) { /* ignore, keep default */ }
+          await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [bootstrap]);
         }
         return; // DB OK
       } finally {
