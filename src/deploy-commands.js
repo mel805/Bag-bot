@@ -65,6 +65,12 @@ const commands = [
     .setDescription('Voir votre niveau ou celui d\'un membre')
     .addUserOption(o => o.setName('membre').setDescription('Membre (optionnel)').setRequired(false))
     .toJSON(),
+  // English alias for convenience
+  new SlashCommandBuilder()
+    .setName('level')
+    .setDescription('View your level or another member\'s')
+    .addUserOption(o => o.setName('member').setDescription('Member (optional)').setRequired(false))
+    .toJSON(),
   new SlashCommandBuilder().setName('economie').setDescription('Voir votre économie (argent, charme, perversion)').toJSON(),
   new SlashCommandBuilder()
     .setName('top')

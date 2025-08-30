@@ -648,7 +648,6 @@ function memberDisplayName(guild, memberOrMention, userIdFallback) {
   }
   return userIdFallback ? `Membre ${userIdFallback}` : 'Membre';
 }
-
 function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const ann = levels.announce?.levelUp || {};
   if (!ann.enabled || !ann.channelId) return;
@@ -1166,7 +1165,6 @@ client.once(Events.ClientReady, (readyClient) => {
     } catch (_) {}
   }, 30 * 60 * 1000);
 });
-
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (interaction.isChatInputCommand() && interaction.commandName === 'config') {
@@ -1814,7 +1812,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       return;
     }
-
     if (interaction.isButton() && interaction.customId === 'levels_announce_role_toggle') {
       const cfg = await getLevelsConfig(interaction.guild.id);
       const enabled = !cfg.announce?.roleAward?.enabled;
@@ -2435,7 +2432,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // Lecteur manuel supprimé: UI s'ouvrira automatiquement au /play
-
     // Basic /play (join + search + play)
     if (interaction.isChatInputCommand() && interaction.commandName === 'play') {
       try {
@@ -2751,7 +2747,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferReply();
         const player = client.music?.players.get(interaction.guild.id);
         if (!player) return interaction.editReply('Aucun lecteur.');
-        try { player.queue.clear(); } catch (_) {}
+        try { player.queue.clear(); } catch (_) {};
         player.stop();
         return interaction.editReply('⏹️ Lecture arrêtée.');
       } catch (e) { try { return await interaction.editReply('Erreur stop.'); } catch (_) { return; } }
@@ -3544,7 +3540,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return [new ActionRowBuilder().addComponents(catSelect), new ActionRowBuilder().addComponents(pricesBtn, emojiBtn)];
     }
 
-    if (interaction.isChannelSelectMenu && interaction.customId === 'suites_category_select') {
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'suites_category_select') {
       const catId = interaction.values[0];
       const eco = await getEconomyConfig(interaction.guild.id);
       eco.suites = { ...(eco.suites||{}), categoryId: catId };
@@ -3576,11 +3572,64 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
     }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
+
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
       // Always defer to avoid InteractionNotReplied on slow render/generation
       try { await interaction.deferReply(); } catch (_) { try { await interaction.reply({ content: '⏳ Génération de la carte…' }); } catch (_) {} }
       try {
-        const target = interaction.options.getUser('membre') || interaction.user;
+        const levels = await getLevelsConfig(interaction.guild.id);
+        if (!levels.enabled) return interaction.editReply({ content: 'Les niveaux sont désactivés sur ce serveur.' });
+        const stats = await getUserStats(interaction.guild.id, interaction.user.id);
+        const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
+        const level = norm.level;
+        const xpSinceLevel = norm.xpSinceLevel;
+        const xpToNextLevel = xpForLevel(level + 1, levels.levelCurve || { base: 100, factor: 1.2 }) - xpForLevel(level, levels.levelCurve || { base: 100, factor: 1.2 });
+        const xpPercent = Math.floor(100 * xpSinceLevel / xpToNextLevel);
+        const xpBar = '▰'.repeat(Math.floor(xpPercent / 10)) + '▱'.repeat(10 - Math.floor(xpPercent / 10));
+        const rank = await getUserRank(interaction.guild.id, interaction.user.id);
+        const rankTotal = await getTotalUsersWithLevels(interaction.guild.id);
+        const rankPercent = Math.floor(100 * rank / rankTotal);
+        const rankBar = '▰'.repeat(Math.floor(rankPercent / 10)) + '▱'.repeat(10 - Math.floor(rankPercent / 10));
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle(`Niveau de ${interaction.user.username}`)
+          .setDescription(`
+            Niveau: ${level}
+            XP: ${stats.xp}
+            Prochain niveau: ${level + 1} (${xpSinceLevel}/${xpToNextLevel})
+            ${xpBar}
+            Classement: ${rank}/${rankTotal}
+            ${rankBar}
+          `)
+          .setTimestamp(new Date());
+        const canvas = createCanvas(600, 200);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#222222';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '30px Arial';
+        ctx.fillText(`Niveau ${level}`, 20, 50);
+        ctx.fillText(`XP: ${stats.xp}`, 20, 100);
+        ctx.fillText(`Prochain niveau: ${level + 1} (${xpSinceLevel}/${xpToNextLevel})`, 20, 150);
+        ctx.fillText(`Classement: ${rank}/${rankTotal}`, 20, 200);
+        const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'level.png' });
+        embed.setImage('attachment://level.png');
+        return interaction.editReply({ embeds: [embed], files: [attachment] });
+      } catch (e) {
+        console.error('/niveau error', e);
+        return interaction.editReply({ content: 'Erreur lors de la génération de la carte de niveau.' });
+      }
+    }
+  } catch (e) {
+    console.error('Interaction error', e);
+    try { return await interaction.reply({ content: 'Erreur lors du traitement de la commande.', ephemeral: true }); } catch (_) { return; }
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
+>>>>>>> origin/main
+      try {
+        const target = interaction.options.getUser('membre') || interaction.options.getUser('member') || interaction.user;
         const member = await interaction.guild.members.fetch(target.id).catch(()=>null);
         const levels = await getLevelsConfig(interaction.guild.id);
         const stats = await getUserStats(interaction.guild.id, target.id);
@@ -3950,7 +3999,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (err) {
     console.error('Interaction handler error:', err);
-    const errorText = typeof err === 'string' ? err : (err && err.message ? err.message : 'Erreur inconnue');
+    const errorText = (() => {
+      if (typeof err === 'string') return err;
+      if (err && err.message) return err.message;
+      try { return JSON.stringify(err); } catch (_) { /* noop */ }
+      return 'Erreur inconnue';
+    })();
     try {
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({ content: `Une erreur est survenue: ${errorText}`, ephemeral: true });
@@ -4112,7 +4166,6 @@ const FISH_SUCCESS = ['Félicitations, vous avez pêché un thon !','Bravo, vous
 const FISH_FAIL = ['Aïe… la ligne s\'est emmêlée, rien attrapé.','Juste une vieille botte… pas de chance !','Le poisson s\'est échappé au dernier moment !','Silence radio sous l\'eau… aucun poisson aujourd\'hui.']
 const STEAL_SUCCESS = ['Vol réussi… mais restez discret.','Votre coup a payé.','Butin acquis sans être vu.']
 const STEAL_FAIL = ['Pris la main dans le sac !','Tentative avortée.','La cible vous a repéré.']
-
 // GIFs per action (success/fail)
 const ACTION_GIFS = {
   work: {
