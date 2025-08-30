@@ -145,6 +145,30 @@ function formatDuration(ms) {
   return `${Math.round(sec / 86400)} j`;
 }
 
+async function isStaffMember(guild, member) {
+  try {
+    const { getGuildStaffRoleIds } = require('./storage/jsonStore');
+    const staffRoleIds = await getGuildStaffRoleIds(guild.id);
+    if (Array.isArray(staffRoleIds) && staffRoleIds.length) {
+      return Boolean(member?.roles?.cache?.some(r => staffRoleIds.includes(r.id)));
+    }
+  } catch (_) {}
+  // Fallback: use Discord permissions for moderation
+  return member?.permissions?.has?.(PermissionsBitField.Flags.ModerateMembers) || false;
+}
+
+function buildModEmbed(title, description, extras) {
+  const embed = new EmbedBuilder()
+    .setColor(THEME_COLOR_ACCENT)
+    .setTitle(title)
+    .setDescription(description || null)
+    .setThumbnail(THEME_IMAGE)
+    .setTimestamp(new Date())
+    .setFooter({ text: 'BAG • Modération' });
+  if (Array.isArray(extras) && extras.length) embed.addFields(extras);
+  return embed;
+}
+
 function xpRequiredForNext(level, curve) {
   const required = Math.round(curve.base * Math.pow(curve.factor, Math.max(0, level)));
   return Math.max(1, required);
@@ -2077,6 +2101,97 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } catch (e) {
         console.error('/play failed', e);
         try { return await interaction.editReply('Erreur de lecture.'); } catch (_) { return; }
+      }
+    }
+
+    // Moderation commands (staff-only)
+    if (interaction.isChatInputCommand() && ['ban','unban','kick','mute','unmute','warn','masskick','massban','purge'].includes(interaction.commandName)) {
+      try {
+        const member = interaction.member;
+        const ok = await isStaffMember(interaction.guild, member);
+        if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+        const cmd = interaction.commandName;
+        if (cmd === 'ban') {
+          const user = interaction.options.getUser('membre', true);
+          const reason = interaction.options.getString('raison') || '—';
+          try { await interaction.guild.members.ban(user.id, { reason }); } catch (e) { return interaction.reply({ content: 'Échec du ban.', ephemeral: true }); }
+          const embed = buildModEmbed('Ban', `${user} a été banni.`, [{ name:'Raison', value: reason }]);
+          return interaction.reply({ embeds: [embed] });
+        }
+        if (cmd === 'unban') {
+          const userId = interaction.options.getString('userid', true);
+          const reason = interaction.options.getString('raison') || '—';
+          try { await interaction.guild.members.unban(userId, reason); } catch (e) { return interaction.reply({ content: 'Échec du déban.', ephemeral: true }); }
+          const embed = buildModEmbed('Unban', `Utilisateur <@${userId}> débanni.`, [{ name:'Raison', value: reason }]);
+          return interaction.reply({ embeds: [embed] });
+        }
+        if (cmd === 'kick') {
+          const user = interaction.options.getUser('membre', true);
+          const reason = interaction.options.getString('raison') || '—';
+          const m = await interaction.guild.members.fetch(user.id).catch(()=>null);
+          if (!m) return interaction.reply({ content:'Membre introuvable.', ephemeral:true });
+          try { await m.kick(reason); } catch (e) { return interaction.reply({ content:'Échec du kick.', ephemeral:true }); }
+          const embed = buildModEmbed('Kick', `${user} a été expulsé.`, [{ name:'Raison', value: reason }]);
+          return interaction.reply({ embeds: [embed] });
+        }
+        if (cmd === 'mute') {
+          const user = interaction.options.getUser('membre', true);
+          const minutes = interaction.options.getInteger('minutes', true);
+          const reason = interaction.options.getString('raison') || '—';
+          const m = await interaction.guild.members.fetch(user.id).catch(()=>null);
+          if (!m) return interaction.reply({ content:'Membre introuvable.', ephemeral:true });
+          const ms = minutes * 60 * 1000;
+          try { await m.timeout(ms, reason); } catch (e) { return interaction.reply({ content:'Échec du mute.', ephemeral:true }); }
+          const embed = buildModEmbed('Mute', `${user} a été réduit au silence.`, [{ name:'Durée', value: `${minutes} min`, inline:true }, { name:'Raison', value: reason, inline:true }]);
+          return interaction.reply({ embeds: [embed] });
+        }
+        if (cmd === 'unmute') {
+          const user = interaction.options.getUser('membre', true);
+          const reason = interaction.options.getString('raison') || '—';
+          const m = await interaction.guild.members.fetch(user.id).catch(()=>null);
+          if (!m) return interaction.reply({ content:'Membre introuvable.', ephemeral:true });
+          try { await m.timeout(null, reason); } catch (e) { return interaction.reply({ content:'Échec du unmute.', ephemeral:true }); }
+          const embed = buildModEmbed('Unmute', `${user} a retrouvé la parole.`, [{ name:'Raison', value: reason }]);
+          return interaction.reply({ embeds: [embed] });
+        }
+        if (cmd === 'warn') {
+          const user = interaction.options.getUser('membre', true);
+          const reason = interaction.options.getString('raison', true);
+          try { const { addWarn, getWarns } = require('./storage/jsonStore'); await addWarn(interaction.guild.id, user.id, { by: interaction.user.id, reason }); const list = await getWarns(interaction.guild.id, user.id); const embed = buildModEmbed('Warn', `${user} a reçu un avertissement.`, [{ name:'Raison', value: reason }, { name:'Total avertissements', value: String(list.length) }]); return interaction.reply({ embeds: [embed] }); } catch (_) { return interaction.reply({ content:'Échec du warn.', ephemeral:true }); }
+        }
+        if (cmd === 'masskick' || cmd === 'massban') {
+          const mode = interaction.options.getString('mode', true); // with/without
+          const role = interaction.options.getRole('role');
+          const reason = interaction.options.getString('raison') || '—';
+          const members = await interaction.guild.members.fetch();
+          const should = (m) => {
+            if (!role) return true; // si pas de rôle précisé, tout le monde
+            const has = m.roles.cache.has(role.id);
+            return mode === 'with' ? has : !has;
+          };
+          let count = 0; const action = cmd === 'massban' ? 'ban' : 'kick';
+          for (const m of members.values()) {
+            if (!should(m)) continue;
+            try {
+              if (action === 'ban') await interaction.guild.members.ban(m.id, { reason });
+              else await m.kick(reason);
+              count++;
+            } catch (_) {}
+          }
+          const embed = buildModEmbed(cmd === 'massban' ? 'Mass Ban' : 'Mass Kick', `Action: ${cmd} • Affectés: ${count}`, [ role ? { name:'Rôle', value: role.name } : { name:'Rôle', value: '—' }, { name:'Mode', value: mode }, { name:'Raison', value: reason } ]);
+          return interaction.reply({ embeds: [embed] });
+        }
+        if (cmd === 'purge') {
+          const count = interaction.options.getInteger('nombre', true);
+          const ch = interaction.channel;
+          try { await ch.bulkDelete(count, true); } catch (_) { return interaction.reply({ content:'Échec de la purge (messages trop anciens ?).', ephemeral:true }); }
+          // Reset runtime states (counting/confess mentions). Persisted configs sont conservés.
+          try { const { setCountingState } = require('./storage/jsonStore'); await setCountingState(interaction.guild.id, { current: 0, lastUserId: '' }); } catch (_) {}
+          const embed = buildModEmbed('Purge', `Salon nettoyé (${count} messages supprimés).`, []);
+          return interaction.reply({ embeds: [embed] });
+        }
+      } catch (e) {
+        return interaction.reply({ content: 'Erreur de modération.', ephemeral: true });
       }
     }
 
