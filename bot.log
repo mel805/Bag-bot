@@ -67,3 +67,29 @@ Logged in as Bag bot#8659
 }
 [Logs] sent OK
 [Music] Node error lava.luke.gg Unexpected server response: 523
+[Music] Node error lavalink_v3.muzykant.xyz Unable to connect after 5 attempts.
+[Music] Node error lavalink_v4.muzykant.xyz Unable to connect after 5 attempts.
+[Music] Node error pool-us.alfari.id Unable to connect after 5 attempts.
+[Music] Node error pool-sg.alfari.id Unable to connect after 5 attempts.
+[Music] Node error lavalink.devxcode.in Unable to connect after 5 attempts.
+[Music] Node error lava.luke.gg Unable to connect after 5 attempts.
+/niveau error ReferenceError: xpForLevel is not defined
+    at Client.<anonymous> (/workspace/src/bot.js:3647:31)
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
+(node:293518) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
