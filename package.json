@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/bot.js",
     "register": "node src/deploy-commands.js",
-    "migrate:pg": "node src/migrate/to-postgres.js"
+    "migrate:pg": "node src/migrate/to-postgres.js",
+    "build": "echo 'No build step'"
   },
   "engines": {
     "node": ">=18.17"
