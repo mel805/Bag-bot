@@ -2549,3 +2549,39 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30T10:10:01.226Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:45040
 2025-08-30T10:10:01.227Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
 2025-08-30T10:10:01.228Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T10:11:06.773Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "ytmsearch:gims"
+2025-08-30T10:11:07.156Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Loaded playlist Search results for: gims
+2025-08-30T10:11:07.157Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=ytmsearch%3Agims
+2025-08-30T10:11:07.163Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : GET /v4/decodetrack?encoded=QAAA6gMAClBBUklTSUVOTkUABEdJTVMAAAAAAAJtGAALQnVsZjBhcVdNalkAAQAraHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g%2Fdj1CdWxmMGFxV01qWQEAfmh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9odWphU2RjbEw1ZGJ6RlUxSThweVpBWUJndEJ2NndUa0VMZWZsVFEzek5zdkhLcEhSNU5kWDNLazdXZEh6MDVuOGRBczgxMXVpQmJFZjQzWj13MTAwMC1oMTAwMAAAB3lvdXR1YmUAAAAAAAAAAA%3D%3D
+2025-08-30T10:11:07.165Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/ae805ykicj49m2uz/players/1360897918504271882, payload={"volume":100}
+2025-08-30T10:11:07.169Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/ae805ykicj49m2uz/players/1360897918504271882, payload={"encodedTrack":"QAAA6gMAClBBUklTSUVOTkUABEdJTVMAAAAAAAJtGAALQnVsZjBhcVdNalkAAQAraHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g/dj1CdWxmMGFxV01qWQEAfmh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9odWphU2RjbEw1ZGJ6RlUxSThweVpBWUJndEJ2NndUa0VMZWZsVFEzek5zdkhLcEhSNU5kWDNLazdXZEh6MDVuOGRBczgxMXVpQmJFZjQzWj13MTAwMC1oMTAwMAAAB3lvdXR1YmUAAAAAAAAAAA=="}
+2025-08-30T10:11:07.217Z ERROR 224063 --- [Lavalink] [back-1-thread-1] c.s.d.l.t.p.LocalAudioTrackExecutor      : Error in playback of Bulf0aqWMjY
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Something broke when playing the track.
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.track.playback.LocalAudioTrackExecutor.execute(LocalAudioTrackExecutor.java:121) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$executeTrack$2(DefaultAudioPlayerManager.java:339) ~[lavaplayer-2.2.3.jar!/:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: java.lang.IllegalStateException: Must find action functions from script: /s/player/6742b2b9/player_ias.vflset/en_US/base.js
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.extractFromScript(YoutubeSignatureCipherManager.java:216) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.getExtractedScript(YoutubeSignatureCipherManager.java:167) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadTrackInfoFromInnertube(DefaultYoutubeTrackDetailsLoader.java:204) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.load(DefaultYoutubeTrackDetailsLoader.java:48) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadDetails(DefaultYoutubeTrackDetailsLoader.java:36) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioTrack.loadBestFormatWithUrl(YoutubeAudioTrack.java:83) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioTrack.process(YoutubeAudioTrack.java:44) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.track.playback.LocalAudioTrackExecutor.execute(LocalAudioTrackExecutor.java:109) ~[lavaplayer-2.2.3.jar!/:na]
+	... 4 common frames omitted
+
+2025-08-30T10:11:07.222Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/ae805ykicj49m2uz/players/1360897918504271882, payload={"encodedTrack":null}
+2025-08-30T10:11:07.620Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/ae805ykicj49m2uz/players/1360897918504271882, payload={"voice":{"token":"0dd28e9d9d29d352","endpoint":"c-cdg12-5d0820b1.discord.media:2083","sessionId":"740a54fe8afc88fb7552a1e44c449f98"}}
+2025-08-30T10:12:13.735Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+2025-08-30T10:12:14.222Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.player.AudioLoaderRestHandler   : Loaded track Unknown title
+2025-08-30T10:12:14.224Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=https%3A%2F%2Fwww.soundhelix.com%2Fexamples%2Fmp3%2FSoundHelix-Song-1.mp3
+2025-08-30T10:12:14.227Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : GET /v4/decodetrack?encoded=QAAAuQMADVVua25vd24gdGl0bGUAClNvdW5kSGVsaXgAAAAAAAWv6wA9aHR0cHM6Ly93d3cuc291bmRoZWxpeC5jb20vZXhhbXBsZXMvbXAzL1NvdW5kSGVsaXgtU29uZy0xLm1wMwABAD1odHRwczovL3d3dy5zb3VuZGhlbGl4LmNvbS9leGFtcGxlcy9tcDMvU291bmRIZWxpeC1Tb25nLTEubXAzAAAABGh0dHAAA21wMwAAAAAAAAAA
+2025-08-30T10:12:14.231Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/ae805ykicj49m2uz/players/1360897918504271882, payload={"encodedTrack":"QAAAuQMADVVua25vd24gdGl0bGUAClNvdW5kSGVsaXgAAAAAAAWv6wA9aHR0cHM6Ly93d3cuc291bmRoZWxpeC5jb20vZXhhbXBsZXMvbXAzL1NvdW5kSGVsaXgtU29uZy0xLm1wMwABAD1odHRwczovL3d3dy5zb3VuZGhlbGl4LmNvbS9leGFtcGxlcy9tcDMvU291bmRIZWxpeC1Tb25nLTEubXAzAAAABGh0dHAAA21wMwAAAAAAAAAA"}
+2025-08-30T10:12:31.641Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+2025-08-30T10:12:31.993Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.player.AudioLoaderRestHandler   : Loaded track Unknown title
+2025-08-30T10:12:31.994Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=https%3A%2F%2Fwww.soundhelix.com%2Fexamples%2Fmp3%2FSoundHelix-Song-1.mp3
