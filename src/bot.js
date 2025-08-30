@@ -176,9 +176,9 @@ async function sendLog(guild, categoryKey, embed) {
     const channelId = (cfg.channels && cfg.channels[categoryKey]) || cfg.channelId;
     if (!channelId) return;
     const ch = guild.channels.cache.get(channelId);
-    try { console.log('[Logs] sendLog', { guild: guild.id, categoryKey, channelId }); } catch (_) {}
-    if (!ch?.isTextBased?.()) return;
-    await ch.send({ embeds: [embed] }).catch(() => {});
+    try { console.log('[Logs] sendLog', { guild: guild.id, categoryKey, channelId, ch_ok: Boolean(ch) }); } catch (_) {}
+    if (!ch?.isTextBased?.()) { try { console.log('[Logs] not text-based channel'); } catch (_) {} return; }
+    await ch.send({ embeds: [embed] }).then(() => { try { console.log('[Logs] sent OK'); } catch (_) {} }).catch((e) => { try { console.error('[Logs] send failed', e?.message||e); } catch (_) {} });
   } catch (_) {}
 }
 
