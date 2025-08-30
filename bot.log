@@ -45,3 +45,9 @@ Logged in as Bag bot#8659
 [Music] Node error pool-sg.alfari.id Unable to connect after 5 attempts.
 [Music] Node error lavalink.devxcode.in Unable to connect after 5 attempts.
 [Music] Node error lava.luke.gg Unable to connect after 5 attempts.
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'backup',
+  channelId: '1360897920466948158',
+  ch_ok: true
+}
