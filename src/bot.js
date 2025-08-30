@@ -176,6 +176,7 @@ async function sendLog(guild, categoryKey, embed) {
     const channelId = (cfg.channels && cfg.channels[categoryKey]) || cfg.channelId;
     if (!channelId) return;
     const ch = guild.channels.cache.get(channelId);
+    try { console.log('[Logs] sendLog', { guild: guild.id, categoryKey, channelId }); } catch (_) {}
     if (!ch?.isTextBased?.()) return;
     await ch.send({ embeds: [embed] }).catch(() => {});
   } catch (_) {}
