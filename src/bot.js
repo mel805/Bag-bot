@@ -1,4 +1,6 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
+let ErelaManager;
+try { ({ Manager: ErelaManager } = require('erela.js')); } catch (_) { ErelaManager = null; }
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 // Simple in-memory image cache
@@ -679,7 +681,29 @@ client.login(token).then(() => {
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
-  // Lavalink init disabled until deps are installed
+  // Init Erela.js (if available) with public nodes
+  try {
+    if (ErelaManager) {
+      const nodes = [
+        { host: 'lavalink.is-cool.dev', port: 443, password: 'pass', secure: true },
+        { host: 'lava.link', port: 80, password: 'youshallnotpass', secure: false },
+      ];
+      const manager = new ErelaManager({
+        nodes,
+        send: (id, payload) => {
+          const guild = client.guilds.cache.get(id);
+          if (guild) guild.shard.send(payload);
+        },
+      });
+      client.music = manager;
+      manager.on('nodeConnect', node => console.log(`[Music] Node connected: ${node.options.host}`));
+      manager.on('nodeError', (node, err) => console.error('[Music] Node error', node.options.host, err?.message||err));
+      manager.on('playerMove', (player, oldChannel, newChannel) => { if (!newChannel) player.destroy(); });
+      manager.init(client.user.id);
+    }
+  } catch (e) {
+    console.error('Music init failed', e);
+  }
   // Suites cleanup every 5 minutes
   setInterval(async () => {
     try {
@@ -1799,7 +1823,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = new EmbedBuilder()
         .setColor(THEME_COLOR_ACCENT)
         .setTitle('🎧 Lecteur • Boy and Girls (BAG)')
-        .setDescription('Un lecteur premium, sensuel et animé. Utilisez les boutons pour contrôler la lecture.')
+        .setDescription('Utilisez les boutons pour contrôler la lecture.')
         .setImage(bg)
         .setFooter({ text: 'BAG • Lecteur' })
         .setTimestamp(new Date());
@@ -1826,17 +1850,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferReply();
         const query = interaction.options.getString('recherche', true);
         if (!interaction.member?.voice?.channel) return interaction.editReply('Rejoignez un salon vocal.');
-        const player = await client.music?.createPlayer({ guildId: interaction.guild.id, textId: interaction.channel.id, voiceId: interaction.member.voice.channel.id, deaf: true });
-        if (!player) return interaction.editReply('Lecteur indisponible.');
-        const res = await client.music?.search(query, { requester: interaction.user });
+        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible pour le moment.');
+        const res = await client.music.search(query, interaction.user);
         if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat.');
-        if (res.type === 'PLAYLIST') {
-          for (const t of res.tracks) player.queue.add(t);
-        } else {
-          player.queue.add(res.tracks[0]);
+        let player = client.music.players.get(interaction.guild.id);
+        if (!player) {
+          player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true });
+          player.connect();
         }
-        if (!player.playing && !player.paused) await player.play();
-        const t = player.queue.current;
+        if (res.type === 'PLAYLIST') player.queue.add(res.tracks);
+        else player.queue.add(res.tracks[0]);
+        if (!player.playing && !player.paused) player.play();
+        const t = player.queue.current || res.tracks[0];
         const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${t.title}](${t.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
         return interaction.editReply({ embeds: [embed] });
       } catch (e) {
