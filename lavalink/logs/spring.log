@@ -42,3 +42,8 @@ To disable this warning, set 'lavalink.server.sources.youtube' to false in your 
 2025-08-30T08:27:10.658Z  INFO 224063 --- [Lavalink] [main] o.s.b.w.e.undertow.UndertowWebServer     : Undertow started on port 2333 (http) with context path '/'
 2025-08-30T08:27:10.672Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : Started Launcher in 1.354 seconds (process running for 3.023)
 2025-08-30T08:27:10.672Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : Lavalink is ready to accept connections.
+2025-08-30T08:33:11.290Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] io.undertow.servlet                      : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-08-30T08:33:11.291Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-08-30T08:33:11.294Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 3 ms
+2025-08-30T08:33:11.374Z  WARN 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.config.WebsocketConfig   : This is the old Lavalink websocket endpoint. Please use /v4/websocket instead. If you are using a client library, please update it to a Lavalink v4 compatible version or use Lavalink v3 instead.
+2025-08-30T08:33:11.391Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /

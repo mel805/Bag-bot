@@ -684,19 +684,9 @@ client.once(Events.ClientReady, (readyClient) => {
   // Init Erela.js (if available) with public nodes
   try {
     if (ErelaManager) {
-      let nodes = [];
-      try {
-        if (process.env.LAVALINK_NODES) {
-          const parsed = JSON.parse(process.env.LAVALINK_NODES);
-          if (Array.isArray(parsed)) nodes = parsed;
-        }
-      } catch (_) {}
-      if (!Array.isArray(nodes) || nodes.length === 0) {
-        nodes = [
-          { host: 'lavalink.is-cool.dev', port: 443, password: 'pass', secure: true },
-          { host: 'lava.link', port: 80, password: 'youshallnotpass', secure: false },
-        ];
-      }
+      const nodes = [
+        { host: '127.0.0.1', port: 2333, password: 'youshallnotpass', secure: false },
+      ];
       const manager = new ErelaManager({
         nodes,
         send: (id, payload) => {
@@ -709,6 +699,7 @@ client.once(Events.ClientReady, (readyClient) => {
       manager.on('nodeError', (node, err) => console.error('[Music] Node error', node.options.host, err?.message||err));
       manager.on('playerMove', (player, oldChannel, newChannel) => { if (!newChannel) player.destroy(); });
       manager.init(client.user.id);
+      client.on('raw', (d) => { try { client.music?.updateVoiceState(d); } catch (_) {} });
     }
   } catch (e) {
     console.error('Music init failed', e);
