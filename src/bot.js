@@ -269,6 +269,7 @@ function buildTopSectionRow() {
       { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick" },
       { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
       { label: 'Économie', value: 'economy', description: "Configurer l'économie" },
+      { label: 'Booster', value: 'booster', description: 'Récompenses boosters de serveur' },
       { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' },
       { label: 'Confessions', value: 'confess', description: 'Configurer les confessions anonymes' },
       { label: 'AutoThread', value: 'autothread', description: 'Créer des fils automatiquement' },
@@ -656,6 +657,20 @@ async function buildEconomySettingsRows(guild) {
   const gifsBtn = new ButtonBuilder().setCustomId('economy_gifs').setLabel('GIF actions').setStyle(ButtonStyle.Primary);
   const row = new ActionRowBuilder().addComponents(curBtn, gifsBtn);
   return [row];
+}
+
+async function buildBoosterRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const b = eco.booster || { enabled: true, textXpMult: 2, voiceXpMult: 2, actionCooldownMult: 0.5, shopPriceMult: 0.5 };
+  const toggle = new ButtonBuilder().setCustomId('booster_toggle').setLabel(b.enabled ? 'Boosters: ON' : 'Boosters: OFF').setStyle(b.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const textXp = new ButtonBuilder().setCustomId('booster_textxp').setLabel(`XP texte x${b.textXpMult}`).setStyle(ButtonStyle.Primary);
+  const voiceXp = new ButtonBuilder().setCustomId('booster_voicexp').setLabel(`XP vocal x${b.voiceXpMult}`).setStyle(ButtonStyle.Primary);
+  const cdMult = new ButtonBuilder().setCustomId('booster_cd').setLabel(`Cooldown x${b.actionCooldownMult}`).setStyle(ButtonStyle.Secondary);
+  const priceMult = new ButtonBuilder().setCustomId('booster_shop').setLabel(`Prix boutique x${b.shopPriceMult}`).setStyle(ButtonStyle.Secondary);
+  const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
+  const row1 = new ActionRowBuilder().addComponents(toggle, back);
+  const row2 = new ActionRowBuilder().addComponents(textXp, voiceXp, cdMult, priceMult);
+  return [row1, row2];
 }
 
 // Build rows to manage karma-based discounts/penalties
@@ -1087,6 +1102,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (section === 'logs') {
         const rows = await buildLogsRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [...rows] });
+      } else if (section === 'booster') {
+        const rows = await buildBoosterRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
@@ -1115,6 +1133,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
       return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'booster_toggle') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const b = eco.booster || {};
+      b.enabled = !b.enabled;
+      await updateEconomyConfig(interaction.guild.id, { booster: b });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildBoosterRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && ['booster_textxp','booster_voicexp','booster_cd','booster_shop'].includes(interaction.customId)) {
+      const ids = { booster_textxp: ['textXpMult','Multiplicateur XP texte (ex: 2)'], booster_voicexp: ['voiceXpMult','Multiplicateur XP vocal (ex: 2)'], booster_cd: ['actionCooldownMult','Multiplicateur cooldown (ex: 0.5)'], booster_shop: ['shopPriceMult','Multiplicateur prix boutique (ex: 0.5)'] };
+      const [key, label] = ids[interaction.customId];
+      const modal = new ModalBuilder().setCustomId(`booster_edit:${key}`).setTitle('Réglage Booster');
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('value').setLabel(label).setStyle(TextInputStyle.Short).setRequired(true)));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('booster_edit:')) {
+      await interaction.deferReply({ ephemeral: true });
+      const key = interaction.customId.split(':')[1];
+      let v = Number((interaction.fields.getTextInputValue('value')||'').trim());
+      if (!Number.isFinite(v) || v <= 0) return interaction.editReply({ content: 'Valeur invalide.' });
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const b = eco.booster || {};
+      b[key] = v;
+      await updateEconomyConfig(interaction.guild.id, { booster: b });
+      return interaction.editReply({ content: '✅ Réglage mis à jour.' });
     }
     // Karma delete selected
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('eco_karma_rules:')) {
@@ -2768,6 +2814,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const it = (eco.shop?.items || []).find(x => String(x.id) === String(id));
         if (!it) return interaction.reply({ content: 'Article indisponible.', ephemeral: true });
         let price = Number(it.price||0);
+        // Booster shop price multiplier
+        try {
+          const b = eco.booster || {};
+          const mem = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+          const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
+          if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) price = Math.floor(price * Number(b.shopPriceMult));
+        } catch (_) {}
         // Apply karma shop discounts/penalties
         try {
           const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
@@ -2795,6 +2848,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const entry = (eco.shop?.roles || []).find(r => String(r.roleId) === String(roleId) && String(r.durationDays||0) === String(Number(durStr)||0));
         if (!entry) return interaction.reply({ content: 'Rôle indisponible.', ephemeral: true });
         let price = Number(entry.price||0);
+        // Booster shop price multiplier
+        try {
+          const b = eco.booster || {};
+          const mem = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+          const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
+          if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) price = Math.floor(price * Number(b.shopPriceMult));
+        } catch (_) {}
         // Apply karma shop modifiers
         try {
           const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
@@ -2834,6 +2894,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const prices = eco.suites?.prices || { day:0, week:0, month:0 };
         const daysMap = { day: eco.suites?.durations?.day || 1, week: eco.suites?.durations?.week || 7, month: eco.suites?.durations?.month || 30 };
         let price = Number(prices[key]||0);
+        // Booster shop price multiplier
+        try {
+          const b = eco.booster || {};
+          const mem = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+          const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
+          if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) price = Math.floor(price * Number(b.shopPriceMult));
+        } catch (_) {}
         // Apply karma shop modifiers
         try {
           const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
@@ -2949,6 +3016,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const isSuccess = Math.random() < successRate;
 
       const next = { amount: u.amount||0, charm: u.charm||0, perversion: u.perversion||0, cooldowns: { ...(u.cooldowns||{}) } };
+      // Booster cooldown multiplier
+      try {
+        const b = eco.booster || {};
+        const mem = await interaction.guild.members.fetch(userId).catch(()=>null);
+        const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
+        if (b.enabled && isBooster && Number(b.actionCooldownMult) > 0) {
+          conf.cooldown = Math.max(0, Math.round((conf.cooldown||60) * Number(b.actionCooldownMult)));
+        }
+      } catch (_) {}
       next.cooldowns[key] = now + (Math.max(0, conf.cooldown || 60))*1000;
 
       let title;
@@ -4177,7 +4253,15 @@ client.on(Events.MessageCreate, async (message) => {
     const stats = await getUserStats(message.guild.id, message.author.id);
     stats.messages = (stats.messages||0) + 1;
     // XP for text
-    stats.xp = (stats.xp||0) + (levels.xpPerMessage || 10);
+    let textXp = (levels.xpPerMessage || 10);
+    try {
+      const eco = await getEconomyConfig(message.guild.id);
+      const b = eco.booster || {};
+      const mem = await message.guild.members.fetch(message.author.id).catch(()=>null);
+      const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
+      if (b.enabled && isBooster && Number(b.textXpMult) > 0) textXp = Math.round(textXp * Number(b.textXpMult));
+    } catch (_) {}
+    stats.xp = (stats.xp||0) + textXp;
     const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
     const prevLevel = stats.level || 0;
     stats.level = norm.level;
@@ -4220,7 +4304,14 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         stats.voiceJoinedAt = 0;
         // XP for voice
         const minutes = Math.floor(delta / 60000);
-        const xpAdd = minutes * (levels.xpPerVoiceMinute || 5);
+        let xpAdd = minutes * (levels.xpPerVoiceMinute || 5);
+        try {
+          const eco = await getEconomyConfig(newState.guild.id);
+          const b = eco.booster || {};
+          const mem2 = await newState.guild.members.fetch(newState.id).catch(()=>null);
+          const isBooster2 = Boolean(mem2?.premiumSince || mem2?.premiumSinceTimestamp);
+          if (b.enabled && isBooster2 && Number(b.voiceXpMult) > 0) xpAdd = Math.round(xpAdd * Number(b.voiceXpMult));
+        } catch (_) {}
         if (xpAdd > 0) {
           stats.xp = (stats.xp||0) + xpAdd;
           const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
