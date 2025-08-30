@@ -1137,6 +1137,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildLogsRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'logs_cats_toggle') {
+      const cfg = await getLogsConfig(interaction.guild.id);
+      const set = new Set(interaction.values);
+      const cats = { ...(cfg.categories||{}) };
+      // Flip selected ones
+      for (const k of set) { cats[k] = !cats[k]; }
+      await updateLogsConfig(interaction.guild.id, { categories: cats });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
       const cf = await getConfessConfig(interaction.guild.id);
       const allow = !cf.allowReplies;
@@ -3573,7 +3584,19 @@ async function buildLogsRows(guild) {
     new ButtonBuilder().setCustomId('logs_cat:joinleave').setLabel(`Arrivée/Départ: ${cat.joinleave?'ON':'OFF'}`).setStyle(cat.joinleave?ButtonStyle.Success:ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('logs_cat:messages').setLabel(`Messages: ${cat.messages?'ON':'OFF'}`).setStyle(cat.messages?ButtonStyle.Success:ButtonStyle.Secondary)
   );
-  return [buildBackRow(), rowTog, rowChan, rowPer, rowPerSet, catRow1, catRow2];
+  // limit to 5 rows: back + toggles + global + per-cat + set
+  // To toggle categories, reuse per-cat select to enable/disable via long-press is not possible; compress with one select of multi choices
+  const catSelect = new StringSelectMenuBuilder().setCustomId('logs_cats_toggle').setPlaceholder('Activer/Désactiver des catégories (multi)').setMinValues(0).setMaxValues(7).addOptions(
+    { label:`Modération ${cat.moderation?'ON':'OFF'}`, value:'moderation' },
+    { label:`Vocal ${cat.voice?'ON':'OFF'}`, value:'voice' },
+    { label:`Économie ${cat.economy?'ON':'OFF'}`, value:'economy' },
+    { label:`Boosts ${cat.boosts?'ON':'OFF'}`, value:'boosts' },
+    { label:`Threads ${cat.threads?'ON':'OFF'}`, value:'threads' },
+    { label:`Arrivée/Départ ${cat.joinleave?'ON':'OFF'}`, value:'joinleave' },
+    { label:`Messages ${cat.messages?'ON':'OFF'}`, value:'messages' },
+  );
+  const rowCatSel = new ActionRowBuilder().addComponents(catSelect);
+  return [buildBackRow(), rowTog, rowChan, rowPer, rowPerSet, rowCatSel];
 }
 
 function buildEcoEmbed({ title, description, fields, color }) {
