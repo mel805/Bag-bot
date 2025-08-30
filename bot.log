@@ -79,3 +79,19 @@ Logged in as Bag bot#8659
   ch_ok: true
 }
 [Logs] sent OK
+Client error: DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async BurstHandler.runRequest (/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1411439210417754183/aW50ZXJhY3Rpb246MTQxMTQzOTIxMDQxNzc1NDE4Mzp1QTdUYmdjY3FFV1pHR0dkR1ZPdDVzNm9nVVBYY2lxNWRIem1UV2RIOUFDdE9FVXlkWmZwbThqSzNFZDEyMkREWG1mTEtKaVQwRkw0UTE5dk9wYU1qOG1BSk1hUGNCSHptNVhUUjVFaW9aSzZuYmNlQnl4T0FwY0h4U21lUXh5Mw/callback?with_response=false'
+}
