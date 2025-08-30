@@ -871,14 +871,7 @@ client.once(Events.ClientReady, (readyClient) => {
     const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
-  client.on(Events.MessageCreate, async (msg) => {
-    try { if (!msg.guild) return; } catch (_) { return; }
-    if (msg.author?.bot) return;
-    const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageCreate evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
-    if (!cfg.categories?.messages) return;
-    const embed = buildModEmbed(`${cfg.emoji} Message créé`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Contenu', value: msg.content || '—' }, { name:'Message ID', value: String(msg.id) } ]);
-    await sendLog(msg.guild, 'messages', embed);
-  });
+  // Removed MessageCreate logging per user request
   client.on(Events.ThreadCreate, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.categories?.threads) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
@@ -999,6 +992,20 @@ client.once(Events.ClientReady, (readyClient) => {
       }
     } catch (_) {}
   }, 60 * 1000);
+
+  // Backup logs heartbeat: announce periodic persistence (every 30 minutes)
+  setInterval(async () => {
+    try {
+      const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
+      if (!guild) return;
+      const cfg = await getLogsConfig(guild.id);
+      if (!cfg?.categories?.backup) return;
+      const embed = buildModEmbed(`${cfg.emoji} Sauvegarde`, `Snapshot de l'état du bot enregistré.`, [
+        { name: 'Horodatage', value: new Date().toLocaleString('fr-FR') }
+      ]);
+      await sendLog(guild, 'backup', embed);
+    } catch (_) {}
+  }, 30 * 60 * 1000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -3582,6 +3589,7 @@ async function buildLogsRows(guild) {
     { label:'Threads', value:'threads' },
     { label:'Arrivée/Départ', value:'joinleave' },
     { label:'Messages', value:'messages' },
+    { label:'Sauvegardes', value:'backup' },
   );
   const rowPer = new ActionRowBuilder().addComponents(perCat);
   const chosen = client._logsPerCat?.get?.(guild.id) || 'moderation';
@@ -3600,7 +3608,7 @@ async function buildLogsRows(guild) {
   );
   // limit to 5 rows: back + toggles + global + per-cat + set
   // To toggle categories, reuse per-cat select to enable/disable via long-press is not possible; compress with one select of multi choices
-  const catSelect = new StringSelectMenuBuilder().setCustomId('logs_cats_toggle').setPlaceholder('Activer/Désactiver des catégories (multi)').setMinValues(0).setMaxValues(7).addOptions(
+  const catSelect = new StringSelectMenuBuilder().setCustomId('logs_cats_toggle').setPlaceholder('Activer/Désactiver des catégories (multi)').setMinValues(0).setMaxValues(8).addOptions(
     { label:`Modération ${cat.moderation?'ON':'OFF'}`, value:'moderation' },
     { label:`Vocal ${cat.voice?'ON':'OFF'}`, value:'voice' },
     { label:`Économie ${cat.economy?'ON':'OFF'}`, value:'economy' },
@@ -3608,6 +3616,7 @@ async function buildLogsRows(guild) {
     { label:`Threads ${cat.threads?'ON':'OFF'}`, value:'threads' },
     { label:`Arrivée/Départ ${cat.joinleave?'ON':'OFF'}`, value:'joinleave' },
     { label:`Messages ${cat.messages?'ON':'OFF'}`, value:'messages' },
+    { label:`Sauvegardes ${cat.backup?'ON':'OFF'}`, value:'backup' },
   );
   const rowCatSel = new ActionRowBuilder().addComponents(catSelect);
   // Keep at most 5 rows
