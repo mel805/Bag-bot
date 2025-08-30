@@ -2343,7 +2343,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cfg = await getLogsConfig(interaction.guild.id);
       const embed = buildModEmbed(`[TEST] ${cat}`, `Test de logs catégorie: ${cat}`, [{ name:'Salon cible', value: (cfg.channels?.[cat] ? `<#${cfg.channels[cat]}>` : (cfg.channelId?`<#${cfg.channelId}>`:'non défini')) }]);
       await sendLog(interaction.guild, cat, embed);
-      return interaction.reply({ content:'✅ Test envoyé (si configuré).', ephemeral:true });
+      try { await interaction.channel.send({ embeds: [embed] }); } catch (_) {}
+      return interaction.reply({ content:'✅ Test envoyé (si configuré) + aperçu dans ce salon.', ephemeral:true });
     }
 
     // Music: pause
