@@ -96,3 +96,16 @@ To disable this warning, set 'lavalink.server.sources.youtube' to false in your 
 2025-08-30T08:41:53.963Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /
 2025-08-30T08:42:23.981Z  WARN 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.config.WebsocketConfig   : This is the old Lavalink websocket endpoint. Please use /v4/websocket instead. If you are using a client library, please update it to a Lavalink v4 compatible version or use Lavalink v3 instead.
 2025-08-30T08:42:23.982Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /
+2025-08-30T08:53:26.626Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:57920
+2025-08-30T08:53:26.651Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T08:53:26.708Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T08:54:34.411Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:57920 with id ltwxym6ddpqkx5gg -- CloseStatus[code=1006, reason=]
+2025-08-30T08:54:34.411Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T08:55:04.420Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:50370
+2025-08-30T08:55:04.421Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T08:55:04.423Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T08:56:36.258Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:50370 with id e0lfrnqf07uo71b8 -- CloseStatus[code=1006, reason=]
+2025-08-30T08:56:36.259Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T08:56:42.693Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:35802
+2025-08-30T08:56:42.694Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T08:56:42.695Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
