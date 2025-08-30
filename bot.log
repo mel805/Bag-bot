@@ -61,3 +61,7 @@ data.components[BASE_TYPE_MAX_LENGTH]: Must be 5 or fewer in length.
 [Music] Node error lava.luke.gg Unexpected server response: 523
 [Music] Node error lavalink_v4.muzykant.xyz Unable to connect after 5 attempts.
 [Music] Node error lavalink_v3.muzykant.xyz Unable to connect after 5 attempts.
+[Music] Node error pool-us.alfari.id Unable to connect after 5 attempts.
+[Music] Node error pool-sg.alfari.id Unable to connect after 5 attempts.
+[Music] Node error lavalink.devxcode.in Unable to connect after 5 attempts.
+[Music] Node error lava.luke.gg Unable to connect after 5 attempts.
