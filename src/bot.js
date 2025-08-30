@@ -575,6 +575,68 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
   }
 }
 
+function memberHasCertifiedRole(memberOrMention, levels) {
+  try {
+    const certIds = new Set(Array.isArray(levels?.cards?.certifiedRoleIds) ? levels.cards.certifiedRoleIds : []);
+    return Boolean(memberOrMention?.roles?.cache?.some(r => certIds.has(r.id)));
+  } catch (_) { return false; }
+}
+
+async function drawCertifiedCard(options) {
+  const { backgroundUrl, name, sublines, logoUrl } = options;
+  try {
+    const entry = await getCachedImage(backgroundUrl);
+    if (!entry) return null;
+    const maxW = 1024;
+    const scale = entry.width > maxW ? maxW / entry.width : 1;
+    const width = Math.max(640, Math.round(entry.width * scale));
+    const height = Math.max(360, Math.round(entry.height * scale));
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(entry.img, 0, 0, width, height);
+    // Soft vignette
+    const grd = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/6, width/2, height/2, Math.max(width,height)/1.1);
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, width, height);
+    // Center logo (optional)
+    if (logoUrl) {
+      const lg = await getCachedImage(logoUrl);
+      if (lg) {
+        const s = Math.floor(Math.min(width, height) * 0.25);
+        const x = Math.floor((width - s)/2);
+        const y = Math.floor((height - s)/2) - 10;
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(lg.img, x, y, s, s);
+        ctx.restore();
+      }
+    }
+    // Member name (center)
+    const titleY = Math.floor(height * 0.78);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillStyle = '#ffffff';
+    const pretty = String(name || '').toUpperCase();
+    ctx.font = '700 44px Georgia, Arial, Sans-Serif';
+    ctx.strokeText(pretty, width/2, titleY);
+    ctx.fillText(pretty, width/2, titleY);
+    // Sublines under name
+    if (Array.isArray(sublines) && sublines.length) {
+      ctx.font = '600 20px Georgia, Arial, Sans-Serif';
+      let y = titleY + 30;
+      for (const l of sublines.slice(0,2)) {
+        ctx.lineWidth = 4; ctx.strokeText(l, width/2, y); ctx.fillText(l, width/2, y); y += 24;
+      }
+    }
+    return canvas.toBuffer('image/png');
+  } catch (_) { return null; }
+}
+
 function memberDisplayName(guild, memberOrMention, userIdFallback) {
   if (memberOrMention && memberOrMention.user) {
     return memberOrMention.nickname || memberOrMention.user.username;
@@ -591,20 +653,29 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   if (!ann.enabled || !ann.channelId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
-  const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-  const lastReward = getLastRewardForLevel(levels, newLevel);
-  const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
+  const isCert = memberHasCertifiedRole(memberOrMention, levels);
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
-  const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
-  const lines = [
-    `Niveau: ${newLevel}`,
-    lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
-  ];
-  drawCard(bg, `${name} monte de niveau !`, lines, undefined, undefined, avatarUrl, '🎉 Félicitations !').then((img) => {
-    if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
-    else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
-  });
+  const lastReward = getLastRewardForLevel(levels, newLevel);
+  const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
+  if (isCert) {
+    const bg = levels.cards?.backgrounds?.certified || THEME_IMAGE;
+    drawCertifiedCard({ backgroundUrl: bg, name, sublines: [roleName?`Dernière récompense: ${roleName}`:''] }).then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
+      else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
+    });
+  } else {
+    const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+    const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
+    const lines = [
+      `Niveau: ${newLevel}`,
+      lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
+    ];
+    drawCard(bg, `${name} monte de niveau !`, lines, undefined, undefined, avatarUrl, '🎉 Félicitations !').then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
+      else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
+    });
+  }
 }
 
 function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
@@ -612,15 +683,24 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   if (!ann.enabled || !ann.channelId || !roleId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
-  const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const isCert = memberHasCertifiedRole(memberOrMention, levels);
   const roleName = guild.roles.cache.get(roleId)?.name || `Rôle ${roleId}`;
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
-  const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 128 }) || null;
-  drawCard(bg, `${name} reçoit un rôle !`, [`Rôle: ${roleName}`], undefined, undefined, avatarUrl).then((img) => {
-    if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-    else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
-  });
+  if (isCert) {
+    const bg = levels.cards?.backgrounds?.certified || THEME_IMAGE;
+    drawCertifiedCard({ backgroundUrl: bg, name, sublines: [`Rôle: ${roleName}`] }).then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
+      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+    });
+  } else {
+    const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+    const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 128 }) || null;
+    drawCard(bg, `${name} reçoit un rôle !`, [`Rôle: ${roleName}`], undefined, undefined, avatarUrl).then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
+      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+    });
+  }
 }
 
 function memberMention(userId) {
@@ -1874,7 +1954,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const action = interaction.options.getString('action', true);
       const target = interaction.options.getUser('membre', true);
       const targetMember = interaction.guild.members.cache.get(target.id);
-      const levels = await getLevelsConfig(interaction.guild.id);
+      let levels;
+      try { levels = await getLevelsConfig(interaction.guild.id); }
+      catch (e) {
+        try { await ensureStorageExists(); levels = await getLevelsConfig(interaction.guild.id); }
+        catch (e2) { return interaction.reply({ content: `Erreur de stockage: ${e2?.code||'inconnue'}`, ephemeral: true }); }
+      }
       let stats = await getUserStats(interaction.guild.id, target.id);
 
       const applyRewardsUpTo = async (newLevel) => {
