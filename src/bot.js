@@ -4052,24 +4052,30 @@ client.on(Events.MessageCreate, async (message) => {
     if (!message.guild || message.author.bot) return;
     // Disboard bump detection
     try {
-      // Disboard bot ID
       const DISBOARD_ID = '302050872383242240';
       if (message.author.id === DISBOARD_ID) {
-        const content = (message.content || '').toLowerCase();
-        if (content.includes('bump done') || content.includes('bump effectué') || content.includes('bump done!')) {
+        const texts = [];
+        if (message.content) texts.push(String(message.content));
+        if (Array.isArray(message.embeds)) {
+          for (const em of message.embeds) {
+            if (em?.title) texts.push(String(em.title));
+            if (em?.description) texts.push(String(em.description));
+            if (em?.footer?.text) texts.push(String(em.footer.text));
+            if (Array.isArray(em?.fields)) for (const f of em.fields) { if (f?.name) texts.push(String(f.name)); if (f?.value) texts.push(String(f.value)); }
+          }
+        }
+        const text = texts.join(' ').toLowerCase();
+        const hasBump = text.includes('bump');
+        const successHints = ['done','effectué','effectue','réussi','reussi','successful','merci','thank'];
+        const hasSuccess = successHints.some(k => text.includes(k));
+        if (hasBump && hasSuccess) {
           await updateDisboardConfig(message.guild.id, { lastBumpAt: Date.now(), lastBumpChannelId: message.channel.id, reminded: false });
-          // Inform that cooldown started
           try {
             const embed = new EmbedBuilder()
               .setColor(THEME_COLOR_PRIMARY)
               .setAuthor({ name: 'BAG • Disboard' })
               .setTitle('✨ Merci pour le bump !')
-              .setDescription(`Votre soutien fait rayonner le serveur. Le cooldown de 2 heures démarre maintenant.
-
-• Prochain rappel automatique: dans 2h
-• Salon: <#${message.channel.id}>
-
-Restez sexy, beaux/belles gosses 😘`)
+              .setDescription(`Votre soutien fait rayonner le serveur. Le cooldown de 2 heures démarre maintenant.\n\n• Prochain rappel automatique: dans 2h\n• Salon: <#${message.channel.id}>\n\nRestez sexy, beaux/belles gosses 😘`)
               .setThumbnail(THEME_IMAGE)
               .setFooter({ text: 'BAG • Premium' })
               .setTimestamp(new Date());
