@@ -1791,3 +1791,11 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30T09:25:44.443Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:46188
 2025-08-30T09:25:44.444Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
 2025-08-30T09:25:44.445Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:26:59.890Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:46188 with id n5nwdca62gl163s7 -- CloseStatus[code=1003, reason=Binary messages not supported]
+2025-08-30T09:26:59.890Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-30T09:27:29.920Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:57216
+2025-08-30T09:27:29.921Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:27:29.922Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:30:15.290Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:54982
+2025-08-30T09:30:15.291Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:30:15.292Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js

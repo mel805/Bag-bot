@@ -1916,6 +1916,136 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
+    // Music: pause
+    if (interaction.isChatInputCommand() && interaction.commandName === 'pause') {
+      try {
+        await interaction.deferReply();
+        const player = client.music?.players.get(interaction.guild.id);
+        if (!player) return interaction.editReply('Aucun lecteur.');
+        player.pause(true);
+        return interaction.editReply('⏸️ Lecture en pause.');
+      } catch (e) { try { return await interaction.editReply('Erreur pause.'); } catch (_) { return; } }
+    }
+
+    // Music: resume
+    if (interaction.isChatInputCommand() && interaction.commandName === 'resume') {
+      try {
+        await interaction.deferReply();
+        const player = client.music?.players.get(interaction.guild.id);
+        if (!player) return interaction.editReply('Aucun lecteur.');
+        player.pause(false);
+        return interaction.editReply('▶️ Lecture reprise.');
+      } catch (e) { try { return await interaction.editReply('Erreur reprise.'); } catch (_) { return; } }
+    }
+
+    // Music: skip (next)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'skip') {
+      try {
+        await interaction.deferReply();
+        const player = client.music?.players.get(interaction.guild.id);
+        if (!player) return interaction.editReply('Aucun lecteur.');
+        player.stop();
+        return interaction.editReply('⏭️ Piste suivante.');
+      } catch (e) { try { return await interaction.editReply('Erreur skip.'); } catch (_) { return; } }
+    }
+
+    // Music: stop (clear)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'stop') {
+      try {
+        await interaction.deferReply();
+        const player = client.music?.players.get(interaction.guild.id);
+        if (!player) return interaction.editReply('Aucun lecteur.');
+        try { player.queue.clear(); } catch (_) {}
+        player.stop();
+        return interaction.editReply('⏹️ Lecture arrêtée.');
+      } catch (e) { try { return await interaction.editReply('Erreur stop.'); } catch (_) { return; } }
+    }
+
+    // Music: queue
+    if (interaction.isChatInputCommand() && interaction.commandName === 'queue') {
+      try {
+        const player = client.music?.players.get(interaction.guild.id);
+        if (!player || (!player.queue.current && player.queue.size === 0)) return interaction.reply('Aucune piste en file.');
+        const lines = [];
+        if (player.queue.current) lines.push(`En lecture: ${player.queue.current.title}`);
+        for (let i = 0; i < Math.min(10, player.queue.length); i++) {
+          const tr = player.queue[i];
+          lines.push(`${i+1}. ${tr.title}`);
+        }
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('File de lecture').setDescription(lines.join('\n')).setTimestamp(new Date());
+        return interaction.reply({ embeds: [embed] });
+      } catch (e) { return interaction.reply('Erreur file.'); }
+    }
+
+    // Music: leave
+    if (interaction.isChatInputCommand() && interaction.commandName === 'leave') {
+      try {
+        await interaction.deferReply();
+        const player = client.music?.players.get(interaction.guild.id);
+        if (!player) return interaction.editReply('Aucun lecteur.');
+        player.destroy();
+        return interaction.editReply('👋 Déconnexion du vocal.');
+      } catch (e) { try { return await interaction.editReply('Erreur quit.'); } catch (_) { return; } }
+    }
+
+    // Music: radio
+    if (interaction.isChatInputCommand() && interaction.commandName === 'radio') {
+      try {
+        await interaction.deferReply();
+        const station = interaction.options.getString('station', true);
+        if (!interaction.member?.voice?.channel) return interaction.editReply('Rejoignez un salon vocal.');
+        const map = {
+          chillout: 'http://streaming.tdiradio.com:8000/house.mp3',
+          lofi: 'https://radio.plaza.one/mp3',
+          edm: 'https://icecast.ravepartyradio.org/ravepartyradio-192.mp3',
+          jazz: 'https://jazz.stream.9080/stream'
+        };
+        const url = map[station] || map.chillout;
+        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible.');
+        const hasNode = (() => { try { return client.music.nodes && Array.from(client.music.nodes.values()).some(n => n.connected); } catch (_) { return false; } })();
+        if (!hasNode) return interaction.editReply('Lecteur indisponible (nœud).');
+        let player = client.music.players.get(interaction.guild.id);
+        if (!player) {
+          player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true });
+          player.connect();
+        }
+        const res = await client.music.search(url, interaction.user).catch(()=>null);
+        if (!res || !res.tracks?.length) return interaction.editReply('Station indisponible.');
+        player.queue.add(res.tracks[0]);
+        if (!player.playing && !player.paused) player.play();
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('📻 Radio').setDescription(`Station: ${station}`).setTimestamp(new Date());
+        return interaction.editReply({ embeds: [embed] });
+      } catch (e) { try { return await interaction.editReply('Erreur radio.'); } catch (_) { return; } }
+    }
+
+    // Music player button controls
+    if (interaction.isButton() && interaction.customId.startsWith('music_')) {
+      try {
+        await interaction.deferUpdate();
+      } catch (_) {
+        // ignore
+      }
+      const id = interaction.customId;
+      const player = client.music?.players.get(interaction.guild.id);
+      if (!player) return;
+      try {
+        if (id === 'music_pause') player.pause(true);
+        else if (id === 'music_play') player.pause(false);
+        else if (id === 'music_stop') { try { player.queue.clear(); } catch (_) {}; player.stop(); }
+        else if (id === 'music_next') player.stop();
+        else if (id === 'music_shuffle') player.queue.shuffle();
+        else if (id === 'music_loop') player.setQueueRepeat(!player.queueRepeat);
+        else if (id === 'music_leave') player.destroy();
+        else if (id === 'music_queue') {
+          const lines = [];
+          if (player.queue.current) lines.push(`En lecture: ${player.queue.current.title}`);
+          for (let i = 0; i < Math.min(10, player.queue.length); i++) { const tr = player.queue[i]; lines.push(`${i+1}. ${tr.title}`); }
+          try { await interaction.followUp({ content: lines.join('\n') || 'File vide.', ephemeral: true }); } catch (_) {}
+        }
+      } catch (_) {}
+      return;
+    }
+
     // /confess command
     if (interaction.isChatInputCommand() && interaction.commandName === 'confess') {
       const cf = await getConfessConfig(interaction.guild.id);
