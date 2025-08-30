@@ -6,21 +6,11 @@ Login succeeded
 Logged in as Bag bot#8659
 [Music] Using nodes from LAVALINK_NODES env
 [YTProxy] listening on 127.0.0.1:8765
-[Music] Node error v4.lavalink.rocks getaddrinfo ENOTFOUND v4.lavalink.rocks
-[Music] Node error lavalink-v4.huntolls-bot.xyz getaddrinfo ENOTFOUND lavalink-v4.huntolls-bot.xyz
-[Music] Node error lavalink.jompo.cloud getaddrinfo ENOTFOUND lavalink.jompo.cloud
-[Music] Node error v4.lavalink.rocks getaddrinfo ENOTFOUND v4.lavalink.rocks
-[Music] Node error lavalink-v4.huntolls-bot.xyz getaddrinfo ENOTFOUND lavalink-v4.huntolls-bot.xyz
-[Music] Node error lavalink.jompo.cloud getaddrinfo ENOTFOUND lavalink.jompo.cloud
-[Music] Node error v4.lavalink.rocks getaddrinfo ENOTFOUND v4.lavalink.rocks
-[Music] Node error lavalink-v4.huntolls-bot.xyz getaddrinfo ENOTFOUND lavalink-v4.huntolls-bot.xyz
-[Music] Node error lavalink.jompo.cloud getaddrinfo ENOTFOUND lavalink.jompo.cloud
-[Music] Node error v4.lavalink.rocks getaddrinfo ENOTFOUND v4.lavalink.rocks
-[Music] Node error lavalink-v4.huntolls-bot.xyz getaddrinfo ENOTFOUND lavalink-v4.huntolls-bot.xyz
-[Music] Node error lavalink.jompo.cloud getaddrinfo ENOTFOUND lavalink.jompo.cloud
-[Music] Node error v4.lavalink.rocks getaddrinfo ENOTFOUND v4.lavalink.rocks
-[Music] Node error lavalink-v4.huntolls-bot.xyz getaddrinfo ENOTFOUND lavalink-v4.huntolls-bot.xyz
-[Music] Node error lavalink.jompo.cloud getaddrinfo ENOTFOUND lavalink.jompo.cloud
-[Music] Node error v4.lavalink.rocks Unable to connect after 5 attempts.
-[Music] Node error lavalink-v4.huntolls-bot.xyz Unable to connect after 5 attempts.
-[Music] Node error lavalink.jompo.cloud Unable to connect after 5 attempts.
+[Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error pool-sg.alfari.id Unexpected server response: 403
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node connected: lavalinkv3.devxcode.in
+[Music] Node error lavalinkv3.devxcode.in Unexpected op "ready" with data: [object Object]
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
+[Music] Node error lava.luke.gg Unexpected server response: 523
