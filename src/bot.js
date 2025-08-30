@@ -422,7 +422,6 @@ function getLastRewardForLevel(levels, currentLevel) {
   }
   return best;
 }
-
 async function drawCard(backgroundUrl, title, lines, progressRatio, progressText, avatarUrl, centerText) {
   try {
     const entry = await getCachedImage(backgroundUrl);
@@ -788,7 +787,6 @@ client.login(token).then(() => {
   console.error('Login failed:', err?.message || err);
   process.exit(1);
 });
-
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   ensureStorageExists().catch(() => {});
@@ -1110,14 +1108,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'logs_channel_percat') {
-      // store selected category in message state is complex; reuse customId with last selection via ephemeral state isn’t persisted.
-      // Simple approach: encode category on next channel select via message content not available; instead, reuse a lightweight global map.
       if (!client._logsPerCat) client._logsPerCat = new Map();
       client._logsPerCat.set(interaction.guild.id, interaction.values[0]);
-      return interaction.deferUpdate();
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
-    if (interaction.isChannelSelectMenu() && interaction.customId === 'logs_channel_set') {
-      const cat = client._logsPerCat?.get?.(interaction.guild.id) || 'moderation';
+    if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('logs_channel_set:')) {
+      const cat = interaction.customId.split(':')[1] || 'moderation';
       const id = interaction.values[0];
       const cfg = await getLogsConfig(interaction.guild.id);
       const channels = { ...(cfg.channels||{}) };
@@ -1280,7 +1278,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.editReply({ embeds: [embed], components: [top, ...akRows] }); } catch (_) {}
       return;
     }
-
     // AutoThread config handlers
     if (interaction.isChannelSelectMenu() && interaction.customId === 'autothread_channels_add') {
       const cfg = await getAutoThreadConfig(interaction.guild.id);
@@ -1781,7 +1778,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.showModal(modal);
       return;
     }
-
     if (interaction.isButton() && interaction.customId === 'levels_cards_bg_certified') {
       const modal = new ModalBuilder().setCustomId('levels_cards_bg_modal:certified').setTitle('URL BG certifié');
       const input = new TextInputBuilder().setCustomId('url').setLabel('URL de l\'image').setStyle(TextInputStyle.Short).setPlaceholder('https://...').setRequired(true).setMaxLength(512);
@@ -2223,7 +2219,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try { return await interaction.editReply('Erreur de lecture.'); } catch (_) { return; }
       }
     }
-
     // Moderation commands (staff-only)
     if (interaction.isChatInputCommand() && ['ban','unban','kick','mute','unmute','warn','masskick','massban','purge'].includes(interaction.commandName)) {
       try {
@@ -3087,7 +3082,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Prix des suites mis à jour.' });
     }
-
     if (interaction.isChatInputCommand() && interaction.commandName === 'niveau') {
       try {
         await interaction.reply({ content: '⏳ Génération de la carte…' });
@@ -3362,44 +3356,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed], components: [followRow] });
     }
 
-    // Removed legacy global channel add/remove modals; handled via per-mode selectors elsewhere
-
-    // removed legacy td_prompts_add handler that required a 'type' field; new flow uses distinct buttons and encodes mode/type in customId
-
-    if (interaction.isButton() && interaction.customId === 'td_prompts_edit') {
-      const modal = new ModalBuilder().setCustomId('td_prompts_edit_modal').setTitle('Modifier prompt');
-      const promptsEditBtn = new ButtonBuilder().setCustomId('td_prompts_edit').setLabel('Modifier prompt').setStyle(ButtonStyle.Secondary);
-      modal.addComponents(promptsEditBtn);
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_edit_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const prompts = interaction.fields.getTextInputValue('td_prompts_edit');
-      const td = await getTruthDareConfig(interaction.guild.id);
-      const newPrompts = prompts.split('\n').filter(p => p.trim() !== '');
-      await updateTruthDareConfig(interaction.guild.id, { prompts: newPrompts });
-      return interaction.editReply({ content: `✅ ${newPrompts.length} prompts modifiés.` });
-    }
-
-    if (interaction.isButton() && interaction.customId === 'td_prompts_delete') {
-      const modal = new ModalBuilder().setCustomId('td_prompts_delete_modal').setTitle('Supprimer prompt');
-      const promptsDelBtn = new ButtonBuilder().setCustomId('td_prompts_delete').setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
-      modal.addComponents(promptsDelBtn);
-      await interaction.showModal(modal);
-      return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId === 'td_prompts_delete_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      const prompts = interaction.fields.getStringValues('td_prompts_delete');
-      const td = await getTruthDareConfig(interaction.guild.id);
-      const newPrompts = td.prompts.filter(p => !prompts.includes(p.text));
-      await updateTruthDareConfig(interaction.guild.id, { prompts: newPrompts });
-      return interaction.editReply({ content: `✅ ${prompts.length} prompts supprimés.` });
-    }
-
     if (interaction.isStringSelectMenu() && interaction.customId === 'td_mode') {
       const mode = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
@@ -3421,7 +3377,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildTruthDareRows(interaction.guild, mode);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
-    // removed intermediary variant that used prefixed text input ids; keep only the final unified handler below
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       const td = await getTruthDareConfig(interaction.guild.id);
@@ -3552,7 +3507,6 @@ function buildBackRow() {
   const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
   return new ActionRowBuilder().addComponents(back);
 }
-
 async function buildLogsRows(guild) {
   const cfg = await getLogsConfig(guild.id);
   const toggle = new ButtonBuilder().setCustomId('logs_toggle').setLabel(cfg.enabled ? 'Logs: ON' : 'Logs: OFF').setStyle(cfg.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
@@ -3572,7 +3526,8 @@ async function buildLogsRows(guild) {
     { label:'Messages', value:'messages' },
   );
   const rowPer = new ActionRowBuilder().addComponents(perCat);
-  const rowPerSet = new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('logs_channel_set').setPlaceholder('Choisir salon pour la catégorie ci-dessus…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement));
+  const chosen = client._logsPerCat?.get?.(guild.id) || 'moderation';
+  const rowPerSet = new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId(`logs_channel_set:${chosen}`).setPlaceholder(`Choisir salon pour: ${chosen}`).setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement));
   const cat = cfg.categories || {};
   const catRow1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('logs_cat:moderation').setLabel(`Modération: ${cat.moderation?'ON':'OFF'}`).setStyle(cat.moderation?ButtonStyle.Success:ButtonStyle.Secondary),
