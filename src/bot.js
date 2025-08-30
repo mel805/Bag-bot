@@ -660,6 +660,24 @@ async function buildEconomySettingsRows(guild) {
   return [row];
 }
 
+// Build rows to manage karma-based discounts/penalties
+async function buildEconomyKarmaRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const info = new EmbedBuilder()
+    .setColor(THEME_COLOR_PRIMARY)
+    .setTitle('Économie • Remises & Sanctions (karma)')
+    .setDescription('Définissez des règles basées sur le karma qui ajustent:\n• Les prix de la boutique (remise/sanction en %)\n• Les gains/pertes des actions (% sur money)\n• Grants directs (ajout/retrait d\'argent)\n')
+    .setTimestamp(new Date());
+  const addShop = new ButtonBuilder().setCustomId('eco_karma_add_shop').setLabel('Ajouter règle boutique').setStyle(ButtonStyle.Primary);
+  const addAct = new ButtonBuilder().setCustomId('eco_karma_add_action').setLabel('Ajouter règle actions').setStyle(ButtonStyle.Primary);
+  const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('Ajouter grant direct').setStyle(ButtonStyle.Secondary);
+  const rowAdd = new ActionRowBuilder().addComponents(addShop, addAct, addGrant);
+  // For brevity, show counts only
+  const counts = `Boutique: ${eco.karmaModifiers?.shop?.length||0} • Actions: ${eco.karmaModifiers?.actions?.length||0} • Grants: ${eco.karmaModifiers?.grants?.length||0}`;
+  const meta = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('Règles configurées').setDescription(counts).setTimestamp(new Date());
+  return [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('noop').setLabel('Voir ci-dessus').setStyle(ButtonStyle.Secondary).setDisabled(true)), rowAdd];
+}
+
 async function buildAutoThreadRows(guild) {
   const cfg = await getAutoThreadConfig(guild.id);
   const channelsAdd = new ChannelSelectMenuBuilder().setCustomId('autothread_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(5).addChannelTypes(ChannelType.GuildText);
@@ -1072,6 +1090,66 @@ client.on(Events.InteractionCreate, async (interaction) => {
         rows = await buildEconomyMenuRows(interaction.guild, page);
       }
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
+    }
+    // Karma rules creation: boutique
+    if (interaction.isButton() && interaction.customId === 'eco_karma_add_shop') {
+      const modal = new ModalBuilder().setCustomId('eco_karma_add_shop').setTitle('Règle boutique (karma)');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50, perversion>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (ex: -10 pour -10%)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_shop') {
+      await interaction.deferReply({ ephemeral: true });
+      const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
+      const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const list = Array.isArray(eco.karmaModifiers?.shop) ? eco.karmaModifiers.shop : [];
+      list.push({ condition, percent });
+      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), shop: list };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Règle boutique ajoutée.' });
+    }
+    // Karma rules creation: actions
+    if (interaction.isButton() && interaction.customId === 'eco_karma_add_action') {
+      const modal = new ModalBuilder().setCustomId('eco_karma_add_action').setTitle('Règle actions (karma)');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50, perversion>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage sur gains/pertes (ex: +15)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_action') {
+      await interaction.deferReply({ ephemeral: true });
+      const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
+      const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const list = Array.isArray(eco.karmaModifiers?.actions) ? eco.karmaModifiers.actions : [];
+      list.push({ condition, percent });
+      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), actions: list };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Règle actions ajoutée.' });
+    }
+    // Karma grants
+    if (interaction.isButton() && interaction.customId === 'eco_karma_add_grant') {
+      const modal = new ModalBuilder().setCustomId('eco_karma_add_grant').setTitle('Grant direct (karma)');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (ex: +500 ou -200)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_grant') {
+      await interaction.deferReply({ ephemeral: true });
+      const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
+      const money = Number((interaction.fields.getTextInputValue('money')||'0').trim());
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const list = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
+      list.push({ condition, money });
+      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), grants: list };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Grant direct ajouté.' });
     }
 
     // Confess config handlers
@@ -2582,7 +2660,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const id = choice.split(':')[1];
         const it = (eco.shop?.items || []).find(x => String(x.id) === String(id));
         if (!it) return interaction.reply({ content: 'Article indisponible.', ephemeral: true });
-        const price = Number(it.price||0);
+        let price = Number(it.price||0);
+        // Apply karma shop discounts/penalties
+        try {
+          const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+          const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
+          const perc = (eco.karmaModifiers?.shop || []).reduce((acc, r) => {
+            try {
+              const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
+              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
+              // eslint-disable-next-line no-eval
+              const ok = !!eval(expr);
+              return ok ? acc + Number(r.percent||0) : acc;
+            } catch (_) { return acc; }
+          }, 0);
+          const factor = Math.max(0, 1 + perc / 100);
+          price = Math.max(0, Math.floor(price * factor));
+        } catch (_) {}
         if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
         u.amount = (u.amount||0) - price;
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
@@ -2593,7 +2687,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const [, roleId, durStr] = choice.split(':');
         const entry = (eco.shop?.roles || []).find(r => String(r.roleId) === String(roleId) && String(r.durationDays||0) === String(Number(durStr)||0));
         if (!entry) return interaction.reply({ content: 'Rôle indisponible.', ephemeral: true });
-        const price = Number(entry.price||0);
+        let price = Number(entry.price||0);
+        // Apply karma shop modifiers
+        try {
+          const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
+          const perc = (eco.karmaModifiers?.shop || []).reduce((acc, r) => {
+            try {
+              const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
+              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
+              // eslint-disable-next-line no-eval
+              const ok = !!eval(expr);
+              return ok ? acc + Number(r.percent||0) : acc;
+            } catch (_) { return acc; }
+          }, 0);
+          const factor = Math.max(0, 1 + perc / 100);
+          price = Math.max(0, Math.floor(price * factor));
+        } catch (_) {}
         if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
         u.amount = (u.amount||0) - price;
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
@@ -2617,7 +2726,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const key = choice.split(':')[1];
         const prices = eco.suites?.prices || { day:0, week:0, month:0 };
         const daysMap = { day: eco.suites?.durations?.day || 1, week: eco.suites?.durations?.week || 7, month: eco.suites?.durations?.month || 30 };
-        const price = Number(prices[key]||0);
+        let price = Number(prices[key]||0);
+        // Apply karma shop modifiers
+        try {
+          const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
+          const perc = (eco.karmaModifiers?.shop || []).reduce((acc, r) => {
+            try {
+              const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
+              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
+              // eslint-disable-next-line no-eval
+              const ok = !!eval(expr);
+              return ok ? acc + Number(r.percent||0) : acc;
+            } catch (_) { return acc; }
+          }, 0);
+          const factor = Math.max(0, 1 + perc / 100);
+          price = Math.max(0, Math.floor(price * factor));
+        } catch (_) {}
         if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
         const categoryId = eco.suites?.categoryId || '';
         if (!categoryId) return interaction.reply({ content: 'Catégorie des suites non définie. Configurez-la dans /config → Économie → Suites.', ephemeral: true });
@@ -2694,6 +2818,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const u = await getEconomyUser(interaction.guild.id, userId);
       const now = Date.now();
       const conf = eco.actions?.config?.[key] || { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 60 };
+      // Evaluate karma modifiers for actions (percentage multiplier)
+      const actorCharm = u.charm || 0;
+      const actorPerv = u.perversion || 0;
+      const actionPerc = (eco.karmaModifiers?.actions || []).reduce((acc, r) => {
+        try {
+          const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
+          // very basic safe eval: only numbers and operators
+          if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
+          // eslint-disable-next-line no-eval
+          const ok = !!eval(expr);
+          return ok ? acc + Number(r.percent||0) : acc;
+        } catch (_) { return acc; }
+      }, 0);
+      const actionFactor = Math.max(0, 1 + actionPerc / 100);
       const remain = Math.max(0, (u.cooldowns?.[key]||0)-now);
       if (remain>0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(remain/1000)}s avant de refaire cette action.` });
 
@@ -2715,7 +2853,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       let targetMoneyDelta = 0;
       let targetKarmaDelta = 0;
       if (!isSuccess) {
-        const lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
+        let lose = Math.floor((conf.failMoneyMin ?? 0) + Math.random() * Math.max(0, (conf.failMoneyMax ?? 0) - (conf.failMoneyMin ?? 0)));
+        lose = Math.floor(lose * actionFactor);
         next.amount = Math.max(0, next.amount - lose);
         if (conf.karma === 'charm') next.charm = Math.max(0, next.charm - Math.max(0, conf.failKarmaDelta || 0));
         else if (conf.karma === 'perversion') next.perversion = Math.max(0, next.perversion - Math.max(0, conf.failKarmaDelta || 0));
@@ -2743,7 +2882,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         title = `❌ ${actionKeyToLabel(key)}${targetUserOptional ? ` avec ${targetUserOptional}` : ''}`;
         descLine = `${failText}${(lose>0)?`\n-${lose} ${eco.currency?.name || 'BAG$'}`:''}`;
       } else {
-        const gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
+        let gain = Math.floor(conf.moneyMin + Math.random() * Math.max(0, conf.moneyMax - conf.moneyMin));
+        gain = Math.floor(gain * actionFactor);
         next.amount = next.amount + gain;
         if (conf.karma === 'charm') next.charm = next.charm + (conf.karmaDelta||0);
         else if (conf.karma === 'perversion') next.perversion = next.perversion + (conf.karmaDelta||0);
@@ -2813,6 +2953,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const pickGif = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null);
         const url = isSuccess ? pickGif(gifs.success) : pickGif(gifs.fail);
         if (url) embed.setImage(url);
+      } catch (_) {}
+
+      // Apply karma grants
+      try {
+        const grants = (eco.karmaModifiers?.grants || []);
+        if (grants.length) {
+          const actorCharm2 = next.charm || 0; const actorPerv2 = next.perversion || 0;
+          for (const g of grants) {
+            try {
+              const expr = String(g.condition||'').toLowerCase().replace(/charm/g, String(actorCharm2)).replace(/perversion/g, String(actorPerv2));
+              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) continue;
+              // eslint-disable-next-line no-eval
+              const ok = !!eval(expr);
+              if (ok) next.amount = Math.max(0, (next.amount||0) + Number(g.money||0));
+            } catch (_) {}
+          }
+        }
       } catch (_) {}
 
       // Persist state, then edit reply
@@ -3519,6 +3676,7 @@ function buildEconomyMenuSelect(current) {
       { label: 'Actions', value: 'actions', default: current === 'actions' },
       { label: 'Boutique', value: 'shop', default: current === 'shop' },
       { label: 'Suites privées', value: 'suites', default: current === 'suites' },
+      { label: 'Karma: remises & sanctions', value: 'karma', default: current === 'karma' },
     );
   return new ActionRowBuilder().addComponents(select);
 }
@@ -3534,6 +3692,10 @@ async function buildEconomyMenuRows(guild, page) {
     const settings = await buildEconomySettingsRows(guild);
     const settingsRow = settings[0];
     return [menu, settingsRow];
+  }
+  if (page === 'karma') {
+    const rows = await buildEconomyKarmaRows(guild);
+    return [menu, ...rows];
   }
   if (page === 'shop') {
     return [menu];

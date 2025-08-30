@@ -354,6 +354,12 @@ function ensureEconomyShape(g) {
     if (typeof e.suites.emoji !== 'string' || !e.suites.emoji) e.suites.emoji = '💞';
   }
   if (!e.balances || typeof e.balances !== 'object') e.balances = {};
+  if (!e.karmaModifiers || typeof e.karmaModifiers !== 'object') e.karmaModifiers = { shop: [], actions: [], grants: [] };
+  else {
+    if (!Array.isArray(e.karmaModifiers.shop)) e.karmaModifiers.shop = [];
+    if (!Array.isArray(e.karmaModifiers.actions)) e.karmaModifiers.actions = [];
+    if (!Array.isArray(e.karmaModifiers.grants)) e.karmaModifiers.grants = [];
+  }
 }
 
 function ensureTruthDareShape(g) {
