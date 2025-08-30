@@ -568,14 +568,15 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const lastReward = getLastRewardForLevel(levels, newLevel);
   const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
+  const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
   const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
   const lines = [
     `Niveau: ${newLevel}`,
     lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
   ];
   drawCard(bg, `${name} monte de niveau !`, lines, undefined, undefined, avatarUrl, '🎉 Félicitations !').then((img) => {
-    if (img) channel.send({ files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
-    else channel.send({ content: `🎉 ${name} passe niveau ${newLevel} !` }).catch(() => {});
+    if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
+    else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
   });
 }
 
@@ -587,10 +588,11 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
   const roleName = guild.roles.cache.get(roleId)?.name || `Rôle ${roleId}`;
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
+  const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
   const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 128 }) || null;
   drawCard(bg, `${name} reçoit un rôle !`, [`Rôle: ${roleName}`], undefined, undefined, avatarUrl).then((img) => {
-    if (img) channel.send({ files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-    else channel.send({ content: `🏅 ${name} reçoit le rôle ${roleName} !` }).catch(() => {});
+    if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
+    else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
   });
 }
 
