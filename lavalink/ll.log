@@ -1871,3 +1871,30 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30T09:48:32.463Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:37698
 2025-08-30T09:48:32.464Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
 2025-08-30T09:48:32.466Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js
+2025-08-30T09:51:00.021Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "ytmsearch:Gims"
+2025-08-30T09:51:00.370Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Loaded playlist Search results for: Gims
+2025-08-30T09:51:00.372Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=ytmsearch%3AGims
+2025-08-30T09:51:00.381Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/b6kx0yukr9c5o3o5/players/1360897918504271882, payload={"encodedTrack":"QAAA6gMAClBBUklTSUVOTkUABEdJTVMAAAAAAAJtGAALQnVsZjBhcVdNalkAAQAraHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g/dj1CdWxmMGFxV01qWQEAfmh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9odWphU2RjbEw1ZGJ6RlUxSThweVpBWUJndEJ2NndUa0VMZWZsVFEzek5zdkhLcEhSNU5kWDNLazdXZEh6MDVuOGRBczgxMXVpQmJFZjQzWj13MTAwMC1oMTAwMAAAB3lvdXR1YmUAAAAAAAAAAA=="}
+2025-08-30T09:51:00.383Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/b6kx0yukr9c5o3o5/players/1360897918504271882, payload={"volume":100}
+2025-08-30T09:51:00.451Z ERROR 224063 --- [Lavalink] [back-1-thread-1] c.s.d.l.t.p.LocalAudioTrackExecutor      : Error in playback of Bulf0aqWMjY
+
+com.sedmelluq.discord.lavaplayer.tools.FriendlyException: Something broke when playing the track.
+	at com.sedmelluq.discord.lavaplayer.tools.ExceptionTools.wrapUnfriendlyExceptions(ExceptionTools.java:45) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.track.playback.LocalAudioTrackExecutor.execute(LocalAudioTrackExecutor.java:121) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager.lambda$executeTrack$2(DefaultAudioPlayerManager.java:339) ~[lavaplayer-2.2.3.jar!/:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: java.lang.IllegalStateException: Must find action functions from script: /s/player/6742b2b9/player_ias.vflset/en_US/base.js
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.extractFromScript(YoutubeSignatureCipherManager.java:216) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeSignatureCipherManager.getExtractedScript(YoutubeSignatureCipherManager.java:167) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadTrackInfoFromInnertube(DefaultYoutubeTrackDetailsLoader.java:204) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.load(DefaultYoutubeTrackDetailsLoader.java:48) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.DefaultYoutubeTrackDetailsLoader.loadDetails(DefaultYoutubeTrackDetailsLoader.java:36) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioTrack.loadBestFormatWithUrl(YoutubeAudioTrack.java:83) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioTrack.process(YoutubeAudioTrack.java:44) ~[lavaplayer-2.2.3.jar!/:na]
+	at com.sedmelluq.discord.lavaplayer.track.playback.LocalAudioTrackExecutor.execute(LocalAudioTrackExecutor.java:109) ~[lavaplayer-2.2.3.jar!/:na]
+	... 4 common frames omitted
+
+2025-08-30T09:51:00.455Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/b6kx0yukr9c5o3o5/players/1360897918504271882, payload={"encodedTrack":null}
+2025-08-30T09:51:00.808Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/b6kx0yukr9c5o3o5/players/1360897918504271882, payload={"voice":{"token":"e82e638fed06adec","endpoint":"c-cdg11-1d5e74a5.discord.media:2053","sessionId":"949512123ed69ae51063f52d4c1e6b02"}}
