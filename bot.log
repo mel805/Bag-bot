@@ -7,3 +7,5 @@ Logged in as Bag bot#8659
 [YTProxy] listening on 127.0.0.1:8765
 [Music] Node connected: 127.0.0.1
 [Music] Node error 127.0.0.1 Unexpected op "ready" with data: [object Object]
+(node:240596) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
