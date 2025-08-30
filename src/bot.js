@@ -169,6 +169,18 @@ function buildModEmbed(title, description, extras) {
   return embed;
 }
 
+async function sendLog(guild, categoryKey, embed) {
+  try {
+    const cfg = await getLogsConfig(guild.id);
+    if (!cfg?.enabled || !cfg.categories?.[categoryKey]) return;
+    const channelId = (cfg.channels && cfg.channels[categoryKey]) || cfg.channelId;
+    if (!channelId) return;
+    const ch = guild.channels.cache.get(channelId);
+    if (!ch?.isTextBased?.()) return;
+    await ch.send({ embeds: [embed] }).catch(() => {});
+  } catch (_) {}
+}
+
 function xpRequiredForNext(level, curve) {
   const required = Math.round(curve.base * Math.pow(curve.factor, Math.max(0, level)));
   return Math.max(1, required);
@@ -828,50 +840,39 @@ client.once(Events.ClientReady, (readyClient) => {
   // Logs: register listeners
   client.on(Events.GuildMemberAdd, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
-    const channelId = cfg.channels?.joinleave || cfg.channelId;
-    const ch = m.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Arrivée`, `${m.user} a rejoint le serveur.`, []);
-    ch.send({ embeds: [embed] }).catch(()=>{});
+    await sendLog(m.guild, 'joinleave', embed);
   });
   client.on(Events.GuildMemberRemove, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
-    const channelId = cfg.channels?.joinleave || cfg.channelId;
-    const ch = m.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
-    ch.send({ embeds: [embed] }).catch(()=>{});
+    await sendLog(m.guild, 'joinleave', embed);
   });
   client.on(Events.MessageDelete, async (msg) => {
     try { if (!msg.guild) return; } catch (_) { return; }
     const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
-    const channelId = cfg.channels?.messages || cfg.channelId;
-    const ch = msg.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const author = msg.author || (msg.partial ? null : null);
     const content = msg.partial ? '(partiel)' : (msg.content || '—');
     const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }]);
-    ch.send({ embeds: [embed] }).catch(()=>{});
+    await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.MessageUpdate, async (oldMsg, newMsg) => {
     const msg = newMsg; try { if (!msg.guild) return; } catch (_) { return; }
-    const channelId = cfg.channels?.messages || cfg.channelId;
-    const ch = msg.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const before = oldMsg?.partial ? '(partiel)' : (oldMsg?.content || '—');
     const after = msg?.partial ? '(partiel)' : (msg?.content || '—');
+    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
     const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after } ]);
-    ch.send({ embeds: [embed] }).catch(()=>{});
+    await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.ThreadCreate, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
-    const channelId = cfg.channels?.threads || cfg.channelId;
-    const ch = thread.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
-    ch.send({ embeds: [embed] }).catch(()=>{});
+    await sendLog(thread.guild, 'threads', embed);
   });
   client.on(Events.ThreadDelete, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
-    const channelId = cfg.channels?.threads || cfg.channelId;
-    const ch = thread.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
-    ch.send({ embeds: [embed] }).catch(()=>{});
+    await sendLog(thread.guild, 'threads', embed);
   });
   // Suites cleanup every 5 minutes
   setInterval(async () => {
