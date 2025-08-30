@@ -1868,3 +1868,6 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 
 2025-08-30T09:45:24.897Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/8urd9t4bjq8h4aez/players/1360897918504271882, payload={"encodedTrack":null}
 2025-08-30T09:45:25.296Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : PATCH /v4/sessions/8urd9t4bjq8h4aez/players/1360897918504271882, payload={"voice":{"token":"bf5b0e9283866dd5","endpoint":"c-cdg17-64d0e7f8.discord.media:8443","sessionId":"fbc429e5ba7b104c6c409129bf6f5c26"}}
+2025-08-30T09:48:32.463Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:37698
+2025-08-30T09:48:32.464Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T09:48:32.466Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js

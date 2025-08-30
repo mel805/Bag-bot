@@ -1875,14 +1875,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat. Essayez un lien YouTube complet (www.youtube.com).');
         let player = client.music.players.get(interaction.guild.id);
         if (!player) {
+          try { console.log('[Music]/play creating player vc=', interaction.member.voice.channel.id, 'tc=', interaction.channel.id); } catch (_) {}
           player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true });
           player.connect();
         }
         const loadType = res.loadType || res.type;
         if (loadType === 'PLAYLIST_LOADED') player.queue.add(res.tracks);
         else player.queue.add(res.tracks[0]);
+        try { console.log('[Music]/play after add current=', !!player.queue.current, 'size=', player.queue.size, 'length=', player.queue.length); } catch (_) {}
         if (!player.playing && !player.paused) player.play();
-        const t = player.queue.current || res.tracks[0];
+        const t = player.queue.current || res.tracks[0] || { title: 'Inconnu', uri: '' };
         const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${t.title}](${t.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
         await interaction.editReply({ embeds: [embed] });
         try {
@@ -1959,7 +1961,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'queue') {
       try {
         const player = client.music?.players.get(interaction.guild.id);
-        if (!player || (!player.queue.current && player.queue.size === 0)) return interaction.reply('Aucune piste en file.');
+        if (!player || (!player.queue.current && player.queue.size === 0)) {
+          try { console.log('[Music]/queue empty'); } catch (_) {}
+          return interaction.reply('Aucune piste en file.');
+        }
         const lines = [];
         if (player.queue.current) lines.push(`En lecture: ${player.queue.current.title}`);
         for (let i = 0; i < Math.min(10, player.queue.length); i++) {
@@ -2034,7 +2039,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const lines = [];
           if (player.queue.current) lines.push(`En lecture: ${player.queue.current.title}`);
           for (let i = 0; i < Math.min(10, player.queue.length); i++) { const tr = player.queue[i]; lines.push(`${i+1}. ${tr.title}`); }
-          try { await interaction.followUp({ content: lines.join('\n') || 'File vide.', ephemeral: true }); } catch (_) {}
+          const content = lines.join('\n') || 'File vide.';
+          try { console.log('[Music] button queue ->', content); } catch (_) {}
+          try { await interaction.followUp({ content, ephemeral: true }); } catch (_) {}
         }
       } catch (_) {}
       return;
