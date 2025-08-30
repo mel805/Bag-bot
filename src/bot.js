@@ -1101,11 +1101,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'logs_channel') {
-      const id = interaction.values[0];
+      const id = interaction.values?.[0] || '';
       await updateLogsConfig(interaction.guild.id, { channelId: id });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.update({ embeds: [embed], components: [...rows] });
+      try { await interaction.followUp({ content: id ? `✅ Salon global: <#${id}>` : '✅ Salon global effacé', ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'logs_channel_percat') {
       if (!client._logsPerCat) client._logsPerCat = new Map();
@@ -1116,14 +1118,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('logs_channel_set:')) {
       const cat = interaction.customId.split(':')[1] || 'moderation';
-      const id = interaction.values[0];
+      const id = interaction.values?.[0];
+      if (!id) { try { await interaction.reply({ content:'Aucun salon sélectionné.', ephemeral:true }); } catch (_) {} return; }
       const cfg = await getLogsConfig(interaction.guild.id);
       const channels = { ...(cfg.channels||{}) };
       channels[cat] = id;
       await updateLogsConfig(interaction.guild.id, { channels });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.update({ embeds: [embed], components: [...rows] });
+      try { await interaction.followUp({ content: `✅ Salon pour ${cat}: <#${id}>`, ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isButton() && interaction.customId.startsWith('logs_cat:')) {
       const key = interaction.customId.split(':')[1];
