@@ -830,37 +830,43 @@ client.once(Events.ClientReady, (readyClient) => {
   // Logs: register listeners
   client.on(Events.GuildMemberAdd, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
-    const ch = m.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const channelId = cfg.channels?.joinleave || cfg.channelId;
+    const ch = m.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Arrivée`, `${m.user} a rejoint le serveur.`, []);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.GuildMemberRemove, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.enabled || !cfg.categories?.joinleave) return;
-    const ch = m.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const channelId = cfg.channels?.joinleave || cfg.channelId;
+    const ch = m.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.MessageDelete, async (msg) => {
     if (!msg.guild) return; const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
-    const ch = msg.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const channelId = cfg.channels?.messages || cfg.channelId;
+    const ch = msg.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Contenu', value: msg.content || '—' }]);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.MessageUpdate, async (oldMsg, newMsg) => {
     const msg = newMsg; if (!msg.guild) return; const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
-    const ch = msg.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const channelId = cfg.channels?.messages || cfg.channelId;
+    const ch = msg.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: oldMsg?.content || '—' }, { name:'Après', value: msg.content || '—' } ]);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.ThreadCreate, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
-    const ch = thread.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const channelId = cfg.channels?.threads || cfg.channelId;
+    const ch = thread.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.ThreadDelete, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.enabled || !cfg.categories?.threads) return;
-    const ch = thread.guild.channels.cache.get(cfg.channelId); if (!ch?.isTextBased?.()) return;
+    const channelId = cfg.channels?.threads || cfg.channelId;
+    const ch = thread.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
     const embed = buildModEmbed(`${cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
@@ -1099,6 +1105,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChannelSelectMenu() && interaction.customId === 'logs_channel') {
       const id = interaction.values[0];
       await updateLogsConfig(interaction.guild.id, { channelId: id });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildLogsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'logs_channel_percat') {
+      // store selected category in message state is complex; reuse customId with last selection via ephemeral state isn’t persisted.
+      // Simple approach: encode category on next channel select via message content not available; instead, reuse a lightweight global map.
+      if (!client._logsPerCat) client._logsPerCat = new Map();
+      client._logsPerCat.set(interaction.guild.id, interaction.values[0]);
+      return interaction.deferUpdate();
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'logs_channel_set') {
+      const cat = client._logsPerCat?.get?.(interaction.guild.id) || 'moderation';
+      const id = interaction.values[0];
+      const cfg = await getLogsConfig(interaction.guild.id);
+      const channels = { ...(cfg.channels||{}) };
+      channels[cat] = id;
+      await updateLogsConfig(interaction.guild.id, { channels });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
@@ -3524,8 +3548,19 @@ async function buildLogsRows(guild) {
   const pseudo = new ButtonBuilder().setCustomId('logs_pseudo').setLabel(cfg.pseudo ? 'Pseudo: ON' : 'Pseudo: OFF').setStyle(cfg.pseudo ? ButtonStyle.Success : ButtonStyle.Secondary);
   const emojiBtn = new ButtonBuilder().setCustomId('logs_emoji').setLabel(`Emoji: ${cfg.emoji || '📝'}`).setStyle(ButtonStyle.Primary);
   const rowTog = new ActionRowBuilder().addComponents(toggle, pseudo, emojiBtn);
-  const channelSelect = new ChannelSelectMenuBuilder().setCustomId('logs_channel').setPlaceholder('Salon de logs…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+  const channelSelect = new ChannelSelectMenuBuilder().setCustomId('logs_channel').setPlaceholder('Salon global (optionnel)…').setMinValues(0).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const rowChan = new ActionRowBuilder().addComponents(channelSelect);
+  const perCat = new StringSelectMenuBuilder().setCustomId('logs_channel_percat').setPlaceholder('Choisir une catégorie…').addOptions(
+    { label:'Modération', value:'moderation' },
+    { label:'Vocal', value:'voice' },
+    { label:'Économie', value:'economy' },
+    { label:'Boosts', value:'boosts' },
+    { label:'Threads', value:'threads' },
+    { label:'Arrivée/Départ', value:'joinleave' },
+    { label:'Messages', value:'messages' },
+  );
+  const rowPer = new ActionRowBuilder().addComponents(perCat);
+  const rowPerSet = new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('logs_channel_set').setPlaceholder('Choisir salon pour la catégorie ci-dessus…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement));
   const cat = cfg.categories || {};
   const catRow1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('logs_cat:moderation').setLabel(`Modération: ${cat.moderation?'ON':'OFF'}`).setStyle(cat.moderation?ButtonStyle.Success:ButtonStyle.Secondary),
@@ -3538,7 +3573,7 @@ async function buildLogsRows(guild) {
     new ButtonBuilder().setCustomId('logs_cat:joinleave').setLabel(`Arrivée/Départ: ${cat.joinleave?'ON':'OFF'}`).setStyle(cat.joinleave?ButtonStyle.Success:ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('logs_cat:messages').setLabel(`Messages: ${cat.messages?'ON':'OFF'}`).setStyle(cat.messages?ButtonStyle.Success:ButtonStyle.Secondary)
   );
-  return [buildBackRow(), rowTog, rowChan, catRow1, catRow2];
+  return [buildBackRow(), rowTog, rowChan, rowPer, rowPerSet, catRow1, catRow2];
 }
 
 function buildEcoEmbed({ title, description, fields, color }) {
