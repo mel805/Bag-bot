@@ -854,15 +854,18 @@ client.once(Events.ClientReady, (readyClient) => {
     const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
     const author = msg.author || (msg.partial ? null : null);
     const content = msg.partial ? '(partiel)' : (msg.content || '—');
-    const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }]);
+    const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }, { name:'Message ID', value: String(msg.id) }]);
     await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.MessageUpdate, async (oldMsg, newMsg) => {
     const msg = newMsg; try { if (!msg.guild) return; } catch (_) { return; }
+    // Fetch partials to ensure content
+    try { if (oldMsg?.partial) await oldMsg.fetch(); } catch (_) {}
+    try { if (msg?.partial) await msg.fetch(); } catch (_) {}
     const before = oldMsg?.partial ? '(partiel)' : (oldMsg?.content || '—');
     const after = msg?.partial ? '(partiel)' : (msg?.content || '—');
     const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
-    const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after } ]);
+    const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.ThreadCreate, async (thread) => {
