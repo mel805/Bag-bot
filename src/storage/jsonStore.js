@@ -621,6 +621,32 @@ module.exports = {
   addConfessChannels,
   removeConfessChannels,
   incrementConfessCounter,
+  // Moderation
+  getWarns,
+  addWarn,
   paths: { DATA_DIR, CONFIG_PATH },
 };
+
+// Moderation: warnings storage
+async function getWarns(guildId, userId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].moderation) cfg.guilds[guildId].moderation = {};
+  if (!cfg.guilds[guildId].moderation.warns) cfg.guilds[guildId].moderation.warns = {};
+  const list = cfg.guilds[guildId].moderation.warns[userId] || [];
+  return Array.isArray(list) ? list : [];
+}
+
+async function addWarn(guildId, userId, entry) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  if (!cfg.guilds[guildId].moderation) cfg.guilds[guildId].moderation = {};
+  if (!cfg.guilds[guildId].moderation.warns) cfg.guilds[guildId].moderation.warns = {};
+  const now = Date.now();
+  const rec = { at: now, ...entry };
+  const prev = Array.isArray(cfg.guilds[guildId].moderation.warns[userId]) ? cfg.guilds[guildId].moderation.warns[userId] : [];
+  cfg.guilds[guildId].moderation.warns[userId] = [...prev, rec];
+  await writeConfig(cfg);
+  return rec;
+}
 
