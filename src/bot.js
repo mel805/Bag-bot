@@ -865,10 +865,7 @@ client.once(Events.ClientReady, (readyClient) => {
   // Init Erela.js (if available) with public nodes
   try {
     if (ErelaManager) {
-      let nodes = [
-        // Default: local Lavalink v3
-        { host: '127.0.0.1', port: 2340, password: 'youshallnotpass', secure: false },
-      ];
+      let nodes = [];
       try {
         if (process.env.LAVALINK_NODES) {
           const parsed = JSON.parse(process.env.LAVALINK_NODES);
@@ -878,6 +875,9 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       } catch (e) { console.error('Invalid LAVALINK_NODES env:', e?.message || e); }
+      if (!nodes.length) {
+        console.warn('[Music] No LAVALINK_NODES provided. Music will be disabled.');
+      }
       const manager = new ErelaManager({
         nodes,
         send: (id, payload) => {
