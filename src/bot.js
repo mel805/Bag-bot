@@ -687,7 +687,9 @@ client.once(Events.ClientReady, (readyClient) => {
   try {
     if (ErelaManager) {
       const nodes = [
-        // Through local WS proxy to map to /v4/websocket
+        // Prefer Lavalink v3 local node
+        { host: '127.0.0.1', port: 2340, password: 'youshallnotpass', secure: false },
+        // Fallback to v4 via proxy
         { host: '127.0.0.1', port: 2334, password: 'youshallnotpass', secure: false },
       ];
       const manager = new ErelaManager({
