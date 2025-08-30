@@ -1,0 +1,44 @@
+2025-08-30T08:27:08.385Z  WARN 224063 --- [Lavalink] [main] o.s.b.l.logback.LogbackLoggingSystem     : Ignoring 'logback.configurationFile' system property. Please use 'logging.config' instead.
+2025-08-30T08:27:08.473Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : Starting Launcher v4.1.1 using Java 21.0.7 with PID 224063 (/workspace/lavalink/Lavalink.jar started by ubuntu in /workspace/lavalink)
+2025-08-30T08:27:08.474Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : No active profile set, falling back to 1 default profile: "default"
+2025-08-30T08:27:08.920Z  INFO 224063 --- [Lavalink] [main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=3d6bf653-92ea-3fde-943a-10b9f8cd696e
+2025-08-30T08:27:09.314Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : Started Launcher in 1.308 seconds (process running for 1.666)
+2025-08-30T08:27:09.348Z  WARN 224063 --- [Lavalink] [main] o.s.b.l.logback.LogbackLoggingSystem     : Ignoring 'logback.configurationFile' system property. Please use 'logging.config' instead.
+2025-08-30T08:27:09.367Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : 
+
+[32m       .  [31m _                  _ _       _    [32m__ _ _
+[32m      /\\ [31m| | __ ___   ____ _| (_)_ __ | | __[32m\ \ \ \
+[32m     ( ( )[31m| |/ _` \ \ / / _` | | | '_ \| |/ /[32m \ \ \ \
+[32m      \\/ [31m| | (_| |\ V / (_| | | | | | |   < [32m  ) ) ) )
+[32m       '  [31m|_|\__,_| \_/ \__,_|_|_|_| |_|_|\_\[32m / / / /
+[0m    =========================================[32m/_/_/_/[0m
+
+	Version:        4.1.1
+	Build time:     05.06.2025 07:37:42 UTC
+	Branch          HEAD
+	Commit:         4238202
+	Commit time:    05.06.2025 07:11:37 UTC
+	JVM:            21.0.7
+	Lavaplayer      2.2.3
+
+2025-08-30T08:27:09.374Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : No active profile set, falling back to 1 default profile: "default"
+2025-08-30T08:27:09.798Z  WARN 224063 --- [Lavalink] [main] io.undertow.websockets.jsr               : UT026010: Buffer pool was not set on WebSocketDeploymentInfo, the default pool will be used
+2025-08-30T08:27:09.812Z  INFO 224063 --- [Lavalink] [main] io.undertow.servlet                      : Initializing Spring embedded WebApplicationContext
+2025-08-30T08:27:09.812Z  INFO 224063 --- [Lavalink] [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 436 ms
+2025-08-30T08:27:09.903Z  INFO 224063 --- [Lavalink] [main] c.s.d.l.tools.GarbageCollectionMonitor   : GC monitoring enabled, reporting results every 2 minutes.
+2025-08-30T08:27:09.980Z  WARN 224063 --- [Lavalink] [main] l.s.config.AudioPlayerConfiguration      : The default Youtube source is now deprecated and won't receive further updates.
+You should use the new Youtube source plugin instead.
+https://github.com/lavalink-devs/youtube-source#plugin.
+To disable this warning, set 'lavalink.server.sources.youtube' to false in your application.yml.
+2025-08-30T08:27:10.323Z  INFO 224063 --- [Lavalink] [main] l.server.config.KoeConfiguration         : OS: LINUX, Arch: X86_64
+2025-08-30T08:27:10.324Z  INFO 224063 --- [Lavalink] [main] l.server.config.KoeConfiguration         : Enabling JDA-NAS
+2025-08-30T08:27:10.326Z  INFO 224063 --- [Lavalink] [main] c.s.l.c.natives.NativeLibraryLoader      : Native library udpqueue: loading with filter null
+2025-08-30T08:27:10.331Z  INFO 224063 --- [Lavalink] [main] c.s.l.c.natives.NativeLibraryLoader      : Native library udpqueue: successfully loaded.
+2025-08-30T08:27:10.356Z  WARN 224063 --- [Lavalink] [main] l.server.config.SentryConfiguration      : Turning off sentry
+2025-08-30T08:27:10.549Z  INFO 224063 --- [Lavalink] [main] io.undertow                              : starting server: Undertow - 2.3.13.Final
+2025-08-30T08:27:10.556Z  INFO 224063 --- [Lavalink] [main] org.xnio                                 : XNIO version 3.8.8.Final
+2025-08-30T08:27:10.562Z  INFO 224063 --- [Lavalink] [main] org.xnio.nio                             : XNIO NIO Implementation Version 3.8.8.Final
+2025-08-30T08:27:10.620Z  INFO 224063 --- [Lavalink] [main] org.jboss.threads                        : JBoss Threads version 3.5.0.Final
+2025-08-30T08:27:10.658Z  INFO 224063 --- [Lavalink] [main] o.s.b.w.e.undertow.UndertowWebServer     : Undertow started on port 2333 (http) with context path '/'
+2025-08-30T08:27:10.672Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : Started Launcher in 1.354 seconds (process running for 3.023)
+2025-08-30T08:27:10.672Z  INFO 224063 --- [Lavalink] [main] lavalink.server.Launcher                 : Lavalink is ready to accept connections.
