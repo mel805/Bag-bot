@@ -852,7 +852,8 @@ client.once(Events.ClientReady, (readyClient) => {
   });
   client.on(Events.MessageDelete, async (msg) => {
     try { if (!msg.guild) return; } catch (_) { return; }
-    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.categories?.messages) return;
+    const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageDelete evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
+    if (!cfg.categories?.messages) return;
     const author = msg.author || (msg.partial ? null : null);
     const content = msg.partial ? '(partiel)' : (msg.content || '—');
     const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }, { name:'Message ID', value: String(msg.id) }]);
@@ -865,14 +866,16 @@ client.once(Events.ClientReady, (readyClient) => {
     try { if (msg?.partial) await msg.fetch(); } catch (_) {}
     const before = oldMsg?.partial ? '(partiel)' : (oldMsg?.content || '—');
     const after = msg?.partial ? '(partiel)' : (msg?.content || '—');
-    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.categories?.messages) return;
+    const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageUpdate evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
+    if (!cfg.categories?.messages) return;
     const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.MessageCreate, async (msg) => {
     try { if (!msg.guild) return; } catch (_) { return; }
     if (msg.author?.bot) return;
-    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.categories?.messages) return;
+    const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageCreate evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
+    if (!cfg.categories?.messages) return;
     const embed = buildModEmbed(`${cfg.emoji} Message créé`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Contenu', value: msg.content || '—' }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
