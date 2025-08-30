@@ -95,3 +95,11 @@ Client error: DiscordAPIError[40060]: Interaction has already been acknowledged.
   method: 'POST',
   url: 'https://discord.com/api/v10/interactions/1411439210417754183/aW50ZXJhY3Rpb246MTQxMTQzOTIxMDQxNzc1NDE4Mzp1QTdUYmdjY3FFV1pHR0dkR1ZPdDVzNm9nVVBYY2lxNWRIem1UV2RIOUFDdE9FVXlkWmZwbThqSzNFZDEyMkREWG1mTEtKaVQwRkw0UTE5dk9wYU1qOG1BSk1hUGNCSHptNVhUUjVFaW9aSzZuYmNlQnl4T0FwY0h4U21lUXh5Mw/callback?with_response=false'
 }
+[Logs] MessageUpdate evt { g: '1360897918504271882', cat: true, ch: '1360897920286855307' }
+[Logs] sendLog {
+  guild: '1360897918504271882',
+  categoryKey: 'messages',
+  channelId: '1360897920286855307',
+  ch_ok: true
+}
+[Logs] sent OK
