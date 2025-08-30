@@ -18,70 +18,89 @@ const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 
 async function ensureStorageExists() {
   if (USE_PG) {
-    const pool = await getPg();
-    const client = await pool.connect();
     try {
-      await client.query('CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
-      const res = await client.query('SELECT 1 FROM app_config WHERE id = 1');
-      if (res.rowCount === 0) {
-        await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [{ guilds: {} }]);
+      const pool = await getPg();
+      const client = await pool.connect();
+      try {
+        await client.query('CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+        const res = await client.query('SELECT 1 FROM app_config WHERE id = 1');
+        if (res.rowCount === 0) {
+          // Bootstrap from file if available
+          let bootstrap = { guilds: {} };
+          try {
+            const raw = await fsp.readFile(CONFIG_PATH, 'utf8');
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') bootstrap = parsed;
+          } catch (_) { /* ignore, keep default */ }
+          await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [bootstrap]);
+        }
+        return; // DB OK
+      } finally {
+        client.release();
       }
-    } finally {
-      client.release();
+    } catch (e) {
+      try { console.warn('[storage] Postgres unavailable, falling back to file storage:', e?.message || e); } catch (_) {}
+      // fall back to FS below
     }
-  } else {
-    await fsp.mkdir(DATA_DIR, { recursive: true });
-    try {
-      await fsp.access(CONFIG_PATH, fs.constants.F_OK);
-    } catch (_) {
-      const initial = { guilds: {} };
-      await fsp.writeFile(CONFIG_PATH, JSON.stringify(initial, null, 2), 'utf8');
-    }
+  }
+  await fsp.mkdir(DATA_DIR, { recursive: true });
+  try {
+    await fsp.access(CONFIG_PATH, fs.constants.F_OK);
+  } catch (_) {
+    const initial = { guilds: {} };
+    await fsp.writeFile(CONFIG_PATH, JSON.stringify(initial, null, 2), 'utf8');
   }
 }
 
 async function readConfig() {
   await ensureStorageExists();
   if (USE_PG) {
-    const pool = await getPg();
-    const client = await pool.connect();
     try {
-      const { rows } = await client.query('SELECT data FROM app_config WHERE id = 1');
-      const data = rows?.[0]?.data || { guilds: {} };
-      if (!data || typeof data !== 'object') return { guilds: {} };
-      if (!data.guilds || typeof data.guilds !== 'object') data.guilds = {};
-      return data;
-    } finally {
-      client.release();
+      const pool = await getPg();
+      const client = await pool.connect();
+      try {
+        const { rows } = await client.query('SELECT data FROM app_config WHERE id = 1');
+        const data = rows?.[0]?.data || { guilds: {} };
+        if (!data || typeof data !== 'object') return { guilds: {} };
+        if (!data.guilds || typeof data.guilds !== 'object') data.guilds = {};
+        return data;
+      } finally {
+        client.release();
+      }
+    } catch (e) {
+      try { console.warn('[storage] Postgres read failed, using file storage:', e?.message || e); } catch (_) {}
     }
-  } else {
-    try {
-      const raw = await fsp.readFile(CONFIG_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') return { guilds: {} };
-      if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
-      return parsed;
-    } catch (_) {
-      return { guilds: {} };
-    }
+  }
+  try {
+    const raw = await fsp.readFile(CONFIG_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { guilds: {} };
+    if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
+    return parsed;
+  } catch (_) {
+    return { guilds: {} };
   }
 }
 
 async function writeConfig(cfg) {
   await ensureStorageExists();
   if (USE_PG) {
-    const pool = await getPg();
-    const client = await pool.connect();
     try {
-      await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [cfg]);
-    } finally {
-      client.release();
+      const pool = await getPg();
+      const client = await pool.connect();
+      try {
+        await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [cfg]);
+        return;
+      } finally {
+        client.release();
+      }
+    } catch (e) {
+      try { console.warn('[storage] Postgres write failed, writing file storage:', e?.message || e); } catch (_) {}
     }
-  } else {
-    const tmpPath = CONFIG_PATH + '.tmp';
-    await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
-    await fsp.rename(tmpPath, CONFIG_PATH);
   }
+  const tmpPath = CONFIG_PATH + '.tmp';
+  await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
+  await fsp.rename(tmpPath, CONFIG_PATH);
 }
 
 async function getGuildConfig(guildId) {
