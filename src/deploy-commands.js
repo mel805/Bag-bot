@@ -137,6 +137,7 @@ const commands = [
         { name: 'Jazz', value: 'jazz' }
       ))
     .toJSON(),
+  new SlashCommandBuilder().setName('testaudio').setDescription('Debug: jouer un MP3 de test').toJSON(),
 ];
 
 async function main() {

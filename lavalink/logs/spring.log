@@ -2509,3 +2509,12 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 	... 77 common frames omitted
 
 2025-08-30T10:06:46.178Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DQJaNG0ITb6Y
+2025-08-30T10:08:49.656Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+2025-08-30T10:08:50.132Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] c.s.l.c.natives.NativeLibraryLoader      : Native library libmpg123-0: loading with filter com.sedmelluq.discord.lavaplayer.natives.ConnectorNativeLibLoader$$Lambda/0x00007f26b01423e0@3770183a
+2025-08-30T10:08:50.133Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] c.s.l.c.natives.NativeLibraryLoader      : Native library connector: loading with filter null
+2025-08-30T10:08:50.153Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] c.s.l.c.natives.NativeLibraryLoader      : Native library connector: successfully loaded.
+2025-08-30T10:08:50.156Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.player.AudioLoaderRestHandler   : Loaded track Unknown title
+2025-08-30T10:08:50.165Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
+2025-08-30T10:10:01.226Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:45040
+2025-08-30T10:10:01.227Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T10:10:01.228Z  INFO 224063 --- [Lavalink] [XNIO-1 task-2] lavalink.server.io.SocketServer          : Connection successfully established from erela.js

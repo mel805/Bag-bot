@@ -2031,6 +2031,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } catch (e) { try { return await interaction.editReply('Erreur radio.'); } catch (_) { return; } }
     }
 
+    // Music: testaudio (debug known-good mp3)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'testaudio') {
+      try {
+        await interaction.deferReply();
+        if (!interaction.member?.voice?.channel) return interaction.editReply('Rejoignez un salon vocal.');
+        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible.');
+        const hasNode = (() => { try { return client.music.nodes && Array.from(client.music.nodes.values()).some(n => n.connected); } catch (_) { return false; } })();
+        if (!hasNode) return interaction.editReply('Lecteur indisponible (nœud).');
+        let player = client.music.players.get(interaction.guild.id);
+        if (!player) { player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true }); player.connect(); }
+        const url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+        const res = await client.music.search(url, interaction.user).catch(()=>null);
+        if (!res || !res.tracks?.length) return interaction.editReply('Test audio indisponible.');
+        player.queue.add(res.tracks[0]);
+        if (!player.playing && !player.paused) player.play();
+        return interaction.editReply('🔊 Test audio en cours.');
+      } catch (e) { try { return await interaction.editReply('Erreur test audio.'); } catch (_) { return; } }
+    }
+
     // Music player button controls
     if (interaction.isButton() && interaction.customId.startsWith('music_')) {
       try {
