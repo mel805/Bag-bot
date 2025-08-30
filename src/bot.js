@@ -83,7 +83,7 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
   ],
-  partials: [Partials.GuildMember],
+  partials: [Partials.GuildMember, Partials.Message, Partials.Channel],
 });
 
 // Local YT audio proxy for Lavalink (streams bestaudio via yt-dlp)
@@ -841,17 +841,22 @@ client.once(Events.ClientReady, (readyClient) => {
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.MessageDelete, async (msg) => {
-    if (!msg.guild) return; const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    try { if (!msg.guild) return; } catch (_) { return; }
+    const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
     const channelId = cfg.channels?.messages || cfg.channelId;
     const ch = msg.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
-    const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Contenu', value: msg.content || '—' }]);
+    const author = msg.author || (msg.partial ? null : null);
+    const content = msg.partial ? '(partiel)' : (msg.content || '—');
+    const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }]);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.MessageUpdate, async (oldMsg, newMsg) => {
-    const msg = newMsg; if (!msg.guild) return; const cfg = await getLogsConfig(msg.guild.id); if (!cfg.enabled || !cfg.categories?.messages) return;
+    const msg = newMsg; try { if (!msg.guild) return; } catch (_) { return; }
     const channelId = cfg.channels?.messages || cfg.channelId;
     const ch = msg.guild.channels.cache.get(channelId); if (!ch?.isTextBased?.()) return;
-    const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: oldMsg?.content || '—' }, { name:'Après', value: msg.content || '—' } ]);
+    const before = oldMsg?.partial ? '(partiel)' : (oldMsg?.content || '—');
+    const after = msg?.partial ? '(partiel)' : (msg?.content || '—');
+    const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after } ]);
     ch.send({ embeds: [embed] }).catch(()=>{});
   });
   client.on(Events.ThreadCreate, async (thread) => {
