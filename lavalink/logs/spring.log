@@ -2286,3 +2286,6 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 	... 77 common frames omitted
 
 2025-08-30T09:59:55.344Z  INFO 224063 --- [Lavalink] [XNIO-1 task-3] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DQJaNG0ITb6Y
+2025-08-30T10:04:06.225Z  INFO 224063 --- [Lavalink] [XNIO-1 task-3] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:55094
+2025-08-30T10:04:06.228Z  INFO 224063 --- [Lavalink] [XNIO-1 task-3] l.server.io.RequestLoggingFilter         : GET /v4/websocket
+2025-08-30T10:04:06.230Z  INFO 224063 --- [Lavalink] [XNIO-1 task-3] lavalink.server.io.SocketServer          : Connection successfully established from erela.js

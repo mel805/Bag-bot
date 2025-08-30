@@ -3,6 +3,8 @@ let ErelaManager;
 try { ({ Manager: ErelaManager } = require('erela.js')); } catch (_) { ErelaManager = null; }
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
+let ytDlp;
+try { ytDlp = require('yt-dlp-exec'); } catch (_) { ytDlp = null; }
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
 async function getCachedImage(url) {
@@ -1871,6 +1873,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
               }
             }
           } catch (_) {}
+          // Fallback: yt-dlp to get direct audio URL if youtube fails
+          if ((!res || !res.tracks?.length) && ytDlp && isUrl && /youtube\.com|youtu\.be/.test(normalized)) {
+            try {
+              const info = await ytDlp(normalized, { dumpSingleJson: true, noCheckCertificates: true, noWarnings: true, preferFreeFormats: true, addHeader: [ 'referer: https://www.youtube.com' ] });
+              const candidates = Array.isArray(info?.formats) ? info.formats.filter(f => f.acodec && f.acodec !== 'none' && !f.vcodec && (!f.tbr || f.tbr <= 192)).sort((a,b)=> (a.tbr||0)-(b.tbr||0)) : [];
+              const url = (candidates[0]?.url) || info?.url;
+              if (url) {
+                const httpRes = await client.music.search(url, interaction.user).catch(()=>null);
+                if (httpRes && httpRes.tracks?.length) res = httpRes;
+              }
+            } catch (_) {}
+          }
         }
         if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat. Essayez un lien YouTube complet (www.youtube.com).');
         let player = client.music.players.get(interaction.guild.id);
