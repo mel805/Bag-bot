@@ -1903,6 +1903,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
     }
 
+    if (interaction.isChatInputCommand() && interaction.commandName === 'adminkarma') {
+      const hasManageGuild = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) || interaction.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+      if (!hasManageGuild) return interaction.reply({ content: '⛔ Permission requise.', ephemeral: true });
+      const type = interaction.options.getString('type', true); // 'charm' | 'perversion'
+      const action = interaction.options.getString('action', true); // add | remove | set
+      const member = interaction.options.getUser('membre', true);
+      const value = Math.max(0, Math.abs(interaction.options.getInteger('valeur', true)));
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, member.id);
+      let before = type === 'charm' ? (u.charm||0) : (u.perversion||0);
+      let after = before;
+      if (action === 'add') after = before + value;
+      else if (action === 'remove') after = Math.max(0, before - value);
+      else if (action === 'set') after = value;
+      if (type === 'charm') u.charm = after; else u.perversion = after;
+      await setEconomyUser(interaction.guild.id, member.id, u);
+      const label = type === 'charm' ? 'charme 🫦' : 'perversion 😈';
+      const embed = buildEcoEmbed({
+        title: 'Admin Karma',
+        description: `Membre: ${member}\n${label}: ${before} → ${after}`,
+        fields: [{ name: 'Action', value: action, inline: true }]
+      });
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
     if (interaction.isChatInputCommand() && interaction.commandName === 'top') {
       const sub = interaction.options.getSubcommand();
       if (sub === 'niveau') {

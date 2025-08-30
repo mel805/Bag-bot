@@ -38,6 +38,16 @@ const commands = [
     .addUserOption(o => o.setName('membre').setDescription('Membre').setRequired(true))
     .addIntegerOption(o => o.setName('valeur').setDescription('Montant XP / Niveau selon action').setRequired(true))
     .toJSON(),
+  new SlashCommandBuilder()
+    .setName('adminkarma')
+    .setDescription('Gestion du karma (charme/perversion)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addStringOption(o=>o.setName('type').setDescription('Type de karma').setRequired(true).addChoices({name:'charme', value:'charm'},{name:'perversion', value:'perversion'}))
+    .addStringOption(o=>o.setName('action').setDescription('Action').setRequired(true).addChoices({name:'ajouter', value:'add'},{name:'retirer', value:'remove'},{name:'définir', value:'set'}))
+    .addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true))
+    .addIntegerOption(o=>o.setName('valeur').setDescription('Montant').setRequired(true))
+    .toJSON(),
   new SlashCommandBuilder().setName('solde').setDescription('Voir votre solde').toJSON(),
   new SlashCommandBuilder().setName('travailler').setDescription('Gagner de l\'argent en travaillant').toJSON(),
   new SlashCommandBuilder().setName('pêcher').setDescription('Pêcher pour gagner de l\'argent').toJSON(),
