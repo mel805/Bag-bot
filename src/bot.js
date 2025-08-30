@@ -3558,7 +3558,8 @@ async function buildLogsRows(guild) {
   const toggle = new ButtonBuilder().setCustomId('logs_toggle').setLabel(cfg.enabled ? 'Logs: ON' : 'Logs: OFF').setStyle(cfg.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const pseudo = new ButtonBuilder().setCustomId('logs_pseudo').setLabel(cfg.pseudo ? 'Pseudo: ON' : 'Pseudo: OFF').setStyle(cfg.pseudo ? ButtonStyle.Success : ButtonStyle.Secondary);
   const emojiBtn = new ButtonBuilder().setCustomId('logs_emoji').setLabel(`Emoji: ${cfg.emoji || '📝'}`).setStyle(ButtonStyle.Primary);
-  const rowTog = new ActionRowBuilder().addComponents(toggle, pseudo, emojiBtn);
+  const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
+  const rowTog = new ActionRowBuilder().addComponents(toggle, pseudo, emojiBtn, back);
   const channelSelect = new ChannelSelectMenuBuilder().setCustomId('logs_channel').setPlaceholder('Salon global (optionnel)…').setMinValues(0).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const rowChan = new ActionRowBuilder().addComponents(channelSelect);
   const perCat = new StringSelectMenuBuilder().setCustomId('logs_channel_percat').setPlaceholder('Choisir une catégorie…').addOptions(
@@ -3596,7 +3597,8 @@ async function buildLogsRows(guild) {
     { label:`Messages ${cat.messages?'ON':'OFF'}`, value:'messages' },
   );
   const rowCatSel = new ActionRowBuilder().addComponents(catSelect);
-  return [buildBackRow(), rowTog, rowChan, rowPer, rowPerSet, rowCatSel];
+  // Keep at most 5 rows
+  return [rowTog, rowChan, rowPer, rowPerSet, rowCatSel];
 }
 
 function buildEcoEmbed({ title, description, fields, color }) {

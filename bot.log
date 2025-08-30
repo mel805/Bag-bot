@@ -7,49 +7,10 @@ Logged in as Bag bot#8659
 [Music] Using nodes from LAVALINK_NODES env
 [YTProxy] listening on 127.0.0.1:8765
 [Music] Node error pool-sg.alfari.id Unexpected server response: 403
-[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
-[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
 [Music] Node error pool-us.alfari.id Unexpected server response: 403
+[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
+[Music] Node error lavalink.devxcode.in Unexpected server response: 200
 [Music] Node connected: lavalinkv3.devxcode.in
 [Music] Node error lavalinkv3.devxcode.in Unexpected op "ready" with data: [object Object]
-[Music] Node error lavalink.devxcode.in Unexpected server response: 200
-[Music] Node error lava.luke.gg Unexpected server response: 523
-[Music] Node error pool-sg.alfari.id Unexpected server response: 403
-[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
-[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
-[Music] Node error pool-us.alfari.id Unexpected server response: 403
-[Music] Node error lavalink.devxcode.in Unexpected server response: 200
-[Music] Node error lava.luke.gg Unexpected server response: 523
-[Music] Node error pool-sg.alfari.id Unexpected server response: 403
-[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
-[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
-[Music] Node error pool-us.alfari.id Unexpected server response: 403
-[Music] Node error lavalink.devxcode.in Unexpected server response: 200
-[Music] Node error lava.luke.gg Unexpected server response: 523
-(node:249659) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
-Interaction handler error: DiscordAPIError[50035]: Invalid Form Body
-data.components[BASE_TYPE_MAX_LENGTH]: Must be 5 or fewer in length.
-    at handleErrors (/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async BurstHandler.runRequest (/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
-    at async _REST.request (/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
-    at async StringSelectMenuInteraction.update (/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:361:22)
-    at async Client.<anonymous> (/workspace/src/bot.js:1027:9) {
-  requestBody: { files: [], json: { type: 7, data: [Object] } },
-  rawError: {
-    message: 'Invalid Form Body',
-    code: 50035,
-    errors: { data: [Object] }
-  },
-  code: 50035,
-  status: 400,
-  method: 'POST',
-  url: 'https://discord.com/api/v10/interactions/1411330487099592784/aW50ZXJhY3Rpb246MTQxMTMzMDQ4NzA5OTU5Mjc4NDpJMFpSTW5FeGNYcTJURlcwV3ZuVjdCdW01QTRnc1dWcERBUkdHc0ptSWFUMGhoZ1hoN0hwUjI0ZlUzUVJ4N2RVNUJvR3NMNm9mZkdzWUQybDdZdzRJQVlkbkRTSTBrV2xFMlhvcE95OUtxY2pLbzBMeEpmTTVFMUl2cGN3aUNjOA/callback?with_response=false'
-}
-[Music] Node error pool-sg.alfari.id Unexpected server response: 403
-[Music] Node error lavalink_v4.muzykant.xyz Unexpected server response: 403
-[Music] Node error lavalink_v3.muzykant.xyz Unexpected server response: 403
-[Music] Node error pool-us.alfari.id Unexpected server response: 403
-[Music] Node error lavalink.devxcode.in Unexpected server response: 200
 [Music] Node error lava.luke.gg Unexpected server response: 523
