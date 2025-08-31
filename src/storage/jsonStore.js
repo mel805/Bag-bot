@@ -102,6 +102,9 @@ async function writeConfig(cfg) {
       const client = await pool.connect();
       try {
         await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [cfg]);
+        // Historical snapshots table (lightweight)
+        await client.query('CREATE TABLE IF NOT EXISTS app_config_history (id SERIAL PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+        await client.query('INSERT INTO app_config_history (data) VALUES ($1)', [cfg]);
       } finally {
         client.release();
       }
@@ -119,6 +122,20 @@ async function writeConfig(cfg) {
     try { await fsp.writeFile(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8'); }
     catch (_) {}
   }
+  // Rolling file backups: keep up to 5
+  try {
+    const backupsDir = path.join(DATA_DIR, 'backups');
+    await fsp.mkdir(backupsDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const dest = path.join(backupsDir, `config-${stamp}.json`);
+    await fsp.writeFile(dest, JSON.stringify(cfg, null, 2), 'utf8');
+    const entries = (await fsp.readdir(backupsDir)).filter(n => n.endsWith('.json')).sort();
+    if (entries.length > 5) {
+      for (const n of entries.slice(0, entries.length - 5)) {
+        try { await fsp.unlink(path.join(backupsDir, n)); } catch (_) {}
+      }
+    }
+  } catch (_) {}
 }
 
 async function getGuildConfig(guildId) {

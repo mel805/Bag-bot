@@ -1805,14 +1805,18 @@ client.once(Events.ClientReady, (readyClient) => {
     } catch (_) {}
   }, 60 * 1000);
 
-  // Backup logs heartbeat: announce periodic persistence (every 30 minutes)
+  // Backup heartbeat: persist current state and log every 30 minutes
   setInterval(async () => {
     try {
       const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
       if (!guild) return;
+      // Force a read+write round-trip to create snapshot/rolling backups
+      const { readConfig, writeConfig } = require('./storage/jsonStore');
+      const state = await readConfig();
+      await writeConfig(state);
       const cfg = await getLogsConfig(guild.id);
       if (!cfg?.categories?.backup) return;
-      const embed = buildModEmbed(`${cfg.emoji} Sauvegarde`, `Snapshot de l'état du bot enregistré.`, [
+      const embed = buildModEmbed(`${cfg.emoji} Sauvegarde`, `Snapshot automatique enregistré.`, [
         { name: 'Horodatage', value: new Date().toLocaleString('fr-FR') }
       ]);
       await sendLog(guild, 'backup', embed);
