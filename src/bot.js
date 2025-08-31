@@ -1101,7 +1101,7 @@ async function drawCertifiedCard(options) {
     // Footer
     const footer = Array.isArray(footerLines) && footerLines.length ? footerLines : [
       'Félicitations !',
-      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES',
+      'continue ton ascension vers des récompenses ultimes',
     ];
     let fy = 865;
     const fSizes = [80, 40];

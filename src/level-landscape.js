@@ -106,37 +106,37 @@ async function renderLevelCardLandscape({
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  setFont(ctx, '800 110px');
-  let titleSize = 110;
-  while (ctx.measureText('ANNONCE DE NIVEAU').width > width - 260 && titleSize > 60) {
+  setFont(ctx, '800 100px');
+  let titleSize = 100;
+  while (ctx.measureText('promotion prestige').width > width - 260 && titleSize > 56) {
     titleSize -= 2;
     setFont(ctx, `800 ${titleSize}px`);
   }
-  ctx.fillText('ANNONCE DE NIVEAU', width / 2, 70);
+  ctx.fillText('promotion prestige', width / 2, 70);
 
   // Bloc central textes
   const maxW = Math.min(1200, width - 240);
   let y = 210;
 
-  // Nom du membre
+  // Nom du membre (légère réduction pour éviter les débordements)
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 80);
-  setFont(ctx, '700 86px');
-  y += fitAndDrawCentered(ctx, String(memberName || 'Nom du membre'), y, 700, 86, maxW) + 18;
+  setFont(ctx, '700 82px');
+  y += fitAndDrawCentered(ctx, String(memberName || 'Nom du membre'), y, 700, 82, maxW) + 18;
 
   // Sous-texte
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '600 56px');
-  y += fitAndDrawCentered(ctx, 'vient de franchir un nouveau cap !', y, 600, 56, maxW) + 20;
+  setFont(ctx, '600 52px');
+  y += fitAndDrawCentered(ctx, 'vient de franchir un nouveau cap !', y, 600, 52, maxW) + 20;
 
   // Niveau
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '700 64px');
-  y += fitAndDrawCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, 700, 64, maxW) + 16;
+  setFont(ctx, '700 60px');
+  y += fitAndDrawCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, 700, 60, maxW) + 16;
 
   // Rôle obtenu
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '700 64px');
-  y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 64, maxW) + 30;
+  setFont(ctx, '700 60px');
+  y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 60, maxW) + 30;
 
   // Logo central (entre role obtenu et Félicitations)
   const logoSize = 260;
@@ -177,14 +177,14 @@ async function renderLevelCardLandscape({
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = goldGradient(ctx, 0, congratsY, width, 50);
-  setFont(ctx, '800 88px');
+  setFont(ctx, '800 84px');
   ctx.fillText('Félicitations !', width/2, congratsY);
 
   // Baseline / slogan
-  const baseY = congratsY + 100;
+  const baseY = congratsY + 96;
   ctx.fillStyle = goldGradient(ctx, 0, baseY, width, 40);
-  setFont(ctx, '700 50px');
-  const baseline = 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES';
+  setFont(ctx, '700 46px');
+  const baseline = 'continue ton ascension vers des récompenses ultimes';
   const left = '💎 ';
   const right = ' 💎';
   let text = left + baseline + right;
