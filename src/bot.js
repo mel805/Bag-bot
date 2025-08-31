@@ -3133,6 +3133,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         description: `
 **Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}
 **Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}
+`,
+      });
+      return interaction.reply({ embeds: [embed] });
+    }
+    /*
 // GIFs per action (success/fail)
 const ACTION_GIFS = {
   work: {
@@ -3250,6 +3255,10 @@ const ACTION_GIFS = {
     ]
   }
 }
+*/
+
+  } catch (_) {}
+});
 
 client.on(Events.MessageCreate, async (message) => {
   try {
@@ -3319,7 +3328,7 @@ client.on(Events.MessageCreate, async (message) => {
       if (cfg.channels && cfg.channels.includes(message.channel.id)) {
         const raw = (message.content || '').trim();
         // Keep only digits, operators, parentheses, spaces, caret, and sqrt symbol
-        const onlyDigitsAndOps = raw.replace(/[^0-9+\-*/().\s^√]/g, '');
+        const onlyDigitsAndOps = raw.replace(/[^0-9+\-*\/().\s^√]/g, '');
         // If any letters are present in the original message, ignore (do not reset)
         const state0 = cfg.state || { current: 0, lastUserId: '' };
         const expected0 = (state0.current || 0) + 1;
@@ -3341,7 +3350,7 @@ client.on(Events.MessageCreate, async (message) => {
           expr0 = expr0.replace(/√\s*([0-9]+(?:\.[0-9]+)?)/g, 'Math.sqrt($1)');
           expr0 = expr0.replace(/\^/g,'**');
           const testable = expr0.replace(/Math\.sqrt/g,'');
-          const ok = /^[0-9+\-*/().\s]*$/.test(testable);
+          const ok = /^[0-9+\-*\/().\s]*$/.test(testable);
           if (ok && expr0.length > 0) {
             try { value = Number(Function('"use strict";return (' + expr0 + ')')()); } catch (_) { value = NaN; }
           }
@@ -3529,14 +3538,14 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
     { label: 'Action/Vérité', value: 'sfw', default: mode === 'sfw' },
     { label: 'Action/Vérité NSFW', value: 'nsfw', default: mode === 'nsfw' },
   );
-  const channelAdd = new ChannelSelectMenuBuilder().setCustomId(`td_channels_add:${mode}`).setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
-  const channelRemove = new StringSelectMenuBuilder().setCustomId(`td_channels_remove:${mode}`).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td[mode].channels||[]).length || 1)));
+  const channelAdd = new ChannelSelectMenuBuilder().setCustomId('td_channels_add:' + mode).setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
+  const channelRemove = new StringSelectMenuBuilder().setCustomId('td_channels_remove:' + mode).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (td[mode].channels||[]).length || 1)));
   const opts = (td[mode].channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
   if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-  const addActionBtn = new ButtonBuilder().setCustomId(`td_prompts_add_action:${mode}`).setLabel('Ajouter ACTION').setStyle(ButtonStyle.Primary);
-  const addTruthBtn = new ButtonBuilder().setCustomId(`td_prompts_add_verite:${mode}`).setLabel('Ajouter VERITE').setStyle(ButtonStyle.Success);
-  const promptsDelBtn = new ButtonBuilder().setCustomId(`td_prompts_delete:${mode}`).setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
-  const promptsDelAllBtn = new ButtonBuilder().setCustomId(`td_prompts_delete_all:${mode}`).setLabel('Tout supprimer').setStyle(ButtonStyle.Danger);
+  const addActionBtn = new ButtonBuilder().setCustomId('td_prompts_add_action:' + mode).setLabel('Ajouter ACTION').setStyle(ButtonStyle.Primary);
+  const addTruthBtn = new ButtonBuilder().setCustomId('td_prompts_add_verite:' + mode).setLabel('Ajouter VERITE').setStyle(ButtonStyle.Success);
+  const promptsDelBtn = new ButtonBuilder().setCustomId('td_prompts_delete:' + mode).setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
+  const promptsDelAllBtn = new ButtonBuilder().setCustomId('td_prompts_delete_all:' + mode).setLabel('Tout supprimer').setStyle(ButtonStyle.Danger);
   return [
     new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
