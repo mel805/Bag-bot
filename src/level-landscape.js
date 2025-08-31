@@ -190,7 +190,7 @@ async function renderLevelCardLandscape({
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE NIVEAU';
+  const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE PRESTIGE';
   const displayedTitle = isCertified ? `👑 ${baseTitle} 👑` : baseTitle;
   // Aligne la taille sur la carte défaut (bleue): départ 100 et marge 260
   let titleSize = 100;

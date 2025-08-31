@@ -189,13 +189,13 @@ async function renderPrestigeCardBlueLandscape({
   ctx.fillStyle = blueGradient(ctx, 0, 0, width, 140);
   let titleSize = 100;
   setSerif(ctx, '800', titleSize);
-  while (ctx.measureText('ANNONCE DE NIVEAU').width > width - 260 && titleSize > 56) {
+  while (ctx.measureText('ANNONCE DE PRESTIGE').width > width - 260 && titleSize > 56) {
     titleSize -= 2;
     setSerif(ctx, '800', titleSize);
   }
   ctx.shadowColor = '#00000080';
   ctx.shadowBlur = 10;
-  await drawTextWithEmoji(ctx, 'ANNONCE DE NIVEAU', width/2, 72, 'center', 'top', titleSize);
+  await drawTextWithEmoji(ctx, 'ANNONCE DE PRESTIGE', width/2, 72, 'center', 'top', titleSize);
   ctx.shadowBlur = 0;
 
   // Center block (default reference sizes already used)
