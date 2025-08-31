@@ -107,14 +107,15 @@ async function renderLevelCardLandscape({
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  const titleText = isCertified ? 'promotion prestige' : 'ANNONCE DE NIVEAU';
+  const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE NIVEAU';
+  const displayedTitle = isCertified ? `♕ ${baseTitle} ♕` : baseTitle;
   setFont(ctx, '800 96px');
   let titleSize = 96;
-  while (ctx.measureText(titleText).width > width - 280 && titleSize > 48) {
+  while (ctx.measureText(displayedTitle).width > width - 280 && titleSize > 48) {
     titleSize -= 2;
     setFont(ctx, `800 ${titleSize}px`);
   }
-  ctx.fillText(titleText, width / 2, 70);
+  ctx.fillText(displayedTitle, width / 2, 70);
 
   // Bloc central textes
   const maxW = Math.min(1200, width - 240);
