@@ -355,6 +355,58 @@ function ensureEconomyShape(g) {
       if (typeof c.failKarmaDelta !== 'number') c.failKarmaDelta = d.failKarmaDelta;
     }
   }
+  // Ensure per-action messages shape (personalized success/fail messages)
+  if (!e.actions.messages || typeof e.actions.messages !== 'object') e.actions.messages = {};
+  const msgDefaults = {
+    work: {
+      success: ['Beau boulot, votre chef est ravi !', 'Paie reçue, continuez comme ça !'],
+      fail: ['Journée compliquée… vous aurez plus de chance demain.', 'Retard et paperasse… pas de prime aujourd’hui.']
+    },
+    fish: {
+      success: ['Bravo, vous avez pêché un saumon !', 'Félicitations, vous avez attrapé un banc de poissons !'],
+      fail: ['Rien n’a mordu cette fois…', 'La ligne a cassé au dernier moment !']
+    },
+    kiss: {
+      success: ['Un baiser qui fait fondre les cœurs…', 'Doux moment, tout le monde est conquis.'],
+      fail: ['Moment gênant… ce n’était pas réciproque.', 'Oups, malentendu.']
+    },
+    flirt: {
+      success: ['Votre clin d’œil a fait mouche ✨', 'Votre charme opère irrésistiblement.'],
+      fail: ['On vous a mis un râteau…', 'Pas réceptif aujourd’hui.']
+    },
+    seduce: {
+      success: ['Séduction réussie, quelle prestance !', 'Vous avez fait chavirer des cœurs.'],
+      fail: ['Raté… la magie n’a pas pris.', 'Trop direct, ça n’a pas marché.']
+    },
+    fuck: {
+      success: ['Nuit torride 😈', 'Explosion de passion…'],
+      fail: ['Mauvais timing…', 'Ça ne l’a pas fait cette fois.']
+    },
+    massage: {
+      success: ['Relaxation totale, mains de fée !', 'Vous avez détendu toutes les tensions.'],
+      fail: ['Crampes… ce n’était pas si relaxant.', 'Un peu trop appuyé…']
+    },
+    dance: {
+      success: ['Vous avez enflammé la piste 💃', 'Quel rythme ! Tout le monde a adoré.'],
+      fail: ['Deux pieds gauches aujourd’hui…', 'Le tempo vous a échappé.']
+    },
+    crime: {
+      success: ['Coup monté propre et net.', 'Plan parfait, personne ne vous a vu.'],
+      fail: ['La police vous a cueilli net…', 'Un complice vous a trahi.']
+    },
+    steal: {
+      success: ['Vol réussi, quelle dextérité !', 'Vous avez filé avec le butin.'],
+      fail: ['Pris la main dans le sac…', 'La cible vous a repéré !']
+    }
+  };
+  for (const [k, def] of Object.entries(msgDefaults)) {
+    if (!e.actions.messages[k] || typeof e.actions.messages[k] !== 'object') e.actions.messages[k] = { success: [], fail: [] };
+    const em = e.actions.messages[k];
+    if (!Array.isArray(em.success)) em.success = [];
+    if (!Array.isArray(em.fail)) em.fail = [];
+    if (em.success.length === 0 && Array.isArray(def.success)) em.success = [...def.success];
+    if (em.fail.length === 0 && Array.isArray(def.fail)) em.fail = [...def.fail];
+  }
   if (!e.shop || typeof e.shop !== 'object') e.shop = { items: [], roles: [], grants: {} };
   else {
     if (!Array.isArray(e.shop.items)) e.shop.items = [];
