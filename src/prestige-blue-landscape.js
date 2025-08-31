@@ -105,9 +105,9 @@ async function renderPrestigeCardBlueLandscape({
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = blueGradient(ctx, 0, 0, width, 140);
-  let titleSize = 106;
+  let titleSize = 100;
   setSerif(ctx, '800', titleSize);
-  while (ctx.measureText('ANNONCE DE NIVEAU').width > width - 240 && titleSize > 60) {
+  while (ctx.measureText('ANNONCE DE NIVEAU').width > width - 260 && titleSize > 56) {
     titleSize -= 2;
     setSerif(ctx, '800', titleSize);
   }
@@ -121,19 +121,19 @@ async function renderPrestigeCardBlueLandscape({
   let y = 210;
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 70);
-  y += fitCentered(ctx, String(memberName || 'Membre'), y, '700', 82, maxW) + 16;
+  y += fitCentered(ctx, String(memberName || 'Membre'), y, '700', 78, maxW) + 16;
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  y += fitCentered(ctx, 'vient de franchir un nouveau cap !', y, '600', 54, maxW) + 16;
+  y += fitCentered(ctx, 'vient de franchir un nouveau cap !', y, '600', 50, maxW) + 14;
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  y += fitCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, '700', 62, maxW) + 12;
+  y += fitCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, '700', 58, maxW) + 12;
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  y += fitCentered(ctx, `Dernière distinction : ${String(lastRole || '—')}`, y, '700', 62, maxW) + 28;
+  y += fitCentered(ctx, `Dernière distinction : ${String(lastRole || '—')}`, y, '700', 58, maxW) + 24;
 
   // Center logo
-  const logoSize = 220;
+  const logoSize = 210;
   const logoY = y;
   if (logoUrl) {
     try {
@@ -157,18 +157,18 @@ async function renderPrestigeCardBlueLandscape({
   // Félicitations
   const congratsY = logoY + logoSize + 22;
   ctx.fillStyle = blueGradient(ctx, 0, congratsY, width, 40);
-  setSerif(ctx, '800', 86);
+  setSerif(ctx, '800', 80);
   ctx.fillText('Félicitations !', width/2, congratsY);
 
   // Baseline
   const baseY = congratsY + 86;
   ctx.fillStyle = blueGradient(ctx, 0, baseY, width, 30);
-  setSerif(ctx, '700', 46);
+  setSerif(ctx, '700', 42);
   const diamonds = '💎 ';
   let base = `${diamonds}CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES${diamonds}`;
-  while (ctx.measureText(base).width > width - 160) {
+  while (ctx.measureText(base).width > width - 180) {
     const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (cur <= 32) break;
+    if (cur <= 30) break;
     setSerif(ctx, '700', cur - 2);
   }
   ctx.fillText(base, width/2, baseY);
