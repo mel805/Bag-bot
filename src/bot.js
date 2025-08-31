@@ -298,6 +298,7 @@ async function handleEconomyAction(interaction, actionKey) {
   const setCd = (k, sec) => { if (!u.cooldowns) u.cooldowns = {}; u.cooldowns[k] = now + sec*1000; };
   const randInt = (min, max) => Math.floor(min + Math.random() * (max - min + 1));
   const gifs = ((eco.actions?.gifs || {})[actionKey]) || { success: [], fail: [] };
+  const msgSet = ((eco.actions?.messages || {})[actionKey]) || { success: [], fail: [] };
   const successRate = Number(conf.successRate ?? 1);
   const success = Math.random() < successRate;
   let moneyDelta = 0;
@@ -314,6 +315,9 @@ async function handleEconomyAction(interaction, actionKey) {
     else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
     imageUrl = Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined;
   }
+  const msgText = success
+    ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
+    : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
   // Special cases
   if (actionKey === 'give') {
     const cible = interaction.options.getUser('membre', true);
@@ -322,9 +326,22 @@ async function handleEconomyAction(interaction, actionKey) {
     u.amount = (u.amount||0) - montant;
     const tu = await getEconomyUser(interaction.guild.id, cible.id);
     tu.amount = (tu.amount||0) + montant;
+    // Apply karma on give, if configured
+    let giveKarmaField = null;
+    if (conf.karma === 'charm' && Number(conf.karmaDelta||0) !== 0) { u.charm = (u.charm||0) + Number(conf.karmaDelta||0); giveKarmaField = ['Karma charme', `+${Number(conf.karmaDelta||0)}`]; }
+    else if (conf.karma === 'perversion' && Number(conf.karmaDelta||0) !== 0) { u.perversion = (u.perversion||0) + Number(conf.karmaDelta||0); giveKarmaField = ['Karma perversion', `+${Number(conf.karmaDelta||0)}`]; }
     await setEconomyUser(interaction.guild.id, interaction.user.id, u);
     await setEconomyUser(interaction.guild.id, cible.id, tu);
-    const embed = buildEcoEmbed({ title: 'Don effectué', description: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}.`, fields: [ { name: 'Votre solde', value: String(u.amount), inline: true } ] });
+    const currency = eco.currency?.name || 'BAG$';
+    const desc = msgText ? `${msgText}\nVous avez donné ${montant} ${currency} à ${cible}.` : `Vous avez donné ${montant} ${currency} à ${cible}.`;
+    const fields = [
+      { name: 'Argent', value: `-${montant} ${currency}`, inline: true },
+      { name: 'Solde argent', value: String(u.amount), inline: true },
+      ...(giveKarmaField ? [{ name: 'Karma', value: `${giveKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${giveKarmaField[1]}`, inline: true }] : []),
+      { name: 'Solde charme', value: String(u.charm||0), inline: true },
+      { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+    ];
+    const embed = buildEcoEmbed({ title: 'Don effectué', description: desc, fields });
     if (imageUrl) embed.setImage(imageUrl);
     return interaction.reply({ embeds: [embed] });
   }
@@ -336,20 +353,46 @@ async function handleEconomyAction(interaction, actionKey) {
       const got = randInt(Math.min(Number(conf.moneyMin||0), canSteal), canSteal);
       tu.amount = Math.max(0, (tu.amount||0) - got);
       u.amount = (u.amount||0) + got;
+      // Karma on success
+      let stealKarmaField = null;
+      if (conf.karma === 'charm' && Number(conf.karmaDelta||0) !== 0) { u.charm = (u.charm||0) + Number(conf.karmaDelta||0); stealKarmaField = ['Karma charme', `+${Number(conf.karmaDelta||0)}`]; }
+      else if (conf.karma === 'perversion' && Number(conf.karmaDelta||0) !== 0) { u.perversion = (u.perversion||0) + Number(conf.karmaDelta||0); stealKarmaField = ['Karma perversion', `+${Number(conf.karmaDelta||0)}`]; }
       setCd('steal', cdToSet);
       await setEconomyUser(interaction.guild.id, interaction.user.id, u);
       await setEconomyUser(interaction.guild.id, cible.id, tu);
-      const embed = buildEcoEmbed({ title: 'Vol réussi', description: `Vous avez volé ${got} ${eco.currency?.name || 'BAG$'} à ${cible}.`, fields: [ { name: 'Votre solde', value: String(u.amount), inline: true } ] });
+      const currency = eco.currency?.name || 'BAG$';
+      const desc = msgText ? `${msgText}\nVous avez volé ${got} ${currency} à ${cible}.` : `Vous avez volé ${got} ${currency} à ${cible}.`;
+      const fields = [
+        { name: 'Argent', value: `+${got} ${currency}`, inline: true },
+        { name: 'Solde argent', value: String(u.amount), inline: true },
+        ...(stealKarmaField ? [{ name: 'Karma', value: `${stealKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${stealKarmaField[1]}`, inline: true }] : []),
+        { name: 'Solde charme', value: String(u.charm||0), inline: true },
+        { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+      ];
+      const embed = buildEcoEmbed({ title: 'Vol réussi', description: desc, fields });
       if (imageUrl) embed.setImage(imageUrl);
       return interaction.reply({ embeds: [embed] });
     } else {
       const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
       u.amount = Math.max(0, (u.amount||0) - lost);
       tu.amount = (tu.amount||0) + lost;
+      // Karma on fail
+      let stealKarmaField = null;
+      if (conf.karma === 'charm' && Number(conf.failKarmaDelta||0) !== 0) { u.charm = (u.charm||0) - Number(conf.failKarmaDelta||0); stealKarmaField = ['Karma charme', `-${Number(conf.failKarmaDelta||0)}`]; }
+      else if (conf.karma === 'perversion' && Number(conf.failKarmaDelta||0) !== 0) { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); stealKarmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
       setCd('steal', cdToSet);
       await setEconomyUser(interaction.guild.id, interaction.user.id, u);
       await setEconomyUser(interaction.guild.id, cible.id, tu);
-      const embed = buildEcoEmbed({ title: 'Vol raté', description: `Vous avez été repéré par ${cible} et perdu ${lost} ${eco.currency?.name || 'BAG$'}.`, fields: [ { name: 'Votre solde', value: String(u.amount), inline: true } ] });
+      const currency = eco.currency?.name || 'BAG$';
+      const desc = msgText ? `${msgText}\nVous avez été repéré par ${cible} et perdu ${lost} ${currency}.` : `Vous avez été repéré par ${cible} et perdu ${lost} ${currency}.`;
+      const fields = [
+        { name: 'Argent', value: `-${lost} ${currency}`, inline: true },
+        { name: 'Solde argent', value: String(u.amount), inline: true },
+        ...(stealKarmaField ? [{ name: 'Karma', value: `${stealKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${stealKarmaField[1]}`, inline: true }] : []),
+        { name: 'Solde charme', value: String(u.charm||0), inline: true },
+        { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+      ];
+      const embed = buildEcoEmbed({ title: 'Vol raté', description: desc, fields });
       if (imageUrl) embed.setImage(imageUrl);
       return interaction.reply({ embeds: [embed] });
     }
@@ -360,9 +403,16 @@ async function handleEconomyAction(interaction, actionKey) {
   await setEconomyUser(interaction.guild.id, interaction.user.id, u);
   const nice = actionKeyToLabel(actionKey);
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
-  const desc = success ? `Gain: ${moneyDelta} ${eco.currency?.name || 'BAG$'}` : `Perte: ${Math.abs(moneyDelta)} ${eco.currency?.name || 'BAG$'}`;
-  const fields = [ { name: 'Solde', value: String(u.amount), inline: true } ];
-  if (karmaField) fields.push({ name: karmaField[0], value: karmaField[1], inline: true });
+  const currency = eco.currency?.name || 'BAG$';
+  const desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  const moneyField = { name: 'Argent', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true };
+  const fields = [
+    moneyField,
+    { name: 'Solde argent', value: String(u.amount), inline: true },
+    ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
+    { name: 'Solde charme', value: String(u.charm||0), inline: true },
+    { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+  ];
   const embed = buildEcoEmbed({ title, description: desc, fields });
   if (imageUrl) embed.setImage(imageUrl);
   return interaction.reply({ embeds: [embed] });
@@ -1217,7 +1267,7 @@ async function buildConfessRows(guild, mode = 'sfw') {
 }
 
 function actionKeyToLabel(key) {
-  const map = { steal: 'voler', kiss: 'embrasser', flirt: 'flirter', seduce: 'séduire', fuck: 'fuck', massage: 'masser', dance: 'danser', crime: 'crime' };
+  const map = { work: 'travailler', fish: 'pêcher', give: 'donner', steal: 'voler', kiss: 'embrasser', flirt: 'flirter', seduce: 'séduire', fuck: 'fuck', massage: 'masser', dance: 'danser', crime: 'crime' };
   return map[key] || key;
 }
 
