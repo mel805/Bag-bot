@@ -297,18 +297,18 @@ async function renderPrestigeCardBlueLandscape({
     await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
   }
 
-  // Baseline
+  // Baseline (inchangée mais harmonisée en logique de sizing)
   const baseY = congratsY + (isRoleAward ? 0 : 86);
   ctx.fillStyle = blueGradient(ctx, 0, baseY, width, 30);
-  setSerif(ctx, '700', 42);
-  const diamonds = '💎 ';
-  let base = `${diamonds}CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES${diamonds}`;
-  while (measureTextWithEmoji(ctx, base, __parseFontPx(ctx.font)) > width - 180) {
-    const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (cur <= 30) break;
-    setSerif(ctx, '700', cur - 2);
+  let baseSize = 42;
+  setSerif(ctx, '700', baseSize);
+  const base = '💎 CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES 💎';
+  while (measureTextWithEmoji(ctx, base, baseSize) > width - 180) {
+    baseSize -= 2;
+    if (baseSize <= 30) break;
+    setSerif(ctx, '700', baseSize);
   }
-  await drawTextWithEmoji(ctx, base, width/2, baseY, 'center', 'top', __parseFontPx(ctx.font));
+  await drawTextWithEmoji(ctx, base, width/2, baseY, 'center', 'top', baseSize);
 
   return canvas.toBuffer('image/png');
 }
