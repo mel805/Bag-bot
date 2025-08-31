@@ -1178,8 +1178,8 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
       memberName: name,
       level: newLevel,
       lastRole: roleName || '—',
-      logoUrl: CERTIFIED_LOGO_URL || undefined,
-      bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+      logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
+      bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
       else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
@@ -1234,8 +1234,8 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       memberName: name,
       level: 0,
       lastRole: roleName,
-      logoUrl: CERTIFIED_LOGO_URL || undefined,
-      bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+      logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
+      bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       isRoleAward: true,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
@@ -3066,7 +3066,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             level: stats.level,
             lastRole: roleName || '—',
             logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
-            bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+            bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
           });
         } else {
           png = await renderPrestigeCardBlueLandscape({
