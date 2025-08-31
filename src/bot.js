@@ -73,6 +73,7 @@ const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
 const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || '';
 const CERTIFIED_ROSEGOLD = String(process.env.CERTIFIED_ROSEGOLD || 'false').toLowerCase() === 'true';
+const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || '';
 
 if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
@@ -2930,10 +2931,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ embeds: [embed] });
     }
 
-    // /niveau (FR) and /level (EN alias): show user's current level card
+    // /niveau (FR) and /level (EN alias): show user's level with prestige-style landscape card
     if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
       try { await interaction.deferReply(); } catch (_) {}
       try {
+        const { renderLevelCardLandscape } = require('./level-landscape');
         const levels = await getLevelsConfig(interaction.guild.id);
         const userFr = interaction.options.getUser?.('membre');
         const userEn = interaction.options.getUser?.('member');
@@ -2943,15 +2945,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const lastReward = getLastRewardForLevel(levels, stats.level);
         const roleName = lastReward ? (interaction.guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
         const name = memberDisplayName(interaction.guild, member, targetUser.id);
-        const bg = chooseCardBackgroundForMember(member, levels);
-        const sub = [
-          `Niveau atteint : ${String(stats.level)}`,
-          `Dernière distinction : ${roleName || '—'}`
-        ];
-        const img = await drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD });
+        const logoUrl = LEVEL_CARD_LOGO_URL || CERTIFIED_LOGO_URL || undefined;
+        const png = await renderLevelCardLandscape({ memberName: name, level: stats.level, roleName: roleName || '—', logoUrl });
         const mention = targetUser && targetUser.id !== interaction.user.id ? `<@${targetUser.id}>` : '';
-        if (img) return interaction.editReply({ content: mention || undefined, files: [{ attachment: img, name: 'level.png' }] });
-        return interaction.editReply({ content: `${mention || targetUser} • Niveau: ${stats.level}` });
+        return interaction.editReply({ content: mention || undefined, files: [{ attachment: png, name: 'level.png' }] });
       } catch (e) {
         try { return await interaction.editReply({ content: 'Une erreur est survenue lors du rendu de votre carte de niveau.' }); } catch (_) { return; }
       }
