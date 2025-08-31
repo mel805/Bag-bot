@@ -2907,36 +2907,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    if (interaction.isChatInputCommand() && interaction.commandName === 'eco') {
-      const sub = interaction.options.getSubcommand();
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const curr = `${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`;
-      // Load user state
-      const userId = interaction.user.id;
-      const u = await getEconomyUser(interaction.guild.id, userId);
-      const now = Date.now();
-      const cd = (k)=>Math.max(0, (u.cooldowns?.[k]||0)-now);
-      const setCd=(k,sec)=>{ if(!u.cooldowns) u.cooldowns={}; u.cooldowns[k]=now+sec*1000; };
-      if (sub === 'solde') {
-        return interaction.reply({ content: `Votre solde: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}` });
-      }
-      if (sub === 'travailler') return handleEconomyAction(interaction, 'work');
-      if (sub === 'pecher') return handleEconomyAction(interaction, 'fish');
-      if (sub === 'donner') return handleEconomyAction(interaction, 'give');
-      // Fallback for unknown sub
-      if (sub === 'donner') {
-        const cible = interaction.options.getUser('membre', true);
-        const montant = interaction.options.getInteger('montant', true);
-        if ((u.amount||0) < montant) return interaction.reply({ content: `Solde insuffisant.`, ephemeral: true });
-        u.amount = (u.amount||0) - montant;
-        await setEconomyUser(interaction.guild.id, userId, u);
-        const tu = await getEconomyUser(interaction.guild.id, cible.id);
-        tu.amount = (tu.amount||0) + montant;
-        await setEconomyUser(interaction.guild.id, cible.id, tu);
-        return interaction.reply({ content: `Vous avez donné ${montant} ${eco.currency?.name || 'BAG$'} à ${cible}. Votre solde: ${u.amount}` });
-      }
-      return interaction.reply({ content: 'Action non implémentée pour le moment.', ephemeral: true });
-    }
+    
 
     // Economy standalone commands (aliases)
     if (interaction.isChatInputCommand() && interaction.commandName === 'travailler') {
