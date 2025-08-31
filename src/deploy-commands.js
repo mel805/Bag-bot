@@ -1,5 +1,10 @@
 const { REST, Routes, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
 require('dotenv').config();
+// Log a brief storage mode hint on registration too
+try {
+  const { paths } = require('./storage/jsonStore');
+  console.log('[register] DATA_DIR:', paths.DATA_DIR, 'CONFIG_PATH:', paths.CONFIG_PATH);
+} catch (_) {}
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;

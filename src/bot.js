@@ -1614,7 +1614,8 @@ client.login(process.env.DISCORD_TOKEN).then(() => {
 });
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
-  ensureStorageExists().catch(() => {});
+  // Boot persistance dès le départ et journaliser le mode choisi
+  ensureStorageExists().then(()=>console.log('[bot] Storage initialized')).catch((e)=>console.warn('[bot] Storage init error:', e?.message||e));
   startYtProxyServer();
   // Init Erela.js (if available) with public nodes
   try {

@@ -4,7 +4,12 @@ const path = require('path');
 require('dotenv').config();
 let Pool;
 try { ({ Pool } = require('pg')); } catch (_) { Pool = null; }
-const DATABASE_URL = process.env.DATABASE_URL || '';
+// Supporte plusieurs variables d'env pour la compat Heroku/Render/Fly
+const DATABASE_URL = process.env.DATABASE_URL
+  || process.env.POSTGRES_URL
+  || process.env.POSTGRESQL_URL
+  || process.env.PG_CONNECTION_STRING
+  || '';
 const USE_PG = !!(DATABASE_URL && Pool);
 let pgPool = null;
 async function getPg() {
@@ -34,6 +39,7 @@ async function ensureStorageExists() {
           } catch (_) { /* ignore, keep default */ }
           await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [bootstrap]);
         }
+        try { console.log('[storage] Mode: postgres (table app_config prête)'); } catch (_) {}
         return; // DB OK
       } finally {
         client.release();
@@ -50,6 +56,7 @@ async function ensureStorageExists() {
     const initial = { guilds: {} };
     await fsp.writeFile(CONFIG_PATH, JSON.stringify(initial, null, 2), 'utf8');
   }
+  try { console.log('[storage] Mode: fichier JSON ->', CONFIG_PATH); } catch (_) {}
 }
 
 async function readConfig() {
@@ -78,6 +85,11 @@ async function readConfig() {
     if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
     return parsed;
   } catch (_) {
+    // Si le fichier est manquant ou corrompu, on tente de régénérer
+    try {
+      await fsp.mkdir(DATA_DIR, { recursive: true });
+      await fsp.writeFile(CONFIG_PATH, JSON.stringify({ guilds: {} }, null, 2), 'utf8');
+    } catch (_) {}
     return { guilds: {} };
   }
 }
@@ -100,7 +112,13 @@ async function writeConfig(cfg) {
   try { await fsp.mkdir(DATA_DIR, { recursive: true }); } catch (_) {}
   const tmpPath = CONFIG_PATH + '.tmp';
   await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
-  await fsp.rename(tmpPath, CONFIG_PATH);
+  try {
+    await fsp.rename(tmpPath, CONFIG_PATH);
+  } catch (e) {
+    // Sur certains FS (ex: overlay), rename atomique peut échouer: fallback sur write direct
+    try { await fsp.writeFile(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8'); }
+    catch (_) {}
+  }
 }
 
 async function getGuildConfig(guildId) {
