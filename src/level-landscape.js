@@ -188,7 +188,7 @@ async function renderLevelCardLandscape({
   ctx.fillStyle = goldGradient(ctx, 0, baseY, width, 40);
   setFont(ctx, '700 42px');
   const baseline = isCertified
-    ? 'continue ton ascension vers des récompenses ultimes'
+    ? 'continue ton ascension vers les récompenses ultimes'
     : 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES';
   const left = '💎 ';
   const right = ' 💎';
