@@ -814,6 +814,13 @@ function memberHasCertifiedRole(memberOrMention, levels) {
   } catch (_) { return false; }
 }
 
+function memberHasFemaleRole(memberOrMention, levels) {
+  try {
+    const femaleIds = new Set(Array.isArray(levels?.cards?.femaleRoleIds) ? levels.cards.femaleRoleIds : []);
+    return Boolean(memberOrMention?.roles?.cache?.some(r => femaleIds.has(r.id)));
+  } catch (_) { return false; }
+}
+
 function fitText(ctx, text, maxWidth, baseSize, fontFamily) {
   let size = baseSize;
   for (; size >= 12; size -= 2) {
@@ -1142,6 +1149,21 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
     `Dernière distinction : ${roleName || '—'}`
   ];
   const isCert = memberHasCertifiedRole(memberOrMention, levels);
+  const isFemale = memberHasFemaleRole(memberOrMention, levels);
+  if (isFemale) {
+    const { renderPrestigeCardRoseGoldLandscape } = require('./prestige-rose-gold-landscape');
+    renderPrestigeCardRoseGoldLandscape({
+      memberName: name,
+      level: newLevel,
+      lastRole: roleName || '—',
+      logoUrl: CERTIFIED_LOGO_URL || undefined,
+      bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+    }).then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
+      else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
+    });
+    return;
+  }
   drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: isCert ? CERTIFIED_LOGO_URL : '', useRoseGold: CERTIFIED_ROSEGOLD, isCertified: isCert }).then((img) => {
     if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
     else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
@@ -1159,6 +1181,21 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
   const sub = [ `Nouvelle distinction : ${roleName}` ];
   const isCert = memberHasCertifiedRole(memberOrMention, levels);
+  const isFemale = memberHasFemaleRole(memberOrMention, levels);
+  if (isFemale) {
+    const { renderPrestigeCardRoseGoldLandscape } = require('./prestige-rose-gold-landscape');
+    renderPrestigeCardRoseGoldLandscape({
+      memberName: name,
+      level: 0,
+      lastRole: roleName,
+      logoUrl: CERTIFIED_LOGO_URL || undefined,
+      bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+    }).then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
+      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+    });
+    return;
+  }
   drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: isCert ? CERTIFIED_LOGO_URL : '', useRoseGold: CERTIFIED_ROSEGOLD, isCertified: isCert }).then((img) => {
     if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
     else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
@@ -2938,6 +2975,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.deferReply(); } catch (_) {}
       try {
         const { renderLevelCardLandscape } = require('./level-landscape');
+        const { renderPrestigeCardRoseGoldLandscape } = require('./prestige-rose-gold-landscape');
         const levels = await getLevelsConfig(interaction.guild.id);
         const userFr = interaction.options.getUser?.('membre');
         const userEn = interaction.options.getUser?.('member');
@@ -2949,7 +2987,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const name = memberDisplayName(interaction.guild, member, targetUser.id);
         const logoUrl = LEVEL_CARD_LOGO_URL || CERTIFIED_LOGO_URL || undefined;
         const isCertified = memberHasCertifiedRole(member, levels);
-        const png = await renderLevelCardLandscape({ memberName: name, level: stats.level, roleName: roleName || '—', logoUrl, isCertified });
+        const isFemale = memberHasFemaleRole(member, levels);
+        let png;
+        if (isFemale) {
+          png = await renderPrestigeCardRoseGoldLandscape({
+            memberName: name,
+            level: stats.level,
+            lastRole: roleName || '—',
+            logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
+            bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+          });
+        } else {
+          png = await renderLevelCardLandscape({ memberName: name, level: stats.level, roleName: roleName || '—', logoUrl, isCertified });
+        }
         const mention = targetUser && targetUser.id !== interaction.user.id ? `<@${targetUser.id}>` : '';
         return interaction.editReply({ content: mention || undefined, files: [{ attachment: png, name: 'level.png' }] });
       } catch (e) {
