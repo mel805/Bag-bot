@@ -108,6 +108,20 @@ const commands = [
     .toJSON(),
   new SlashCommandBuilder().setName('actionverite').setDescription('Démarrer Action ou Vérité dans ce salon autorisé').toJSON(),
   new SlashCommandBuilder()
+    .setName('backup')
+    .setDescription('Admin: exporter la configuration complète en JSON')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('restore')
+    .setDescription('Admin: restaurer la configuration depuis un JSON')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addAttachmentOption(o=>o.setName('fichier').setDescription('Fichier JSON de config').setRequired(false))
+    .addStringOption(o=>o.setName('json').setDescription('Contenu JSON brut (optionnel)').setRequired(false))
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('map')
     .setDescription('Définir ou voir votre localisation (ville)')
     .addStringOption(o=>o.setName('ville').setDescription('Votre ville (ex: Paris)').setRequired(true))
