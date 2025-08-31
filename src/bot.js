@@ -104,10 +104,15 @@ function startKeepAliveServer() {
         if (token && auth !== `Bearer ${token}`) { res.statusCode = 401; return res.end('Unauthorized'); }
         try {
           const { readConfig, paths } = require('./storage/jsonStore');
-          readConfig().then(cfg => {
+          readConfig().then(async (cfg) => {
             const text = JSON.stringify(cfg, null, 2);
             res.setHeader('Content-Type', 'application/json');
             res.end(text);
+            // Log success to configured logs channel
+            try {
+              const g = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(()=>null);
+              if (g) { const lc = await getLogsConfig(g.id); const em = buildModEmbed(`${lc.emoji} Sauvegarde`, `Sauvegarde HTTP /backup — méthode: http`, []); await sendLog(g, 'backup', em); }
+            } catch (_) {}
           }).catch(() => { res.statusCode = 500; res.end('ERR'); });
         } catch (_) { res.statusCode = 500; res.end('ERR'); }
         return;
@@ -2787,8 +2792,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const cfg = await readConfig();
         const json = Buffer.from(JSON.stringify(cfg, null, 2), 'utf8');
         const file = { attachment: json, name: 'bag-backup.json' };
+        try {
+          const lc = await getLogsConfig(interaction.guild.id);
+          const em = buildModEmbed(`${lc.emoji} Sauvegarde`, `Sauvegarde Discord — méthode: slash`, [ { name: 'Auteur', value: `${interaction.user}` } ]);
+          await sendLog(interaction.guild, 'backup', em);
+        } catch (_) {}
         return interaction.editReply({ content: '📦 Sauvegarde générée.', files: [file] });
       } catch (e) {
+        try {
+          const lc = await getLogsConfig(interaction.guild.id);
+          const em = buildModEmbed(`${lc.emoji} Sauvegarde`, `Échec sauvegarde Discord — méthode: slash`, [ { name: 'Erreur', value: String(e?.message||e) } ]);
+          await sendLog(interaction.guild, 'backup', em);
+        } catch (_) {}
         return interaction.reply({ content: 'Erreur export.', ephemeral: true });
       }
     }
@@ -2812,8 +2827,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!parsed || typeof parsed !== 'object' || !parsed.guilds) return interaction.editReply({ content: 'Format inattendu: champ "guilds" manquant.' });
         const { writeConfig } = require('./storage/jsonStore');
         await writeConfig(parsed);
+        try {
+          const lc = await getLogsConfig(interaction.guild.id);
+          const method = att && att.url ? 'fichier' : 'texte';
+          const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration config — méthode: ${method}`, [ { name: 'Auteur', value: `${interaction.user}` } ]);
+          await sendLog(interaction.guild, 'backup', em);
+        } catch (_) {}
         return interaction.editReply({ content: '✅ Restauration effectuée.' });
       } catch (e) {
+        try {
+          const lc = await getLogsConfig(interaction.guild.id);
+          const em = buildModEmbed(`${lc.emoji} Restauration`, `Échec restauration config`, [ { name: 'Erreur', value: String(e?.message||e) } ]);
+          await sendLog(interaction.guild, 'backup', em);
+        } catch (_) {}
         return interaction.reply({ content: 'Erreur restauration.', ephemeral: true });
       }
     }
