@@ -407,11 +407,44 @@ async function handleEconomyAction(interaction, actionKey) {
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
   const currency = eco.currency?.name || 'BAG$';
   const desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  // Partner rewards (cible/complice)
+  let partnerField = null;
+  if (success) {
+    try {
+      let partnerUser = null;
+      if (['kiss','flirt','seduce','fuck','massage','dance'].includes(actionKey)) {
+        partnerUser = interaction.options.getUser('cible', false);
+      } else if (actionKey === 'crime') {
+        partnerUser = interaction.options.getUser('complice', false);
+      }
+      if (partnerUser && partnerUser.id !== interaction.user.id) {
+        const pMoneyShare = Number(conf.partnerMoneyShare || 0);
+        const pKarmaShare = Number(conf.partnerKarmaShare || 0);
+        const partnerMoneyGain = Math.max(0, Math.round(Math.max(0, moneyDelta) * (isFinite(pMoneyShare) ? pMoneyShare : 0)));
+        const partner = await getEconomyUser(interaction.guild.id, partnerUser.id);
+        let partnerKarmaText = '';
+        if (conf.karma === 'charm') {
+          const kd = Math.max(0, Math.round(Number(conf.karmaDelta||0) * (isFinite(pKarmaShare) ? pKarmaShare : 0)));
+          if (kd > 0) { partner.charm = (partner.charm||0) + kd; partnerKarmaText = `, Charme +${kd}`; }
+        } else if (conf.karma === 'perversion') {
+          const kd = Math.max(0, Math.round(Number(conf.karmaDelta||0) * (isFinite(pKarmaShare) ? pKarmaShare : 0)));
+          if (kd > 0) { partner.perversion = (partner.perversion||0) + kd; partnerKarmaText = `, Perversion +${kd}`; }
+        }
+        if (partnerMoneyGain > 0) partner.amount = Math.max(0, (partner.amount||0) + partnerMoneyGain);
+        await setEconomyUser(interaction.guild.id, partnerUser.id, partner);
+        if (partnerMoneyGain > 0 || partnerKarmaText) {
+          const value = `${partnerUser} → ${partnerMoneyGain > 0 ? `+${partnerMoneyGain} ${currency}` : ''}${partnerKarmaText}`.trim();
+          partnerField = { name: 'Partenaire récompenses', value, inline: false };
+        }
+      }
+    } catch (_) {}
+  }
   const moneyField = { name: 'Argent', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true };
   const fields = [
     moneyField,
     { name: 'Solde argent', value: String(u.amount), inline: true },
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
+    ...(partnerField ? [partnerField] : []),
     { name: 'Solde charme', value: String(u.charm||0), inline: true },
     { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
   ];
@@ -1549,7 +1582,8 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
   const toggle = new ButtonBuilder().setCustomId(`economy_action_toggle:${selectedKey}`).setLabel(isEnabled ? 'Action: ON' : 'Action: OFF').setStyle(isEnabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const editBasic = new ButtonBuilder().setCustomId(`economy_action_edit_basic:${selectedKey}`).setLabel('Paramètres de base').setStyle(ButtonStyle.Primary);
   const editKarma = new ButtonBuilder().setCustomId(`economy_action_edit_karma:${selectedKey}`).setLabel('Karma').setStyle(ButtonStyle.Secondary);
-  rows.push(new ActionRowBuilder().addComponents(toggle, editBasic, editKarma));
+  const editPartner = new ButtonBuilder().setCustomId(`economy_action_edit_partner:${selectedKey}`).setLabel('Récompenses partenaire').setStyle(ButtonStyle.Secondary);
+  rows.push(new ActionRowBuilder().addComponents(toggle, editBasic, editKarma, editPartner));
   return rows;
 }
 
@@ -2012,6 +2046,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       );
       try { return await interaction.showModal(modal); } catch (_) { return; }
     }
+    if (interaction.isButton() && interaction.customId.startsWith('economy_action_edit_partner:')) {
+      const key = interaction.customId.split(':')[1];
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const c = (eco.actions?.config || {})[key] || {};
+      const modal = new ModalBuilder().setCustomId(`economy_action_partner_modal:${key}`).setTitle('Récompenses partenaire');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('partnerMoneyShare').setLabel('Part argent (multiplicateur)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.partnerMoneyShare||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('partnerKarmaShare').setLabel('Part karma (multiplicateur)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.partnerKarmaShare||0)))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_action_basic_modal:')) {
       await interaction.deferReply({ ephemeral: true });
       const key = interaction.customId.split(':')[1];
@@ -2043,6 +2088,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       eco.actions.config[key] = { ...(c||{}), karma, karmaDelta, failMoneyMin, failMoneyMax, failKarmaDelta };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Karma mis à jour.' });
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_action_partner_modal:')) {
+      await interaction.deferReply({ ephemeral: true });
+      const key = interaction.customId.split(':')[1];
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const c = (eco.actions?.config || {})[key] || {};
+      const partnerMoneyShare = Number((interaction.fields.getTextInputValue('partnerMoneyShare')||'0').trim());
+      const partnerKarmaShare = Number((interaction.fields.getTextInputValue('partnerKarmaShare')||'0').trim());
+      if (!eco.actions) eco.actions = {};
+      if (!eco.actions.config) eco.actions.config = {};
+      eco.actions.config[key] = { ...(c||{}), partnerMoneyShare, partnerKarmaShare };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      return interaction.editReply({ content: '✅ Récompenses partenaire mises à jour.' });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'suites_category') {
       const id = interaction.values?.[0];
