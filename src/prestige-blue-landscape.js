@@ -198,7 +198,7 @@ async function renderPrestigeCardBlueLandscape({
   await drawTextWithEmoji(ctx, 'ANNONCE DE NIVEAU', width/2, 72, 'center', 'top', titleSize);
   ctx.shadowBlur = 0;
 
-  // Center block
+  // Center block (default reference sizes already used)
   const maxW = Math.min(1200, width - 260);
   let y = 210;
 

@@ -216,14 +216,14 @@ async function renderPrestigeCardRoseGoldLandscape({
   const maxW = Math.min(1200, width - 260);
   let y = 210;
 
-  // Nom membre
+  // Nom membre (aligné sur la carte défaut)
   ctx.fillStyle = roseGold(ctx, 0, y, width, 70);
   {
     const t = String(memberName || 'Membre');
     const sz = fitCentered(ctx, t, y, '700', 78, maxW);
     setSerif(ctx, '700', sz);
     await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 14;
+    y += sz + 16;
   }
 
   if (isRoleAward) {
@@ -323,7 +323,7 @@ async function renderPrestigeCardRoseGoldLandscape({
     let base = '💎 CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES 💎';
     let baseSize = 42;
     setSerif(ctx, '700', baseSize);
-    while (measureTextWithEmoji(ctx, base, baseSize) > width - 200) {
+    while (measureTextWithEmoji(ctx, base, baseSize) > width - 180) {
       baseSize -= 2;
       if (baseSize <= 30) break;
       setSerif(ctx, '700', baseSize);
