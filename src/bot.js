@@ -1582,6 +1582,79 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
     }
+    // Boutique config handlers
+    if (interaction.isButton() && interaction.customId === 'shop_add_role') {
+      const modal = new ModalBuilder().setCustomId('shop_add_role_modal').setTitle('Ajouter un rôle à la boutique');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('roleId').setLabel('ID du rôle').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('duration').setLabel('Durée en jours (0=permanent)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'shop_add_role_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const roleId = (interaction.fields.getTextInputValue('roleId')||'').trim();
+      const price = Number((interaction.fields.getTextInputValue('price')||'0').trim());
+      const durationDays = Math.max(0, Number((interaction.fields.getTextInputValue('duration')||'0').trim()));
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const roles = Array.isArray(eco.shop?.roles) ? eco.shop.roles.slice() : [];
+      const exists = roles.find(r => String(r.roleId) === String(roleId) && Number(r.durationDays||0) === Number(durationDays||0));
+      if (exists) return interaction.editReply({ content: 'Ce rôle existe déjà dans la boutique avec cette durée.' });
+      roles.push({ roleId, price: Math.max(0, price), durationDays: Math.max(0, durationDays) });
+      eco.shop = { ...(eco.shop||{}), roles };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
+      return interaction.editReply({ content: '✅ Rôle ajouté.', embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'shop_add_item') {
+      const modal = new ModalBuilder().setCustomId('shop_add_item_modal').setTitle('Ajouter un objet à la boutique');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de l\'objet').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('id').setLabel('Identifiant (unique)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'shop_add_item_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const id = (interaction.fields.getTextInputValue('id')||'').trim();
+      const name = (interaction.fields.getTextInputValue('name')||'').trim();
+      const price = Number((interaction.fields.getTextInputValue('price')||'0').trim());
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const items = Array.isArray(eco.shop?.items) ? eco.shop.items.slice() : [];
+      if (items.some(x => String(x.id) === id)) return interaction.editReply({ content: 'ID d\'objet déjà utilisé.' });
+      items.push({ id, name, price: Math.max(0, price) });
+      eco.shop = { ...(eco.shop||{}), items };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
+      return interaction.editReply({ content: '✅ Objet ajouté.', embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'shop_remove_select') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const items = Array.isArray(eco.shop?.items) ? eco.shop.items.slice() : [];
+      const roles = Array.isArray(eco.shop?.roles) ? eco.shop.roles.slice() : [];
+      for (const v of interaction.values) {
+        if (v.startsWith('item:')) {
+          const id = v.split(':')[1];
+          const idx = items.findIndex(x => String(x.id) === id);
+          if (idx >= 0) items.splice(idx, 1);
+        } else if (v.startsWith('role:')) {
+          const [_, roleId, durStr] = v.split(':');
+          const dur = Number(durStr||0);
+          const idx = roles.findIndex(r => String(r.roleId) === String(roleId) && Number(r.durationDays||0) === dur);
+          if (idx >= 0) roles.splice(idx, 1);
+        }
+      }
+      eco.shop = { ...(eco.shop||{}), items, roles };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
     if (interaction.isStringSelectMenu() && interaction.customId === 'economy_actions_pick') {
       const key = interaction.values[0];
       if (!client._ecoActionCurrent) client._ecoActionCurrent = new Map();
@@ -2605,6 +2678,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
         fields: [{ name: 'Action', value: action, inline: true }]
       });
       return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    // /ajout argent — Admin only
+    if (interaction.isChatInputCommand() && interaction.commandName === 'ajout') {
+      const sub = interaction.options.getSubcommand();
+      if (sub === 'argent') {
+        const hasAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
+        if (!hasAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+        const member = interaction.options.getUser('membre', true);
+        const montant = Math.max(1, Math.abs(interaction.options.getInteger('montant', true)));
+        try {
+          await interaction.deferReply({ ephemeral: true });
+        } catch (_) {}
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const u = await getEconomyUser(interaction.guild.id, member.id);
+        const before = u.amount || 0;
+        u.amount = (u.amount || 0) + montant;
+        await setEconomyUser(interaction.guild.id, member.id, u);
+        const embed = buildEcoEmbed({
+          title: 'Ajout d\'argent',
+          description: `Membre: ${member}\nMontant ajouté: ${montant} ${eco.currency?.name || 'BAG$'}\nSolde: ${before} → ${u.amount}`,
+        });
+        return interaction.editReply({ embeds: [embed] });
+      }
+      return interaction.reply({ content: 'Sous-commande inconnue.', ephemeral: true });
+    }
+
+    // Legacy alias: /ajoutargent
+    if (interaction.isChatInputCommand() && interaction.commandName === 'ajoutargent') {
+      const hasAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
+      if (!hasAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+      const member = interaction.options.getUser('membre', true);
+      const montant = Math.max(1, Math.abs(interaction.options.getInteger('montant', true)));
+      try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, member.id);
+      const before = u.amount || 0;
+      u.amount = (u.amount || 0) + montant;
+      await setEconomyUser(interaction.guild.id, member.id, u);
+      const embed = buildEcoEmbed({ title: 'Ajout d\'argent', description: `Membre: ${member}\nMontant ajouté: ${montant} ${eco.currency?.name || 'BAG$'}\nSolde: ${before} → ${u.amount}` });
+      return interaction.editReply({ embeds: [embed] });
     }
 
     // /niveau (FR) and /level (EN alias): show user's current level card

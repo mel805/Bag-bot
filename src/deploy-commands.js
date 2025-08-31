@@ -101,6 +101,15 @@ const commands = [
       .addIntegerOption(o=>o.setName('montant').setDescription('Montant à ajouter').setRequired(true).setMinValue(1))
     )
     .toJSON(),
+  // Backward-compatible alias for convenience
+  new SlashCommandBuilder()
+    .setName('ajoutargent')
+    .setDescription('Admin: ajouter de l\'argent à un membre')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true))
+    .addIntegerOption(o=>o.setName('montant').setDescription('Montant à ajouter').setRequired(true).setMinValue(1))
+    .toJSON(),
   new SlashCommandBuilder()
     .setName('couleur')
     .setDescription('Attribuer une couleur de rôle à un membre')
