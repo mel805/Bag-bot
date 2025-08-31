@@ -174,6 +174,7 @@ function startYtProxyServer() {
 
 const THEME_COLOR_PRIMARY = 0x1e88e5; // blue
 const THEME_COLOR_ACCENT = 0xec407a; // pink
+const THEME_COLOR_NSFW = 0xd32f2f; // deep red for NSFW
 const THEME_IMAGE = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68b08cda&is=68af3b5a&hm=2e68cb9d7dfc7a60465aa74447b310348fc2d7236e74fa7c08f9434c110d7959&';
 const THEME_FOOTER_ICON = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408458115770482778/20250305162902.png?ex=68b50516&is=68b3b396&hm=1d83bbaaa9451ed0034a52c48ede5ddc55db692b15e65b4fe5c659ed4c80b77d&';
 
@@ -228,6 +229,45 @@ function buildEcoEmbed(opts) {
   if (title) embed.setTitle(String(title));
   if (description) embed.setDescription(String(description));
   if (Array.isArray(fields) && fields.length) embed.addFields(fields);
+  return embed;
+}
+
+// Embeds — Action/Vérité (Pro & Premium styles)
+function buildTruthDareStartEmbed(mode, hasAction, hasTruth) {
+  const isNsfw = String(mode||'').toLowerCase() === 'nsfw';
+  const color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_ACCENT;
+  const title = isNsfw ? '🔞 Action ou Vérité (NSFW)' : '🎲 Action ou Vérité';
+  const footerText = isNsfw ? 'BAG • Premium' : 'BAG • Pro';
+  const lines = [];
+  if (hasAction && hasTruth) lines.push('Choisissez votre destin…');
+  else if (hasAction) lines.push('Appuyez sur ACTION pour commencer.');
+  else if (hasTruth) lines.push('Appuyez sur VÉRITÉ pour commencer.');
+  lines.push('Cliquez pour un nouveau prompt à chaque tour.');
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: 'Action/Vérité • Boy and Girls (BAG)' })
+    .setTitle(title)
+    .setDescription(lines.join('\n'))
+    .setThumbnail(THEME_IMAGE)
+    .setTimestamp(new Date())
+    .setFooter({ text: footerText, iconURL: THEME_FOOTER_ICON });
+  return embed;
+}
+
+function buildTruthDarePromptEmbed(mode, type, text) {
+  const isNsfw = String(mode||'').toLowerCase() === 'nsfw';
+  const footerText = isNsfw ? 'BAG • Premium' : 'BAG • Pro';
+  let color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_PRIMARY;
+  if (String(type||'').toLowerCase() === 'verite') color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_ACCENT;
+  const title = String(type||'').toLowerCase() === 'action' ? '🔥 ACTION' : '🎯 VÉRITÉ';
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: 'Action/Vérité • Boy and Girls (BAG)' })
+    .setTitle(title)
+    .setDescription(`${String(text||'—')}\n\nCliquez pour un nouveau prompt.`)
+    .setThumbnail(THEME_IMAGE)
+    .setTimestamp(new Date())
+    .setFooter({ text: footerText, iconURL: THEME_FOOTER_ICON });
   return embed;
 }
 
@@ -1542,6 +1582,79 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
     }
+    // Boutique config handlers
+    if (interaction.isButton() && interaction.customId === 'shop_add_role') {
+      const modal = new ModalBuilder().setCustomId('shop_add_role_modal').setTitle('Ajouter un rôle à la boutique');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('roleId').setLabel('ID du rôle').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('duration').setLabel('Durée en jours (0=permanent)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'shop_add_role_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const roleId = (interaction.fields.getTextInputValue('roleId')||'').trim();
+      const price = Number((interaction.fields.getTextInputValue('price')||'0').trim());
+      const durationDays = Math.max(0, Number((interaction.fields.getTextInputValue('duration')||'0').trim()));
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const roles = Array.isArray(eco.shop?.roles) ? eco.shop.roles.slice() : [];
+      const exists = roles.find(r => String(r.roleId) === String(roleId) && Number(r.durationDays||0) === Number(durationDays||0));
+      if (exists) return interaction.editReply({ content: 'Ce rôle existe déjà dans la boutique avec cette durée.' });
+      roles.push({ roleId, price: Math.max(0, price), durationDays: Math.max(0, durationDays) });
+      eco.shop = { ...(eco.shop||{}), roles };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
+      return interaction.editReply({ content: '✅ Rôle ajouté.', embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'shop_add_item') {
+      const modal = new ModalBuilder().setCustomId('shop_add_item_modal').setTitle('Ajouter un objet à la boutique');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de l\'objet').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('id').setLabel('Identifiant (unique)').setStyle(TextInputStyle.Short).setRequired(true))
+      );
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'shop_add_item_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const id = (interaction.fields.getTextInputValue('id')||'').trim();
+      const name = (interaction.fields.getTextInputValue('name')||'').trim();
+      const price = Number((interaction.fields.getTextInputValue('price')||'0').trim());
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const items = Array.isArray(eco.shop?.items) ? eco.shop.items.slice() : [];
+      if (items.some(x => String(x.id) === id)) return interaction.editReply({ content: 'ID d\'objet déjà utilisé.' });
+      items.push({ id, name, price: Math.max(0, price) });
+      eco.shop = { ...(eco.shop||{}), items };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
+      return interaction.editReply({ content: '✅ Objet ajouté.', embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'shop_remove_select') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const items = Array.isArray(eco.shop?.items) ? eco.shop.items.slice() : [];
+      const roles = Array.isArray(eco.shop?.roles) ? eco.shop.roles.slice() : [];
+      for (const v of interaction.values) {
+        if (v.startsWith('item:')) {
+          const id = v.split(':')[1];
+          const idx = items.findIndex(x => String(x.id) === id);
+          if (idx >= 0) items.splice(idx, 1);
+        } else if (v.startsWith('role:')) {
+          const [_, roleId, durStr] = v.split(':');
+          const dur = Number(durStr||0);
+          const idx = roles.findIndex(r => String(r.roleId) === String(roleId) && Number(r.durationDays||0) === dur);
+          if (idx >= 0) roles.splice(idx, 1);
+        }
+      }
+      eco.shop = { ...(eco.shop||{}), items, roles };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
     if (interaction.isStringSelectMenu() && interaction.customId === 'economy_actions_pick') {
       const key = interaction.values[0];
       if (!client._ecoActionCurrent) client._ecoActionCurrent = new Map();
@@ -2567,6 +2680,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
+    // /ajout argent — Admin only
+    if (interaction.isChatInputCommand() && interaction.commandName === 'ajout') {
+      const sub = interaction.options.getSubcommand();
+      if (sub === 'argent') {
+        const hasAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
+        if (!hasAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+        const member = interaction.options.getUser('membre', true);
+        const montant = Math.max(1, Math.abs(interaction.options.getInteger('montant', true)));
+        try {
+          await interaction.deferReply({ ephemeral: true });
+        } catch (_) {}
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const u = await getEconomyUser(interaction.guild.id, member.id);
+        const before = u.amount || 0;
+        u.amount = (u.amount || 0) + montant;
+        await setEconomyUser(interaction.guild.id, member.id, u);
+        const embed = buildEcoEmbed({
+          title: 'Ajout d\'argent',
+          description: `Membre: ${member}\nMontant ajouté: ${montant} ${eco.currency?.name || 'BAG$'}\nSolde: ${before} → ${u.amount}`,
+        });
+        return interaction.editReply({ embeds: [embed] });
+      }
+      return interaction.reply({ content: 'Sous-commande inconnue.', ephemeral: true });
+    }
+
+    // Legacy alias: /ajoutargent
+    if (interaction.isChatInputCommand() && interaction.commandName === 'ajoutargent') {
+      const hasAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
+      if (!hasAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+      const member = interaction.options.getUser('membre', true);
+      const montant = Math.max(1, Math.abs(interaction.options.getInteger('montant', true)));
+      try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, member.id);
+      const before = u.amount || 0;
+      u.amount = (u.amount || 0) + montant;
+      await setEconomyUser(interaction.guild.id, member.id, u);
+      const embed = buildEcoEmbed({ title: 'Ajout d\'argent', description: `Membre: ${member}\nMontant ajouté: ${montant} ${eco.currency?.name || 'BAG$'}\nSolde: ${before} → ${u.amount}` });
+      return interaction.editReply({ embeds: [embed] });
+    }
+
     // /niveau (FR) and /level (EN alias): show user's current level card
     if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
       try { await interaction.deferReply(); } catch (_) {}
@@ -2965,7 +3119,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!hasAction && !hasTruth) {
           return interaction.reply({ content: 'Aucun prompt configuré pour ce mode. Ajoutez-en dans /config → Action/Vérité.', ephemeral: true });
         }
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎲 Action ou Vérité').setDescription('Choisissez votre destin…').setThumbnail(THEME_IMAGE).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
+        const embed = buildTruthDareStartEmbed(mode, hasAction, hasTruth);
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
           new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
@@ -3467,8 +3621,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return;
         }
         const pick = list[Math.floor(Math.random() * list.length)];
-        const title = type === 'action' ? '🫵 ACTION' : '🗣️ VÉRITÉ';
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(String(pick.text||'—')).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
+        const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'));
         try { await interaction.followUp({ embeds: [embed] }); } catch (_) {}
       } catch (_) {}
       return;
