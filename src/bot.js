@@ -3257,6 +3257,9 @@ const ACTION_GIFS = {
 }
 */
 
+  } catch (_) {}
+});
+
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild || message.author.bot) return;
