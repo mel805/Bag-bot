@@ -52,6 +52,14 @@ const commands = [
   new SlashCommandBuilder().setName('travailler').setDescription('Gagner de l\'argent en travaillant').toJSON(),
   new SlashCommandBuilder().setName('pêcher').setDescription('Pêcher pour gagner de l\'argent').toJSON(),
   new SlashCommandBuilder().setName('donner').setDescription('Donner de l\'argent à un membre').addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addIntegerOption(o=>o.setName('montant').setDescription('Montant').setRequired(true).setMinValue(1)).toJSON(),
+  new SlashCommandBuilder()
+    .setName('eco')
+    .setDescription('Actions économie (regroupe les commandes)')
+    .addSubcommand(sc=>sc.setName('solde').setDescription('Voir votre solde'))
+    .addSubcommand(sc=>sc.setName('travailler').setDescription('Travailler pour gagner'))
+    .addSubcommand(sc=>sc.setName('pecher').setDescription('Pêcher pour gagner'))
+    .addSubcommand(sc=>sc.setName('donner').setDescription('Donner à un membre').addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addIntegerOption(o=>o.setName('montant').setDescription('Montant').setRequired(true).setMinValue(1)))
+    .toJSON(),
   new SlashCommandBuilder().setName('voler').setDescription('Tenter de voler un membre').addUserOption(o=>o.setName('membre').setDescription('Cible').setRequired(true)).toJSON(),
   new SlashCommandBuilder().setName('embrasser').setDescription('Embrasser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
