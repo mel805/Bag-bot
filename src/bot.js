@@ -3969,7 +3969,7 @@ const ACTION_GIFS = {
 
 client.on(Events.MessageCreate, async (message) => {
   try {
-    if (!message.guild || message.author.bot) return;
+    if (!message.guild) return;
     // Disboard bump detection
     try {
       const DISBOARD_ID = '302050872383242240';
@@ -4004,6 +4004,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
       }
     } catch (_) {}
+    if (message.author.bot) return;
     // AutoThread runtime: if message is in a configured channel, create a thread if none exists
     try {
       const at = await getAutoThreadConfig(message.guild.id);
