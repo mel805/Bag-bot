@@ -671,15 +671,16 @@ function chooseCardBackgroundForMember(memberOrMention, levels) {
       if (memberOrMention.roles.cache?.has(rid) && url) return url;
     }
   }
-  if (!memberOrMention || !memberOrMention.roles) return bgs.default || THEME_IMAGE;
+  // If no image configured, return null to trigger prestige default rendering
+  if (!memberOrMention || !memberOrMention.roles) return bgs.default || null;
   const femaleIds = new Set(levels.cards?.femaleRoleIds || []);
   const certIds = new Set(levels.cards?.certifiedRoleIds || []);
   const hasFemale = memberOrMention.roles.cache?.some(r => femaleIds.has(r.id));
   const hasCert = memberOrMention.roles.cache?.some(r => certIds.has(r.id));
-  if (hasFemale && hasCert) return bgs.certified || bgs.female || bgs.default || THEME_IMAGE;
-  if (hasFemale) return bgs.female || bgs.default || THEME_IMAGE;
-  if (hasCert) return bgs.certified || bgs.default || THEME_IMAGE;
-  return bgs.default || THEME_IMAGE;
+  if (hasFemale && hasCert) return bgs.certified || bgs.female || bgs.default || null;
+  if (hasFemale) return bgs.female || bgs.default || null;
+  if (hasCert) return bgs.certified || bgs.default || null;
+  return bgs.default || null;
 }
 
 function getLastRewardForLevel(levels, currentLevel) {
@@ -1023,28 +1024,49 @@ async function drawCertifiedCard(options) {
     // Diamonds bottom corners
     drawDiamond(ctx, 120, height - 70, 20, useRoseGold?'rosegold':'gold');
     drawDiamond(ctx, width - 120, height - 70, 20, useRoseGold?'rosegold':'gold');
-    // Center medallion + logo
-    if (logoUrl) {
-      const lg = await getCachedImage(logoUrl);
-      if (lg) {
-        const medSize = 520;
-        const cx = Math.floor(width/2), cy = 720;
-        // Outer ring
+    // Center medallion + logo (with graceful fallback when no image configured)
+    {
+      const medSize = 520;
+      const cx = Math.floor(width/2), cy = 720;
+      // Outer ring
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, medSize/2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.strokeStyle = getGoldPalette(useRoseGold?'rosegold':'gold').mid;
+      ctx.lineWidth = 18;
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.restore();
+
+      let drewLogo = false;
+      if (logoUrl) {
+        const lg = await getCachedImage(logoUrl);
+        if (lg) {
+          const s = medSize - 60;
+          const x = cx - Math.floor(s/2);
+          const y = cy - Math.floor(s/2);
+          ctx.drawImage(lg.img, x, y, s, s);
+          drewLogo = true;
+        }
+      }
+      if (!drewLogo) {
+        // Inner thin ring
         ctx.save();
         ctx.beginPath();
-        ctx.arc(cx, cy, medSize/2, 0, Math.PI * 2);
+        ctx.arc(cx, cy, (medSize-60)/2, 0, Math.PI*2);
         ctx.closePath();
+        ctx.lineWidth = 6;
         ctx.strokeStyle = getGoldPalette(useRoseGold?'rosegold':'gold').mid;
-        ctx.lineWidth = 18;
-        ctx.shadowColor = 'rgba(0,0,0,0.55)';
-        ctx.shadowBlur = 12;
         ctx.stroke();
         ctx.restore();
-        // Logo inside
-        const s = medSize - 60;
-        const x = cx - Math.floor(s/2);
-        const y = cy - Math.floor(s/2);
-        ctx.drawImage(lg.img, x, y, s, s);
+        // Fallback initials "BAG" styled in gold
+        const serifCinzelLocal = GlobalFonts.has?.('Cinzel') ? '"Cinzel"' : 'Georgia, "Times New Roman", Serif';
+        const sMax = Math.floor((medSize-90));
+        const bagSize = fitText(ctx, 'BAG', sMax, 200, serifCinzelLocal);
+        ctx.font = `700 ${bagSize}px ${serifCinzelLocal}`;
+        applyGoldStyles(ctx, cx, cy + 6, 'BAG', sMax, bagSize, useRoseGold?'rosegold':'gold');
       }
     }
     // Typography
