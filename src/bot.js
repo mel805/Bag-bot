@@ -1164,6 +1164,20 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
     });
     return;
   }
+  if (!isCert) {
+    const { renderPrestigeCardBlueLandscape } = require('./prestige-blue-landscape');
+    renderPrestigeCardBlueLandscape({
+      memberName: name,
+      level: newLevel,
+      lastRole: roleName || '—',
+      logoUrl: LEVEL_CARD_LOGO_URL || undefined,
+      bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
+    }).then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
+      else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
+    });
+    return;
+  }
   drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: isCert ? CERTIFIED_LOGO_URL : '', useRoseGold: CERTIFIED_ROSEGOLD, isCertified: isCert }).then((img) => {
     if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
     else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
@@ -1190,6 +1204,20 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       lastRole: roleName,
       logoUrl: CERTIFIED_LOGO_URL || undefined,
       bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+    }).then((img) => {
+      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
+      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+    });
+    return;
+  }
+  if (!isCert) {
+    const { renderPrestigeCardBlueLandscape } = require('./prestige-blue-landscape');
+    renderPrestigeCardBlueLandscape({
+      memberName: name,
+      level: 0,
+      lastRole: roleName,
+      logoUrl: LEVEL_CARD_LOGO_URL || undefined,
+      bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
       else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
@@ -2976,6 +3004,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try {
         const { renderLevelCardLandscape } = require('./level-landscape');
         const { renderPrestigeCardRoseGoldLandscape } = require('./prestige-rose-gold-landscape');
+        const { renderPrestigeCardBlueLandscape } = require('./prestige-blue-landscape');
         const levels = await getLevelsConfig(interaction.guild.id);
         const userFr = interaction.options.getUser?.('membre');
         const userEn = interaction.options.getUser?.('member');
@@ -2996,6 +3025,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
             lastRole: roleName || '—',
             logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
             bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+          });
+        } else if (!isCertified) {
+          png = await renderPrestigeCardBlueLandscape({
+            memberName: name,
+            level: stats.level,
+            lastRole: roleName || '—',
+            logoUrl: LEVEL_CARD_LOGO_URL || undefined,
+            bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
           });
         } else {
           png = await renderLevelCardLandscape({ memberName: name, level: stats.level, roleName: roleName || '—', logoUrl, isCertified });
