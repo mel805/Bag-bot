@@ -307,6 +307,14 @@ function buildTopSectionRow() {
   return new ActionRowBuilder().addComponents(select);
 }
 
+function buildBackRow() {
+  const back = new ButtonBuilder()
+    .setCustomId('config_back_home')
+    .setLabel('← Retour')
+    .setStyle(ButtonStyle.Secondary);
+  return new ActionRowBuilder().addComponents(back);
+}
+
 function buildStaffActionRow() {
   const select = new StringSelectMenuBuilder()
     .setCustomId('config_staff_action')
@@ -838,6 +846,35 @@ async function buildEconomySettingsRows(guild) {
   return [row];
 }
 
+function buildEconomyMenuSelect(selectedPage) {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('economy_menu')
+    .setPlaceholder('Économie: choisir une page…')
+    .addOptions(
+      { label: 'Réglages', value: 'settings', description: 'Devise, préférences', default: selectedPage === 'settings' },
+      { label: 'Actions', value: 'actions', description: 'Activer/configurer les actions', default: selectedPage === 'actions' },
+      { label: 'Karma', value: 'karma', description: 'Règles de karma', default: selectedPage === 'karma' },
+      { label: 'Suites', value: 'suites', description: 'Salons privés temporaires', default: selectedPage === 'suites' },
+      { label: 'Boutique', value: 'shop', description: 'Objets et rôles', default: selectedPage === 'shop' },
+    );
+  return new ActionRowBuilder().addComponents(menu);
+}
+
+async function buildEconomyMenuRows(guild, page) {
+  const p = page || 'settings';
+  if (p === 'karma') {
+    const rows = await buildEconomyKarmaRows(guild);
+    return [buildEconomyMenuSelect(p), ...rows];
+  }
+  if (p === 'actions') {
+    const rows = await buildEconomyActionsRows(guild);
+    return [buildEconomyMenuSelect(p), ...rows];
+  }
+  // default: settings
+  const rows = await buildEconomySettingsRows(guild);
+  return [buildEconomyMenuSelect('settings'), ...rows];
+}
+
 async function buildBoosterRows(guild) {
   const eco = await getEconomyConfig(guild.id);
   const b = eco.booster || { enabled: true, textXpMult: 2, voiceXpMult: 2, actionCooldownMult: 0.5, shopPriceMult: 0.5 };
@@ -939,6 +976,53 @@ async function buildCountingRows(guild) {
   ];
 }
 
+async function buildLogsRows(guild) {
+  const cfg = await getLogsConfig(guild.id);
+  const toggle = new ButtonBuilder().setCustomId('logs_toggle').setLabel(cfg.enabled ? 'Logs: ON' : 'Logs: OFF').setStyle(cfg.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const pseudo = new ButtonBuilder().setCustomId('logs_pseudo').setLabel(cfg.pseudo ? 'Pseudo: ON' : 'Pseudo: OFF').setStyle(cfg.pseudo ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const emoji = new ButtonBuilder().setCustomId('logs_emoji').setLabel(`Emoji: ${cfg.emoji || '📝'}`).setStyle(ButtonStyle.Secondary);
+  const rowToggles = new ActionRowBuilder().addComponents(toggle, pseudo, emoji);
+
+  const globalCh = new ChannelSelectMenuBuilder()
+    .setCustomId('logs_channel')
+    .setPlaceholder(cfg.channelId ? `Global: <#${cfg.channelId}>` : 'Salon global (optionnel)…')
+    .setMinValues(0)
+    .setMaxValues(1)
+    .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+  const rowGlobal = new ActionRowBuilder().addComponents(globalCh);
+
+  if (!client._logsPerCat) client._logsPerCat = new Map();
+  const cats = cfg.categories || {};
+  const catKeys = Object.keys(cats);
+  const selected = client._logsPerCat.get(guild.id) || 'moderation';
+  const perCatSelect = new StringSelectMenuBuilder()
+    .setCustomId('logs_channel_percat')
+    .setPlaceholder('Choisir une catégorie…')
+    .setMinValues(1)
+    .setMaxValues(1);
+  for (const k of catKeys) perCatSelect.addOptions({ label: k, value: k, default: selected === k });
+  const rowPerCat = new ActionRowBuilder().addComponents(perCatSelect);
+
+  const perCatCh = new ChannelSelectMenuBuilder()
+    .setCustomId('logs_channel_set:' + selected)
+    .setPlaceholder(cfg.channels?.[selected] ? `Salon ${selected}: <#${cfg.channels[selected]}>` : `Salon pour ${selected}…`)
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+  const rowPerCatCh = new ActionRowBuilder().addComponents(perCatCh);
+
+  const multi = new StringSelectMenuBuilder()
+    .setCustomId('logs_cats_toggle')
+    .setPlaceholder('Basculer catégories…')
+    .setMinValues(1)
+    .setMaxValues(Math.min(25, Math.max(1, catKeys.length || 1)));
+  if (catKeys.length) multi.addOptions(...catKeys.map(k => ({ label: `${k} (${cats[k] ? 'ON' : 'OFF'})`, value: k })));
+  else multi.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
+  const rowMulti = new ActionRowBuilder().addComponents(multi);
+
+  return [rowToggles, rowGlobal, rowPerCat, rowPerCatCh, rowMulti];
+}
+
 async function buildConfessRows(guild, mode = 'sfw') {
   const cf = await getConfessConfig(guild.id);
   const modeSelect = new StringSelectMenuBuilder().setCustomId('confess_mode').setPlaceholder('Mode…').addOptions(
@@ -1006,6 +1090,18 @@ async function buildEconomyGifRows(guild, currentKey) {
     rows.push(new ActionRowBuilder().addComponents(failSel));
   }
   return rows;
+}
+
+async function buildSuitesRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const placeholder = eco.suites?.categoryId ? `Catégorie actuelle: <#${eco.suites.categoryId}>` : 'Choisir la catégorie pour les suites…';
+  const cat = new ChannelSelectMenuBuilder()
+    .setCustomId('suites_category')
+    .setPlaceholder(placeholder)
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addChannelTypes(ChannelType.GuildCategory);
+  return [new ActionRowBuilder().addComponents(cat)];
 }
 
 process.on('unhandledRejection', (reason) => {
@@ -1302,6 +1398,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
         rows = await buildEconomyMenuRows(interaction.guild, page);
       }
       return interaction.update({ embeds: [embed], components: [top, ...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'economy_actions_pick') {
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyMenuRows(interaction.guild, 'actions');
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'suites_category') {
+      const id = interaction.values?.[0];
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const suites = { ...(eco.suites || {}), categoryId: id };
+      await updateEconomyConfig(interaction.guild.id, { suites });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('suites'), ...(await buildSuitesRows(interaction.guild))];
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'config_back_home') {
+      const embed = await buildConfigEmbed(interaction.guild);
+      const row = buildTopSectionRow();
+      return interaction.update({ embeds: [embed], components: [row] });
     }
     // Karma type switch
     if (interaction.isStringSelectMenu() && interaction.customId === 'eco_karma_type') {
