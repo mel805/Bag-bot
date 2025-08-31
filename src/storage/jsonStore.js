@@ -13,7 +13,7 @@ async function getPg() {
   return pgPool;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR ? String(process.env.DATA_DIR) : path.join(process.cwd(), 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 
 async function ensureStorageExists() {
@@ -90,7 +90,6 @@ async function writeConfig(cfg) {
       const client = await pool.connect();
       try {
         await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [cfg]);
-        return;
       } finally {
         client.release();
       }
@@ -98,6 +97,7 @@ async function writeConfig(cfg) {
       try { console.warn('[storage] Postgres write failed, writing file storage:', e?.message || e); } catch (_) {}
     }
   }
+  try { await fsp.mkdir(DATA_DIR, { recursive: true }); } catch (_) {}
   const tmpPath = CONFIG_PATH + '.tmp';
   await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
   await fsp.rename(tmpPath, CONFIG_PATH);
