@@ -1076,7 +1076,7 @@ async function drawCertifiedCard(options) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // Title
-    const mainTitle = 'PROMOTION DE PRESTIGE';
+    const mainTitle = 'promotion prestige';
     let size = fitText(ctx, mainTitle, Math.floor(width*0.9), 110, serifCinzel);
     ctx.font = `700 ${size}px ${serifCinzel}`;
     applyGoldStyles(ctx, Math.floor(width/2), 160, mainTitle, Math.floor(width*0.9), size, useRoseGold?'rosegold':'gold');
