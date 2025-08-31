@@ -98,6 +98,17 @@ function startKeepAliveServer() {
     const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       if (req.url === '/health') return res.end('OK');
+      if (req.url === '/backup') {
+        try {
+          const { readConfig, paths } = require('./storage/jsonStore');
+          readConfig().then(cfg => {
+            const text = JSON.stringify(cfg, null, 2);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(text);
+          }).catch(() => { res.statusCode = 500; res.end('ERR'); });
+        } catch (_) { res.statusCode = 500; res.end('ERR'); }
+        return;
+      }
       return res.end('BAG bot running');
     });
     server.listen(port, '0.0.0.0', () => {

@@ -10,7 +10,7 @@ async function main() {
     console.error('Missing DATABASE_URL');
     process.exit(1);
   }
-  const DATA_DIR = path.join(process.cwd(), 'data');
+  const DATA_DIR = process.env.DATA_DIR ? String(process.env.DATA_DIR) : path.join(process.cwd(), 'data');
   const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
   let config = { guilds: {} };
   try {
@@ -23,7 +23,7 @@ async function main() {
     // no local file, migrate empty structure
   }
 
-  const pool = new Pool({ connectionString: DATABASE_URL });
+  const pool = new Pool({ connectionString: DATABASE_URL, max: 1 });
   const client = await pool.connect();
   try {
     await client.query('CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
