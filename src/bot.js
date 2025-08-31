@@ -847,6 +847,76 @@ function applyGoldStyles(ctx, x, y, text, maxWidth, size, variant = 'gold') {
   ctx.fillStyle = grad;
   ctx.fillText(text, x, y);
 }
+// Helpers for prestige framing and icons
+function getGoldPalette(variant = 'gold') {
+  return variant === 'rosegold'
+    ? { light: '#F6C2D2', mid: '#E6A2B8', dark: '#B76E79' }
+    : { light: '#FFEEC7', mid: '#FFD700', dark: '#B8860B' };
+}
+function strokeGoldRect(ctx, x, y, w, h, weight, variant = 'gold') {
+  const p = getGoldPalette(variant);
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, p.light);
+  grad.addColorStop(0.5, p.mid);
+  grad.addColorStop(1, p.dark);
+  ctx.save();
+  ctx.lineWidth = weight;
+  ctx.strokeStyle = grad;
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = Math.max(2, Math.round(weight * 1.2));
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+function drawCrown(ctx, cx, cy, size, variant = 'gold') {
+  const p = getGoldPalette(variant);
+  const grad = ctx.createLinearGradient(cx, cy - size, cx, cy + size);
+  grad.addColorStop(0, p.light);
+  grad.addColorStop(0.5, p.mid);
+  grad.addColorStop(1, p.dark);
+  const w = size * 1.6;
+  const h = size;
+  const x = cx - w/2;
+  const y = cy - h/2;
+  ctx.save();
+  ctx.beginPath();
+  // base
+  ctx.moveTo(x, y + h*0.8);
+  ctx.lineTo(x + w, y + h*0.8);
+  // spikes
+  const spikeW = w/3;
+  ctx.lineTo(x + w - spikeW*0.5, y + h*0.2);
+  ctx.lineTo(x + w - spikeW*1.5, y + h*0.6);
+  ctx.lineTo(x + spikeW*1.5, y + h*0.2);
+  ctx.lineTo(x + spikeW*0.5, y + h*0.6);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = Math.max(1, Math.round(size*0.08));
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+function drawDiamond(ctx, cx, cy, size, variant = 'gold') {
+  const p = getGoldPalette(variant);
+  const grad = ctx.createLinearGradient(cx, cy - size, cx, cy + size);
+  grad.addColorStop(0, p.light);
+  grad.addColorStop(0.5, p.mid);
+  grad.addColorStop(1, p.dark);
+  const x = cx, y = cy, s = size;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x, y - s);
+  ctx.lineTo(x + s, y);
+  ctx.lineTo(x, y + s);
+  ctx.lineTo(x - s, y);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = Math.max(1, Math.round(size*0.1));
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
 async function drawCertifiedCard(options) {
   const { backgroundUrl, name, sublines, footerLines, logoUrl, useRoseGold } = options;
   try {
@@ -872,6 +942,21 @@ async function drawCertifiedCard(options) {
     grd.addColorStop(1, 'rgba(0,0,0,0.45)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, width, height);
+    // Prestige double border
+    const inset1 = Math.floor(Math.min(width, height) * 0.03);
+    const inset2 = Math.floor(Math.min(width, height) * 0.055);
+    strokeGoldRect(ctx, inset1, inset1, width - inset1*2, height - inset1*2, Math.max(3, Math.round(Math.min(width,height)*0.005)), useRoseGold?'rosegold':'gold');
+    strokeGoldRect(ctx, inset2, inset2, width - inset2*2, height - inset2*2, Math.max(2, Math.round(Math.min(width,height)*0.0035)), useRoseGold?'rosegold':'gold');
+    // Corner ornaments
+    const crownY = Math.floor(height*0.14);
+    const crownXOffset = Math.floor(width*0.09);
+    drawCrown(ctx, crownXOffset, crownY, Math.floor(Math.min(width,height)*0.035), useRoseGold?'rosegold':'gold');
+    drawCrown(ctx, width - crownXOffset, crownY, Math.floor(Math.min(width,height)*0.035), useRoseGold?'rosegold':'gold');
+    // Bottom diamonds
+    const diaOffset = Math.floor(width*0.085);
+    const diaY = Math.floor(height*0.88);
+    drawDiamond(ctx, diaOffset, diaY, Math.floor(Math.min(width,height)*0.02), useRoseGold?'rosegold':'gold');
+    drawDiamond(ctx, width - diaOffset, diaY, Math.floor(Math.min(width,height)*0.02), useRoseGold?'rosegold':'gold');
     // Center logo (optional)
     if (logoUrl) {
       const lg = await getCachedImage(logoUrl);
@@ -901,7 +986,7 @@ async function drawCertifiedCard(options) {
     applyGoldStyles(ctx, Math.floor(width/2), baseY, userLine, Math.floor(width*0.85), size, useRoseGold?'rosegold':'gold');
     let y = baseY + Math.floor(size*1.1);
     const lines = Array.isArray(sublines)?sublines:[];
-    for (const l of lines.slice(0,2)) {
+    for (const l of lines.slice(0,3)) {
       const txt = String(l||'');
       const s2 = fitText(ctx, txt, Math.floor(width*0.85), Math.floor(height*0.045), serif);
       ctx.font = `600 ${s2}px ${serif}`;
@@ -911,8 +996,8 @@ async function drawCertifiedCard(options) {
     // Footer block
     const footer = Array.isArray(footerLines) && footerLines.length ? footerLines : [
       'Félicitations !',
-      `Tu rejoins l'élite de Boys and Girls. De nouveaux privilèges t'attendent… 🔥`,
-      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES'
+      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES',
+      'ULTIMES'
     ];
     let fy = Math.floor(height*0.75);
     const fSizes = [Math.floor(height*0.09), Math.floor(height*0.05), Math.floor(height*0.055)];
@@ -942,39 +1027,20 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   if (!ann.enabled || !ann.channelId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
-  const isCert = memberHasCertifiedRole(memberOrMention, levels);
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
   const lastReward = getLastRewardForLevel(levels, newLevel);
   const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
-  if (isCert) {
-    const bg = levels.cards?.backgrounds?.certified || THEME_IMAGE;
-    const sub = [
-      `${name.toUpperCase()} VIENT DE FRANCHIR UN NOUVEAU CAP !`,
-      `NIVEAU ATTEINT : ${String(newLevel)}`,
-      roleName ? `(Dernier rôle obtenu : ${roleName})` : ''
-    ].filter(Boolean);
-    const footer = [
-      'Félicitations !',
-      `Tu rejoins l'élite de Boys and Girls. De nouveaux privilèges t'attendent… 🔥`,
-      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES'
-    ];
-    drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, footerLines: footer, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD }).then((img) => {
-      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
-      else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
-    });
-  } else {
-    const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-    const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
-    const lines = [
-      `Niveau: ${newLevel}`,
-      lastReward ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
-    ];
-    drawCard(bg, `${name} monte de niveau !`, lines, undefined, undefined, avatarUrl, '🎉 Félicitations !').then((img) => {
-      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
-      else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
-    });
-  }
+  const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const sub = [
+    'Vient de franchir un nouveau cap !',
+    `Niveau atteint : ${String(newLevel)}`,
+    `Dernière distinction : ${roleName || '—'}`
+  ];
+  drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD }).then((img) => {
+    if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
+    else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
+  });
 }
 
 function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
@@ -982,25 +1048,15 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   if (!ann.enabled || !ann.channelId || !roleId) return;
   const channel = guild.channels.cache.get(ann.channelId);
   if (!channel || !channel.isTextBased?.()) return;
-  const isCert = memberHasCertifiedRole(memberOrMention, levels);
   const roleName = guild.roles.cache.get(roleId)?.name || `Rôle ${roleId}`;
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
-  if (isCert) {
-    const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-    const logo = CERTIFIED_LOGO_URL || undefined;
-    drawCertifiedCard({ backgroundUrl: bg, name, sublines: [`Rôle: ${roleName}`], logoUrl: logo }).then((img) => {
-      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
-    });
-  } else {
-    const bg = chooseCardBackgroundForMember(memberOrMention, levels);
-    const avatarUrl = memberOrMention?.user?.displayAvatarURL?.({ extension: 'png', size: 128 }) || null;
-    drawCard(bg, `${name} reçoit un rôle !`, [`Rôle: ${roleName}`], undefined, undefined, avatarUrl).then((img) => {
-      if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
-    });
-  }
+  const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const sub = [ `Nouvelle distinction : ${roleName}` ];
+  drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD }).then((img) => {
+    if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
+    else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+  });
 }
 
 function memberMention(userId) {
@@ -2781,33 +2837,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const targetUser = userFr || userEn || interaction.user;
         const member = await fetchMember(interaction.guild, targetUser.id);
         const stats = await getUserStats(interaction.guild.id, targetUser.id);
-        const required = Math.max(1, xpRequiredForNext(stats.level, levels.levelCurve));
-        const progressRatio = Math.max(0, Math.min(1, (stats.xpSinceLevel || 0) / required));
-        const progressText = `XP: ${(stats.xpSinceLevel || 0).toLocaleString('fr-FR')}/${required.toLocaleString('fr-FR')}`;
         const lastReward = getLastRewardForLevel(levels, stats.level);
         const roleName = lastReward ? (interaction.guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
         const name = memberDisplayName(interaction.guild, member, targetUser.id);
-        const isCert = memberHasCertifiedRole(member, levels);
-        let img = null;
-        if (isCert) {
-          const bg = chooseCardBackgroundForMember(member, levels);
-          const sub = [
-            `${name.toUpperCase()} • NIVEAU ACTUEL : ${String(stats.level)}`,
-            roleName ? `(Dernière récompense : ${roleName})` : ''
-          ].filter(Boolean);
-          img = await drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD });
-        } else {
-          const bg = chooseCardBackgroundForMember(member, levels);
-          const avatarUrl = member?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
-          const lines = [
-            `Niveau: ${stats.level}`,
-            roleName ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
-          ];
-          img = await drawCard(bg, `${name}`, lines, progressRatio, progressText, avatarUrl);
-        }
+        const bg = chooseCardBackgroundForMember(member, levels);
+        const sub = [
+          `Niveau atteint : ${String(stats.level)}`,
+          `Dernière distinction : ${roleName || '—'}`
+        ];
+        const img = await drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD });
         const mention = targetUser && targetUser.id !== interaction.user.id ? `<@${targetUser.id}>` : '';
         if (img) return interaction.editReply({ content: mention || undefined, files: [{ attachment: img, name: 'level.png' }] });
-        return interaction.editReply({ content: `${mention || targetUser} • Niveau: ${stats.level} (${(stats.xpSinceLevel||0)}/${required})` });
+        return interaction.editReply({ content: `${mention || targetUser} • Niveau: ${stats.level}` });
       } catch (e) {
         try { return await interaction.editReply({ content: 'Une erreur est survenue lors du rendu de votre carte de niveau.' }); } catch (_) { return; }
       }
