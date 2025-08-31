@@ -40,11 +40,92 @@ function fitCentered(ctx, text, y, weight, startPx, maxW) {
   let size = startPx;
   do {
     setSerif(ctx, weight, size);
-    if (ctx.measureText(text).width <= maxW) break;
+    if (measureTextWithEmoji(ctx, text, size) <= maxW) break;
     size -= 2;
   } while (size >= 18);
-  ctx.fillText(text, ctx.canvas.width / 2, y);
+  // drawing is handled by drawTextWithEmoji at call-sites to render emojis in color
   return size;
+}
+
+// Twemoji helpers for rendering colored emojis on Canvas
+const EMOJI_URLS = {
+  '💎': 'https://twemoji.maxcdn.com/v/latest/72x72/1f48e.png',
+  '🔥': 'https://twemoji.maxcdn.com/v/latest/72x72/1f525.png',
+  '🎉': 'https://twemoji.maxcdn.com/v/latest/72x72/1f389.png',
+};
+
+const __twemojiCache = new Map();
+
+function __parseFontPx(font) {
+  const m = String(font || '').match(/(\d+)px/);
+  return m ? parseInt(m[1], 10) : 16;
+}
+
+function __emojiUrlForChar(ch) {
+  return EMOJI_URLS[ch] || null;
+}
+
+async function __getEmojiImage(ch) {
+  const url = __emojiUrlForChar(ch);
+  if (!url) return null;
+  let img = __twemojiCache.get(url);
+  if (img) return img;
+  try {
+    img = await loadImage(url);
+    __twemojiCache.set(url, img);
+    return img;
+  } catch {
+    return null;
+  }
+}
+
+function measureTextWithEmoji(ctx, text, emojiSizePx) {
+  let w = 0;
+  const emSize = Math.max(8, Math.round(emojiSizePx || __parseFontPx(ctx.font)));
+  for (const ch of String(text || '')) {
+    if (__emojiUrlForChar(ch)) w += emSize; else w += ctx.measureText(ch).width;
+  }
+  return w;
+}
+
+async function drawTextWithEmoji(ctx, text, x, y, align = 'left', baseline = 'top', emojiSizePx) {
+  const prevAlign = ctx.textAlign;
+  const prevBaseline = ctx.textBaseline;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  const emSize = Math.max(8, Math.round(emojiSizePx || __parseFontPx(ctx.font)));
+  const total = measureTextWithEmoji(ctx, text, emSize);
+  let cx = x;
+  if (align === 'center') cx = x - total / 2;
+  else if (align === 'right') cx = x - total;
+  let cy = y;
+  if (baseline === 'middle') cy = y - emSize / 2;
+  else if (baseline === 'bottom') cy = y - emSize;
+  let buffer = '';
+  const flush = () => {
+    if (!buffer) return;
+    ctx.fillText(buffer, cx, cy);
+    cx += ctx.measureText(buffer).width;
+    buffer = '';
+  };
+  for (const ch of String(text || '')) {
+    if (__emojiUrlForChar(ch)) {
+      flush();
+      const img = await __getEmojiImage(ch);
+      if (img) {
+        ctx.drawImage(img, cx, cy, emSize, emSize);
+        cx += emSize;
+      } else {
+        ctx.fillText(ch, cx, cy);
+        cx += ctx.measureText(ch).width;
+      }
+    } else {
+      buffer += ch;
+    }
+  }
+  flush();
+  ctx.textAlign = prevAlign;
+  ctx.textBaseline = prevBaseline;
 }
 
 async function renderPrestigeCardBlueLandscape({
@@ -113,7 +194,7 @@ async function renderPrestigeCardBlueLandscape({
   }
   ctx.shadowColor = '#00000080';
   ctx.shadowBlur = 10;
-  ctx.fillText('ANNONCE DE NIVEAU', width/2, 72);
+  await drawTextWithEmoji(ctx, 'ANNONCE DE NIVEAU', width/2, 72, 'center', 'top', titleSize);
   ctx.shadowBlur = 0;
 
   // Center block
@@ -121,16 +202,39 @@ async function renderPrestigeCardBlueLandscape({
   let y = 210;
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 70);
-  y += fitCentered(ctx, String(memberName || 'Membre'), y, '700', 78, maxW) + 16;
+  {
+    const sz = fitCentered(ctx, String(memberName || 'Membre'), y, '700', 78, maxW);
+    setSerif(ctx, '700', sz);
+    await drawTextWithEmoji(ctx, String(memberName || 'Membre'), width/2, y, 'center', 'top', sz);
+    y += sz + 16;
+  }
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  y += fitCentered(ctx, 'vient de franchir un nouveau cap !', y, '600', 50, maxW) + 14;
+  {
+    const t = 'vient de franchir un nouveau cap !';
+    const sz = fitCentered(ctx, t, y, '600', 50, maxW);
+    setSerif(ctx, '600', sz);
+    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+    y += sz + 14;
+  }
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  y += fitCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, '700', 58, maxW) + 12;
+  {
+    const t = `Niveau atteint : ${Number(level || 0)}`;
+    const sz = fitCentered(ctx, t, y, '700', 58, maxW);
+    setSerif(ctx, '700', sz);
+    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+    y += sz + 12;
+  }
 
   ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  y += fitCentered(ctx, `Dernière distinction : ${String(lastRole || '—')}`, y, '700', 58, maxW) + 24;
+  {
+    const t = `Dernière distinction : ${String(lastRole || '—')}`;
+    const sz = fitCentered(ctx, t, y, '700', 58, maxW);
+    setSerif(ctx, '700', sz);
+    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+    y += sz + 24;
+  }
 
   // Center logo
   const logoSize = 210;
@@ -158,7 +262,7 @@ async function renderPrestigeCardBlueLandscape({
   const congratsY = logoY + logoSize + 22;
   ctx.fillStyle = blueGradient(ctx, 0, congratsY, width, 40);
   setSerif(ctx, '800', 80);
-  ctx.fillText('Félicitations !', width/2, congratsY);
+  await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
 
   // Baseline
   const baseY = congratsY + 86;
@@ -166,12 +270,12 @@ async function renderPrestigeCardBlueLandscape({
   setSerif(ctx, '700', 42);
   const diamonds = '💎 ';
   let base = `${diamonds}CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES${diamonds}`;
-  while (ctx.measureText(base).width > width - 180) {
+  while (measureTextWithEmoji(ctx, base, __parseFontPx(ctx.font)) > width - 180) {
     const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
     if (cur <= 30) break;
     setSerif(ctx, '700', cur - 2);
   }
-  ctx.fillText(base, width/2, baseY);
+  await drawTextWithEmoji(ctx, base, width/2, baseY, 'center', 'top', __parseFontPx(ctx.font));
 
   return canvas.toBuffer('image/png');
 }

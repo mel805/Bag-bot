@@ -603,7 +603,8 @@ async function buildLevelsGeneralRows(guild) {
   const levels = await getLevelsConfig(guild.id);
   const nav = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('levels_page:general').setLabel('Réglages').setStyle(ButtonStyle.Primary).setDisabled(true),
-    new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('levels_page:rewards').setLabel('Récompenses').setStyle(ButtonStyle.Secondary)
   );
   const enableBtn = new ButtonBuilder().setCustomId('levels_enable').setLabel('Activer Levels').setStyle(ButtonStyle.Success).setDisabled(levels.enabled);
   const disableBtn = new ButtonBuilder().setCustomId('levels_disable').setLabel('Désactiver Levels').setStyle(ButtonStyle.Danger).setDisabled(!levels.enabled);
@@ -625,7 +626,8 @@ async function buildLevelsCardsRows(guild) {
   const levels = await getLevelsConfig(guild.id);
   const nav = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('levels_page:general').setLabel('Réglages').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Primary).setDisabled(true)
+    new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Primary).setDisabled(true),
+    new ButtonBuilder().setCustomId('levels_page:rewards').setLabel('Récompenses').setStyle(ButtonStyle.Secondary)
   );
   const femaleRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_female_roles').setPlaceholder('Rôles "femme"... (multi)').setMinValues(0).setMaxValues(25);
   const certifiedRoles = new RoleSelectMenuBuilder().setCustomId('levels_cards_certified_roles').setPlaceholder('Rôles "certifié"... (multi)').setMinValues(0).setMaxValues(25);
@@ -640,6 +642,11 @@ async function buildLevelsCardsRows(guild) {
 
 async function buildLevelsRewardsRows(guild) {
   const levels = await getLevelsConfig(guild.id);
+  const nav = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('levels_page:general').setLabel('Réglages').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('levels_page:cards').setLabel('Cartes').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('levels_page:rewards').setLabel('Récompenses').setStyle(ButtonStyle.Primary).setDisabled(true)
+  );
   const addRole = new RoleSelectMenuBuilder()
     .setCustomId('levels_reward_add_role')
     .setPlaceholder('Choisir le rôle à associer à un niveau…')
@@ -660,7 +667,7 @@ async function buildLevelsRewardsRows(guild) {
   } else {
     removeSelect.addOptions({ label: 'Aucune récompense', value: 'none' }).setDisabled(true);
   }
-  return [new ActionRowBuilder().addComponents(addRole), new ActionRowBuilder().addComponents(removeSelect)];
+  return [nav, new ActionRowBuilder().addComponents(addRole), new ActionRowBuilder().addComponents(removeSelect)];
 }
 
 function chooseCardBackgroundForMember(memberOrMention, levels) {
@@ -2427,7 +2434,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
       const page = interaction.customId.split(':')[1];
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = page === 'cards' ? await buildLevelsCardsRows(interaction.guild) : await buildLevelsGeneralRows(interaction.guild);
+      let rows;
+      if (page === 'cards') rows = await buildLevelsCardsRows(interaction.guild);
+      else if (page === 'rewards') rows = await buildLevelsRewardsRows(interaction.guild);
+      else rows = await buildLevelsGeneralRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
 
@@ -2815,10 +2825,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rewards = { ...(cfg.rewards || {}) };
       rewards[String(Math.round(lvl))] = roleId;
       await updateLevelsConfig(interaction.guild.id, { rewards });
-      try { await interaction.deferUpdate(); } catch (_) {}
+      try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLevelsRewardsRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {}
+      try { await interaction.editReply({ embeds: [embed], components: [...rows] }); } catch (_) {
+        try { await interaction.followUp({ embeds: [embed], components: [...rows], ephemeral: true }); } catch (_) {}
+      }
       return;
     }
 

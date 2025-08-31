@@ -51,6 +51,87 @@ function fitAndDrawCentered(ctx, text, y, weight, startSize, maxWidth) {
   return size;
 }
 
+// Twemoji helpers for rendering colored emojis on Canvas
+const EMOJI_URLS = {
+  '💎': 'https://twemoji.maxcdn.com/v/latest/72x72/1f48e.png',
+  '🔥': 'https://twemoji.maxcdn.com/v/latest/72x72/1f525.png',
+  '🎉': 'https://twemoji.maxcdn.com/v/latest/72x72/1f389.png',
+};
+
+const __twemojiCache = new Map(); // url -> Image
+
+function __parseFontPx(font) {
+  const m = String(font || '').match(/(\d+)px/);
+  return m ? parseInt(m[1], 10) : 16;
+}
+
+function __emojiUrlForChar(ch) {
+  return EMOJI_URLS[ch] || null;
+}
+
+async function __getEmojiImage(ch) {
+  const url = __emojiUrlForChar(ch);
+  if (!url) return null;
+  let img = __twemojiCache.get(url);
+  if (img) return img;
+  try {
+    img = await loadImage(url);
+    __twemojiCache.set(url, img);
+    return img;
+  } catch {
+    return null;
+  }
+}
+
+function measureTextWithEmoji(ctx, text, emojiSizePx) {
+  let w = 0;
+  const emSize = Math.max(8, Math.round(emojiSizePx || __parseFontPx(ctx.font)));
+  for (const ch of String(text || '')) {
+    if (__emojiUrlForChar(ch)) w += emSize; else w += ctx.measureText(ch).width;
+  }
+  return w;
+}
+
+async function drawTextWithEmoji(ctx, text, x, y, align = 'left', baseline = 'top', emojiSizePx) {
+  const prevAlign = ctx.textAlign;
+  const prevBaseline = ctx.textBaseline;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  const emSize = Math.max(8, Math.round(emojiSizePx || __parseFontPx(ctx.font)));
+  const total = measureTextWithEmoji(ctx, text, emSize);
+  let cx = x;
+  if (align === 'center') cx = x - total / 2;
+  else if (align === 'right') cx = x - total;
+  let cy = y;
+  if (baseline === 'middle') cy = y - emSize / 2;
+  else if (baseline === 'bottom') cy = y - emSize;
+  let buffer = '';
+  const flush = () => {
+    if (!buffer) return;
+    ctx.fillText(buffer, cx, cy);
+    cx += ctx.measureText(buffer).width;
+    buffer = '';
+  };
+  for (const ch of String(text || '')) {
+    if (__emojiUrlForChar(ch)) {
+      flush();
+      const img = await __getEmojiImage(ch);
+      if (img) {
+        ctx.drawImage(img, cx, cy, emSize, emSize);
+        cx += emSize;
+      } else {
+        ctx.fillText(ch, cx, cy);
+        cx += ctx.measureText(ch).width;
+      }
+    } else {
+      buffer += ch;
+    }
+  }
+  flush();
+  ctx.textAlign = prevAlign;
+  ctx.textBaseline = prevBaseline;
+}
+
 /**
  * Rend la carte d'annonce de niveau (paysage)
  * @param {Object} opts
@@ -183,22 +264,23 @@ async function renderLevelCardLandscape({
   setFont(ctx, '800 78px');
   ctx.fillText('Félicitations !', width/2, congratsY);
 
-  // Baseline / slogan
+  // Baseline / slogan (with Twemoji)
   const baseY = congratsY + 96;
   ctx.fillStyle = goldGradient(ctx, 0, baseY, width, 40);
-  setFont(ctx, '700 42px');
+  let sizePx = 42;
+  setFont(ctx, `700 ${sizePx}px`);
   const baseline = isCertified
     ? 'continue ton ascension vers les récompenses ultimes'
     : 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES';
   const left = '💎 ';
   const right = ' 💎';
-  let text = left + baseline + right;
-  while (ctx.measureText(text).width > width - 160) {
-    const current = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (current <= 32) break;
-    setFont(ctx, `700 ${current - 2}px`);
+  const text = left + baseline + right;
+  while (measureTextWithEmoji(ctx, text, sizePx) > width - 160) {
+    sizePx -= 2;
+    if (sizePx <= 32) break;
+    setFont(ctx, `700 ${sizePx}px`);
   }
-  ctx.fillText(text, width/2, baseY);
+  await drawTextWithEmoji(ctx, text, width/2, baseY, 'center', 'top', sizePx);
 
   return canvas.toBuffer('image/png');
 }
