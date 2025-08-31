@@ -2585,3 +2585,9 @@ Caused by: java.lang.IllegalStateException: Must find action functions from scri
 2025-08-30T10:12:31.641Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.player.AudioLoaderRestHandler   : Got request to load for identifier "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
 2025-08-30T10:12:31.993Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.player.AudioLoaderRestHandler   : Loaded track Unknown title
 2025-08-30T10:12:31.994Z  INFO 224063 --- [Lavalink] [  XNIO-1 task-3] l.server.io.RequestLoggingFilter         : GET /v4/loadtracks?identifier=https%3A%2F%2Fwww.soundhelix.com%2Fexamples%2Fmp3%2FSoundHelix-Song-1.mp3
+2025-08-31T07:11:52.794Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-2] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:55094 with id qafzuxwjxkuzdw3i -- CloseStatus[code=1006, reason=]
+2025-08-31T07:11:52.792Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:45040 with id ae805ykicj49m2uz -- CloseStatus[code=1006, reason=]
+2025-08-31T07:11:52.798Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-4] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:36150 with id h4ktijjq34r8tjmu -- CloseStatus[code=1006, reason=]
+2025-08-31T07:11:52.912Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-3] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-31T07:11:52.915Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-4] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2025-08-31T07:11:52.917Z  INFO 224063 --- [Lavalink] [   XNIO-1 I/O-2] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
