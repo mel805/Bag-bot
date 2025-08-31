@@ -3544,6 +3544,7 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
     new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn, promptsDelAllBtn),
   ];
 }
+
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
     const ak = await getAutoKickConfig(member.guild.id);
