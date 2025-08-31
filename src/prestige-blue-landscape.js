@@ -134,6 +134,7 @@ async function renderPrestigeCardBlueLandscape({
   lastRole,
   logoUrl,
   bgLogoUrl,
+  isRoleAward = false,
   width = 1600,
   height = 900,
 }) {
@@ -209,31 +210,61 @@ async function renderPrestigeCardBlueLandscape({
     y += sz + 16;
   }
 
-  ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  {
-    const t = 'vient de franchir un nouveau cap !';
-    const sz = fitCentered(ctx, t, y, '600', 50, maxW);
-    setSerif(ctx, '600', sz);
-    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 14;
-  }
+  if (isRoleAward) {
+    // Texte simplifié pour l'annonce de rôle
+    ctx.fillStyle = blueGradient(ctx, 0, y, width, 60);
+    {
+      const t = 'Félicitations !';
+      const sz = fitCentered(ctx, t, y, '800', 72, maxW);
+      setSerif(ctx, '800', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 18;
+    }
 
-  ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  {
-    const t = `Niveau atteint : ${Number(level || 0)}`;
-    const sz = fitCentered(ctx, t, y, '700', 58, maxW);
-    setSerif(ctx, '700', sz);
-    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 12;
-  }
+    ctx.fillStyle = blueGradient(ctx, 0, y, width, 56);
+    {
+      const t = 'Tu as obtenue le rôle';
+      const sz = fitCentered(ctx, t, y, '700', 56, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 14;
+    }
 
-  ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
-  {
-    const t = `Dernière distinction : ${String(lastRole || '—')}`;
-    const sz = fitCentered(ctx, t, y, '700', 58, maxW);
-    setSerif(ctx, '700', sz);
-    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 24;
+    ctx.fillStyle = blueGradient(ctx, 0, y, width, 56);
+    {
+      const t = `(${String(lastRole || '—')})`;
+      const sz = fitCentered(ctx, t, y, '700', 56, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 24;
+    }
+  } else {
+    ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
+    {
+      const t = 'vient de franchir un nouveau cap !';
+      const sz = fitCentered(ctx, t, y, '600', 50, maxW);
+      setSerif(ctx, '600', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 14;
+    }
+
+    ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
+    {
+      const t = `Niveau atteint : ${Number(level || 0)}`;
+      const sz = fitCentered(ctx, t, y, '700', 58, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 12;
+    }
+
+    ctx.fillStyle = blueGradient(ctx, 0, y, width, 50);
+    {
+      const t = `Dernière distinction : ${String(lastRole || '—')}`;
+      const sz = fitCentered(ctx, t, y, '700', 58, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 24;
+    }
   }
 
   // Center logo
@@ -258,14 +289,16 @@ async function renderPrestigeCardBlueLandscape({
     } catch {}
   }
 
-  // Félicitations
+  // Félicitations (affiché uniquement pour annonce de niveau)
   const congratsY = logoY + logoSize + 22;
-  ctx.fillStyle = blueGradient(ctx, 0, congratsY, width, 40);
-  setSerif(ctx, '800', 80);
-  await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
+  if (!isRoleAward) {
+    ctx.fillStyle = blueGradient(ctx, 0, congratsY, width, 40);
+    setSerif(ctx, '800', 80);
+    await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
+  }
 
   // Baseline
-  const baseY = congratsY + 86;
+  const baseY = congratsY + (isRoleAward ? 0 : 86);
   ctx.fillStyle = blueGradient(ctx, 0, baseY, width, 30);
   setSerif(ctx, '700', 42);
   const diamonds = '💎 ';

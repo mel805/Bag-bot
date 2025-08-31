@@ -1219,9 +1219,10 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       lastRole: roleName,
       logoUrl: CERTIFIED_LOGO_URL || undefined,
       bgLogoUrl: CERTIFIED_LOGO_URL || undefined,
+      isRoleAward: true,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+      else channel.send({ content: `Félicitations !\nTu as obtenue le rôle\n(${roleName})` }).catch(() => {});
     });
     return;
   }
@@ -1233,9 +1234,10 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       lastRole: roleName,
       logoUrl: LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
+      isRoleAward: true,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-      else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+      else channel.send({ content: `Félicitations !\nTu as obtenue le rôle\n(${roleName})` }).catch(() => {});
     });
     return;
   }
@@ -1246,9 +1248,10 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
     roleName: roleName || '—',
     logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
     isCertified: true,
+    isRoleAward: true,
   }).then((img) => {
     if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
-    else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
+    else channel.send({ content: `Félicitations !\nTu as obtenue le rôle\n(${roleName})` }).catch(() => {});
   });
 }
 
