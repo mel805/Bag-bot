@@ -2156,6 +2156,48 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
+    // /niveau (FR) and /level (EN alias): show user's current level card
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
+      try { await interaction.deferReply(); } catch (_) {}
+      try {
+        const levels = await getLevelsConfig(interaction.guild.id);
+        const userFr = interaction.options.getUser?.('membre');
+        const userEn = interaction.options.getUser?.('member');
+        const targetUser = userFr || userEn || interaction.user;
+        const member = await fetchMember(interaction.guild, targetUser.id);
+        const stats = await getUserStats(interaction.guild.id, targetUser.id);
+        const required = Math.max(1, xpRequiredForNext(stats.level, levels.levelCurve));
+        const progressRatio = Math.max(0, Math.min(1, (stats.xpSinceLevel || 0) / required));
+        const progressText = `XP: ${(stats.xpSinceLevel || 0).toLocaleString('fr-FR')}/${required.toLocaleString('fr-FR')}`;
+        const lastReward = getLastRewardForLevel(levels, stats.level);
+        const roleName = lastReward ? (interaction.guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
+        const name = memberDisplayName(interaction.guild, member, targetUser.id);
+        const isCert = memberHasCertifiedRole(member, levels);
+        let img = null;
+        if (isCert) {
+          const bg = chooseCardBackgroundForMember(member, levels);
+          const sub = [
+            `${name.toUpperCase()} • NIVEAU ACTUEL : ${String(stats.level)}`,
+            roleName ? `(Dernière récompense : ${roleName})` : ''
+          ].filter(Boolean);
+          img = await drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: CERTIFIED_LOGO_URL, useRoseGold: CERTIFIED_ROSEGOLD });
+        } else {
+          const bg = chooseCardBackgroundForMember(member, levels);
+          const avatarUrl = member?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
+          const lines = [
+            `Niveau: ${stats.level}`,
+            roleName ? `Dernière récompense: ${roleName} (niv ${lastReward.level})` : 'Dernière récompense: —',
+          ];
+          img = await drawCard(bg, `${name}`, lines, progressRatio, progressText, avatarUrl);
+        }
+        const mention = targetUser && targetUser.id !== interaction.user.id ? `<@${targetUser.id}>` : '';
+        if (img) return interaction.editReply({ content: mention || undefined, files: [{ attachment: img, name: 'level.png' }] });
+        return interaction.editReply({ content: `${mention || targetUser} • Niveau: ${stats.level} (${(stats.xpSinceLevel||0)}/${required})` });
+      } catch (e) {
+        try { return await interaction.editReply({ content: 'Une erreur est survenue lors du rendu de votre carte de niveau.' }); } catch (_) { return; }
+      }
+    }
+
     if (interaction.isChatInputCommand() && interaction.commandName === 'top') {
       const sub = interaction.options.getSubcommand();
       if (sub === 'niveau') {
