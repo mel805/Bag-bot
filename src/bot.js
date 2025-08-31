@@ -2,11 +2,12 @@ const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, Rol
 let ErelaManager;
 try { ({ Manager: ErelaManager } = require('erela.js')); } catch (_) { ErelaManager = null; }
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig, getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 let ytDlp;
 try { ytDlp = require('yt-dlp-exec'); } catch (_) { ytDlp = null; }
 
 const fs2 = require('fs');
+const path2 = require('path');
 const YTDLP_BIN = process.env.YTDLP_BIN || '/workspace/bin/yt-dlp';
 async function getLocalYtDlpAudioUrl(urlOrId) {
   const target = /^https?:\/\//.test(urlOrId) ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`;
@@ -848,6 +849,49 @@ function applyGoldStyles(ctx, x, y, text, maxWidth, size, variant = 'gold') {
   ctx.fillText(text, x, y);
 }
 // Helpers for prestige framing and icons
+// Font helpers (Cinzel + Cormorant Garamond)
+const FONTS_DIR = path2.join(process.cwd(), 'assets', 'fonts');
+const CINZEL_URLS = [
+  'https://github.com/google/fonts/raw/main/ofl/cinzel/Cinzel%5Bwght%5D.ttf',
+  'https://github.com/google/fonts/raw/main/ofl/cinzel/Cinzel-VariableFont_wght.ttf',
+  'https://github.com/google/fonts/raw/main/ofl/cinzel/Cinzel-Regular.ttf'
+];
+const CORMORANT_URLS = [
+  'https://github.com/google/fonts/raw/main/ofl/cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf',
+  'https://github.com/google/fonts/raw/main/ofl/cormorantgaramond/CormorantGaramond-VariableFont_wght.ttf',
+  'https://github.com/google/fonts/raw/main/ofl/cormorantgaramond/CormorantGaramond-Regular.ttf'
+];
+async function ensureDir(p) { try { await fs2.promises.mkdir(p, { recursive: true }); } catch (_) {} }
+async function downloadFirstAvailable(urls, destPath) {
+  await ensureDir(path2.dirname(destPath));
+  try { await fs2.promises.access(destPath); return destPath; } catch (_) {}
+  let lastErr = null;
+  for (const u of urls) {
+    try {
+      const r = await fetch(u);
+      if (!r.ok) { lastErr = new Error(String(r.status)); continue; }
+      const ab = await r.arrayBuffer();
+      await fs2.promises.writeFile(destPath, Buffer.from(ab));
+      return destPath;
+    } catch (e) { lastErr = e; }
+  }
+  if (lastErr) throw lastErr;
+  return destPath;
+}
+let prestigeFontsReady = false;
+async function ensurePrestigeFonts() {
+  if (prestigeFontsReady) return true;
+  try {
+    const cinzelPath = path2.join(FONTS_DIR, 'Cinzel.ttf');
+    const cormPath = path2.join(FONTS_DIR, 'CormorantGaramond.ttf');
+    await downloadFirstAvailable(CINZEL_URLS, cinzelPath).catch(()=>{});
+    await downloadFirstAvailable(CORMORANT_URLS, cormPath).catch(()=>{});
+    try { if (fs2.existsSync(cinzelPath)) GlobalFonts.registerFromPath(cinzelPath, 'Cinzel'); } catch (_) {}
+    try { if (fs2.existsSync(cormPath)) GlobalFonts.registerFromPath(cormPath, 'Cormorant Garamond'); } catch (_) {}
+    prestigeFontsReady = true;
+  } catch (_) { /* continue with system serif fallback */ }
+  return true;
+}
 function getGoldPalette(variant = 'gold') {
   return variant === 'rosegold'
     ? { light: '#F6C2D2', mid: '#E6A2B8', dark: '#B76E79' }
@@ -917,96 +961,133 @@ function drawDiamond(ctx, cx, cy, size, variant = 'gold') {
   ctx.stroke();
   ctx.restore();
 }
+function drawImageCover(ctx, img, width, height) {
+  const iw = img.width || 1, ih = img.height || 1;
+  const ir = iw / ih;
+  const r = width / height;
+  let dw, dh, dx, dy;
+  if (ir > r) { // image is wider
+    dh = height;
+    dw = Math.ceil(dh * ir);
+    dx = Math.floor((width - dw) / 2);
+    dy = 0;
+  } else {
+    dw = width;
+    dh = Math.ceil(dw / ir);
+    dx = 0;
+    dy = Math.floor((height - dh) / 2);
+  }
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
 async function drawCertifiedCard(options) {
   const { backgroundUrl, name, sublines, footerLines, logoUrl, useRoseGold } = options;
   try {
-    const entry = await getCachedImage(backgroundUrl);
-    const fallbackW = 1280, fallbackH = 720;
-    const maxW = 1280;
-    const width = entry ? Math.max(640, Math.round((entry.width > maxW ? maxW / entry.width : 1) * entry.width)) : fallbackW;
-    const height = entry ? Math.max(360, Math.round((entry.width > maxW ? maxW / entry.width : 1) * entry.height)) : fallbackH;
+    await ensurePrestigeFonts();
+    const width = 1920, height = 1080;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
-    if (entry) ctx.drawImage(entry.img, 0, 0, width, height);
-    else {
-      const bg = ctx.createLinearGradient(0, 0, 0, height);
-      bg.addColorStop(0, '#141414');
-      bg.addColorStop(1, '#1e1e1e');
-      ctx.fillStyle = bg;
+    // Background (darkened, barely visible)
+    try {
+      const entry = await getCachedImage(backgroundUrl);
+      if (entry) {
+        drawImageCover(ctx, entry.img, width, height);
+        ctx.fillStyle = 'rgba(0,0,0,0.78)';
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        const bg = ctx.createLinearGradient(0, 0, 0, height);
+        bg.addColorStop(0, '#0b0b0b');
+        bg.addColorStop(1, '#121212');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, width, height);
+      }
+    } catch (_) {
+      ctx.fillStyle = '#111';
       ctx.fillRect(0, 0, width, height);
     }
-    // Soft vignette
-    const grd = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/6, width/2, height/2, Math.max(width,height)/1.1);
+    // Vignette
+    const grd = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/6, width/2, height/2, Math.max(width,height)/1.05);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
-    grd.addColorStop(1, 'rgba(0,0,0,0.45)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.6)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, width, height);
-    // Prestige double border
-    const inset1 = Math.floor(Math.min(width, height) * 0.03);
-    const inset2 = Math.floor(Math.min(width, height) * 0.055);
-    strokeGoldRect(ctx, inset1, inset1, width - inset1*2, height - inset1*2, Math.max(3, Math.round(Math.min(width,height)*0.005)), useRoseGold?'rosegold':'gold');
-    strokeGoldRect(ctx, inset2, inset2, width - inset2*2, height - inset2*2, Math.max(2, Math.round(Math.min(width,height)*0.0035)), useRoseGold?'rosegold':'gold');
-    // Corner ornaments
-    const crownY = Math.floor(height*0.14);
-    const crownXOffset = Math.floor(width*0.09);
-    drawCrown(ctx, crownXOffset, crownY, Math.floor(Math.min(width,height)*0.035), useRoseGold?'rosegold':'gold');
-    drawCrown(ctx, width - crownXOffset, crownY, Math.floor(Math.min(width,height)*0.035), useRoseGold?'rosegold':'gold');
-    // Bottom diamonds
-    const diaOffset = Math.floor(width*0.085);
-    const diaY = Math.floor(height*0.88);
-    drawDiamond(ctx, diaOffset, diaY, Math.floor(Math.min(width,height)*0.02), useRoseGold?'rosegold':'gold');
-    drawDiamond(ctx, width - diaOffset, diaY, Math.floor(Math.min(width,height)*0.02), useRoseGold?'rosegold':'gold');
-    // Center logo (optional)
+    // Double border (exact spacing like reference)
+    const outerPad = 20;
+    const innerPad = 40;
+    strokeGoldRect(ctx, outerPad, outerPad, width - outerPad*2, height - outerPad*2, 4, useRoseGold?'rosegold':'gold');
+    strokeGoldRect(ctx, outerPad + innerPad, outerPad + innerPad, width - (outerPad + innerPad)*2, height - (outerPad + innerPad)*2, 2, useRoseGold?'rosegold':'gold');
+    // Crowns top corners
+    const crownSize = 70;
+    drawCrown(ctx, outerPad + 80, outerPad + 18 + crownSize/2, crownSize, useRoseGold?'rosegold':'gold');
+    drawCrown(ctx, width - (outerPad + 80), outerPad + 18 + crownSize/2, crownSize, useRoseGold?'rosegold':'gold');
+    // Diamonds bottom corners
+    drawDiamond(ctx, 120, height - 70, 20, useRoseGold?'rosegold':'gold');
+    drawDiamond(ctx, width - 120, height - 70, 20, useRoseGold?'rosegold':'gold');
+    // Center medallion + logo
     if (logoUrl) {
       const lg = await getCachedImage(logoUrl);
       if (lg) {
-        const s = Math.floor(Math.min(width, height) * 0.25);
-        const x = Math.floor((width - s)/2);
-        const y = Math.floor((height - s)/2) - 10;
+        const medSize = 520;
+        const cx = Math.floor(width/2), cy = 720;
+        // Outer ring
         ctx.save();
-        ctx.globalAlpha = 0.85;
-        ctx.drawImage(lg.img, x, y, s, s);
+        ctx.beginPath();
+        ctx.arc(cx, cy, medSize/2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.strokeStyle = getGoldPalette(useRoseGold?'rosegold':'gold').mid;
+        ctx.lineWidth = 18;
+        ctx.shadowColor = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur = 12;
+        ctx.stroke();
         ctx.restore();
+        // Logo inside
+        const s = medSize - 60;
+        const x = cx - Math.floor(s/2);
+        const y = cy - Math.floor(s/2);
+        ctx.drawImage(lg.img, x, y, s, s);
       }
     }
-    const serif = '"Times New Roman", Garamond, Georgia, Serif';
+    // Typography
+    const serifCinzel = GlobalFonts.has?.('Cinzel') ? '"Cinzel"' : 'Georgia, "Times New Roman", Serif';
+    const serifCorm = GlobalFonts.has?.('Cormorant Garamond') ? '"Cormorant Garamond"' : 'Georgia, "Times New Roman", Serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Main title
+    // Title
     const mainTitle = 'PROMOTION DE PRESTIGE';
-    let size = fitText(ctx, mainTitle, Math.floor(width*0.9), Math.floor(height*0.12), serif);
-    ctx.font = `700 ${size}px ${serif}`;
-    applyGoldStyles(ctx, Math.floor(width/2), Math.floor(height*0.18), mainTitle, Math.floor(width*0.9), size, useRoseGold?'rosegold':'gold');
-    // Sublines (user and message)
-    const baseY = Math.floor(height*0.35);
-    const userLine = String(name||'').toUpperCase();
-    size = fitText(ctx, userLine, Math.floor(width*0.85), Math.floor(height*0.07), serif);
-    ctx.font = `700 ${size}px ${serif}`;
-    applyGoldStyles(ctx, Math.floor(width/2), baseY, userLine, Math.floor(width*0.85), size, useRoseGold?'rosegold':'gold');
-    let y = baseY + Math.floor(size*1.1);
+    let size = fitText(ctx, mainTitle, Math.floor(width*0.9), 110, serifCinzel);
+    ctx.font = `700 ${size}px ${serifCinzel}`;
+    applyGoldStyles(ctx, Math.floor(width/2), 160, mainTitle, Math.floor(width*0.9), size, useRoseGold?'rosegold':'gold');
+    // Name
+    size = fitText(ctx, String(name||''), Math.floor(width*0.85), 78, serifCinzel);
+    ctx.font = `700 ${size}px ${serifCinzel}`;
+    applyGoldStyles(ctx, Math.floor(width/2), 320, String(name||''), Math.floor(width*0.85), size, useRoseGold?'rosegold':'gold');
+    // Subtitle
+    let s2 = fitText(ctx, 'vient de franchir un nouveau cap !', Math.floor(width*0.85), 46, serifCorm);
+    ctx.font = `600 ${s2}px ${serifCorm}`;
+    applyGoldStyles(ctx, Math.floor(width/2), 390, 'vient de franchir un nouveau cap !', Math.floor(width*0.85), s2, useRoseGold?'rosegold':'gold');
+    // Level and distinction
     const lines = Array.isArray(sublines)?sublines:[];
-    for (const l of lines.slice(0,3)) {
-      const txt = String(l||'');
-      const s2 = fitText(ctx, txt, Math.floor(width*0.85), Math.floor(height*0.045), serif);
-      ctx.font = `600 ${s2}px ${serif}`;
-      applyGoldStyles(ctx, Math.floor(width/2), y, txt, Math.floor(width*0.85), s2, useRoseGold?'rosegold':'gold');
-      y += Math.floor(s2*1.2);
-    }
-    // Footer block
+    const levelLine = lines.find(l => String(l||'').toLowerCase().startsWith('niveau')) || '';
+    const roleLine = lines.find(l => String(l||'').toLowerCase().startsWith('dernière')) || '';
+    s2 = fitText(ctx, levelLine, Math.floor(width*0.85), 64, serifCinzel);
+    ctx.font = `700 ${s2}px ${serifCinzel}`;
+    applyGoldStyles(ctx, Math.floor(width/2), 470, levelLine, Math.floor(width*0.85), s2, useRoseGold?'rosegold':'gold');
+    s2 = fitText(ctx, roleLine, Math.floor(width*0.85), 54, serifCorm);
+    ctx.font = `700 ${s2}px ${serifCorm}`;
+    applyGoldStyles(ctx, Math.floor(width/2), 540, roleLine, Math.floor(width*0.85), s2, useRoseGold?'rosegold':'gold');
+    // Footer
     const footer = Array.isArray(footerLines) && footerLines.length ? footerLines : [
       'Félicitations !',
-      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES',
-      'ULTIMES'
+      'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES',
     ];
-    let fy = Math.floor(height*0.75);
-    const fSizes = [Math.floor(height*0.09), Math.floor(height*0.05), Math.floor(height*0.055)];
-    for (let i=0;i<Math.min(footer.length,3);i++) {
+    let fy = 865;
+    const fSizes = [80, 40];
+    for (let i=0;i<Math.min(footer.length,2);i++) {
       const txt = String(footer[i]||'');
-      const fsz = fitText(ctx, txt, Math.floor(width*0.9), fSizes[i], serif);
-      ctx.font = `${i===0?'700':'600'} ${fsz}px ${serif}`;
+      const fsz = fitText(ctx, txt, Math.floor(width*0.9), fSizes[i], serifCinzel);
+      ctx.font = `${i===0?700:600} ${fsz}px ${serifCinzel}`;
       applyGoldStyles(ctx, Math.floor(width/2), fy, txt, Math.floor(width*0.9), fsz, useRoseGold?'rosegold':'gold');
-      fy += Math.floor(fsz*1.15);
+      fy += Math.floor(fsz*1.2);
     }
     return canvas.toBuffer('image/png');
   } catch (_) { return null; }
