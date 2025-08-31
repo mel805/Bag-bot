@@ -53,6 +53,7 @@ const EMOJI_URLS = {
   '💎': 'https://twemoji.maxcdn.com/v/latest/72x72/1f48e.png',
   '🔥': 'https://twemoji.maxcdn.com/v/latest/72x72/1f525.png',
   '🎉': 'https://twemoji.maxcdn.com/v/latest/72x72/1f389.png',
+  '👑': 'https://twemoji.maxcdn.com/v/latest/72x72/1f451.png',
 };
 
 const __twemojiCache = new Map();
@@ -191,9 +192,9 @@ async function renderPrestigeCardRoseGoldLandscape({
   setSerif(ctx, '700', 32);
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
-  ctx.fillText('♕', m + 18, m + 18);
+  await drawTextWithEmoji(ctx, '👑', m + 18, m + 18, 'left', 'top', 32);
   ctx.textAlign = 'right';
-  ctx.fillText('♕', width - m - 18, m + 18);
+  await drawTextWithEmoji(ctx, '👑', width - m - 18, m + 18, 'right', 'top', 32);
 
   // Titre
   ctx.textAlign = 'center';
@@ -288,34 +289,19 @@ async function renderPrestigeCardRoseGoldLandscape({
   setSerif(ctx, '700', 50);
   fitCentered(ctx, 'Tu rejoins l’élite de Boys and Girls. 🔥', eliteY, '700', 50, maxW);
 
-  // Baseline finale + diamants
+  // Baseline finale + diamants (une seule ligne comme demandé)
   const baseY = eliteY + 68;
   ctx.fillStyle = roseGold(ctx, 0, baseY, width, 30);
-  setSerif(ctx, '700', 42);
-  let base = 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES';
-  const line2 = 'ULTIMES';
-  const leftDiamond = '💎 ';
-  const rightDiamond = ' 💎';
-
-  // Ligne 1
-  let s1 = leftDiamond + base + rightDiamond;
-  while (measureTextWithEmoji(ctx, s1, __parseFontPx(ctx.font)) > width - 200) {
-    const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (cur <= 32) break;
-    setSerif(ctx, '700', cur - 2);
+  let base = '💎 continue ton ascension vers les récompenses ultimes 💎';
+  // taille de départ et ajustement au conteneur
+  let baseSize = 42;
+  setSerif(ctx, '700', baseSize);
+  while (measureTextWithEmoji(ctx, base, baseSize) > width - 200) {
+    baseSize -= 2;
+    if (baseSize <= 30) break;
+    setSerif(ctx, '700', baseSize);
   }
-  await drawTextWithEmoji(ctx, s1, width/2, baseY, 'center', 'top', __parseFontPx(ctx.font));
-
-  // Ligne 2
-  const line2Y = baseY + 48;
-  setSerif(ctx, '700', 42);
-  let s2 = line2;
-  while (measureTextWithEmoji(ctx, s2, __parseFontPx(ctx.font)) > width - 260) {
-    const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (cur <= 28) break;
-    setSerif(ctx, '700', cur - 2);
-  }
-  await drawTextWithEmoji(ctx, s2, width/2, line2Y, 'center', 'top', __parseFontPx(ctx.font));
+  await drawTextWithEmoji(ctx, base, width/2, baseY, 'center', 'top', baseSize);
 
   return canvas.toBuffer('image/png');
 }

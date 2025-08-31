@@ -56,6 +56,7 @@ const EMOJI_URLS = {
   '💎': 'https://twemoji.maxcdn.com/v/latest/72x72/1f48e.png',
   '🔥': 'https://twemoji.maxcdn.com/v/latest/72x72/1f525.png',
   '🎉': 'https://twemoji.maxcdn.com/v/latest/72x72/1f389.png',
+  '👑': 'https://twemoji.maxcdn.com/v/latest/72x72/1f451.png',
 };
 
 const __twemojiCache = new Map(); // url -> Image
@@ -175,28 +176,28 @@ async function renderLevelCardLandscape({
   drawRoundedRect(ctx, margin, margin, width - 2*margin, height - 2*margin, 18);
   ctx.stroke();
 
-  // petites couronnes aux coins
+  // petites couronnes aux coins (utilise Twemoji 👑 pour un rendu fiable)
   ctx.fillStyle = ctx.strokeStyle;
   setFont(ctx, '700 34px');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('♕', margin + 18, margin + 18);
+  await drawTextWithEmoji(ctx, '👑', margin + 18, margin + 18, 'left', 'top', 34);
   ctx.textAlign = 'right';
-  ctx.fillText('♕', width - margin - 18, margin + 18);
+  await drawTextWithEmoji(ctx, '👑', width - margin - 18, margin + 18, 'right', 'top', 34);
 
   // Titre
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE NIVEAU';
-  const displayedTitle = isCertified ? `♕ ${baseTitle} ♕` : baseTitle;
+  const displayedTitle = isCertified ? `👑 ${baseTitle} 👑` : baseTitle;
   setFont(ctx, '800 96px');
   let titleSize = 96;
-  while (ctx.measureText(displayedTitle).width > width - 280 && titleSize > 48) {
+  while (measureTextWithEmoji(ctx, displayedTitle, titleSize) > width - 280 && titleSize > 48) {
     titleSize -= 2;
     setFont(ctx, `800 ${titleSize}px`);
   }
-  ctx.fillText(displayedTitle, width / 2, 70);
+  await drawTextWithEmoji(ctx, displayedTitle, width / 2, 70, 'center', 'top', titleSize);
 
   // Bloc central textes
   const maxW = Math.min(1200, width - 240);
