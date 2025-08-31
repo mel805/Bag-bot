@@ -175,6 +175,7 @@ function startYtProxyServer() {
 const THEME_COLOR_PRIMARY = 0x1e88e5; // blue
 const THEME_COLOR_ACCENT = 0xec407a; // pink
 const THEME_IMAGE = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68b08cda&is=68af3b5a&hm=2e68cb9d7dfc7a60465aa74447b310348fc2d7236e74fa7c08f9434c110d7959&';
+const THEME_FOOTER_ICON = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408458115770482778/20250305162902.png?ex=68b50516&is=68b3b396&hm=1d83bbaaa9451ed0034a52c48ede5ddc55db692b15e65b4fe5c659ed4c80b77d&';
 
 const DELAY_OPTIONS = [
   { label: '15 minutes', ms: 15 * 60 * 1000 },
@@ -211,7 +212,8 @@ function buildModEmbed(title, description, extras) {
     .setDescription(description || null)
     .setThumbnail(THEME_IMAGE)
     .setTimestamp(new Date())
-    .setFooter({ text: 'BAG • Modération' });
+    .setFooter({ text: 'BAG • Modération', iconURL: THEME_FOOTER_ICON });
+  try { if (embed?.data?.footer?.text || true) embed.setFooter({ text: embed?.data?.footer?.text || 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }); } catch (_) {}
   if (Array.isArray(extras) && extras.length) embed.addFields(extras);
   return embed;
 }
@@ -300,9 +302,7 @@ async function buildConfigEmbed(guild) {
     .setThumbnail(THEME_IMAGE)
     .setImage(THEME_IMAGE);
 
-  const avatar = client.user && client.user.displayAvatarURL ? client.user.displayAvatarURL() : null;
-  if (avatar) embed.setFooter({ text: 'Boy and Girls (BAG) • Config', iconURL: avatar });
-  else embed.setFooter({ text: 'Boy and Girls (BAG) • Config' });
+  embed.setFooter({ text: 'Boy and Girls (BAG) • Config', iconURL: THEME_FOOTER_ICON });
 
   return embed;
 }
@@ -839,7 +839,7 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
     .setAuthor({ name: `${guild.name} • Classement des niveaux`, iconURL: guild.iconURL?.() || undefined })
     .setDescription(lines.join('\n') || '—')
     .setThumbnail(THEME_IMAGE)
-    .setFooter({ text: `Boy and Girls (BAG) • ${offset + 1}-${Math.min(total, offset + limit)} sur ${total}` })
+    .setFooter({ text: `Boy and Girls (BAG) • ${offset + 1}-${Math.min(total, offset + limit)} sur ${total}`, iconURL: THEME_FOOTER_ICON })
     .setTimestamp(new Date());
 
   const components = [];
@@ -1329,7 +1329,7 @@ client.once(Events.ClientReady, (readyClient) => {
             .setTitle('💋 Un petit bump, beau/belle gosse ?')
             .setDescription('Deux heures se sont écoulées… Faites vibrer le serveur à nouveau avec `/bump` 😈🔥')
             .setThumbnail(THEME_IMAGE)
-            .setFooter({ text: 'BAG • Disboard' })
+            .setFooter({ text: 'BAG • Disboard', iconURL: THEME_FOOTER_ICON })
             .setTimestamp(new Date());
           await ch.send({ embeds: [embed] }).catch(()=>{});
         }
@@ -1800,16 +1800,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
-      const td = await getTruthDareConfig(interaction.guild.id);
-      const list = (td?.[mode]?.prompts || []);
-      const opts = list.slice(0, 25).map(p => ({ label: `#${p.id} ${String(p.text).slice(0,80)}`, value: String(p.id) }));
-      const select = new StringSelectMenuBuilder().setCustomId('td_prompts_delete_select:' + mode).setPlaceholder('Choisir des prompts à supprimer').setMinValues(1).setMaxValues(Math.max(1, opts.length||1));
-      if (opts.length) select.addOptions(...opts); else select.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-      const row = new ActionRowBuilder().addComponents(select);
-      try { return await interaction.reply({ content: 'Sélectionnez les prompts à supprimer', components: [row], ephemeral: true }); } catch (_) { return; }
+      const { rows, pageText } = await buildTdDeleteComponents(interaction.guild, mode, 0);
+      try { return await interaction.reply({ content: 'Sélectionnez les prompts à supprimer • ' + pageText, components: rows, ephemeral: true }); } catch (_) { return; }
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_prompts_delete_select:')) {
-      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
       if (interaction.values.includes('none')) return interaction.deferUpdate();
       await deleteTdPrompts(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
@@ -1817,6 +1813,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.update({ content: '✅ Supprimé.', components: [] }); } catch (_) {}
       try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
       return;
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete_page:')) {
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
+      const offset = Number(parts[2]) || 0;
+      const { rows, pageText } = await buildTdDeleteComponents(interaction.guild, mode, offset);
+      try { return await interaction.update({ content: 'Sélectionnez les prompts à supprimer • ' + pageText, components: rows }); } catch (_) { return; }
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
@@ -2657,7 +2660,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       }
       if (thread) {
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setAuthor({ name: 'Réponse anonyme' }).setDescription(text).setTimestamp(new Date());
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setAuthor({ name: 'Réponse anonyme' }).setDescription(text).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
         const sent = await thread.send({ embeds: [embed] }).catch(()=>null);
         // Admin log for anonymous reply
         try {
@@ -2751,7 +2754,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
-      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Boutique BAG').setDescription('Sélectionnez un article à acheter.').setThumbnail(THEME_IMAGE);
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Boutique BAG').setDescription('Sélectionnez un article à acheter.').setThumbnail(THEME_IMAGE).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON });
       const rows = await buildBoutiqueRows(interaction.guild);
       return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
     }
@@ -2771,7 +2774,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!hasAction && !hasTruth) {
           return interaction.reply({ content: 'Aucun prompt configuré pour ce mode. Ajoutez-en dans /config → Action/Vérité.', ephemeral: true });
         }
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎲 Action ou Vérité').setDescription('Choisissez votre destin…').setThumbnail(THEME_IMAGE).setTimestamp(new Date());
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎲 Action ou Vérité').setDescription('Choisissez votre destin…').setThumbnail(THEME_IMAGE).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
           new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
@@ -2972,14 +2975,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!player.playing && !player.paused) player.play({ volume: 100 });
         const firstTrack = res.tracks[0] || { title: 'Inconnu', uri: '' };
         if (wasPlaying) {
-          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('➕ Ajouté à la file').setDescription(`[${firstTrack.title}](${firstTrack.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
+          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('➕ Ajouté à la file').setDescription(`[${firstTrack.title}](${firstTrack.uri})`).setFooter({ text: 'BAG • Musique', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
           await interaction.editReply({ embeds: [embed] });
         } else {
           const current = player.queue.current || firstTrack;
-          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${current.title}](${current.uri})`).setFooter({ text: 'BAG • Musique' }).setTimestamp(new Date());
+          const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('🎶 Lecture').setDescription(`[${current.title}](${current.uri})`).setFooter({ text: 'BAG • Musique', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
           await interaction.editReply({ embeds: [embed] });
           try {
-            const ui = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎧 Lecteur').setDescription('Contrôles de lecture').setImage(THEME_IMAGE).setFooter({ text: 'BAG • Lecteur' }).setTimestamp(new Date());
+            const ui = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎧 Lecteur').setDescription('Contrôles de lecture').setImage(THEME_IMAGE).setFooter({ text: 'BAG • Lecteur', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
             const row1 = new ActionRowBuilder().addComponents(
               new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
               new ButtonBuilder().setCustomId('music_play').setEmoji('▶️').setStyle(ButtonStyle.Success),
@@ -3179,7 +3182,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const tr = player.queue[i];
           lines.push(`${i+1}. ${tr.title}`);
         }
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('File de lecture').setDescription(lines.join('\n')).setTimestamp(new Date());
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('File de lecture').setDescription(lines.join('\n')).setFooter({ text: 'BAG • Musique', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
         return interaction.reply({ embeds: [embed] });
       } catch (e) { return interaction.reply('Erreur file.'); }
     }
@@ -3220,7 +3223,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!res || !res.tracks?.length) return interaction.editReply('Station indisponible.');
         player.queue.add(res.tracks[0]);
         if (!player.playing && !player.paused) player.play();
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('📻 Radio').setDescription(`Station: ${station}`).setTimestamp(new Date());
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('📻 Radio').setDescription(`Station: ${station}`).setFooter({ text: 'BAG • Musique', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
         return interaction.editReply({ embeds: [embed] });
       } catch (e) { try { return await interaction.editReply('Erreur radio.'); } catch (_) { return; } }
     }
@@ -3274,7 +3277,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         const pick = list[Math.floor(Math.random() * list.length)];
         const title = type === 'action' ? '🫵 ACTION' : '🗣️ VÉRITÉ';
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(String(pick.text||'—')).setTimestamp(new Date());
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(String(pick.text||'—')).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
         try { await interaction.followUp({ embeds: [embed] }); } catch (_) {}
       } catch (_) {}
       return;
@@ -3297,7 +3300,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setDescription(text || null)
         .setThumbnail(THEME_IMAGE)
         .setTimestamp(new Date())
-        .setFooter({ text: 'BAG • Confessions' });
+        .setFooter({ text: 'BAG • Confessions', iconURL: THEME_FOOTER_ICON });
       const files = [];
       if (attach && attach.url) files.push(attach.url);
       const row = new ActionRowBuilder().addComponents(
@@ -3650,7 +3653,7 @@ client.on(Events.MessageCreate, async (message) => {
               .setTitle('✨ Merci pour le bump !')
               .setDescription('Votre soutien fait rayonner le serveur. Le cooldown de 2 heures démarre maintenant.\n\n• Prochain rappel automatique: dans 2h\n• Salon: <#' + message.channel.id + '>\n\nRestez sexy, beaux/belles gosses 😘')
               .setThumbnail(THEME_IMAGE)
-              .setFooter({ text: 'BAG • Premium' })
+              .setFooter({ text: 'BAG • Premium', iconURL: THEME_FOOTER_ICON })
               .setTimestamp(new Date());
             await message.channel.send({ embeds: [embed] }).catch(()=>{});
           } catch (_) {}
@@ -3729,17 +3732,17 @@ client.on(Events.MessageCreate, async (message) => {
         }
         if (!Number.isFinite(value)) {
           await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-          await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Oups… valeur invalide').setDescription('Attendu: **' + expected0 + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, on repart en douceur.').setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
+          await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Oups… valeur invalide').setDescription('Attendu: **' + expected0 + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, on repart en douceur.').setFooter({ text: 'BAG • Comptage', iconURL: THEME_FOOTER_ICON }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
         } else {
           const next = Math.trunc(value);
           const state = cfg.state || { current: 0, lastUserId: '' };
           const expected = (state.current || 0) + 1;
           if ((state.lastUserId||'') === message.author.id) {
             await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-            await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Doucement, un à la fois…').setDescription('Deux chiffres d\'affilée 😉\nAttendu: **' + expected + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, à toi de rejouer.').setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
+            await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Doucement, un à la fois…').setDescription('Deux chiffres d\'affilée 😉\nAttendu: **' + expected + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, à toi de rejouer.').setFooter({ text: 'BAG • Comptage', iconURL: THEME_FOOTER_ICON }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
           } else if (next !== expected) {
             await setCountingState(message.guild.id, { current: 0, lastUserId: '' });
-            await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Mauvais numéro').setDescription('Attendu: **' + expected + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, on se retrouve au début 💕').setFooter({ text: 'BAG • Comptage' }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
+            await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Mauvais numéro').setDescription('Attendu: **' + expected + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, on se retrouve au début 💕').setFooter({ text: 'BAG • Comptage', iconURL: THEME_FOOTER_ICON }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
           } else {
             await setCountingState(message.guild.id, { current: next, lastUserId: message.author.id });
             try { await message.react('✅'); } catch (_) {}
@@ -3912,6 +3915,50 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
     new ActionRowBuilder().addComponents(channelRemove),
     new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn, promptsDelAllBtn),
   ];
+}
+
+function clampOffset(total, offset, limit) {
+  if (total <= 0) return 0;
+  const lastPageStart = Math.floor((total - 1) / limit) * limit;
+  if (!Number.isFinite(offset) || offset < 0) return 0;
+  if (offset > lastPageStart) return lastPageStart;
+  return Math.floor(offset / limit) * limit;
+}
+
+async function buildTdDeleteComponents(guild, mode = 'sfw', offset = 0) {
+  const td = await getTruthDareConfig(guild.id);
+  const list = (td?.[mode]?.prompts || []).slice();
+  const limit = 25;
+  const total = list.length;
+  const off = clampOffset(total, Number(offset) || 0, limit);
+  const view = list.slice(off, off + limit);
+  const from = total === 0 ? 0 : off + 1;
+  const to = Math.min(total, off + view.length);
+  const pageText = `Prompts ${from}-${to} sur ${total}`;
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('td_prompts_delete_select:' + mode + ':' + off)
+    .setPlaceholder(total ? ('Choisir des prompts à supprimer • ' + pageText) : 'Aucun prompt')
+    .setMinValues(1)
+    .setMaxValues(Math.max(1, view.length || 1));
+  if (view.length) select.addOptions(...view.map(p => ({ label: `#${p.id} ${String(p.text||'').slice(0,80)}`, value: String(p.id) })));
+  else select.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+
+  const hasPrev = off > 0;
+  const hasNext = off + limit < total;
+  const prevBtn = new ButtonBuilder().setCustomId(`td_prompts_delete_page:${mode}:${Math.max(0, off - limit)}`).setLabel('⟨ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(!hasPrev);
+  const nextBtn = new ButtonBuilder().setCustomId(`td_prompts_delete_page:${mode}:${off + limit}`).setLabel('Suivant ⟩').setStyle(ButtonStyle.Primary).setDisabled(!hasNext);
+
+  return {
+    rows: [
+      new ActionRowBuilder().addComponents(select),
+      new ActionRowBuilder().addComponents(prevBtn, nextBtn),
+    ],
+    pageText,
+    offset: off,
+    limit,
+    total,
+  };
 }
 
 async function buildBoutiqueRows(guild) {
