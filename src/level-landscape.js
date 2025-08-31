@@ -3,15 +3,13 @@
 // Dépendances: npm i @napi-rs/canvas
 // (optionnel) pour Discord: npm i discord.js
 
-const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { ensurePrestigeFontsRegistered } = require('./utils/canvasFonts');
 let AttachmentBuilder;
 try { ({ AttachmentBuilder } = require('discord.js')); } catch (_) { /* optionnel */ }
 
-// Enregistrement de polices si présentes (ajuste/commmente si non désiré)
-try {
-  GlobalFonts.registerFromPath('/workspace/assets/fonts/Cinzel.ttf', 'Cinzel');
-  GlobalFonts.registerFromPath('/workspace/assets/fonts/CormorantGaramond.ttf', 'CormorantGaramond');
-} catch (_) { /* facultatif */ }
+// Enregistrement de polices (une seule fois via helper)
+ensurePrestigeFontsRegistered();
 
 function goldGradient(ctx, x, y, w, h) {
   const g = ctx.createLinearGradient(x, y, x + w, y + h);
