@@ -107,14 +107,15 @@ async function renderLevelCardLandscape({
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  const titleText = isCertified ? 'promotion prestige' : 'ANNONCE DE NIVEAU';
-  setFont(ctx, '800 100px');
-  let titleSize = 100;
-  while (ctx.measureText(titleText).width > width - 260 && titleSize > 56) {
+  const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE NIVEAU';
+  const displayedTitle = isCertified ? `♕ ${baseTitle} ♕` : baseTitle;
+  setFont(ctx, '800 96px');
+  let titleSize = 96;
+  while (ctx.measureText(displayedTitle).width > width - 280 && titleSize > 48) {
     titleSize -= 2;
     setFont(ctx, `800 ${titleSize}px`);
   }
-  ctx.fillText(titleText, width / 2, 70);
+  ctx.fillText(displayedTitle, width / 2, 70);
 
   // Bloc central textes
   const maxW = Math.min(1200, width - 240);
@@ -122,26 +123,26 @@ async function renderLevelCardLandscape({
 
   // Nom du membre (légère réduction pour éviter les débordements)
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 80);
-  setFont(ctx, '700 82px');
-  y += fitAndDrawCentered(ctx, String(memberName || 'Nom du membre'), y, 700, 82, maxW) + 18;
+  setFont(ctx, '700 78px');
+  y += fitAndDrawCentered(ctx, String(memberName || 'Nom du membre'), y, 700, 78, maxW) + 16;
 
   // Sous-texte
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '600 52px');
-  y += fitAndDrawCentered(ctx, 'vient de franchir un nouveau cap !', y, 600, 52, maxW) + 20;
+  setFont(ctx, '600 48px');
+  y += fitAndDrawCentered(ctx, 'vient de franchir un nouveau cap !', y, 600, 48, maxW) + 18;
 
   // Niveau
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '700 60px');
-  y += fitAndDrawCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, 700, 60, maxW) + 16;
+  setFont(ctx, '700 56px');
+  y += fitAndDrawCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, 700, 56, maxW) + 14;
 
   // Rôle obtenu
   ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '700 60px');
-  y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 60, maxW) + 30;
+  setFont(ctx, '700 56px');
+  y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 56, maxW) + 26;
 
   // Logo central (entre role obtenu et Félicitations)
-  const logoSize = 260;
+  const logoSize = 240;
   const logoY = y;
   if (logoUrl) {
     try {
@@ -175,26 +176,26 @@ async function renderLevelCardLandscape({
   }
 
   // Félicitations
-  const congratsY = logoY + logoSize + 26;
+  const congratsY = logoY + logoSize + 22;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = goldGradient(ctx, 0, congratsY, width, 50);
-  setFont(ctx, '800 84px');
+  setFont(ctx, '800 78px');
   ctx.fillText('Félicitations !', width/2, congratsY);
 
   // Baseline / slogan
   const baseY = congratsY + 96;
   ctx.fillStyle = goldGradient(ctx, 0, baseY, width, 40);
-  setFont(ctx, '700 46px');
+  setFont(ctx, '700 42px');
   const baseline = isCertified
-    ? 'continue ton ascension vers des récompenses ultimes'
+    ? 'continue ton ascension vers les récompenses ultimes'
     : 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES';
   const left = '💎 ';
   const right = ' 💎';
   let text = left + baseline + right;
-  while (ctx.measureText(text).width > width - 140) {
+  while (ctx.measureText(text).width > width - 160) {
     const current = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (current <= 34) break;
+    if (current <= 32) break;
     setFont(ctx, `700 ${current - 2}px`);
   }
   ctx.fillText(text, width/2, baseY);

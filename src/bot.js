@@ -1083,7 +1083,8 @@ async function drawCertifiedCard(options) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // Title
-    const mainTitle = isCertified ? 'promotion prestige' : 'ANNONCE DE NIVEAU';
+    const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE NIVEAU';
+    const mainTitle = isCertified ? `♕ ${baseTitle} ♕` : baseTitle;
     let size = fitText(ctx, mainTitle, Math.floor(width*0.9), 110, serifCinzel);
     ctx.font = `700 ${size}px ${serifCinzel}`;
     applyGoldStyles(ctx, Math.floor(width/2), 160, mainTitle, Math.floor(width*0.9), size, useRoseGold?'rosegold':'gold');
@@ -1108,7 +1109,7 @@ async function drawCertifiedCard(options) {
     // Footer
     const footer = Array.isArray(footerLines) && footerLines.length ? footerLines : [
       'Félicitations !',
-      isCertified ? 'continue ton ascension vers des récompenses ultimes' : 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES',
+      isCertified ? '💎 continue ton ascension vers les récompenses ultimes 💎' : '💎 CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES 💎',
     ];
     let fy = 865;
     const fSizes = [80, 40];
@@ -1178,7 +1179,14 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
     });
     return;
   }
-  drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: isCert ? CERTIFIED_LOGO_URL : '', useRoseGold: CERTIFIED_ROSEGOLD, isCertified: isCert }).then((img) => {
+  const { renderLevelCardLandscape } = require('./level-landscape');
+  renderLevelCardLandscape({
+    memberName: name,
+    level: newLevel,
+    roleName: roleName || '—',
+    logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
+    isCertified: true,
+  }).then((img) => {
     if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
     else channel.send({ content: `🎉 ${mention || name} passe niveau ${newLevel} !` }).catch(() => {});
   });
@@ -1224,7 +1232,14 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
     });
     return;
   }
-  drawCertifiedCard({ backgroundUrl: bg, name, sublines: sub, logoUrl: isCert ? CERTIFIED_LOGO_URL : '', useRoseGold: CERTIFIED_ROSEGOLD, isCertified: isCert }).then((img) => {
+  const { renderLevelCardLandscape } = require('./level-landscape');
+  renderLevelCardLandscape({
+    memberName: name,
+    level: 0,
+    roleName: roleName || '—',
+    logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
+    isCertified: true,
+  }).then((img) => {
     if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
     else channel.send({ content: `🏅 ${mention || name} reçoit le rôle ${roleName} !` }).catch(() => {});
   });
@@ -2826,11 +2841,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const action = interaction.options.getString('action', true);
       const target = interaction.options.getUser('membre', true);
       const targetMember = interaction.guild.members.cache.get(target.id);
+      try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
       let levels;
       try { levels = await getLevelsConfig(interaction.guild.id); }
       catch (e) {
         try { await ensureStorageExists(); levels = await getLevelsConfig(interaction.guild.id); }
-        catch (e2) { return interaction.reply({ content: `Erreur de stockage: ${e2?.code||'inconnue'}`, ephemeral: true }); }
+        catch (e2) { return interaction.editReply({ content: `Erreur de stockage: ${e2?.code||'inconnue'}` }); }
       }
       let stats = await getUserStats(interaction.guild.id, target.id);
 
@@ -2873,7 +2889,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const rid = (levels.rewards || {})[String(stats.level)];
           if (rid) maybeAnnounceRoleAward(interaction.guild, mem || memberMention(target.id), levels, rid);
         }
-        return interaction.reply({ content: `Ajouté ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+        return interaction.editReply({ content: `Ajouté ${amount} XP à ${target}. Niveau: ${stats.level}` });
       }
 
       if (action === 'removexp') {
@@ -2884,7 +2900,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         stats.level = norm.level;
         stats.xpSinceLevel = norm.xpSinceLevel;
         await setUserStats(interaction.guild.id, target.id, stats);
-        return interaction.reply({ content: `Retiré ${amount} XP à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+        return interaction.editReply({ content: `Retiré ${amount} XP à ${target}. Niveau: ${stats.level}` });
       }
 
       if (action === 'addlevel') {
@@ -2899,7 +2915,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const rid = (levels.rewards || {})[String(stats.level)];
           if (rid) maybeAnnounceRoleAward(interaction.guild, mem, levels, rid);
         }
-        return interaction.reply({ content: `Ajouté ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+        return interaction.editReply({ content: `Ajouté ${n} niveaux à ${target}. Niveau: ${stats.level}` });
       }
 
       if (action === 'removelevel') {
@@ -2907,7 +2923,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         stats.level = Math.max(0, stats.level - n);
         stats.xpSinceLevel = 0;
         await setUserStats(interaction.guild.id, target.id, stats);
-        return interaction.reply({ content: `Retiré ${n} niveaux à ${target}. Niveau: ${stats.level}`, ephemeral: true });
+        return interaction.editReply({ content: `Retiré ${n} niveaux à ${target}. Niveau: ${stats.level}` });
       }
 
       if (action === 'setlevel') {
@@ -2926,10 +2942,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const rid = (levels.rewards || {})[String(stats.level)];
           if (rid) maybeAnnounceRoleAward(interaction.guild, mem, levels, rid);
         }
-        return interaction.reply({ content: `Niveau de ${target} défini à ${stats.level}`, ephemeral: true });
+        return interaction.editReply({ content: `Niveau de ${target} défini à ${stats.level}` });
       }
 
-      return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
+      return interaction.editReply({ content: 'Action inconnue.' });
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'adminkarma') {
