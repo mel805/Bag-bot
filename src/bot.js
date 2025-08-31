@@ -174,6 +174,7 @@ function startYtProxyServer() {
 
 const THEME_COLOR_PRIMARY = 0x1e88e5; // blue
 const THEME_COLOR_ACCENT = 0xec407a; // pink
+const THEME_COLOR_NSFW = 0xd32f2f; // deep red for NSFW
 const THEME_IMAGE = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68b08cda&is=68af3b5a&hm=2e68cb9d7dfc7a60465aa74447b310348fc2d7236e74fa7c08f9434c110d7959&';
 const THEME_FOOTER_ICON = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408458115770482778/20250305162902.png?ex=68b50516&is=68b3b396&hm=1d83bbaaa9451ed0034a52c48ede5ddc55db692b15e65b4fe5c659ed4c80b77d&';
 
@@ -228,6 +229,45 @@ function buildEcoEmbed(opts) {
   if (title) embed.setTitle(String(title));
   if (description) embed.setDescription(String(description));
   if (Array.isArray(fields) && fields.length) embed.addFields(fields);
+  return embed;
+}
+
+// Embeds — Action/Vérité (Pro & Premium styles)
+function buildTruthDareStartEmbed(mode, hasAction, hasTruth) {
+  const isNsfw = String(mode||'').toLowerCase() === 'nsfw';
+  const color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_ACCENT;
+  const title = isNsfw ? '🔞 Action ou Vérité (NSFW)' : '🎲 Action ou Vérité';
+  const footerText = isNsfw ? 'BAG • Premium' : 'BAG • Pro';
+  const lines = [];
+  if (hasAction && hasTruth) lines.push('Choisissez votre destin…');
+  else if (hasAction) lines.push('Appuyez sur ACTION pour commencer.');
+  else if (hasTruth) lines.push('Appuyez sur VÉRITÉ pour commencer.');
+  lines.push('Cliquez pour un nouveau prompt à chaque tour.');
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: 'Action/Vérité • Boy and Girls (BAG)' })
+    .setTitle(title)
+    .setDescription(lines.join('\n'))
+    .setThumbnail(THEME_IMAGE)
+    .setTimestamp(new Date())
+    .setFooter({ text: footerText, iconURL: THEME_FOOTER_ICON });
+  return embed;
+}
+
+function buildTruthDarePromptEmbed(mode, type, text) {
+  const isNsfw = String(mode||'').toLowerCase() === 'nsfw';
+  const footerText = isNsfw ? 'BAG • Premium' : 'BAG • Pro';
+  let color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_PRIMARY;
+  if (String(type||'').toLowerCase() === 'verite') color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_ACCENT;
+  const title = String(type||'').toLowerCase() === 'action' ? '🔥 ACTION' : '🎯 VÉRITÉ';
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: 'Action/Vérité • Boy and Girls (BAG)' })
+    .setTitle(title)
+    .setDescription(`${String(text||'—')}\n\nCliquez pour un nouveau prompt.`)
+    .setThumbnail(THEME_IMAGE)
+    .setTimestamp(new Date())
+    .setFooter({ text: footerText, iconURL: THEME_FOOTER_ICON });
   return embed;
 }
 
@@ -2965,7 +3005,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!hasAction && !hasTruth) {
           return interaction.reply({ content: 'Aucun prompt configuré pour ce mode. Ajoutez-en dans /config → Action/Vérité.', ephemeral: true });
         }
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎲 Action ou Vérité').setDescription('Choisissez votre destin…').setThumbnail(THEME_IMAGE).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
+        const embed = buildTruthDareStartEmbed(mode, hasAction, hasTruth);
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
           new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
@@ -3467,8 +3507,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return;
         }
         const pick = list[Math.floor(Math.random() * list.length)];
-        const title = type === 'action' ? '🫵 ACTION' : '🗣️ VÉRITÉ';
-        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(String(pick.text||'—')).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
+        const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'));
         try { await interaction.followUp({ embeds: [embed] }); } catch (_) {}
       } catch (_) {}
       return;
