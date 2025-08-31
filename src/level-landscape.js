@@ -56,6 +56,7 @@ const EMOJI_URLS = {
   '💎': 'https://twemoji.maxcdn.com/v/latest/72x72/1f48e.png',
   '🔥': 'https://twemoji.maxcdn.com/v/latest/72x72/1f525.png',
   '🎉': 'https://twemoji.maxcdn.com/v/latest/72x72/1f389.png',
+  '👑': 'https://twemoji.maxcdn.com/v/latest/72x72/1f451.png',
 };
 
 const __twemojiCache = new Map(); // url -> Image
@@ -149,6 +150,7 @@ async function renderLevelCardLandscape({
   roleName,
   logoUrl,
   isCertified = false,
+  isRoleAward = false,
   width = 1600,
   height = 900,
 }) {
@@ -175,28 +177,28 @@ async function renderLevelCardLandscape({
   drawRoundedRect(ctx, margin, margin, width - 2*margin, height - 2*margin, 18);
   ctx.stroke();
 
-  // petites couronnes aux coins
+  // petites couronnes aux coins (utilise Twemoji 👑 pour un rendu fiable)
   ctx.fillStyle = ctx.strokeStyle;
   setFont(ctx, '700 34px');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('♕', margin + 18, margin + 18);
+  await drawTextWithEmoji(ctx, '👑', margin + 18, margin + 18, 'left', 'top', 34);
   ctx.textAlign = 'right';
-  ctx.fillText('♕', width - margin - 18, margin + 18);
+  await drawTextWithEmoji(ctx, '👑', width - margin - 18, margin + 18, 'right', 'top', 34);
 
   // Titre
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE NIVEAU';
-  const displayedTitle = isCertified ? `♕ ${baseTitle} ♕` : baseTitle;
+  const displayedTitle = isCertified ? `👑 ${baseTitle} 👑` : baseTitle;
   setFont(ctx, '800 96px');
   let titleSize = 96;
-  while (ctx.measureText(displayedTitle).width > width - 280 && titleSize > 48) {
+  while (measureTextWithEmoji(ctx, displayedTitle, titleSize) > width - 280 && titleSize > 48) {
     titleSize -= 2;
     setFont(ctx, `800 ${titleSize}px`);
   }
-  ctx.fillText(displayedTitle, width / 2, 70);
+  await drawTextWithEmoji(ctx, displayedTitle, width / 2, 70, 'center', 'top', titleSize);
 
   // Bloc central textes
   const maxW = Math.min(1200, width - 240);
@@ -207,20 +209,35 @@ async function renderLevelCardLandscape({
   setFont(ctx, '700 78px');
   y += fitAndDrawCentered(ctx, String(memberName || 'Nom du membre'), y, 700, 78, maxW) + 16;
 
-  // Sous-texte
-  ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '600 48px');
-  y += fitAndDrawCentered(ctx, 'vient de franchir un nouveau cap !', y, 600, 48, maxW) + 18;
+  if (isRoleAward) {
+    // Texte simplifié pour annonce de rôle
+    ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
+    setFont(ctx, '800 72px');
+    y += fitAndDrawCentered(ctx, 'Félicitations !', y, 800, 72, maxW) + 18;
 
-  // Niveau
-  ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '700 56px');
-  y += fitAndDrawCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, 700, 56, maxW) + 14;
+    ctx.fillStyle = goldGradient(ctx, 0, y, width, 56);
+    setFont(ctx, '700 56px');
+    y += fitAndDrawCentered(ctx, 'Tu as obtenue le rôle', y, 700, 56, maxW) + 14;
 
-  // Rôle obtenu
-  ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
-  setFont(ctx, '700 56px');
-  y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 56, maxW) + 26;
+    ctx.fillStyle = goldGradient(ctx, 0, y, width, 56);
+    setFont(ctx, '700 56px');
+    y += fitAndDrawCentered(ctx, `(${String(roleName || '—')})`, y, 700, 56, maxW) + 26;
+  } else {
+    // Sous-texte
+    ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
+    setFont(ctx, '600 48px');
+    y += fitAndDrawCentered(ctx, 'vient de franchir un nouveau cap !', y, 600, 48, maxW) + 18;
+
+    // Niveau
+    ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
+    setFont(ctx, '700 56px');
+    y += fitAndDrawCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, 700, 56, maxW) + 14;
+
+    // Rôle obtenu
+    ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
+    setFont(ctx, '700 56px');
+    y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 56, maxW) + 26;
+  }
 
   // Logo central (entre role obtenu et Félicitations)
   const logoSize = 240;
@@ -256,16 +273,18 @@ async function renderLevelCardLandscape({
     }
   }
 
-  // Félicitations
+  // Félicitations (seulement pour annonces de niveau)
   const congratsY = logoY + logoSize + 22;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillStyle = goldGradient(ctx, 0, congratsY, width, 50);
-  setFont(ctx, '800 78px');
-  ctx.fillText('Félicitations !', width/2, congratsY);
+  if (!isRoleAward) {
+    ctx.fillStyle = goldGradient(ctx, 0, congratsY, width, 50);
+    setFont(ctx, '800 78px');
+    ctx.fillText('Félicitations !', width/2, congratsY);
+  }
 
   // Baseline / slogan (with Twemoji)
-  const baseY = congratsY + 96;
+  const baseY = congratsY + (isRoleAward ? 0 : 96);
   ctx.fillStyle = goldGradient(ctx, 0, baseY, width, 40);
   let sizePx = 42;
   setFont(ctx, `700 ${sizePx}px`);

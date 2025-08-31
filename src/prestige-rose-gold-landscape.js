@@ -53,6 +53,7 @@ const EMOJI_URLS = {
   '💎': 'https://twemoji.maxcdn.com/v/latest/72x72/1f48e.png',
   '🔥': 'https://twemoji.maxcdn.com/v/latest/72x72/1f525.png',
   '🎉': 'https://twemoji.maxcdn.com/v/latest/72x72/1f389.png',
+  '👑': 'https://twemoji.maxcdn.com/v/latest/72x72/1f451.png',
 };
 
 const __twemojiCache = new Map();
@@ -147,6 +148,7 @@ async function renderPrestigeCardRoseGoldLandscape({
   lastRole,
   logoUrl,
   bgLogoUrl,
+  isRoleAward = false,
   width = 1600,
   height = 900,
 }) {
@@ -191,9 +193,9 @@ async function renderPrestigeCardRoseGoldLandscape({
   setSerif(ctx, '700', 32);
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
-  ctx.fillText('♕', m + 18, m + 18);
+  await drawTextWithEmoji(ctx, '👑', m + 18, m + 18, 'left', 'top', 32);
   ctx.textAlign = 'right';
-  ctx.fillText('♕', width - m - 18, m + 18);
+  await drawTextWithEmoji(ctx, '👑', width - m - 18, m + 18, 'right', 'top', 32);
 
   // Titre
   ctx.textAlign = 'center';
@@ -224,34 +226,64 @@ async function renderPrestigeCardRoseGoldLandscape({
     y += sz + 14;
   }
 
-  // Sous-texte
-  ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
-  {
-    const t = 'vient de franchir un nouveau cap !';
-    const sz = fitCentered(ctx, t, y, '600', 50, maxW);
-    setSerif(ctx, '600', sz);
-    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 14;
-  }
+  if (isRoleAward) {
+    // Texte simplifié pour annonce de rôle
+    ctx.fillStyle = roseGold(ctx, 0, y, width, 60);
+    {
+      const t = 'Félicitations !';
+      const sz = fitCentered(ctx, t, y, '800', 72, maxW);
+      setSerif(ctx, '800', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 18;
+    }
 
-  // Niveau
-  ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
-  {
-    const t = `Niveau atteint : ${Number(level || 0)}`;
-    const sz = fitCentered(ctx, t, y, '700', 58, maxW);
-    setSerif(ctx, '700', sz);
-    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 12;
-  }
+    ctx.fillStyle = roseGold(ctx, 0, y, width, 56);
+    {
+      const t = 'Tu as obtenue le rôle';
+      const sz = fitCentered(ctx, t, y, '700', 56, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 14;
+    }
 
-  // Distinction
-  ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
-  {
-    const t = `Dernière distinction : ${String(lastRole || '—')}`;
-    const sz = fitCentered(ctx, t, y, '700', 58, maxW);
-    setSerif(ctx, '700', sz);
-    await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 24;
+    ctx.fillStyle = roseGold(ctx, 0, y, width, 56);
+    {
+      const t = `(${String(lastRole || '—')})`;
+      const sz = fitCentered(ctx, t, y, '700', 56, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 24;
+    }
+  } else {
+    // Sous-texte
+    ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
+    {
+      const t = 'vient de franchir un nouveau cap !';
+      const sz = fitCentered(ctx, t, y, '600', 50, maxW);
+      setSerif(ctx, '600', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 14;
+    }
+
+    // Niveau
+    ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
+    {
+      const t = `Niveau atteint : ${Number(level || 0)}`;
+      const sz = fitCentered(ctx, t, y, '700', 58, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 12;
+    }
+
+    // Distinction
+    ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
+    {
+      const t = `Dernière distinction : ${String(lastRole || '—')}`;
+      const sz = fitCentered(ctx, t, y, '700', 58, maxW);
+      setSerif(ctx, '700', sz);
+      await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
+      y += sz + 24;
+    }
   }
 
   // Logo rond centré
@@ -276,46 +308,37 @@ async function renderPrestigeCardRoseGoldLandscape({
     } catch {}
   }
 
-  // Félicitations
+  // Félicitations (affiché uniquement pour annonce de niveau)
   const congratsY = logoY + logoSize + 22;
-  ctx.fillStyle = roseGold(ctx, 0, congratsY, width, 40);
-  setSerif(ctx, '800', 80);
-  await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
+  if (!isRoleAward) {
+    ctx.fillStyle = roseGold(ctx, 0, congratsY, width, 40);
+    setSerif(ctx, '800', 80);
+    await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
+  }
 
   // Ligne "élite"
-  const eliteY = congratsY + 86;
-  ctx.fillStyle = roseGold(ctx, 0, eliteY, width, 36);
-  setSerif(ctx, '700', 50);
-  fitCentered(ctx, 'Tu rejoins l’élite de Boys and Girls. 🔥', eliteY, '700', 50, maxW);
-
-  // Baseline finale + diamants
-  const baseY = eliteY + 68;
-  ctx.fillStyle = roseGold(ctx, 0, baseY, width, 30);
-  setSerif(ctx, '700', 42);
-  let base = 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES';
-  const line2 = 'ULTIMES';
-  const leftDiamond = '💎 ';
-  const rightDiamond = ' 💎';
-
-  // Ligne 1
-  let s1 = leftDiamond + base + rightDiamond;
-  while (measureTextWithEmoji(ctx, s1, __parseFontPx(ctx.font)) > width - 200) {
-    const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (cur <= 32) break;
-    setSerif(ctx, '700', cur - 2);
+  const eliteY = congratsY + (isRoleAward ? 0 : 86);
+  if (!isRoleAward) {
+    ctx.fillStyle = roseGold(ctx, 0, eliteY, width, 36);
+    setSerif(ctx, '700', 50);
+    fitCentered(ctx, 'Tu rejoins l’élite de Boys and Girls. 🔥', eliteY, '700', 50, maxW);
   }
-  await drawTextWithEmoji(ctx, s1, width/2, baseY, 'center', 'top', __parseFontPx(ctx.font));
 
-  // Ligne 2
-  const line2Y = baseY + 48;
-  setSerif(ctx, '700', 42);
-  let s2 = line2;
-  while (measureTextWithEmoji(ctx, s2, __parseFontPx(ctx.font)) > width - 260) {
-    const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (cur <= 28) break;
-    setSerif(ctx, '700', cur - 2);
+  // Baseline finale + diamants (une seule ligne comme demandé)
+  if (!isRoleAward) {
+    const baseY = eliteY + 68;
+    ctx.fillStyle = roseGold(ctx, 0, baseY, width, 30);
+    let base = '💎 continue ton ascension vers les récompenses ultimes 💎';
+    // taille de départ et ajustement au conteneur
+    let baseSize = 42;
+    setSerif(ctx, '700', baseSize);
+    while (measureTextWithEmoji(ctx, base, baseSize) > width - 200) {
+      baseSize -= 2;
+      if (baseSize <= 30) break;
+      setSerif(ctx, '700', baseSize);
+    }
+    await drawTextWithEmoji(ctx, base, width/2, baseY, 'center', 'top', baseSize);
   }
-  await drawTextWithEmoji(ctx, s2, width/2, line2Y, 'center', 'top', __parseFontPx(ctx.font));
 
   return canvas.toBuffer('image/png');
 }

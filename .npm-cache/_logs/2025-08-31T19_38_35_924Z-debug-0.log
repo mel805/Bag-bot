@@ -1,0 +1,235 @@
+0 verbose cli /home/ubuntu/.nvm/versions/node/v22.16.0/bin/node /home/ubuntu/.nvm/versions/node/v22.16.0/bin/npm
+1 info using npm@10.9.2
+2 info using node@v22.16.0
+3 silly config load:file:/home/ubuntu/.nvm/versions/node/v22.16.0/lib/node_modules/npm/npmrc
+4 silly config load:file:/workspace/.npmrc
+5 silly config load:file:/home/ubuntu/.npmrc
+6 silly config load:file:/home/ubuntu/.nvm/versions/node/v22.16.0/etc/npmrc
+7 verbose title npm ci
+8 verbose argv "ci" "--no-fund" "--no-audit" "--prefer-offline" "--cache" ".npm-cache"
+9 verbose logfile logs-max:10 dir:/workspace/.npm-cache/_logs/2025-08-31T19_38_35_924Z-
+10 verbose logfile /workspace/.npm-cache/_logs/2025-08-31T19_38_35_924Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 silly idealTree buildDeps
+14 silly reify moves {}
+15 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-win32-x64-msvc
+16 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-win32-x64-msvc' ]
+17 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-linux-riscv64-gnu
+18 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-linux-riscv64-gnu' ]
+19 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-linux-arm64-musl
+20 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-linux-arm64-musl' ]
+21 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-linux-arm64-gnu
+22 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-linux-arm64-gnu' ]
+23 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-linux-arm-gnueabihf
+24 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-linux-arm-gnueabihf' ]
+25 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-darwin-x64
+26 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-darwin-x64' ]
+27 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-darwin-arm64
+28 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-darwin-arm64' ]
+29 verbose reify failed optional dependency /workspace/node_modules/@napi-rs/canvas-android-arm64
+30 silly reify mark deleted [ '/workspace/node_modules/@napi-rs/canvas-android-arm64' ]
+31 http cache xtend@https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz 0ms (cache hit)
+32 http cache undici@https://registry.npmjs.org/undici/-/undici-6.21.3.tgz 0ms (cache hit)
+33 http cache ws@https://registry.npmjs.org/ws/-/ws-8.18.3.tgz 0ms (cache hit)
+34 http cache undici-types@https://registry.npmjs.org/undici-types/-/undici-types-7.10.0.tgz 0ms (cache hit)
+35 http cache ts-mixer@https://registry.npmjs.org/ts-mixer/-/ts-mixer-6.0.4.tgz 0ms (cache hit)
+36 http cache split2@https://registry.npmjs.org/split2/-/split2-4.2.0.tgz 0ms (cache hit)
+37 http cache postgres-interval@https://registry.npmjs.org/postgres-interval/-/postgres-interval-1.2.0.tgz 0ms (cache hit)
+38 http cache tslib@https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz 0ms (cache hit)
+39 http cache postgres-bytea@https://registry.npmjs.org/postgres-bytea/-/postgres-bytea-1.0.0.tgz 0ms (cache hit)
+40 http cache postgres-date@https://registry.npmjs.org/postgres-date/-/postgres-date-1.0.7.tgz 0ms (cache hit)
+41 http cache pgpass@https://registry.npmjs.org/pgpass/-/pgpass-1.0.5.tgz 0ms (cache hit)
+42 http cache postgres-array@https://registry.npmjs.org/postgres-array/-/postgres-array-2.0.0.tgz 0ms (cache hit)
+43 http cache pg-types@https://registry.npmjs.org/pg-types/-/pg-types-2.2.0.tgz 0ms (cache hit)
+44 http cache pg-pool@https://registry.npmjs.org/pg-pool/-/pg-pool-3.10.1.tgz 0ms (cache hit)
+45 http cache pg-int8@https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz 0ms (cache hit)
+46 http cache pg-connection-string@https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.9.1.tgz 0ms (cache hit)
+47 http cache pg-protocol@https://registry.npmjs.org/pg-protocol/-/pg-protocol-1.10.3.tgz 0ms (cache hit)
+48 http cache pg-cloudflare@https://registry.npmjs.org/pg-cloudflare/-/pg-cloudflare-1.2.7.tgz 0ms (cache hit)
+49 http cache pg@https://registry.npmjs.org/pg/-/pg-8.16.3.tgz 0ms (cache hit)
+50 http cache magic-bytes.js@https://registry.npmjs.org/magic-bytes.js/-/magic-bytes.js-1.12.1.tgz 0ms (cache hit)
+51 http cache lodash.snakecase@https://registry.npmjs.org/lodash.snakecase/-/lodash.snakecase-4.1.1.tgz 0ms (cache hit)
+52 http cache lodash@https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz 0ms (cache hit)
+53 http cache erela.js@https://registry.npmjs.org/erela.js/-/erela.js-2.4.0.tgz 0ms (cache hit)
+54 http cache fast-deep-equal@https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz 0ms (cache hit)
+55 http cache dotenv@https://registry.npmjs.org/dotenv/-/dotenv-16.6.1.tgz 0ms (cache hit)
+56 http cache discord-api-types@https://registry.npmjs.org/discord-api-types/-/discord-api-types-0.38.21.tgz 0ms (cache hit)
+57 http cache discord.js@https://registry.npmjs.org/discord.js/-/discord.js-14.22.1.tgz 0ms (cache hit)
+58 http cache @vladfrangu/async_event_emitter@https://registry.npmjs.org/@vladfrangu/async_event_emitter/-/async_event_emitter-2.4.6.tgz 0ms (cache hit)
+59 http cache @types/ws@https://registry.npmjs.org/@types/ws/-/ws-8.18.1.tgz 0ms (cache hit)
+60 http cache @types/node@https://registry.npmjs.org/@types/node/-/node-24.3.0.tgz 0ms (cache hit)
+61 http cache @sapphire/snowflake@https://registry.npmjs.org/@sapphire/snowflake/-/snowflake-3.5.3.tgz 0ms (cache hit)
+62 http cache @sapphire/shapeshift@https://registry.npmjs.org/@sapphire/shapeshift/-/shapeshift-4.0.0.tgz 0ms (cache hit)
+63 http cache @napi-rs/canvas-linux-x64-musl@https://registry.npmjs.org/@napi-rs/canvas-linux-x64-musl/-/canvas-linux-x64-musl-0.1.77.tgz 0ms (cache hit)
+64 http cache @napi-rs/canvas-linux-x64-gnu@https://registry.npmjs.org/@napi-rs/canvas-linux-x64-gnu/-/canvas-linux-x64-gnu-0.1.77.tgz 0ms (cache hit)
+65 http cache @sapphire/async-queue@https://registry.npmjs.org/@sapphire/async-queue/-/async-queue-1.5.5.tgz 0ms (cache hit)
+66 http cache @napi-rs/canvas@https://registry.npmjs.org/@napi-rs/canvas/-/canvas-0.1.77.tgz 0ms (cache hit)
+67 http cache @fastify/busboy@https://registry.npmjs.org/@fastify/busboy/-/busboy-2.1.1.tgz 0ms (cache hit)
+68 http cache @discordjs/ws@https://registry.npmjs.org/@discordjs/ws/-/ws-1.2.3.tgz 0ms (cache hit)
+69 http cache @discordjs/util@https://registry.npmjs.org/@discordjs/util/-/util-1.1.1.tgz 0ms (cache hit)
+70 http cache @discordjs/rest@https://registry.npmjs.org/@discordjs/rest/-/rest-2.6.0.tgz 0ms (cache hit)
+71 http cache @discordjs/collection@https://registry.npmjs.org/@discordjs/collection/-/collection-1.5.3.tgz 0ms (cache hit)
+72 http cache @discordjs/formatters@https://registry.npmjs.org/@discordjs/formatters/-/formatters-0.6.1.tgz 0ms (cache hit)
+73 http cache @discordjs/builders@https://registry.npmjs.org/@discordjs/builders/-/builders-1.11.3.tgz 0ms (cache hit)
+74 http cache undici@https://registry.npmjs.org/undici/-/undici-5.29.0.tgz 0ms (cache hit)
+75 http cache @discordjs/collection@https://registry.npmjs.org/@discordjs/collection/-/collection-2.1.1.tgz 0ms (cache hit)
+76 http cache @discordjs/collection@https://registry.npmjs.org/@discordjs/collection/-/collection-2.1.1.tgz 0ms (cache hit)
+77 silly tarball no local data for xtend@https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz. Extracting by manifest.
+78 silly tarball no local data for undici@https://registry.npmjs.org/undici/-/undici-6.21.3.tgz. Extracting by manifest.
+79 silly tarball no local data for ws@https://registry.npmjs.org/ws/-/ws-8.18.3.tgz. Extracting by manifest.
+80 silly tarball no local data for undici-types@https://registry.npmjs.org/undici-types/-/undici-types-7.10.0.tgz. Extracting by manifest.
+81 silly tarball no local data for ts-mixer@https://registry.npmjs.org/ts-mixer/-/ts-mixer-6.0.4.tgz. Extracting by manifest.
+82 silly tarball no local data for split2@https://registry.npmjs.org/split2/-/split2-4.2.0.tgz. Extracting by manifest.
+83 silly tarball no local data for postgres-interval@https://registry.npmjs.org/postgres-interval/-/postgres-interval-1.2.0.tgz. Extracting by manifest.
+84 silly tarball no local data for tslib@https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz. Extracting by manifest.
+85 silly tarball no local data for postgres-bytea@https://registry.npmjs.org/postgres-bytea/-/postgres-bytea-1.0.0.tgz. Extracting by manifest.
+86 silly tarball no local data for postgres-date@https://registry.npmjs.org/postgres-date/-/postgres-date-1.0.7.tgz. Extracting by manifest.
+87 silly tarball no local data for pgpass@https://registry.npmjs.org/pgpass/-/pgpass-1.0.5.tgz. Extracting by manifest.
+88 silly tarball no local data for postgres-array@https://registry.npmjs.org/postgres-array/-/postgres-array-2.0.0.tgz. Extracting by manifest.
+89 silly tarball no local data for pg-types@https://registry.npmjs.org/pg-types/-/pg-types-2.2.0.tgz. Extracting by manifest.
+90 silly tarball no local data for pg-pool@https://registry.npmjs.org/pg-pool/-/pg-pool-3.10.1.tgz. Extracting by manifest.
+91 silly tarball no local data for pg-int8@https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz. Extracting by manifest.
+92 silly tarball no local data for pg-connection-string@https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.9.1.tgz. Extracting by manifest.
+93 silly tarball no local data for pg-protocol@https://registry.npmjs.org/pg-protocol/-/pg-protocol-1.10.3.tgz. Extracting by manifest.
+94 silly tarball no local data for pg-cloudflare@https://registry.npmjs.org/pg-cloudflare/-/pg-cloudflare-1.2.7.tgz. Extracting by manifest.
+95 silly tarball no local data for pg@https://registry.npmjs.org/pg/-/pg-8.16.3.tgz. Extracting by manifest.
+96 silly tarball no local data for magic-bytes.js@https://registry.npmjs.org/magic-bytes.js/-/magic-bytes.js-1.12.1.tgz. Extracting by manifest.
+97 silly tarball no local data for lodash.snakecase@https://registry.npmjs.org/lodash.snakecase/-/lodash.snakecase-4.1.1.tgz. Extracting by manifest.
+98 silly tarball no local data for lodash@https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz. Extracting by manifest.
+99 silly tarball no local data for erela.js@https://registry.npmjs.org/erela.js/-/erela.js-2.4.0.tgz. Extracting by manifest.
+100 silly tarball no local data for fast-deep-equal@https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz. Extracting by manifest.
+101 silly tarball no local data for dotenv@https://registry.npmjs.org/dotenv/-/dotenv-16.6.1.tgz. Extracting by manifest.
+102 silly tarball no local data for discord-api-types@https://registry.npmjs.org/discord-api-types/-/discord-api-types-0.38.21.tgz. Extracting by manifest.
+103 silly tarball no local data for discord.js@https://registry.npmjs.org/discord.js/-/discord.js-14.22.1.tgz. Extracting by manifest.
+104 silly tarball no local data for @vladfrangu/async_event_emitter@https://registry.npmjs.org/@vladfrangu/async_event_emitter/-/async_event_emitter-2.4.6.tgz. Extracting by manifest.
+105 silly tarball no local data for @types/ws@https://registry.npmjs.org/@types/ws/-/ws-8.18.1.tgz. Extracting by manifest.
+106 silly tarball no local data for @types/node@https://registry.npmjs.org/@types/node/-/node-24.3.0.tgz. Extracting by manifest.
+107 silly tarball no local data for @sapphire/snowflake@https://registry.npmjs.org/@sapphire/snowflake/-/snowflake-3.5.3.tgz. Extracting by manifest.
+108 silly tarball no local data for @sapphire/shapeshift@https://registry.npmjs.org/@sapphire/shapeshift/-/shapeshift-4.0.0.tgz. Extracting by manifest.
+109 silly tarball no local data for @napi-rs/canvas-linux-x64-musl@https://registry.npmjs.org/@napi-rs/canvas-linux-x64-musl/-/canvas-linux-x64-musl-0.1.77.tgz. Extracting by manifest.
+110 silly tarball no local data for @napi-rs/canvas-linux-x64-gnu@https://registry.npmjs.org/@napi-rs/canvas-linux-x64-gnu/-/canvas-linux-x64-gnu-0.1.77.tgz. Extracting by manifest.
+111 silly tarball no local data for @sapphire/async-queue@https://registry.npmjs.org/@sapphire/async-queue/-/async-queue-1.5.5.tgz. Extracting by manifest.
+112 silly tarball no local data for @napi-rs/canvas@https://registry.npmjs.org/@napi-rs/canvas/-/canvas-0.1.77.tgz. Extracting by manifest.
+113 silly tarball no local data for @fastify/busboy@https://registry.npmjs.org/@fastify/busboy/-/busboy-2.1.1.tgz. Extracting by manifest.
+114 silly tarball no local data for @discordjs/ws@https://registry.npmjs.org/@discordjs/ws/-/ws-1.2.3.tgz. Extracting by manifest.
+115 silly tarball no local data for @discordjs/util@https://registry.npmjs.org/@discordjs/util/-/util-1.1.1.tgz. Extracting by manifest.
+116 silly tarball no local data for @discordjs/rest@https://registry.npmjs.org/@discordjs/rest/-/rest-2.6.0.tgz. Extracting by manifest.
+117 silly tarball no local data for @discordjs/collection@https://registry.npmjs.org/@discordjs/collection/-/collection-1.5.3.tgz. Extracting by manifest.
+118 silly tarball no local data for @discordjs/formatters@https://registry.npmjs.org/@discordjs/formatters/-/formatters-0.6.1.tgz. Extracting by manifest.
+119 silly tarball no local data for @discordjs/builders@https://registry.npmjs.org/@discordjs/builders/-/builders-1.11.3.tgz. Extracting by manifest.
+120 silly tarball no local data for undici@https://registry.npmjs.org/undici/-/undici-5.29.0.tgz. Extracting by manifest.
+121 silly tarball no local data for @discordjs/collection@https://registry.npmjs.org/@discordjs/collection/-/collection-2.1.1.tgz. Extracting by manifest.
+122 silly tarball no local data for @discordjs/collection@https://registry.npmjs.org/@discordjs/collection/-/collection-2.1.1.tgz. Extracting by manifest.
+123 http fetch GET 200 https://registry.npmjs.org/npm 124ms
+124 http fetch GET 200 https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz 116ms (cache miss)
+125 http fetch GET 200 https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.9.1.tgz 110ms (cache miss)
+126 http fetch GET 200 https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz 111ms (cache miss)
+127 http fetch GET 200 https://registry.npmjs.org/split2/-/split2-4.2.0.tgz 260ms (cache miss)
+128 http fetch GET 200 https://registry.npmjs.org/postgres-date/-/postgres-date-1.0.7.tgz 297ms (cache miss)
+129 http fetch GET 200 https://registry.npmjs.org/postgres-bytea/-/postgres-bytea-1.0.0.tgz 298ms (cache miss)
+130 http fetch GET 200 https://registry.npmjs.org/pg-cloudflare/-/pg-cloudflare-1.2.7.tgz 297ms (cache miss)
+131 http fetch GET 200 https://registry.npmjs.org/postgres-interval/-/postgres-interval-1.2.0.tgz 332ms (cache miss)
+132 http fetch GET 200 https://registry.npmjs.org/pgpass/-/pgpass-1.0.5.tgz 337ms (cache miss)
+133 http fetch GET 200 https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz 342ms (cache miss)
+134 http fetch GET 200 https://registry.npmjs.org/postgres-array/-/postgres-array-2.0.0.tgz 354ms (cache miss)
+135 http fetch GET 200 https://registry.npmjs.org/@types/ws/-/ws-8.18.1.tgz 356ms (cache miss)
+136 http fetch GET 200 https://registry.npmjs.org/lodash.snakecase/-/lodash.snakecase-4.1.1.tgz 359ms (cache miss)
+137 http fetch GET 200 https://registry.npmjs.org/pg-pool/-/pg-pool-3.10.1.tgz 369ms (cache miss)
+138 http fetch GET 200 https://registry.npmjs.org/ts-mixer/-/ts-mixer-6.0.4.tgz 378ms (cache miss)
+139 http fetch GET 200 https://registry.npmjs.org/@sapphire/async-queue/-/async-queue-1.5.5.tgz 375ms (cache miss)
+140 http fetch GET 200 https://registry.npmjs.org/magic-bytes.js/-/magic-bytes.js-1.12.1.tgz 383ms (cache miss)
+141 http fetch GET 200 https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz 386ms (cache miss)
+142 http fetch GET 200 https://registry.npmjs.org/pg-types/-/pg-types-2.2.0.tgz 388ms (cache miss)
+143 http fetch GET 200 https://registry.npmjs.org/@discordjs/formatters/-/formatters-0.6.1.tgz 384ms (cache miss)
+144 http fetch GET 200 https://registry.npmjs.org/@sapphire/snowflake/-/snowflake-3.5.3.tgz 388ms (cache miss)
+145 http fetch GET 200 https://registry.npmjs.org/@discordjs/collection/-/collection-2.1.1.tgz 386ms (cache miss)
+146 http fetch GET 200 https://registry.npmjs.org/@discordjs/collection/-/collection-2.1.1.tgz 387ms (cache miss)
+147 http fetch GET 200 https://registry.npmjs.org/@discordjs/util/-/util-1.1.1.tgz 389ms (cache miss)
+148 http fetch GET 200 https://registry.npmjs.org/@discordjs/collection/-/collection-1.5.3.tgz 392ms (cache miss)
+149 http fetch GET 200 https://registry.npmjs.org/dotenv/-/dotenv-16.6.1.tgz 400ms (cache miss)
+150 http fetch GET 200 https://registry.npmjs.org/erela.js/-/erela.js-2.4.0.tgz 402ms (cache miss)
+151 http fetch GET 200 https://registry.npmjs.org/pg/-/pg-8.16.3.tgz 413ms (cache miss)
+152 http fetch GET 200 https://registry.npmjs.org/@napi-rs/canvas/-/canvas-0.1.77.tgz 415ms (cache miss)
+153 http fetch GET 200 https://registry.npmjs.org/@vladfrangu/async_event_emitter/-/async_event_emitter-2.4.6.tgz 421ms (cache miss)
+154 http fetch GET 200 https://registry.npmjs.org/ws/-/ws-8.18.3.tgz 432ms (cache miss)
+155 http fetch GET 200 https://registry.npmjs.org/undici-types/-/undici-types-7.10.0.tgz 435ms (cache miss)
+156 http fetch GET 200 https://registry.npmjs.org/@fastify/busboy/-/busboy-2.1.1.tgz 436ms (cache miss)
+157 http fetch GET 200 https://registry.npmjs.org/pg-protocol/-/pg-protocol-1.10.3.tgz 452ms (cache miss)
+158 http fetch GET 200 https://registry.npmjs.org/@discordjs/ws/-/ws-1.2.3.tgz 460ms (cache miss)
+159 http fetch GET 200 https://registry.npmjs.org/@discordjs/builders/-/builders-1.11.3.tgz 462ms (cache miss)
+160 http fetch GET 200 https://registry.npmjs.org/@discordjs/rest/-/rest-2.6.0.tgz 469ms (cache miss)
+161 http fetch GET 200 https://registry.npmjs.org/@sapphire/shapeshift/-/shapeshift-4.0.0.tgz 519ms (cache miss)
+162 http fetch GET 200 https://registry.npmjs.org/@types/node/-/node-24.3.0.tgz 596ms (cache miss)
+163 http fetch GET 200 https://registry.npmjs.org/undici/-/undici-5.29.0.tgz 601ms (cache miss)
+164 http fetch GET 200 https://registry.npmjs.org/undici/-/undici-6.21.3.tgz 657ms (cache miss)
+165 http fetch GET 200 https://registry.npmjs.org/discord.js/-/discord.js-14.22.1.tgz 763ms (cache miss)
+166 http fetch GET 200 https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz 898ms (cache miss)
+167 http fetch GET 200 https://registry.npmjs.org/discord-api-types/-/discord-api-types-0.38.21.tgz 981ms (cache miss)
+168 http fetch GET 200 https://registry.npmjs.org/@napi-rs/canvas-linux-x64-gnu/-/canvas-linux-x64-gnu-0.1.77.tgz 1132ms (cache miss)
+169 http fetch GET 200 https://registry.npmjs.org/@napi-rs/canvas-linux-x64-musl/-/canvas-linux-x64-musl-0.1.77.tgz 1158ms (cache miss)
+170 silly ADD node_modules/xtend
+171 silly ADD node_modules/ws
+172 silly ADD node_modules/undici-types
+173 silly ADD node_modules/undici
+174 silly ADD node_modules/tslib
+175 silly ADD node_modules/ts-mixer
+176 silly ADD node_modules/split2
+177 silly ADD node_modules/postgres-interval
+178 silly ADD node_modules/postgres-date
+179 silly ADD node_modules/postgres-bytea
+180 silly ADD node_modules/postgres-array
+181 silly ADD node_modules/pgpass
+182 silly ADD node_modules/pg-types
+183 silly ADD node_modules/pg-protocol
+184 silly ADD node_modules/pg-pool
+185 silly ADD node_modules/pg-int8
+186 silly ADD node_modules/pg-connection-string
+187 silly ADD node_modules/pg-cloudflare
+188 silly ADD node_modules/pg
+189 silly ADD node_modules/magic-bytes.js
+190 silly ADD node_modules/lodash.snakecase
+191 silly ADD node_modules/lodash
+192 silly ADD node_modules/fast-deep-equal
+193 silly ADD node_modules/erela.js
+194 silly ADD node_modules/erela.js/node_modules/undici
+195 silly ADD node_modules/dotenv
+196 silly ADD node_modules/discord.js
+197 silly ADD node_modules/discord-api-types
+198 silly ADD node_modules/@vladfrangu/async_event_emitter
+199 silly ADD node_modules/@types/ws
+200 silly ADD node_modules/@types/node
+201 silly ADD node_modules/@sapphire/snowflake
+202 silly ADD node_modules/@sapphire/shapeshift
+203 silly ADD node_modules/@sapphire/async-queue
+204 silly ADD
+205 silly ADD node_modules/@napi-rs/canvas-linux-x64-musl
+206 silly ADD node_modules/@napi-rs/canvas-linux-x64-gnu
+207 silly ADD
+208 silly ADD
+209 silly ADD
+210 silly ADD
+211 silly ADD
+212 silly ADD
+213 silly ADD
+214 silly ADD node_modules/@napi-rs/canvas
+215 silly ADD node_modules/@fastify/busboy
+216 silly ADD node_modules/@discordjs/ws
+217 silly ADD node_modules/@discordjs/ws/node_modules/@discordjs/collection
+218 silly ADD node_modules/@discordjs/util
+219 silly ADD node_modules/@discordjs/rest
+220 silly ADD node_modules/@discordjs/rest/node_modules/@discordjs/collection
+221 silly ADD node_modules/@discordjs/formatters
+222 silly ADD node_modules/@discordjs/collection
+223 silly ADD node_modules/@discordjs/builders
+224 verbose cwd /workspace
+225 verbose os Linux 6.1.147
+226 verbose node v22.16.0
+227 verbose npm  v10.9.2
+228 notice
+228 notice New [31mmajor[39m version of npm available! [31m10.9.2[39m -> [34m11.5.2[39m
+228 notice Changelog: [34mhttps://github.com/npm/cli/releases/tag/v11.5.2[39m
+228 notice To update run: [4mnpm install -g npm@11.5.2[24m
+228 notice  { force: true, [Symbol(proc-log.meta)]: true }
+229 verbose exit 0
+230 info ok
