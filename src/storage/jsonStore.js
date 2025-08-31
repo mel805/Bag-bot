@@ -4,7 +4,12 @@ const path = require('path');
 require('dotenv').config();
 let Pool;
 try { ({ Pool } = require('pg')); } catch (_) { Pool = null; }
-const DATABASE_URL = process.env.DATABASE_URL || '';
+// Supporte plusieurs variables d'env pour la compat Heroku/Render/Fly
+const DATABASE_URL = process.env.DATABASE_URL
+  || process.env.POSTGRES_URL
+  || process.env.POSTGRESQL_URL
+  || process.env.PG_CONNECTION_STRING
+  || '';
 const USE_PG = !!(DATABASE_URL && Pool);
 let pgPool = null;
 async function getPg() {
@@ -34,6 +39,7 @@ async function ensureStorageExists() {
           } catch (_) { /* ignore, keep default */ }
           await client.query('INSERT INTO app_config (id, data) VALUES (1, $1)', [bootstrap]);
         }
+        try { console.log('[storage] Mode: postgres (table app_config prête)'); } catch (_) {}
         return; // DB OK
       } finally {
         client.release();
@@ -50,6 +56,7 @@ async function ensureStorageExists() {
     const initial = { guilds: {} };
     await fsp.writeFile(CONFIG_PATH, JSON.stringify(initial, null, 2), 'utf8');
   }
+  try { console.log('[storage] Mode: fichier JSON ->', CONFIG_PATH); } catch (_) {}
 }
 
 async function readConfig() {
@@ -78,6 +85,11 @@ async function readConfig() {
     if (!parsed.guilds || typeof parsed.guilds !== 'object') parsed.guilds = {};
     return parsed;
   } catch (_) {
+    // Si le fichier est manquant ou corrompu, on tente de régénérer
+    try {
+      await fsp.mkdir(DATA_DIR, { recursive: true });
+      await fsp.writeFile(CONFIG_PATH, JSON.stringify({ guilds: {} }, null, 2), 'utf8');
+    } catch (_) {}
     return { guilds: {} };
   }
 }
@@ -90,6 +102,9 @@ async function writeConfig(cfg) {
       const client = await pool.connect();
       try {
         await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [cfg]);
+        // Historical snapshots table (lightweight)
+        await client.query('CREATE TABLE IF NOT EXISTS app_config_history (id SERIAL PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+        await client.query('INSERT INTO app_config_history (data) VALUES ($1)', [cfg]);
       } finally {
         client.release();
       }
@@ -100,7 +115,27 @@ async function writeConfig(cfg) {
   try { await fsp.mkdir(DATA_DIR, { recursive: true }); } catch (_) {}
   const tmpPath = CONFIG_PATH + '.tmp';
   await fsp.writeFile(tmpPath, JSON.stringify(cfg, null, 2), 'utf8');
-  await fsp.rename(tmpPath, CONFIG_PATH);
+  try {
+    await fsp.rename(tmpPath, CONFIG_PATH);
+  } catch (e) {
+    // Sur certains FS (ex: overlay), rename atomique peut échouer: fallback sur write direct
+    try { await fsp.writeFile(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8'); }
+    catch (_) {}
+  }
+  // Rolling file backups: keep up to 5
+  try {
+    const backupsDir = path.join(DATA_DIR, 'backups');
+    await fsp.mkdir(backupsDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const dest = path.join(backupsDir, `config-${stamp}.json`);
+    await fsp.writeFile(dest, JSON.stringify(cfg, null, 2), 'utf8');
+    const entries = (await fsp.readdir(backupsDir)).filter(n => n.endsWith('.json')).sort();
+    if (entries.length > 5) {
+      for (const n of entries.slice(0, entries.length - 5)) {
+        try { await fsp.unlink(path.join(backupsDir, n)); } catch (_) {}
+      }
+    }
+  } catch (_) {}
 }
 
 async function getGuildConfig(guildId) {

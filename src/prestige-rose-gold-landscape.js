@@ -216,14 +216,14 @@ async function renderPrestigeCardRoseGoldLandscape({
   const maxW = Math.min(1200, width - 260);
   let y = 210;
 
-  // Nom membre
+  // Nom membre (aligné sur la carte défaut)
   ctx.fillStyle = roseGold(ctx, 0, y, width, 70);
   {
     const t = String(memberName || 'Membre');
     const sz = fitCentered(ctx, t, y, '700', 78, maxW);
     setSerif(ctx, '700', sz);
     await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
-    y += sz + 14;
+    y += sz + 16;
   }
 
   if (isRoleAward) {
@@ -316,23 +316,14 @@ async function renderPrestigeCardRoseGoldLandscape({
     await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
   }
 
-  // Ligne "élite"
-  const eliteY = congratsY + (isRoleAward ? 0 : 86);
+  // Baseline finale identique à la carte défaut (majuscule + diamants)
   if (!isRoleAward) {
-    ctx.fillStyle = roseGold(ctx, 0, eliteY, width, 36);
-    setSerif(ctx, '700', 50);
-    fitCentered(ctx, 'Tu rejoins l’élite de Boys and Girls. 🔥', eliteY, '700', 50, maxW);
-  }
-
-  // Baseline finale + diamants (une seule ligne comme demandé)
-  if (!isRoleAward) {
-    const baseY = eliteY + 68;
+    const baseY = congratsY + 86;
     ctx.fillStyle = roseGold(ctx, 0, baseY, width, 30);
-    let base = '💎 continue ton ascension vers les récompenses ultimes 💎';
-    // taille de départ et ajustement au conteneur
+    let base = '💎 CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES 💎';
     let baseSize = 42;
     setSerif(ctx, '700', baseSize);
-    while (measureTextWithEmoji(ctx, base, baseSize) > width - 200) {
+    while (measureTextWithEmoji(ctx, base, baseSize) > width - 180) {
       baseSize -= 2;
       if (baseSize <= 30) break;
       setSerif(ctx, '700', baseSize);

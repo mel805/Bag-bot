@@ -189,16 +189,16 @@ async function renderPrestigeCardBlueLandscape({
   ctx.fillStyle = blueGradient(ctx, 0, 0, width, 140);
   let titleSize = 100;
   setSerif(ctx, '800', titleSize);
-  while (ctx.measureText('ANNONCE DE NIVEAU').width > width - 260 && titleSize > 56) {
+  while (ctx.measureText('ANNONCE DE PRESTIGE').width > width - 260 && titleSize > 56) {
     titleSize -= 2;
     setSerif(ctx, '800', titleSize);
   }
   ctx.shadowColor = '#00000080';
   ctx.shadowBlur = 10;
-  await drawTextWithEmoji(ctx, 'ANNONCE DE NIVEAU', width/2, 72, 'center', 'top', titleSize);
+  await drawTextWithEmoji(ctx, 'ANNONCE DE PRESTIGE', width/2, 72, 'center', 'top', titleSize);
   ctx.shadowBlur = 0;
 
-  // Center block
+  // Center block (default reference sizes already used)
   const maxW = Math.min(1200, width - 260);
   let y = 210;
 
@@ -297,18 +297,18 @@ async function renderPrestigeCardBlueLandscape({
     await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
   }
 
-  // Baseline
+  // Baseline (inchangée mais harmonisée en logique de sizing)
   const baseY = congratsY + (isRoleAward ? 0 : 86);
   ctx.fillStyle = blueGradient(ctx, 0, baseY, width, 30);
-  setSerif(ctx, '700', 42);
-  const diamonds = '💎 ';
-  let base = `${diamonds}CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES${diamonds}`;
-  while (measureTextWithEmoji(ctx, base, __parseFontPx(ctx.font)) > width - 180) {
-    const cur = parseInt(ctx.font.match(/(\d+)px/)[1], 10);
-    if (cur <= 30) break;
-    setSerif(ctx, '700', cur - 2);
+  let baseSize = 42;
+  setSerif(ctx, '700', baseSize);
+  const base = '💎 CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES 💎';
+  while (measureTextWithEmoji(ctx, base, baseSize) > width - 180) {
+    baseSize -= 2;
+    if (baseSize <= 30) break;
+    setSerif(ctx, '700', baseSize);
   }
-  await drawTextWithEmoji(ctx, base, width/2, baseY, 'center', 'top', __parseFontPx(ctx.font));
+  await drawTextWithEmoji(ctx, base, width/2, baseY, 'center', 'top', baseSize);
 
   return canvas.toBuffer('image/png');
 }
