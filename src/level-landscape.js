@@ -67,6 +67,7 @@ async function renderLevelCardLandscape({
   level,
   roleName,
   logoUrl,
+  isCertified = false,
   width = 1600,
   height = 900,
 }) {
@@ -106,13 +107,14 @@ async function renderLevelCardLandscape({
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
+  const titleText = isCertified ? 'promotion prestige' : 'ANNONCE DE NIVEAU';
   setFont(ctx, '800 100px');
   let titleSize = 100;
-  while (ctx.measureText('promotion prestige').width > width - 260 && titleSize > 56) {
+  while (ctx.measureText(titleText).width > width - 260 && titleSize > 56) {
     titleSize -= 2;
     setFont(ctx, `800 ${titleSize}px`);
   }
-  ctx.fillText('promotion prestige', width / 2, 70);
+  ctx.fillText(titleText, width / 2, 70);
 
   // Bloc central textes
   const maxW = Math.min(1200, width - 240);
@@ -184,7 +186,9 @@ async function renderLevelCardLandscape({
   const baseY = congratsY + 96;
   ctx.fillStyle = goldGradient(ctx, 0, baseY, width, 40);
   setFont(ctx, '700 46px');
-  const baseline = 'continue ton ascension vers des récompenses ultimes';
+  const baseline = isCertified
+    ? 'continue ton ascension vers des récompenses ultimes'
+    : 'CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES';
   const left = '💎 ';
   const right = ' 💎';
   let text = left + baseline + right;
