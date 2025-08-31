@@ -1723,6 +1723,83 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
 
+    // Truth/Dare config handlers
+    if (interaction.isStringSelectMenu() && interaction.customId === 'td_mode') {
+      const mode = interaction.values[0];
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('td_channels_add:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      await addTdChannels(interaction.guild.id, interaction.values, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_channels_remove:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      await removeTdChannels(interaction.guild.id, interaction.values, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_add_action:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const modal = new ModalBuilder().setCustomId('td_prompts_add:action:' + mode).setTitle('Ajouter des ACTIONS');
+      const input = new TextInputBuilder().setCustomId('texts').setLabel('Une par ligne').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(2000);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_add_verite:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const modal = new ModalBuilder().setCustomId('td_prompts_add:verite:' + mode).setTitle('Ajouter des VÉRITÉS');
+      const input = new TextInputBuilder().setCustomId('texts').setLabel('Une par ligne').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(2000);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      try { return await interaction.showModal(modal); } catch (_) { return; }
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('td_prompts_add:')) {
+      const parts = interaction.customId.split(':');
+      const type = parts[1] || 'action';
+      const mode = parts[2] || 'sfw';
+      const textsRaw = (interaction.fields.getTextInputValue('texts')||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      if (textsRaw.length === 0) return interaction.reply({ content: 'Aucun texte fourni.', ephemeral: true });
+      await addTdPrompts(interaction.guild.id, type, textsRaw, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
+      return interaction.reply({ content: '✅ Ajouté.', ephemeral: true }).then(async ()=>{ try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows] }); } catch (_) {} });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete_all:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const ids = (td?.[mode]?.prompts || []).map(p => p.id);
+      await deleteTdPrompts(interaction.guild.id, ids, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const list = (td?.[mode]?.prompts || []);
+      const opts = list.slice(0, 25).map(p => ({ label: `#${p.id} ${String(p.text).slice(0,80)}`, value: String(p.id) }));
+      const select = new StringSelectMenuBuilder().setCustomId('td_prompts_delete_select:' + mode).setPlaceholder('Choisir des prompts à supprimer').setMinValues(1).setMaxValues(Math.max(1, opts.length||1));
+      if (opts.length) select.addOptions(...opts); else select.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+      const row = new ActionRowBuilder().addComponents(select);
+      try { return await interaction.reply({ content: 'Sélectionnez les prompts à supprimer', components: [row], ephemeral: true }); } catch (_) { return; }
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_prompts_delete_select:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      await deleteTdPrompts(interaction.guild.id, interaction.values, mode);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTruthDareRows(interaction.guild, mode);
+      try { await interaction.update({ content: '✅ Supprimé.', components: [] }); } catch (_) {}
+      try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
+      return;
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
       const page = interaction.customId.split(':')[1];
       const embed = await buildConfigEmbed(interaction.guild);
@@ -2659,6 +2736,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildBoutiqueRows(interaction.guild);
       return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
     }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'actionverite') {
+      try {
+        const td = await getTruthDareConfig(interaction.guild.id);
+        const chId = interaction.channel.id;
+        const isNSFW = Array.isArray(td?.nsfw?.channels) && td.nsfw.channels.includes(chId);
+        const isSFW = Array.isArray(td?.sfw?.channels) && td.sfw.channels.includes(chId);
+        if (!isNSFW && !isSFW) {
+          return interaction.reply({ content: '⛔ Ce salon n\'est pas autorisé pour Action/Vérité. Configurez-le dans /config → Action/Vérité.', ephemeral: true });
+        }
+        const mode = isNSFW ? 'nsfw' : 'sfw';
+        const list = (td[mode]?.prompts || []);
+        const hasAction = list.some(p => (p?.type||'').toLowerCase() === 'action');
+        const hasTruth = list.some(p => (p?.type||'').toLowerCase() === 'verite');
+        if (!hasAction && !hasTruth) {
+          return interaction.reply({ content: 'Aucun prompt configuré pour ce mode. Ajoutez-en dans /config → Action/Vérité.', ephemeral: true });
+        }
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('🎲 Action ou Vérité').setDescription('Choisissez votre destin…').setThumbnail(THEME_IMAGE).setTimestamp(new Date());
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
+          new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
+        );
+        return interaction.reply({ embeds: [embed], components: [row] });
+      } catch (_) {
+        return interaction.reply({ content: 'Erreur Action/Vérité.', ephemeral: true });
+      }
+    }
     // Lecteur manuel supprimé: UI s'ouvrira automatiquement au /play
     // Basic /play (join + search + play)
     if (interaction.isChatInputCommand() && interaction.commandName === 'play') {
@@ -3073,6 +3176,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
         } else if (id === 'music_vol_up') {
           try { const v = Math.min(200, (player.volume || 100) + 10); player.setVolume(v); } catch (_) {}
         }
+      } catch (_) {}
+      return;
+    }
+
+    // Truth/Dare game buttons
+    if (interaction.isButton() && interaction.customId.startsWith('td_game:')) {
+      try {
+        await interaction.deferUpdate().catch(()=>{});
+        const [, mode, type] = interaction.customId.split(':');
+        const td = await getTruthDareConfig(interaction.guild.id);
+        const list = (td?.[mode]?.prompts || []).filter(p => (p?.type||'').toLowerCase() === String(type||'').toLowerCase());
+        if (!list.length) {
+          try { await interaction.followUp({ content: 'Aucun prompt disponible.', ephemeral: true }); } catch (_) {}
+          return;
+        }
+        const pick = list[Math.floor(Math.random() * list.length)];
+        const title = type === 'action' ? '🫵 ACTION' : '🗣️ VÉRITÉ';
+        const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(String(pick.text||'—')).setTimestamp(new Date());
+        try { await interaction.followUp({ embeds: [embed] }); } catch (_) {}
       } catch (_) {}
       return;
     }
@@ -3709,6 +3831,42 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
     new ActionRowBuilder().addComponents(channelRemove),
     new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn, promptsDelAllBtn),
   ];
+}
+
+async function buildBoutiqueRows(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  const options = [];
+  // Items
+  for (const it of (eco.shop?.items || [])) {
+    const label = 'Objet: ' + (it.name || it.id) + ' — ' + (it.price||0);
+    options.push({ label, value: 'item:' + it.id });
+  }
+  // Roles
+  for (const r of (eco.shop?.roles || [])) {
+    const roleName = guild.roles.cache.get(r.roleId)?.name || r.name || r.roleId;
+    const dur = r.durationDays ? (r.durationDays + 'j') : 'permanent';
+    const label = 'Rôle: ' + roleName + ' — ' + (r.price||0) + ' (' + dur + ')';
+    options.push({ label, value: 'role:' + r.roleId + ':' + (r.durationDays||0) });
+  }
+  // Suites (private rooms)
+  if (eco.suites) {
+    const prices = eco.suites.prices || { day:0, week:0, month:0 };
+    const labels = [
+      { key:'day', name:'Suite privée (1j)' },
+      { key:'week', name:'Suite privée (7j)' },
+      { key:'month', name:'Suite privée (30j)' },
+    ];
+    for (const l of labels) {
+      const price = Number(prices[l.key]||0);
+      const label = (eco.suites.emoji || '💞') + ' ' + l.name + ' — ' + price;
+      options.push({ label, value: 'suite:' + l.key });
+    }
+  }
+  const select = new StringSelectMenuBuilder().setCustomId('boutique_select').setPlaceholder('Choisir un article…').setMinValues(1).setMaxValues(1);
+  if (options.length) select.addOptions(...options);
+  else select.addOptions({ label: 'Aucun article disponible', value: 'none' }).setDisabled(true);
+  const row = new ActionRowBuilder().addComponents(select);
+  return [row];
 }
 
 client.on(Events.GuildMemberAdd, async (member) => {
