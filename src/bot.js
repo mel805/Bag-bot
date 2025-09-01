@@ -111,38 +111,71 @@ function zoomForRadiusKm(radiusKm) {
 }
 async function fetchStaticMapBuffer(centerLat, centerLon, zoom, markerList, width = 800, height = 500) {
   const token = process.env.LOCATIONIQ_TOKEN || '';
-  if (!token) return null;
-  try {
-    let url = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(token)}&center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}&format=png`;
+  const liqUrl = (() => {
+    if (!token) return null;
+    let u = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(token)}&center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}&format=png`;
     const safeMarkers = Array.isArray(markerList) ? markerList : [];
     for (const m of safeMarkers) {
       const icon = m.icon || 'small-red-cutout';
       const lat = Number(m.lat);
       const lon = Number(m.lon);
       if (!isFinite(lat) || !isFinite(lon)) continue;
-      url += `&markers=icon:${encodeURIComponent(icon)}|${encodeURIComponent(String(lat))},${encodeURIComponent(String(lon))}`;
+      u += `&markers=icon:${encodeURIComponent(icon)}|${encodeURIComponent(String(lat))},${encodeURIComponent(String(lon))}`;
     }
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const ab = await r.arrayBuffer();
-    return Buffer.from(ab);
-  } catch (_) {
-    return null;
-  }
+    return u;
+  })();
+  const osmUrl = (() => {
+    // Fallback provider (no token required)
+    let u = `https://staticmap.openstreetmap.de/staticmap.php?center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}`;
+    const safeMarkers = Array.isArray(markerList) ? markerList : [];
+    for (const m of safeMarkers) {
+      const lat = Number(m.lat);
+      const lon = Number(m.lon);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      const style = (m.icon && String(m.icon).includes('blue')) ? 'blue-pushpin' : 'red-pushpin';
+      u += `&markers=${encodeURIComponent(String(lat))},${encodeURIComponent(String(lon))},${encodeURIComponent(style)}`;
+    }
+    return u;
+  })();
+  const tryFetch = async (url) => {
+    if (!url) return null;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const ab = await r.arrayBuffer();
+      return Buffer.from(ab);
+    } catch (_) { return null; }
+  };
+  // Try LocationIQ first, then OSM
+  const buf1 = await tryFetch(liqUrl);
+  if (buf1) return buf1;
+  return await tryFetch(osmUrl);
 }
 function buildStaticMapUrl(centerLat, centerLon, zoom, markerList, width = 800, height = 500) {
   const token = process.env.LOCATIONIQ_TOKEN || '';
-  if (!token) return null;
-  let url = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(token)}&center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}&format=png`;
+  if (token) {
+    let u = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(token)}&center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}&format=png`;
+    const safeMarkers = Array.isArray(markerList) ? markerList : [];
+    for (const m of safeMarkers) {
+      const icon = m.icon || 'small-red-cutout';
+      const lat = Number(m.lat);
+      const lon = Number(m.lon);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      u += `&markers=icon:${encodeURIComponent(icon)}|${encodeURIComponent(String(lat))},${encodeURIComponent(String(lon))}`;
+    }
+    return u;
+  }
+  // Fallback OSM URL if no token
+  let u = `https://staticmap.openstreetmap.de/staticmap.php?center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}`;
   const safeMarkers = Array.isArray(markerList) ? markerList : [];
   for (const m of safeMarkers) {
-    const icon = m.icon || 'small-red-cutout';
     const lat = Number(m.lat);
     const lon = Number(m.lon);
     if (!isFinite(lat) || !isFinite(lon)) continue;
-    url += `&markers=icon:${encodeURIComponent(icon)}|${encodeURIComponent(String(lat))},${encodeURIComponent(String(lon))}`;
+    const style = (m.icon && String(m.icon).includes('blue')) ? 'blue-pushpin' : 'red-pushpin';
+    u += `&markers=${encodeURIComponent(String(lat))},${encodeURIComponent(String(lon))},${encodeURIComponent(style)}`;
   }
-  return url;
+  return u;
 }
 require('dotenv').config();
 
