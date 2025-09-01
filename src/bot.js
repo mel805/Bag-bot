@@ -169,9 +169,24 @@ require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
-const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || './bag.png';
+// Fonction pour trouver le fichier logo (avec ou sans majuscule)
+function findLogoPath() {
+  const fs = require('fs');
+  const possiblePaths = ['./Bag.png', './bag.png', './BAG.png'];
+  for (const path of possiblePaths) {
+    if (fs.existsSync(path)) {
+      console.log('[Logo] Fichier logo trouvé:', path);
+      return path;
+    }
+  }
+  console.log('[Logo] Aucun fichier logo trouvé, utilisation du fallback');
+  return null;
+}
+
+const LOGO_PATH = findLogoPath();
+const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || LOGO_PATH;
 const CERTIFIED_ROSEGOLD = String(process.env.CERTIFIED_ROSEGOLD || 'false').toLowerCase() === 'true';
-const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || './bag.png';
+const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || LOGO_PATH;
 
 if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
