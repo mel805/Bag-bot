@@ -54,12 +54,14 @@ Sauvegarde/Restaurations manuelles
 - Snapshots: chaque écriture crée un backup dans `data/backups/` (conserve 5 derniers). En mode Postgres, une table `app_config_history` garde un historique minimal.
 
 Commandes dédiées
-- `/backup` (Admin): force un snapshot (Postgres: `app_config_history`, Fichier: `data/backups/config-*.json`) et renvoie le JSON courant en pièce jointe.
-- `/restore` (Admin): restaure la dernière sauvegarde disponible (Postgres: dernier `app_config_history`, sinon dernier fichier dans `data/backups/`).
+- `/backup` (Admin): force un snapshot local + GitHub, renvoie le JSON en pièce jointe. Logs détaillés envoyés dans le canal configuré.
+- `/restore` (Admin): restaure depuis GitHub (priorité), puis PostgreSQL, puis fichiers locaux. Logs détaillés de la source utilisée.
+- `/github-backup` (Admin): gestion avancée des sauvegardes GitHub (test, list, force-backup, force-restore).
 
 ### Enregistrement automatique des commandes (Render)
 - À chaque déploiement Render, le démarrage exécute `node src/deploy-commands.js` via `npm run render-start`.
-- Prérequis: définir `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` dans les variables d’environnement du service Render.
+- Prérequis: définir `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` dans les variables d'environnement du service Render.
+- **Sauvegarde GitHub** (optionnel): ajouter `GITHUB_TOKEN`, `GITHUB_REPO` pour la sauvegarde automatique sur GitHub.
 - Tolérance d’erreurs: l’étape d’enregistrement est encapsulée dans `(node src/deploy-commands.js || true)` pour ne pas bloquer le démarrage si une variable manque; consulter les logs Render pour le détail.
 - Déclenchement manuel: `npm run register` peut être utilisé localement ou dans un shell Render pour forcer la réinscription des commandes.
 
