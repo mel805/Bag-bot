@@ -130,25 +130,9 @@ const commands = [
     .toJSON(),
   new SlashCommandBuilder()
     .setName('restore')
-    .setDescription('Admin: restaurer la configuration depuis un JSON')
+    .setDescription('Admin: restaurer la dernière sauvegarde disponible')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
-    .addAttachmentOption(o=>o.setName('fichier').setDescription('Fichier JSON de config').setRequired(false))
-    .addStringOption(o=>o.setName('json').setDescription('Contenu JSON brut (optionnel)').setRequired(false))
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('backuplow')
-    .setDescription('Admin: exporter la configuration complète en JSON')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('restorelow')
-    .setDescription('Admin: restaurer la configuration depuis un JSON')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .setDMPermission(false)
-    .addAttachmentOption(o=>o.setName('fichier').setDescription('Fichier JSON de config').setRequired(false))
-    .addStringOption(o=>o.setName('json').setDescription('Contenu JSON brut (optionnel)').setRequired(false))
     .toJSON(),
   new SlashCommandBuilder()
     .setName('map')

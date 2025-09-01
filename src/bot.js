@@ -3541,41 +3541,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Admin-only: /restore (import config ou restaurer dernier snapshot)
+    // Admin-only: /restore (restaure le dernier snapshot disponible)
     if (interaction.isChatInputCommand() && interaction.commandName === 'restore') {
       try {
         const ok = await isStaffMember(interaction.guild, interaction.member);
         if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
         await interaction.deferReply({ ephemeral: true });
-        const att = interaction.options.getAttachment('fichier');
-        const raw = interaction.options.getString('json');
-        let text = '';
-        if (att && att.url) {
-          try { const r = await fetch(att.url); text = await r.text(); } catch (_) {}
-        }
-        if (!text && raw && raw.trim()) text = raw.trim();
-        if (!text) {
-          const { restoreLatest } = require('./storage/jsonStore');
-          const result = await restoreLatest();
-          try {
-            const lc = await getLogsConfig(interaction.guild.id);
-            const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration depuis dernier snapshot`, [ { name: 'Source', value: String(result?.source||'inconnue') }, { name: 'Auteur', value: `${interaction.user}` } ]);
-            await sendLog(interaction.guild, 'backup', em);
-          } catch (_) {}
-          return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
-        }
-        let parsed = null;
-        try { parsed = JSON.parse(text); } catch (_) { return interaction.editReply({ content: 'JSON invalide.' }); }
-        if (!parsed || typeof parsed !== 'object' || !parsed.guilds) return interaction.editReply({ content: 'Format inattendu: champ "guilds" manquant.' });
-        const { writeConfig } = require('./storage/jsonStore');
-        await writeConfig(parsed);
+        const { restoreLatest } = require('./storage/jsonStore');
+        const result = await restoreLatest();
         try {
           const lc = await getLogsConfig(interaction.guild.id);
-          const method = att && att.url ? 'fichier' : 'texte';
-          const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration config — méthode: ${method}`, [ { name: 'Auteur', value: `${interaction.user}` } ]);
+          const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration depuis dernier snapshot`, [ { name: 'Source', value: String(result?.source||'inconnue') }, { name: 'Auteur', value: `${interaction.user}` } ]);
           await sendLog(interaction.guild, 'backup', em);
         } catch (_) {}
-        return interaction.editReply({ content: '✅ Restauration effectuée.' });
+        return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
       } catch (e) {
         try {
           const lc = await getLogsConfig(interaction.guild.id);

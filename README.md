@@ -55,9 +55,7 @@ Sauvegarde/Restaurations manuelles
 
 Commandes dédiées
 - `/backup` (Admin): force un snapshot (Postgres: `app_config_history`, Fichier: `data/backups/config-*.json`) et renvoie le JSON courant en pièce jointe.
-- `/restore` (Admin):
-  - Avec fichier ou texte JSON: remplace la config par le contenu fourni.
-  - Sans argument: restaure la dernière sauvegarde disponible (Postgres: dernier `app_config_history`, sinon dernier fichier dans `data/backups/`).
+- `/restore` (Admin): restaure la dernière sauvegarde disponible (Postgres: dernier `app_config_history`, sinon dernier fichier dans `data/backups/`).
 
 ### Enregistrement automatique des commandes (Render)
 - À chaque déploiement Render, le démarrage exécute `node src/deploy-commands.js` via `npm run render-start`.
