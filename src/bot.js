@@ -2191,13 +2191,13 @@ async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
   const allKeys = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
-  // Paginons si > 25 options
+  // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
   for (let i = 0; i < opts.length; i += 25) {
     const chunk = opts.slice(i, i + 25);
     const pick = new StringSelectMenuBuilder()
-      .setCustomId('economy_gifs_action')
-      .setPlaceholder('Choisir une action…')
+      .setCustomId(`economy_gifs_action_${Math.floor(i / 25)}`)
+      .setPlaceholder(`Choisir une action… (${Math.floor(i / 25) + 1}/${Math.ceil(opts.length / 25)})`)
       .addOptions(...chunk);
     rows.push(new ActionRowBuilder().addComponents(pick));
   }
@@ -4250,7 +4250,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'economy_gifs_action') {
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('economy_gifs_action')) {
       try {
         const key = interaction.values[0];
         const embed = await buildConfigEmbed(interaction.guild);
