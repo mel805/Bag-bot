@@ -2278,7 +2278,7 @@ client.once(Events.ClientReady, (readyClient) => {
   }
   // Init Erela.js (if available) with multiple fallback nodes
   try {
-    if (ErelaManager) {
+    if (ErelaManager && process.env.ENABLE_MUSIC !== 'false') {
       let nodes = [];
       try {
         if (process.env.LAVALINK_NODES) {
@@ -2307,35 +2307,47 @@ client.once(Events.ClientReady, (readyClient) => {
       // Add public fallback nodes if no nodes configured
       if (!nodes.length) {
         nodes = [
+          // Priorité 1: Nœud local si disponible
           {
-            identifier: 'lavalink-eu',
-            host: 'lavalink.devamop.in',
+            identifier: 'local-lavalink',
+            host: '127.0.0.1',
+            port: 2334,
+            password: process.env.LAVALINK_PASSWORD || 'youshallnotpass',
+            secure: false,
+            retryAmount: 2,
+            retryDelay: 5000
+          },
+          // Priorité 2: Serveurs publics stables avec timeouts réduits
+          {
+            identifier: 'lavalink-public-1',
+            host: 'lava-v3.ajieblogs.eu.org',
             port: 443,
-            password: 'DevamOP',
+            password: 'https://dsc.gg/ajidevserver',
             secure: true,
-            retryAmount: 5,
-            retryDelay: 30000
+            retryAmount: 2,
+            retryDelay: 10000
           },
           {
-            identifier: 'lavalink-us',
-            host: 'lavalink-us.devamop.in',
+            identifier: 'lavalink-public-2',
+            host: 'lavalink.oops.wtf',
             port: 443,
-            password: 'DevamOP',
+            password: 'www.freelavalink.ga',
             secure: true,
-            retryAmount: 5,
-            retryDelay: 30000
+            retryAmount: 2,
+            retryDelay: 10000
           },
+          // Priorité 3: Serveur de secours basique
           {
-            identifier: 'lavalink-backup',
+            identifier: 'lavalink-fallback',
             host: 'lava.link',
             port: 80,
             password: 'youshallnotpass',
             secure: false,
-            retryAmount: 3,
-            retryDelay: 20000
+            retryAmount: 1,
+            retryDelay: 15000
           }
         ];
-        console.log('[Music] No LAVALINK_NODES provided. Using public fallback nodes.');
+        console.log('[Music] No LAVALINK_NODES provided. Using updated fallback nodes with priority order.');
       }
       
       const manager = new ErelaManager({
@@ -2353,6 +2365,8 @@ client.once(Events.ClientReady, (readyClient) => {
       // Enhanced event handlers
       manager.on('nodeConnect', node => {
         console.log(`[Music] ✅ Node connected: ${node.options.identifier || node.options.host}:${node.options.port}`);
+        // Reset reconnect attempts on successful connection
+        node.reconnectAttempts = 0;
       });
       
       manager.on('nodeReconnect', node => {
@@ -2361,21 +2375,37 @@ client.once(Events.ClientReady, (readyClient) => {
       
       manager.on('nodeDisconnect', (node, reason) => {
         console.warn(`[Music] ❌ Node disconnected: ${node.options.identifier || node.options.host}:${node.options.port} - Reason: ${reason?.message || reason}`);
+        // Try to connect to next available node if this one fails
+        setTimeout(() => {
+          const availableNodes = Array.from(client.music.nodes.values()).filter(n => n.connected);
+          if (availableNodes.length === 0) {
+            console.log('[Music] 🔄 All nodes disconnected, attempting to reconnect to any available node...');
+          }
+        }, 1000);
       });
       
       manager.on('nodeError', (node, err) => {
         console.error(`[Music] 💥 Node error: ${node.options.identifier || node.options.host}:${node.options.port} - ${err?.message || err}`);
-        // Try to reconnect after error
+        // Try to reconnect after error with exponential backoff
+        const reconnectDelay = Math.min(30000, (node.reconnectAttempts || 0) * 5000 + 5000);
+        node.reconnectAttempts = (node.reconnectAttempts || 0) + 1;
+        
+        // Stop trying after 10 attempts to prevent infinite loops
+        if (node.reconnectAttempts > 10) {
+          console.error(`[Music] 🚫 Node ${node.options.identifier} disabled after 10 failed attempts`);
+          return;
+        }
+        
         setTimeout(() => {
           try {
             if (!node.connected) {
-              console.log(`[Music] 🔄 Attempting to reconnect node: ${node.options.identifier || node.options.host}`);
+              console.log(`[Music] 🔄 Attempting to reconnect node: ${node.options.identifier} (attempt ${node.reconnectAttempts})`);
               node.connect();
             }
           } catch (e) {
             console.error(`[Music] Failed to reconnect node: ${e?.message || e}`);
           }
-        }, 5000);
+        }, reconnectDelay);
       });
       
       manager.on('playerMove', (player, oldChannel, newChannel) => { 
@@ -2389,24 +2419,33 @@ client.once(Events.ClientReady, (readyClient) => {
       manager.init(client.user.id);
       client.on('raw', (d) => { try { client.music?.updateVoiceState(d); } catch (_) {} });
       
-      // Add periodic node health check
+      // Enhanced periodic node health check with intelligent reconnection
       setInterval(() => {
         try {
-          const connectedNodes = Array.from(client.music.nodes.values()).filter(n => n.connected);
-          const totalNodes = client.music.nodes.size;
+          const allNodes = Array.from(client.music.nodes.values());
+          const connectedNodes = allNodes.filter(n => n.connected);
+          const totalNodes = allNodes.length;
+          
           if (connectedNodes.length === 0 && totalNodes > 0) {
-            console.warn(`[Music] ⚠️  No nodes connected (0/${totalNodes}). Attempting reconnection...`);
-            client.music.nodes.forEach(node => {
-              if (!node.connected) {
+            console.warn(`[Music] ⚠️  No nodes connected (0/${totalNodes}). Attempting smart reconnection...`);
+            
+            // Try to connect nodes in priority order (local first, then public)
+            const priorityOrder = ['local-lavalink', 'lavalink-public-1', 'lavalink-public-2', 'lavalink-fallback'];
+            
+            for (const priority of priorityOrder) {
+              const node = allNodes.find(n => n.options.identifier === priority);
+              if (node && !node.connected && (node.reconnectAttempts || 0) < 5) {
                 try {
+                  console.log(`[Music] 🔄 Trying priority node: ${priority}`);
                   node.connect();
+                  break; // Only try one at a time
                 } catch (e) {
-                  console.error(`[Music] Failed to reconnect ${node.options.identifier}: ${e?.message || e}`);
+                  console.error(`[Music] Failed to connect ${priority}: ${e?.message || e}`);
                 }
               }
-            });
-          } else if (connectedNodes.length < totalNodes) {
-            console.log(`[Music] 📊 Node status: ${connectedNodes.length}/${totalNodes} connected`);
+            }
+          } else if (connectedNodes.length > 0) {
+            console.log(`[Music] 📊 Node status: ${connectedNodes.length}/${totalNodes} connected (${connectedNodes.map(n => n.options.identifier).join(', ')})`);
           }
         } catch (e) {
           console.error(`[Music] Health check error: ${e?.message || e}`);
