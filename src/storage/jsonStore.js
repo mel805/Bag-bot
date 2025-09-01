@@ -138,6 +138,82 @@ async function writeConfig(cfg) {
   } catch (_) {}
 }
 
+// Force a snapshot of current state into the configured storage
+async function backupNow() {
+  const cfg = await readConfig();
+  await writeConfig(cfg);
+  const info = { storage: USE_PG ? 'postgres' : 'file', backupFile: null, historyId: null };
+  if (USE_PG) {
+    try {
+      const pool = await getPg();
+      const client = await pool.connect();
+      try {
+        await client.query('CREATE TABLE IF NOT EXISTS app_config_history (id SERIAL PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+        const { rows } = await client.query('SELECT id FROM app_config_history ORDER BY id DESC LIMIT 1');
+        info.historyId = rows?.[0]?.id || null;
+      } finally {
+        client.release();
+      }
+    } catch (_) {}
+  } else {
+    try {
+      const backupsDir = path.join(DATA_DIR, 'backups');
+      const entries = (await fsp.readdir(backupsDir)).filter(n => n.endsWith('.json')).sort();
+      if (entries.length) info.backupFile = path.join(backupsDir, entries[entries.length - 1]);
+    } catch (_) {}
+  }
+  return info;
+}
+
+// Restore the latest snapshot (Postgres history or latest file backup)
+async function restoreLatest() {
+  if (USE_PG) {
+    const pool = await getPg();
+    const client = await pool.connect();
+    try {
+      await client.query('CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+      await client.query('CREATE TABLE IF NOT EXISTS app_config_history (id SERIAL PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+      let data = null;
+      try {
+        const { rows } = await client.query('SELECT data FROM app_config_history ORDER BY id DESC LIMIT 1');
+        data = rows?.[0]?.data || null;
+      } catch (_) {}
+      if (!data) {
+        const { rows } = await client.query('SELECT data FROM app_config WHERE id = 1');
+        data = rows?.[0]?.data || { guilds: {} };
+      }
+      await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [data]);
+      // Also rewrite local file for operational consistency
+      try {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        const tmp = CONFIG_PATH + '.tmp';
+        await fsp.writeFile(tmp, JSON.stringify(data, null, 2), 'utf8');
+        try { await fsp.rename(tmp, CONFIG_PATH); } catch (_) { await fsp.writeFile(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8'); }
+      } catch (_) {}
+      return { ok: true, source: 'postgres' };
+    } finally {
+      client.release();
+    }
+  }
+  // File mode
+  let data = null;
+  try {
+    const backupsDir = path.join(DATA_DIR, 'backups');
+    const entries = (await fsp.readdir(backupsDir)).filter(n => n.endsWith('.json')).sort();
+    if (entries.length) {
+      const latest = path.join(backupsDir, entries[entries.length - 1]);
+      const raw = await fsp.readFile(latest, 'utf8');
+      data = JSON.parse(raw);
+    }
+  } catch (_) {}
+  if (!data) {
+    try { const raw = await fsp.readFile(CONFIG_PATH, 'utf8'); data = JSON.parse(raw); }
+    catch (_) { data = { guilds: {} }; }
+  }
+  await writeConfig(data);
+  return { ok: true, source: 'file' };
+}
+
 async function getGuildConfig(guildId) {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
@@ -828,6 +904,8 @@ module.exports = {
   // Moderation
   getWarns,
   addWarn,
+  backupNow,
+  restoreLatest,
   paths: { DATA_DIR, CONFIG_PATH },
 };
 
