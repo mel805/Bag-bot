@@ -4205,9 +4205,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const logoUrl = LEVEL_CARD_LOGO_URL || CERTIFIED_LOGO_URL || undefined;
         const isCertified = memberHasCertifiedRole(member, levels);
         const isFemale = memberHasFemaleRole(member, levels);
+        
+        // Calculer les informations de progression pour la barre circulaire
+        const xpSinceLevel = stats.xpSinceLevel || 0;
+        const xpRequiredForNextLevel = xpRequiredForNext(stats.level || 0, levels.levelCurve || { base: 100, factor: 1.2 });
+        
         let png;
         if (isCertified) {
-          png = await renderLevelCardLandscape({ memberName: name, level: stats.level, roleName: roleName || '—', logoUrl, isCertified: true });
+          png = await renderLevelCardLandscape({ 
+            memberName: name, 
+            level: stats.level, 
+            roleName: roleName || '—', 
+            logoUrl, 
+            isCertified: true,
+            xpSinceLevel,
+            xpRequiredForNext: xpRequiredForNextLevel
+          });
         } else if (isFemale) {
           png = await renderPrestigeCardRoseGoldLandscape({
             memberName: name,
@@ -4215,6 +4228,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             lastRole: roleName || '—',
             logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
             bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
+            xpSinceLevel,
+            xpRequiredForNext: xpRequiredForNextLevel
           });
         } else {
           png = await renderPrestigeCardBlueLandscape({
@@ -4223,6 +4238,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             lastRole: roleName || '—',
             logoUrl: LEVEL_CARD_LOGO_URL || undefined,
             bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
+            xpSinceLevel,
+            xpRequiredForNext: xpRequiredForNextLevel
           });
         }
         const mention = targetUser && targetUser.id !== interaction.user.id ? `<@${targetUser.id}>` : '';

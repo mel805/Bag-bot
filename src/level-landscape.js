@@ -51,6 +51,49 @@ function fitAndDrawCentered(ctx, text, y, weight, startSize, maxWidth) {
   return size;
 }
 
+/**
+ * Dessine une barre de progression circulaire autour d'un point central
+ * @param {CanvasRenderingContext2D} ctx 
+ * @param {number} centerX Centre X
+ * @param {number} centerY Centre Y
+ * @param {number} radius Rayon du cercle de progression
+ * @param {number} progress Progression (0.0 à 1.0)
+ * @param {number} strokeWidth Épaisseur du trait
+ * @param {string} backgroundColor Couleur de fond du cercle
+ * @param {string} progressColor Couleur de la progression
+ */
+function drawCircularProgress(ctx, centerX, centerY, radius, progress, strokeWidth = 8, backgroundColor = 'rgba(255,255,255,0.2)', progressColor = '#f8e7a1') {
+  // Fond du cercle de progression
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+  ctx.strokeStyle = backgroundColor;
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Progression (commence en haut et va dans le sens horaire)
+  if (progress > 0) {
+    ctx.beginPath();
+    const startAngle = -Math.PI / 2; // Commence en haut
+    const endAngle = startAngle + (2 * Math.PI * Math.min(1, Math.max(0, progress)));
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    
+    // Créer un gradient doré pour la progression
+    const progressGradient = ctx.createLinearGradient(
+      centerX - radius, centerY - radius,
+      centerX + radius, centerY + radius
+    );
+    progressGradient.addColorStop(0, '#f8e7a1');
+    progressGradient.addColorStop(0.5, '#d6b25e');
+    progressGradient.addColorStop(1, '#b98a3e');
+    
+    ctx.strokeStyle = progressGradient;
+    ctx.lineWidth = strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+}
+
 // Twemoji helpers for rendering colored emojis on Canvas
 const EMOJI_URLS = {
   '💎': 'https://twemoji.maxcdn.com/v/latest/72x72/1f48e.png',
@@ -153,6 +196,8 @@ async function renderLevelCardLandscape({
   isRoleAward = false,
   width = 1600,
   height = 900,
+  xpSinceLevel = 0,
+  xpRequiredForNext = 100,
 }) {
   console.log('[LevelCard] Génération carte niveau:', { memberName, level, roleName, logoUrl, isCertified, isRoleAward });
   const canvas = createCanvas(width, height);
@@ -242,47 +287,104 @@ async function renderLevelCardLandscape({
     y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 58, maxW) + 24;
   }
 
-  // Logo central (entre role obtenu et Félicitations)
+  // Logo central (bag.png) avec barre de progression circulaire
   const logoSize = 210;
   const logoY = y;
-  if (logoUrl) {
+  const centerX = width / 2;
+  const centerY = logoY + logoSize / 2;
+  const progressRadius = logoSize / 2 + 20;
+  
+  // Calculer la progression (0.0 à 1.0)
+  const progress = xpRequiredForNext > 0 ? Math.min(1, Math.max(0, xpSinceLevel / xpRequiredForNext)) : 0;
+  
+  // Dessiner la barre de progression circulaire
+  drawCircularProgress(ctx, centerX, centerY, progressRadius, progress, 12, 'rgba(248,231,161,0.2)');
+  
+  // Essayer de charger le logo bag.png
+  let bagLogoLoaded = false;
+  const bagPaths = ['./bag.png', './Bag.png', './BAG.png'];
+  
+  for (const bagPath of bagPaths) {
     try {
-      console.log('[LevelCard] Tentative de chargement du logo:', logoUrl);
-      const img = await loadImage(logoUrl);
-      console.log('[LevelCard] Logo chargé avec succès, dimensions:', img.width, 'x', img.height);
-      // anneau doré
+      console.log('[LevelCard] Tentative de chargement du logo bag:', bagPath);
+      const bagImg = await loadImage(bagPath);
+      console.log('[LevelCard] Logo bag chargé avec succès, dimensions:', bagImg.width, 'x', bagImg.height);
+      
+      // Anneau doré autour du logo
       ctx.beginPath();
-      ctx.arc(width/2, logoY + logoSize/2, logoSize/2 + 10, 0, Math.PI*2);
+      ctx.arc(centerX, centerY, logoSize/2 + 6, 0, Math.PI*2);
       ctx.strokeStyle = goldGradient(ctx, width/2 - logoSize/2, logoY, logoSize, logoSize);
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 4;
       ctx.stroke();
 
+      // Afficher le logo bag dans un cercle
       ctx.save();
       ctx.beginPath();
-      ctx.arc(width/2, logoY + logoSize/2, logoSize/2, 0, Math.PI*2);
+      ctx.arc(centerX, centerY, logoSize/2, 0, Math.PI*2);
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(img, width/2 - logoSize/2, logoY, logoSize, logoSize);
+      ctx.drawImage(bagImg, centerX - logoSize/2, logoY, logoSize, logoSize);
       ctx.restore();
-      console.log('[LevelCard] Logo affiché avec succès');
+      
+      bagLogoLoaded = true;
+      console.log('[LevelCard] Logo bag affiché avec succès');
+      break;
     } catch (error) {
-      console.error('[LevelCard] Erreur lors du chargement du logo:', error.message);
-      console.log('[LevelCard] URL du logo qui a échoué:', logoUrl);
-      // fallback rond doré
+      console.log('[LevelCard] Impossible de charger:', bagPath, error.message);
+      continue;
+    }
+  }
+  
+  // Si aucun logo bag n'a été chargé, essayer le logoUrl fourni ou utiliser un fallback
+  if (!bagLogoLoaded) {
+    if (logoUrl) {
+      try {
+        console.log('[LevelCard] Tentative de chargement du logo fourni:', logoUrl);
+        const img = await loadImage(logoUrl);
+        console.log('[LevelCard] Logo fourni chargé avec succès');
+        
+        // Anneau doré
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, logoSize/2 + 6, 0, Math.PI*2);
+        ctx.strokeStyle = goldGradient(ctx, width/2 - logoSize/2, logoY, logoSize, logoSize);
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, logoSize/2, 0, Math.PI*2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, centerX - logoSize/2, logoY, logoSize, logoSize);
+        ctx.restore();
+        console.log('[LevelCard] Logo fourni affiché avec succès');
+      } catch (error) {
+        console.error('[LevelCard] Erreur logo fourni:', error.message);
+        bagLogoLoaded = false;
+      }
+    }
+    
+    // Fallback final
+    if (!bagLogoLoaded && !logoUrl) {
+      console.log('[LevelCard] Utilisation du fallback BAG');
       ctx.beginPath();
-      ctx.arc(width/2, logoY + logoSize/2, logoSize/2, 0, Math.PI*2);
+      ctx.arc(centerX, centerY, logoSize/2, 0, Math.PI*2);
       ctx.fillStyle = goldGradient(ctx, width/2 - logoSize/2, logoY, logoSize, logoSize);
       ctx.fill();
       setFont(ctx, '800 72px');
       ctx.fillStyle = '#111';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('BAG', width/2, logoY + logoSize/2);
-      console.log('[LevelCard] Fallback BAG affiché');
+      ctx.fillText('BAG', centerX, centerY);
     }
-  } else {
-    console.log('[LevelCard] Aucune URL de logo fournie');
   }
+  
+  // Afficher le pourcentage de progression
+  ctx.fillStyle = goldGradient(ctx, centerX - 50, centerY + logoSize/2 + 35, 100, 30);
+  setFont(ctx, '600 28px');
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`${Math.round(progress * 100)}%`, centerX, centerY + logoSize/2 + 35);
 
   // Félicitations (seulement pour annonces de niveau)
   const congratsY = logoY + logoSize + 22;
