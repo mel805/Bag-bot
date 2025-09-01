@@ -8,17 +8,17 @@ services:
     startCommand: npm run render-start
     envVars:
       - key: DISCORD_TOKEN
-        value: ""
+        sync: false
       - key: CLIENT_ID
-        value: ""
+        sync: false
       - key: GUILD_ID
-        value: ""
+        sync: false
       - key: LOCATIONIQ_TOKEN
-        value: ""
+        sync: false
       - key: LEVEL_CARD_LOGO_URL
-        value: ""
+        sync: false
       - key: GITHUB_TOKEN
-        value: "ghs_x1Max6fBPQqrNhW9wQdXJUEm2MaFt14RcGlt"
+        sync: false
       - key: GITHUB_REPO
         value: "mel805/Bag-bot"
       - key: GITHUB_BACKUP_BRANCH
