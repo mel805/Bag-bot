@@ -700,6 +700,7 @@ function ensureCountingShape(g) {
   if (!c.state || typeof c.state !== 'object') c.state = { current: 0, lastUserId: '' };
   if (typeof c.state.current !== 'number') c.state.current = 0;
   if (typeof c.state.lastUserId !== 'string') c.state.lastUserId = '';
+  if (!Array.isArray(c.achievedNumbers)) c.achievedNumbers = [];
 }
 function ensureDisboardShape(g) {
   if (!g.disboard || typeof g.disboard !== 'object') g.disboard = {};
