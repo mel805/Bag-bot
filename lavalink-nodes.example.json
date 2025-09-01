@@ -1,0 +1,39 @@
+[
+  {
+    "identifier": "lavalink-eu-primary",
+    "host": "lavalink.devamop.in",
+    "port": 443,
+    "password": "DevamOP",
+    "secure": true,
+    "retryAmount": 5,
+    "retryDelay": 30000
+  },
+  {
+    "identifier": "lavalink-us-primary",
+    "host": "lavalink-us.devamop.in",
+    "port": 443,
+    "password": "DevamOP",
+    "secure": true,
+    "retryAmount": 5,
+    "retryDelay": 30000
+  },
+  {
+    "identifier": "lavalink-backup-1",
+    "host": "lava.link",
+    "port": 80,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 3,
+    "retryDelay": 20000
+  },
+  {
+    "identifier": "local-lavalink",
+    "host": "127.0.0.1",
+    "port": 2334,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 5,
+    "retryDelay": 30000,
+    "note": "Utilisé uniquement si ENABLE_LOCAL_LAVALINK=true"
+  }
+]
