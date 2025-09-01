@@ -1738,11 +1738,25 @@ async function buildEconomyKarmaRows(guild) {
   return [rowType, rowRules, rowActions];
 }
 
-async function buildAutoThreadRows(guild) {
+async function buildAutoThreadRows(guild, page = 0) {
   const cfg = await getAutoThreadConfig(guild.id);
-  const channelsAdd = new ChannelSelectMenuBuilder().setCustomId('autothread_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(5).addChannelTypes(ChannelType.GuildText);
-  const channelsRemove = new StringSelectMenuBuilder().setCustomId('autothread_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (cfg.channels||[]).length || 1)));
-  const opts = (cfg.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  const channelsAdd = new ChannelSelectMenuBuilder().setCustomId('autothread_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(25).addChannelTypes(ChannelType.GuildText);
+  
+  // Pagination pour la suppression si plus de 25 canaux
+  const allChannels = cfg.channels || [];
+  const pageSize = 25;
+  const totalPages = Math.ceil(allChannels.length / pageSize);
+  const startIndex = page * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, allChannels.length);
+  const channelsForPage = allChannels.slice(startIndex, endIndex);
+  
+  const channelsRemove = new StringSelectMenuBuilder()
+    .setCustomId(`autothread_channels_remove:${page}`)
+    .setPlaceholder(totalPages > 1 ? `Retirer des salons… (page ${page + 1}/${totalPages})` : 'Retirer des salons…')
+    .setMinValues(1)
+    .setMaxValues(Math.max(1, channelsForPage.length || 1));
+  
+  const opts = channelsForPage.map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
   if (opts.length) channelsRemove.addOptions(...opts); else channelsRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
   const naming = new StringSelectMenuBuilder().setCustomId('autothread_naming').setPlaceholder('Nom du fil…').addOptions(
     { label: 'Membre + numéro', value: 'member_num', default: cfg.naming?.mode === 'member_num' },
@@ -1758,12 +1772,46 @@ async function buildAutoThreadRows(guild) {
     { label: 'Illimité', value: 'max', default: cfg.archive?.policy === 'max' },
   );
   const customBtn = new ButtonBuilder().setCustomId('autothread_custom_pattern').setLabel(`Pattern: ${cfg.naming?.customPattern ? cfg.naming.customPattern.slice(0,20) : 'non défini'}`).setStyle(ButtonStyle.Secondary);
+  
   const rows = [
     new ActionRowBuilder().addComponents(channelsAdd),
     new ActionRowBuilder().addComponents(channelsRemove),
     new ActionRowBuilder().addComponents(naming),
     new ActionRowBuilder().addComponents(archive),
   ];
+  
+  // Ajouter les boutons de pagination si nécessaire
+  if (totalPages > 1) {
+    const prevBtn = new ButtonBuilder()
+      .setCustomId(`autothread_page:${Math.max(0, page - 1)}`)
+      .setLabel('◀ Précédent')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page === 0);
+    
+    const nextBtn = new ButtonBuilder()
+      .setCustomId(`autothread_page:${Math.min(totalPages - 1, page + 1)}`)
+      .setLabel('Suivant ▶')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page === totalPages - 1);
+    
+    const infoBtn = new ButtonBuilder()
+      .setCustomId('autothread_info')
+      .setLabel(`${allChannels.length} canaux configurés`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(true);
+    
+    rows.push(new ActionRowBuilder().addComponents(prevBtn, infoBtn, nextBtn));
+  } else if (allChannels.length > 0) {
+    // Afficher le nombre de canaux même sans pagination
+    const infoBtn = new ButtonBuilder()
+      .setCustomId('autothread_info')
+      .setLabel(`${allChannels.length} canaux configurés`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(true);
+    
+    rows.push(new ActionRowBuilder().addComponents(infoBtn));
+  }
+  
   if ((cfg.naming?.mode || 'member_num') === 'custom') {
     rows.push(new ActionRowBuilder().addComponents(customBtn));
   } else if ((cfg.naming?.mode || 'member_num') === 'nsfw') {
@@ -1771,6 +1819,7 @@ async function buildAutoThreadRows(guild) {
     const remBtn = new ButtonBuilder().setCustomId('autothread_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
     rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
   }
+  
   return rows;
 }
 
@@ -2360,7 +2409,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const rows = await buildConfessRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'autothread') {
-        const rows = await buildAutoThreadRows(interaction.guild);
+        const rows = await buildAutoThreadRows(interaction.guild, 0);
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'counting') {
         const rows = await buildCountingRows(interaction.guild);
@@ -3125,14 +3174,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildAutoThreadRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_channels_remove') {
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('autothread_channels_remove')) {
       if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const [, , , pageStr] = interaction.customId.split(':');
+      const currentPage = parseInt(pageStr) || 0;
       const cfg = await getAutoThreadConfig(interaction.guild.id);
       const remove = new Set(interaction.values.map(String));
       const next = (cfg.channels||[]).filter(id => !remove.has(String(id)));
       await updateAutoThreadConfig(interaction.guild.id, { channels: next });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildAutoThreadRows(interaction.guild);
+      // Recalculer la page après suppression
+      const newTotalPages = Math.ceil(next.length / 25);
+      const newPage = Math.min(currentPage, Math.max(0, newTotalPages - 1));
+      const rows = await buildAutoThreadRows(interaction.guild, newPage);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_naming') {
@@ -3203,6 +3257,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await setCountingState(interaction.guild.id, { current: 0, lastUserId: '' });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildCountingRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('autothread_page:')) {
+      const [, , pageStr] = interaction.customId.split(':');
+      const page = parseInt(pageStr) || 0;
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildAutoThreadRows(interaction.guild, page);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'autothread_nsfw_add') {
