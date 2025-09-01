@@ -67,6 +67,104 @@ async function getCachedImage(url) {
     return null;
   }
 }
+// Geocoding via LocationIQ and distance computations for /map, /proche, /localisation
+async function geocodeCityToCoordinates(cityQuery) {
+  const token = process.env.LOCATIONIQ_TOKEN || '';
+  if (!token) return null;
+  try {
+    const q = encodeURIComponent(String(cityQuery||'').trim());
+    if (!q) return null;
+    const endpoint = `https://eu1.locationiq.com/v1/search?key=${token}&q=${q}&format=json&limit=1&normalizecity=1&accept-language=fr`;
+    const r = await fetch(endpoint);
+    if (!r.ok) return null;
+    const arr = await r.json();
+    if (!Array.isArray(arr) || !arr.length) return null;
+    const it = arr[0] || {};
+    const lat = Number(it.lat || it.latitude || 0);
+    const lon = Number(it.lon || it.longitude || 0);
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    const display = String(it.display_name || it.address?.city || it.address?.town || it.address?.village || cityQuery).trim();
+    return { lat, lon, displayName: display };
+  } catch (_) {
+    return null;
+  }
+}
+function toRad(deg) {
+  return (deg * Math.PI) / 180;
+}
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.round(R * c);
+}
+function zoomForRadiusKm(radiusKm) {
+  if (radiusKm <= 20) return 11;
+  if (radiusKm <= 50) return 10;
+  if (radiusKm <= 100) return 9;
+  if (radiusKm <= 200) return 8;
+  if (radiusKm <= 400) return 7;
+  if (radiusKm <= 800) return 6;
+  return 5;
+}
+async function fetchStaticMapBuffer(centerLat, centerLon, zoom, markerList, width = 800, height = 500) {
+  const token = process.env.LOCATIONIQ_TOKEN || '';
+  const liqUrl = (() => {
+    if (!token) return null;
+    let u = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(token)}&center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}&format=png`;
+    const safe = Array.isArray(markerList) ? markerList.filter(m => isFinite(Number(m.lat)) && isFinite(Number(m.lon))) : [];
+    if (safe.length) {
+      const parts = safe.map(m => `icon:${encodeURIComponent(m.icon || 'small-red-cutout')}|${encodeURIComponent(String(Number(m.lat)))},${encodeURIComponent(String(Number(m.lon)))}`);
+      u += `&markers=${parts.join('|')}`;
+    }
+    return u;
+  })();
+  const osmUrl = (() => {
+    // Fallback provider (no token required)
+    let u = `https://staticmap.openstreetmap.de/staticmap.php?center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}`;
+    const safe = Array.isArray(markerList) ? markerList.filter(m => isFinite(Number(m.lat)) && isFinite(Number(m.lon))) : [];
+    if (safe.length) {
+      const parts = safe.map(m => `${encodeURIComponent(String(Number(m.lat)))},${encodeURIComponent(String(Number(m.lon)))},${encodeURIComponent((m.icon && String(m.icon).includes('blue')) ? 'blue-pushpin' : 'red-pushpin')}`);
+      u += `&markers=${parts.join('|')}`;
+    }
+    return u;
+  })();
+  const tryFetch = async (url) => {
+    if (!url) return null;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const ab = await r.arrayBuffer();
+      return Buffer.from(ab);
+    } catch (_) { return null; }
+  };
+  // Try LocationIQ first, then OSM
+  const buf1 = await tryFetch(liqUrl);
+  if (buf1) return buf1;
+  return await tryFetch(osmUrl);
+}
+function buildStaticMapUrl(centerLat, centerLon, zoom, markerList, width = 800, height = 500) {
+  const token = process.env.LOCATIONIQ_TOKEN || '';
+  if (token) {
+    let u = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(token)}&center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}&format=png`;
+    const safe = Array.isArray(markerList) ? markerList.filter(m => isFinite(Number(m.lat)) && isFinite(Number(m.lon))) : [];
+    if (safe.length) {
+      const parts = safe.map(m => `icon:${encodeURIComponent(m.icon || 'small-red-cutout')}|${encodeURIComponent(String(Number(m.lat)))},${encodeURIComponent(String(Number(m.lon)))}`);
+      u += `&markers=${parts.join('|')}`;
+    }
+    return u;
+  }
+  // Fallback OSM URL if no token
+  let u = `https://staticmap.openstreetmap.de/staticmap.php?center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}`;
+  const safe = Array.isArray(markerList) ? markerList.filter(m => isFinite(Number(m.lat)) && isFinite(Number(m.lon))) : [];
+  if (safe.length) {
+    const parts = safe.map(m => `${encodeURIComponent(String(Number(m.lat)))},${encodeURIComponent(String(Number(m.lon)))},${encodeURIComponent((m.icon && String(m.icon).includes('blue')) ? 'blue-pushpin' : 'red-pushpin')}`);
+    u += `&markers=${parts.join('|')}`;
+  }
+  return u;
+}
 require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
@@ -373,7 +471,7 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       const embed = buildEcoEmbed({ title: 'Vol réussi', description: desc, fields });
       if (imageUrl) embed.setImage(imageUrl);
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     } else {
       const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
       u.amount = Math.max(0, (u.amount||0) - lost);
@@ -1872,6 +1970,150 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const row = buildTopSectionRow();
       await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       return;
+    }
+
+    // Map: let a user set or view their city location
+    if (interaction.isChatInputCommand() && interaction.commandName === 'map') {
+      try {
+        const city = (interaction.options.getString('ville', true) || '').trim();
+        if (!process.env.LOCATIONIQ_TOKEN) return interaction.reply({ content: 'Service de géolocalisation indisponible. Configurez LOCATIONIQ_TOKEN.', ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        const hit = await geocodeCityToCoordinates(city);
+        if (!hit) return interaction.editReply({ content: 'Ville introuvable. Essayez: "Ville, Pays".' });
+        const stored = await setUserLocation(interaction.guild.id, interaction.user.id, hit.lat, hit.lon, hit.displayName);
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Localisation enregistrée')
+          .setDescription(`${interaction.user} → ${stored.city || hit.displayName}`)
+          .addFields(
+            { name: 'Latitude', value: String(stored.lat), inline: true },
+            { name: 'Longitude', value: String(stored.lon), inline: true },
+          )
+          .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+        let file = null;
+        const buf = await fetchStaticMapBuffer(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 600, 400);
+        if (buf) file = { attachment: buf, name: 'map.png' };
+        if (!file) {
+          const mapUrl = buildStaticMapUrl(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 800, 500);
+          if (mapUrl) embed.setImage(mapUrl);
+          return interaction.editReply({ embeds: [embed] });
+        }
+        embed.setImage('attachment://map.png');
+        return interaction.editReply({ embeds: [embed], files: [file] });
+      } catch (_) {
+        return interaction.reply({ content: 'Erreur géolocalisation.', ephemeral: true });
+      }
+    }
+
+    // Proche: list nearby members within a distance radius
+    if (interaction.isChatInputCommand() && interaction.commandName === 'proche') {
+      try {
+        if (!process.env.LOCATIONIQ_TOKEN) return interaction.reply({ content: 'Service de géolocalisation indisponible. Configurez LOCATIONIQ_TOKEN.', ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        const radius = Math.max(10, Math.min(1000, interaction.options.getInteger('distance') || 200));
+        const selfLoc = await getUserLocation(interaction.guild.id, interaction.user.id);
+        if (!selfLoc) return interaction.editReply('Définissez d\'abord votre ville avec `/map`');
+        const all = await getAllLocations(interaction.guild.id);
+        const entries = Object.entries(all).filter(([uid, loc]) => uid !== interaction.user.id && isFinite(loc?.lat) && isFinite(loc?.lon));
+        const withDist = await Promise.all(entries.map(async ([uid, loc]) => {
+          const km = haversineDistanceKm(selfLoc.lat, selfLoc.lon, Number(loc.lat), Number(loc.lon));
+          const mem = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(()=>null);
+          return { uid, member: mem, city: String(loc.city||'').trim(), km };
+        }));
+        const nearby = withDist.filter(x => x.km <= radius).sort((a,b)=>a.km-b.km).slice(0, 25);
+        const lines = nearby.length ? nearby.map(x => `${x.member ? x.member : `<@${x.uid}>`} — ${x.km} km${x.city?` • ${x.city}`:''}`).join('\n') : 'Aucun membre à proximité.';
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Membres proches')
+          .setDescription(lines)
+          .addFields({ name: 'Rayon', value: `${radius} km`, inline: true })
+          .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+        // Build markers: center user in blue, others in red
+        const markers = [{ lat: selfLoc.lat, lon: selfLoc.lon, icon: 'small-blue-cutout' }];
+        for (const x of nearby) markers.push({ lat: all[x.uid].lat, lon: all[x.uid].lon, icon: 'small-red-cutout' });
+        const z = zoomForRadiusKm(radius);
+        let file = null;
+        const buf = await fetchStaticMapBuffer(selfLoc.lat, selfLoc.lon, z, markers, 600, 400);
+        if (buf) file = { attachment: buf, name: 'nearby.png' };
+        if (!file) {
+          const mapUrl = buildStaticMapUrl(selfLoc.lat, selfLoc.lon, z, markers, 600, 400);
+          if (mapUrl) embed.setImage(mapUrl);
+          return interaction.editReply({ embeds: [embed] });
+        }
+        embed.setImage('attachment://nearby.png');
+        return interaction.editReply({ embeds: [embed], files: [file] });
+      } catch (_) {
+        return interaction.reply({ content: 'Erreur proximité.', ephemeral: true });
+      }
+    }
+
+    // Localisation: admin overview or per-member location
+    if (interaction.isChatInputCommand() && interaction.commandName === 'localisation') {
+      try {
+        const ok = await isStaffMember(interaction.guild, interaction.member);
+        if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        const target = interaction.options.getUser('membre');
+        if (target) {
+          const loc = await getUserLocation(interaction.guild.id, target.id);
+          if (!loc) return interaction.editReply({ content: `Aucune localisation connue pour ${target}.` });
+          const url = `https://www.openstreetmap.org/?mlat=${loc.lat}&mlon=${loc.lon}#map=10/${loc.lat}/${loc.lon}`;
+          const embed = new EmbedBuilder()
+            .setColor(THEME_COLOR_PRIMARY)
+            .setTitle('Localisation membre')
+            .setDescription(`${target} — ${loc.city || '—'}`)
+            .addFields(
+              { name: 'Latitude', value: String(loc.lat), inline: true },
+              { name: 'Longitude', value: String(loc.lon), inline: true },
+              { name: 'Carte', value: url }
+            )
+            .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+          let file = null;
+          const buf = await fetchStaticMapBuffer(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 600, 400);
+          if (buf) file = { attachment: buf, name: 'member.png' };
+          if (!file) {
+            const mapUrl = buildStaticMapUrl(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 600, 400);
+            if (mapUrl) embed.setImage(mapUrl);
+            return interaction.editReply({ embeds: [embed] });
+          }
+          embed.setImage('attachment://member.png');
+          return interaction.editReply({ embeds: [embed], files: [file] });
+        }
+        const all = await getAllLocations(interaction.guild.id);
+        const ids = Object.keys(all);
+        const lines = (await Promise.all(ids.slice(0, 25).map(async (uid) => {
+          const mem = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(()=>null);
+          const loc = all[uid];
+          const name = mem ? (mem.nickname || mem.user.username) : uid;
+          return `• ${name} — ${loc.city || `${loc.lat}, ${loc.lon}`}`;
+        })) ).join('\n') || '—';
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Localisations membres')
+          .setDescription(lines)
+          .addFields({ name: 'Total', value: String(ids.length), inline: true })
+          .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+        // Try to compute map center and show up to 25 markers
+        const points = ids.slice(0, 25).map(uid => ({ lat: Number(all[uid].lat), lon: Number(all[uid].lon) })).filter(p => isFinite(p.lat) && isFinite(p.lon));
+        if (points.length) {
+          const avgLat = points.reduce((s,p)=>s+p.lat,0)/points.length;
+          const avgLon = points.reduce((s,p)=>s+p.lon,0)/points.length;
+          const markers = points.map(p => ({ lat: p.lat, lon: p.lon, icon: 'small-red-cutout' }));
+          let file = null;
+          const buf = await fetchStaticMapBuffer(avgLat, avgLon, 5, markers, 600, 400);
+          if (buf) file = { attachment: buf, name: 'members.png' };
+          if (!file) {
+            const mapUrl = buildStaticMapUrl(avgLat, avgLon, 5, markers, 600, 400);
+            if (mapUrl) embed.setImage(mapUrl);
+            return interaction.editReply({ embeds: [embed] });
+          }
+          embed.setImage('attachment://members.png');
+          return interaction.editReply({ embeds: [embed], files: [file] });
+        }
+        return interaction.editReply({ embeds: [embed] });
+      } catch (_) {
+        return interaction.reply({ content: 'Erreur localisation.', ephemeral: true });
+      }
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
@@ -3541,41 +3783,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Admin-only: /restore (import config ou restaurer dernier snapshot)
+    // Admin-only: /restore (restaure le dernier snapshot disponible)
     if (interaction.isChatInputCommand() && interaction.commandName === 'restore') {
       try {
         const ok = await isStaffMember(interaction.guild, interaction.member);
         if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
         await interaction.deferReply({ ephemeral: true });
-        const att = interaction.options.getAttachment('fichier');
-        const raw = interaction.options.getString('json');
-        let text = '';
-        if (att && att.url) {
-          try { const r = await fetch(att.url); text = await r.text(); } catch (_) {}
-        }
-        if (!text && raw && raw.trim()) text = raw.trim();
-        if (!text) {
-          const { restoreLatest } = require('./storage/jsonStore');
-          const result = await restoreLatest();
-          try {
-            const lc = await getLogsConfig(interaction.guild.id);
-            const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration depuis dernier snapshot`, [ { name: 'Source', value: String(result?.source||'inconnue') }, { name: 'Auteur', value: `${interaction.user}` } ]);
-            await sendLog(interaction.guild, 'backup', em);
-          } catch (_) {}
-          return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
-        }
-        let parsed = null;
-        try { parsed = JSON.parse(text); } catch (_) { return interaction.editReply({ content: 'JSON invalide.' }); }
-        if (!parsed || typeof parsed !== 'object' || !parsed.guilds) return interaction.editReply({ content: 'Format inattendu: champ "guilds" manquant.' });
-        const { writeConfig } = require('./storage/jsonStore');
-        await writeConfig(parsed);
+        const { restoreLatest } = require('./storage/jsonStore');
+        const result = await restoreLatest();
         try {
           const lc = await getLogsConfig(interaction.guild.id);
-          const method = att && att.url ? 'fichier' : 'texte';
-          const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration config — méthode: ${method}`, [ { name: 'Auteur', value: `${interaction.user}` } ]);
+          const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration depuis dernier snapshot`, [ { name: 'Source', value: String(result?.source||'inconnue') }, { name: 'Auteur', value: `${interaction.user}` } ]);
           await sendLog(interaction.guild, 'backup', em);
         } catch (_) {}
-        return interaction.editReply({ content: '✅ Restauration effectuée.' });
+        return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
       } catch (e) {
         try {
           const lc = await getLogsConfig(interaction.guild.id);
@@ -4235,6 +4456,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
 **Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}
 **Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}
 `,
+      });
+      return interaction.reply({ embeds: [embed] });
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      const embed = buildEcoEmbed({
+        title: 'Votre économie',
+        description: `\n**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}\n**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}\n`,
       });
       return interaction.reply({ embeds: [embed] });
     }
