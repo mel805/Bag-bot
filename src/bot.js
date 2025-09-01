@@ -2208,15 +2208,25 @@ async function buildEconomyGifRows(guild, currentKey) {
     rows.push(new ActionRowBuilder().addComponents(addSucc, addFail));
     // Remove selects (success)
     const succList = Array.isArray(conf.success) ? conf.success.slice(0, 25) : [];
-    const succSel = new StringSelectMenuBuilder().setCustomId(`economy_gifs_remove_success:${currentKey}`).setPlaceholder('Supprimer GIFs succès…').setMinValues(1).setMaxValues(Math.max(1, succList.length || 1));
-    if (succList.length) succSel.addOptions(...succList.map((url, i) => ({ label: `Succès #${i+1}`, value: String(i), description: url.slice(0, 80) })));
-    else succSel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+    const succSel = new StringSelectMenuBuilder().setCustomId(`economy_gifs_remove_success:${currentKey}`).setPlaceholder('Supprimer GIFs succès…');
+    if (succList.length > 0) {
+      succSel.setMinValues(1).setMaxValues(Math.min(25, succList.length));
+      succSel.addOptions(...succList.map((url, i) => ({ label: `Succès #${i+1}`, value: String(i), description: url.slice(0, 80) })));
+    } else {
+      succSel.setMinValues(0).setMaxValues(1);
+      succSel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+    }
     rows.push(new ActionRowBuilder().addComponents(succSel));
     // Remove selects (fail)
     const failList = Array.isArray(conf.fail) ? conf.fail.slice(0, 25) : [];
-    const failSel = new StringSelectMenuBuilder().setCustomId(`economy_gifs_remove_fail:${currentKey}`).setPlaceholder('Supprimer GIFs échec…').setMinValues(1).setMaxValues(Math.max(1, failList.length || 1));
-    if (failList.length) failSel.addOptions(...failList.map((url, i) => ({ label: `Échec #${i+1}`, value: String(i), description: url.slice(0, 80) })));
-    else failSel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+    const failSel = new StringSelectMenuBuilder().setCustomId(`economy_gifs_remove_fail:${currentKey}`).setPlaceholder('Supprimer GIFs échec…');
+    if (failList.length > 0) {
+      failSel.setMinValues(1).setMaxValues(Math.min(25, failList.length));
+      failSel.addOptions(...failList.map((url, i) => ({ label: `Échec #${i+1}`, value: String(i), description: url.slice(0, 80) })));
+    } else {
+      failSel.setMinValues(0).setMaxValues(1);
+      failSel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+    }
     rows.push(new ActionRowBuilder().addComponents(failSel));
   }
   return rows;
@@ -4231,8 +4241,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       } catch (error) {
         console.error('Erreur economy_gifs:', error);
+        console.error('Stack trace:', error.stack);
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({ content: '❌ Erreur lors de l\'affichage des GIFs.', ephemeral: true });
+        } else if (interaction.deferred) {
+          await interaction.editReply({ content: '❌ Erreur lors de l\'affichage des GIFs.' });
         }
         return;
       }
@@ -4246,8 +4259,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       } catch (error) {
         console.error('Erreur economy_gifs_action:', error);
+        console.error('Stack trace:', error.stack);
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({ content: '❌ Erreur lors de la sélection d\'action GIF.', ephemeral: true });
+        } else if (interaction.deferred) {
+          await interaction.editReply({ content: '❌ Erreur lors de la sélection d\'action GIF.' });
         }
         return;
       }
