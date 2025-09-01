@@ -1653,8 +1653,19 @@ async function buildEconomySettingsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
   const curBtn = new ButtonBuilder().setCustomId('economy_set_currency').setLabel(`Devise: ${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`).setStyle(ButtonStyle.Secondary);
   const gifsBtn = new ButtonBuilder().setCustomId('economy_gifs').setLabel('GIF actions').setStyle(ButtonStyle.Primary);
-  const row = new ActionRowBuilder().addComponents(curBtn, gifsBtn);
-  return [row];
+  
+  // Boutons pour l'argent gagné par message et en vocal
+  const messageMin = eco.rewards?.message?.min || 1;
+  const messageMax = eco.rewards?.message?.max || 3;
+  const voiceMin = eco.rewards?.voice?.min || 2;
+  const voiceMax = eco.rewards?.voice?.max || 5;
+  
+  const msgMoneyBtn = new ButtonBuilder().setCustomId('economy_message_money').setLabel(`Argent texte: ${messageMin}-${messageMax}`).setStyle(ButtonStyle.Success);
+  const voiceMoneyBtn = new ButtonBuilder().setCustomId('economy_voice_money').setLabel(`Argent vocal: ${voiceMin}-${voiceMax}`).setStyle(ButtonStyle.Success);
+  
+  const row1 = new ActionRowBuilder().addComponents(curBtn, gifsBtn);
+  const row2 = new ActionRowBuilder().addComponents(msgMoneyBtn, voiceMoneyBtn);
+  return [row1, row2];
 }
 
 function buildEconomyMenuSelect(selectedPage) {
@@ -3847,6 +3858,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: `✅ Devise mise à jour: ${eco.currency.symbol} ${eco.currency.name}` });
     }
 
+    if (interaction.isButton() && interaction.customId === 'economy_message_money') {
+      const modal = new ModalBuilder().setCustomId('economy_message_money_modal').setTitle('Argent par message');
+      const minInput = new TextInputBuilder().setCustomId('min').setLabel('Montant minimum').setStyle(TextInputStyle.Short).setPlaceholder('1').setRequired(true);
+      const maxInput = new TextInputBuilder().setCustomId('max').setLabel('Montant maximum').setStyle(TextInputStyle.Short).setPlaceholder('3').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(minInput), new ActionRowBuilder().addComponents(maxInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'economy_voice_money') {
+      const modal = new ModalBuilder().setCustomId('economy_voice_money_modal').setTitle('Argent en vocal');
+      const minInput = new TextInputBuilder().setCustomId('min').setLabel('Montant minimum').setStyle(TextInputStyle.Short).setPlaceholder('2').setRequired(true);
+      const maxInput = new TextInputBuilder().setCustomId('max').setLabel('Montant maximum').setStyle(TextInputStyle.Short).setPlaceholder('5').setRequired(true);
+      const intervalInput = new TextInputBuilder().setCustomId('interval').setLabel('Intervalle (minutes)').setStyle(TextInputStyle.Short).setPlaceholder('5').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(minInput), new ActionRowBuilder().addComponents(maxInput), new ActionRowBuilder().addComponents(intervalInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'economy_message_money_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const min = parseInt(interaction.fields.getTextInputValue('min')) || 1;
+      const max = parseInt(interaction.fields.getTextInputValue('max')) || 3;
+      if (min > max) return interaction.editReply({ content: `❌ Le montant minimum ne peut pas être supérieur au maximum.` });
+      const eco = await getEconomyConfig(interaction.guild.id);
+      await updateEconomyConfig(interaction.guild.id, { rewards: { ...eco.rewards, message: { ...eco.rewards.message, min, max } } });
+      return interaction.editReply({ content: `✅ Récompense message mise à jour: ${min}-${max} ${eco.currency?.symbol || '🪙'}` });
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'economy_voice_money_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const min = parseInt(interaction.fields.getTextInputValue('min')) || 2;
+      const max = parseInt(interaction.fields.getTextInputValue('max')) || 5;
+      const interval = parseInt(interaction.fields.getTextInputValue('interval')) || 5;
+      if (min > max) return interaction.editReply({ content: `❌ Le montant minimum ne peut pas être supérieur au maximum.` });
+      if (interval < 1) return interaction.editReply({ content: `❌ L'intervalle doit être d'au moins 1 minute.` });
+      const eco = await getEconomyConfig(interaction.guild.id);
+      await updateEconomyConfig(interaction.guild.id, { rewards: { ...eco.rewards, voice: { ...eco.rewards.voice, min, max, intervalMinutes: interval } } });
+      return interaction.editReply({ content: `✅ Récompense vocal mise à jour: ${min}-${max} ${eco.currency?.symbol || '🪙'} toutes les ${interval} minutes` });
+    }
+
     // removed economy_set_base and economy_set_cooldowns
 
     if (interaction.isButton() && interaction.customId === 'economy_gifs') {
@@ -5291,6 +5343,20 @@ client.on(Events.MessageCreate, async (message) => {
         }
       }
     }
+
+    // Système de récompenses économiques pour les messages
+    try {
+      const eco = await getEconomyConfig(message.guild.id);
+      if (eco.rewards?.message?.enabled) {
+        const { min, max } = eco.rewards.message;
+        const reward = Math.floor(Math.random() * (max - min + 1)) + min;
+        
+        // Récupérer le solde actuel de l'utilisateur
+        const userEco = await getEconomyUser(message.guild.id, message.author.id);
+        userEco.money = (userEco.money || 0) + reward;
+        await setEconomyUser(message.guild.id, message.author.id, userEco);
+      }
+    } catch (_) {}
   } catch (_) {}
 });
 
@@ -5345,11 +5411,64 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
           }
           return;
         }
+        // Système de récompenses économiques pour le vocal (lors de la sortie)
+        try {
+          const eco = await getEconomyConfig(guild.id);
+          if (eco.rewards?.voice?.enabled) {
+            const { min, max, intervalMinutes } = eco.rewards.voice;
+            const intervals = Math.floor(minutes / intervalMinutes);
+            if (intervals > 0) {
+              const totalReward = intervals * (Math.floor(Math.random() * (max - min + 1)) + min);
+              const userEco = await getEconomyUser(guild.id, userId);
+              userEco.money = (userEco.money || 0) + totalReward;
+              await setEconomyUser(guild.id, userId, userEco);
+            }
+          }
+        } catch (_) {}
+
         await setUserStats(guild.id, userId, stats);
       }
     }
   } catch (_) {}
 });
+
+// Système de récompenses vocales périodiques
+setInterval(async () => {
+  try {
+    for (const [guildId, guild] of client.guilds.cache) {
+      try {
+        const eco = await getEconomyConfig(guildId);
+        if (!eco.rewards?.voice?.enabled) continue;
+        
+        const { min, max, intervalMinutes } = eco.rewards.voice;
+        const intervalMs = intervalMinutes * 60 * 1000;
+        const now = Date.now();
+        
+        // Parcourir tous les canaux vocaux du serveur
+        for (const [channelId, channel] of guild.channels.cache) {
+          if (channel.type === ChannelType.GuildVoice && channel.members.size > 0) {
+            for (const [userId, member] of channel.members) {
+              if (member.user.bot) continue;
+              
+              try {
+                const userEco = await getEconomyUser(guildId, userId);
+                const lastVoiceReward = userEco.lastVoiceReward || 0;
+                
+                // Vérifier si assez de temps s'est écoulé depuis la dernière récompense
+                if (now - lastVoiceReward >= intervalMs) {
+                  const reward = Math.floor(Math.random() * (max - min + 1)) + min;
+                  userEco.money = (userEco.money || 0) + reward;
+                  userEco.lastVoiceReward = now;
+                  await setEconomyUser(guildId, userId, userEco);
+                }
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+}, 60 * 1000); // Vérifier toutes les minutes
 
 async function buildShopRows(guild) {
   const eco = await getEconomyConfig(guild.id);
