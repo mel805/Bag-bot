@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: bag-discord-bot
+    env: node
+    autoDeploy: true
+    plan: free
+    buildCommand: npm run render-build
+    startCommand: npm run render-start
+    envVars:
+      - key: DISCORD_TOKEN
+        value: ""
+      - key: CLIENT_ID
+        value: ""
+      - key: GUILD_ID
+        value: ""
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bag-bot-db
+          property: connectionString
+databases:
+  - name: bag-bot-db
+    plan: free
