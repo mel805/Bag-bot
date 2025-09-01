@@ -2276,7 +2276,7 @@ client.once(Events.ClientReady, (readyClient) => {
     console.log('[Music] ENABLE_LOCAL_LAVALINK=true -> starting local Lavalink + proxy');
     startLocalLavalinkStack();
   }
-  // Init Erela.js (if available) with public nodes
+  // Init Erela.js (if available) with multiple fallback nodes
   try {
     if (ErelaManager) {
       let nodes = [];
@@ -2289,13 +2289,55 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       } catch (e) { console.error('Invalid LAVALINK_NODES env:', e?.message || e); }
+      
+      // Add local Lavalink if enabled
       if (!nodes.length && shouldEnableLocalLavalink()) {
-        nodes = [{ host: '127.0.0.1', port: 2334, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false }];
+        nodes = [{ 
+          identifier: 'local-lavalink',
+          host: '127.0.0.1', 
+          port: 2334, 
+          password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), 
+          secure: false,
+          retryAmount: 5,
+          retryDelay: 30000
+        }];
         console.log('[Music] Using local Lavalink proxy node at 127.0.0.1:2334');
       }
+      
+      // Add public fallback nodes if no nodes configured
       if (!nodes.length) {
-        console.warn('[Music] No LAVALINK_NODES provided. Music will be disabled.');
+        nodes = [
+          {
+            identifier: 'lavalink-eu',
+            host: 'lavalink.devamop.in',
+            port: 443,
+            password: 'DevamOP',
+            secure: true,
+            retryAmount: 5,
+            retryDelay: 30000
+          },
+          {
+            identifier: 'lavalink-us',
+            host: 'lavalink-us.devamop.in',
+            port: 443,
+            password: 'DevamOP',
+            secure: true,
+            retryAmount: 5,
+            retryDelay: 30000
+          },
+          {
+            identifier: 'lavalink-backup',
+            host: 'lava.link',
+            port: 80,
+            password: 'youshallnotpass',
+            secure: false,
+            retryAmount: 3,
+            retryDelay: 20000
+          }
+        ];
+        console.log('[Music] No LAVALINK_NODES provided. Using public fallback nodes.');
       }
+      
       const manager = new ErelaManager({
         nodes,
         send: (id, payload) => {
@@ -2303,13 +2345,74 @@ client.once(Events.ClientReady, (readyClient) => {
           if (guild) guild.shard.send(payload);
         },
         autoPlay: true,
+        clientName: 'BAG-Discord-Bot',
       });
+      
       client.music = manager;
-      manager.on('nodeConnect', node => console.log(`[Music] Node connected: ${node.options.host}`));
-      manager.on('nodeError', (node, err) => console.error('[Music] Node error', node.options.host, err?.message||err));
-      manager.on('playerMove', (player, oldChannel, newChannel) => { if (!newChannel) player.destroy(); });
+      
+      // Enhanced event handlers
+      manager.on('nodeConnect', node => {
+        console.log(`[Music] ✅ Node connected: ${node.options.identifier || node.options.host}:${node.options.port}`);
+      });
+      
+      manager.on('nodeReconnect', node => {
+        console.log(`[Music] 🔄 Node reconnecting: ${node.options.identifier || node.options.host}:${node.options.port}`);
+      });
+      
+      manager.on('nodeDisconnect', (node, reason) => {
+        console.warn(`[Music] ❌ Node disconnected: ${node.options.identifier || node.options.host}:${node.options.port} - Reason: ${reason?.message || reason}`);
+      });
+      
+      manager.on('nodeError', (node, err) => {
+        console.error(`[Music] 💥 Node error: ${node.options.identifier || node.options.host}:${node.options.port} - ${err?.message || err}`);
+        // Try to reconnect after error
+        setTimeout(() => {
+          try {
+            if (!node.connected) {
+              console.log(`[Music] 🔄 Attempting to reconnect node: ${node.options.identifier || node.options.host}`);
+              node.connect();
+            }
+          } catch (e) {
+            console.error(`[Music] Failed to reconnect node: ${e?.message || e}`);
+          }
+        }, 5000);
+      });
+      
+      manager.on('playerMove', (player, oldChannel, newChannel) => { 
+        if (!newChannel) player.destroy(); 
+      });
+      
+      manager.on('queueEnd', player => {
+        console.log(`[Music] Queue ended for guild: ${player.guild}`);
+      });
+      
       manager.init(client.user.id);
       client.on('raw', (d) => { try { client.music?.updateVoiceState(d); } catch (_) {} });
+      
+      // Add periodic node health check
+      setInterval(() => {
+        try {
+          const connectedNodes = Array.from(client.music.nodes.values()).filter(n => n.connected);
+          const totalNodes = client.music.nodes.size;
+          if (connectedNodes.length === 0 && totalNodes > 0) {
+            console.warn(`[Music] ⚠️  No nodes connected (0/${totalNodes}). Attempting reconnection...`);
+            client.music.nodes.forEach(node => {
+              if (!node.connected) {
+                try {
+                  node.connect();
+                } catch (e) {
+                  console.error(`[Music] Failed to reconnect ${node.options.identifier}: ${e?.message || e}`);
+                }
+              }
+            });
+          } else if (connectedNodes.length < totalNodes) {
+            console.log(`[Music] 📊 Node status: ${connectedNodes.length}/${totalNodes} connected`);
+          }
+        } catch (e) {
+          console.error(`[Music] Health check error: ${e?.message || e}`);
+        }
+      }, 30000); // Check every 30 seconds
+      
     }
   } catch (e) {
     console.error('Music init failed', e);
@@ -5024,11 +5127,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferReply();
         const query = interaction.options.getString('recherche', true);
         if (!interaction.member?.voice?.channel) return interaction.editReply('Rejoignez un salon vocal.');
-        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible pour le moment (module).');
-        const hasNode = (() => {
-          try { return client.music.nodes && Array.from(client.music.nodes.values()).some(n => n.connected); } catch (_) { return false; }
-        })();
-        if (!hasNode) return interaction.editReply('Lecteur indisponible pour le moment (nœud non connecté).');
+        if (!client.music || !ErelaManager) return interaction.editReply('🚫 Lecteur indisponible pour le moment (module non chargé).');
+        
+        const getNodeStatus = () => {
+          try { 
+            const nodes = Array.from(client.music.nodes.values());
+            const connectedNodes = nodes.filter(n => n.connected);
+            return { total: nodes.length, connected: connectedNodes.length, nodes: connectedNodes };
+          } catch (_) { 
+            return { total: 0, connected: 0, nodes: [] }; 
+          }
+        };
+        
+        const nodeStatus = getNodeStatus();
+        if (nodeStatus.connected === 0) {
+          const statusMsg = nodeStatus.total > 0 
+            ? `🔄 Lecteur temporairement indisponible (${nodeStatus.connected}/${nodeStatus.total} nœuds connectés). Reconnexion en cours...`
+            : '⚠️ Aucun serveur audio configuré. Contactez un administrateur.';
+          return interaction.editReply(statusMsg);
+        }
         // Timeout + multi-source fallback
         const searchWithTimeout = (q, user, ms = 15000) => {
           const t = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
@@ -5382,9 +5499,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
           jazz: 'https://jazz.stream.9080/stream'
         };
         const url = map[station] || map.chillout;
-        if (!client.music || !ErelaManager) return interaction.editReply('Lecteur indisponible.');
-        const hasNode = (() => { try { return client.music.nodes && Array.from(client.music.nodes.values()).some(n => n.connected); } catch (_) { return false; } })();
-        if (!hasNode) return interaction.editReply('Lecteur indisponible (nœud).');
+        if (!client.music || !ErelaManager) return interaction.editReply('🚫 Lecteur indisponible (module non chargé).');
+        
+        const nodeStatus = (() => {
+          try { 
+            const nodes = Array.from(client.music.nodes.values());
+            const connectedNodes = nodes.filter(n => n.connected);
+            return { total: nodes.length, connected: connectedNodes.length };
+          } catch (_) { 
+            return { total: 0, connected: 0 }; 
+          }
+        })();
+        
+        if (nodeStatus.connected === 0) {
+          const statusMsg = nodeStatus.total > 0 
+            ? `🔄 Lecteur temporairement indisponible (${nodeStatus.connected}/${nodeStatus.total} nœuds connectés). Reconnexion en cours...`
+            : '⚠️ Aucun serveur audio configuré. Contactez un administrateur.';
+          return interaction.editReply(statusMsg);
+        }
         let player = client.music.players.get(interaction.guild.id);
         if (!player) {
           player = client.music.create({ guild: interaction.guild.id, voiceChannel: interaction.member.voice.channel.id, textChannel: interaction.channel.id, selfDeaf: true });
@@ -5400,6 +5532,62 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // /testaudio removed
+
+    // Music status command
+    if (interaction.isChatInputCommand() && interaction.commandName === 'music-status') {
+      try {
+        await interaction.deferReply();
+        if (!client.music || !ErelaManager) {
+          return interaction.editReply('🚫 Module musique non chargé.');
+        }
+        
+        const nodes = Array.from(client.music.nodes.values());
+        const connectedNodes = nodes.filter(n => n.connected);
+        const players = client.music.players.size;
+        
+        let statusEmbed = {
+          title: '🎵 Statut du Système Musique',
+          color: connectedNodes.length > 0 ? 0x00ff00 : 0xff0000,
+          fields: [
+            {
+              name: '📡 Nœuds Lavalink',
+              value: `**${connectedNodes.length}/${nodes.length}** connectés`,
+              inline: true
+            },
+            {
+              name: '🎧 Lecteurs Actifs',
+              value: `**${players}** serveur(s)`,
+              inline: true
+            },
+            {
+              name: '📊 Détails des Nœuds',
+              value: nodes.length > 0 ? nodes.map(node => {
+                const status = node.connected ? '✅' : '❌';
+                const id = node.options.identifier || `${node.options.host}:${node.options.port}`;
+                const ping = node.connected ? `${node.ping || 'N/A'}ms` : 'Déconnecté';
+                return `${status} **${id}** - ${ping}`;
+              }).join('\n') : 'Aucun nœud configuré',
+              inline: false
+            }
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: 'BAG Music System' }
+        };
+        
+        if (connectedNodes.length === 0) {
+          statusEmbed.description = '⚠️ Aucun nœud connecté. Le système musique est indisponible.';
+        } else if (connectedNodes.length < nodes.length) {
+          statusEmbed.description = '🔄 Certains nœuds sont déconnectés. Reconnexion automatique en cours.';
+        } else {
+          statusEmbed.description = '✅ Tous les nœuds sont opérationnels.';
+        }
+        
+        return interaction.editReply({ embeds: [statusEmbed] });
+      } catch (e) {
+        console.error('Music status error:', e);
+        return interaction.editReply('❌ Erreur lors de la récupération du statut.');
+      }
+    }
 
     // Music player button controls
     if (interaction.isButton() && interaction.customId.startsWith('music_')) {

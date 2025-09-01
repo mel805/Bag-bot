@@ -216,6 +216,7 @@ const commands = [
   new SlashCommandBuilder().setName('stop').setDescription('Arrêter et vider la file').toJSON(),
   new SlashCommandBuilder().setName('queue').setDescription('Voir la file d\'attente').toJSON(),
   new SlashCommandBuilder().setName('leave').setDescription('Quitter le salon vocal').toJSON(),
+  new SlashCommandBuilder().setName('music-status').setDescription('Vérifier le statut du système musique').toJSON(),
   new SlashCommandBuilder()
     .setName('radio')
     .setDescription('Lancer une radio')
