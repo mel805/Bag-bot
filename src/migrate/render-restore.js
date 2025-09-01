@@ -89,6 +89,11 @@ async function main() {
   const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 
   console.log('[render-restore] Démarrage de la restauration...');
+  console.log('[render-restore] Variables d\'environnement:');
+  console.log(`  - GITHUB_TOKEN: ${process.env.GITHUB_TOKEN ? 'CONFIGURÉ' : 'MANQUANT'}`);
+  console.log(`  - GITHUB_REPO: ${process.env.GITHUB_REPO || 'MANQUANT'}`);
+  console.log(`  - DATABASE_URL: ${process.env.DATABASE_URL ? 'CONFIGURÉ' : 'MANQUANT'}`);
+  console.log(`  - DISCORD_TOKEN: ${process.env.DISCORD_TOKEN ? 'CONFIGURÉ' : 'MANQUANT'}`);
 
   // 1. Essayer de restaurer depuis GitHub en priorité
   try {
@@ -96,7 +101,7 @@ async function main() {
     const github = new GitHubBackup();
     
     if (github.isConfigured()) {
-      console.log('[render-restore] Tentative de restauration GitHub...');
+      console.log('[render-restore] ✅ Configuration GitHub OK - Tentative de restauration...');
       const result = await github.restore();
       
       if (result.success && result.data) {
@@ -152,7 +157,10 @@ async function main() {
         return;
       }
     } else {
-      console.log('[render-restore] GitHub non configuré, fallback vers autres méthodes');
+      console.log('[render-restore] ❌ GitHub non configuré - Variables manquantes:');
+      console.log(`  - GITHUB_TOKEN: ${process.env.GITHUB_TOKEN ? '✅' : '❌ MANQUANT'}`);
+      console.log(`  - GITHUB_REPO: ${process.env.GITHUB_REPO ? '✅' : '❌ MANQUANT'}`);
+      console.log('[render-restore] Fallback vers PostgreSQL...');
     }
   } catch (error) {
     console.error('[render-restore] Erreur GitHub:', error.message);
