@@ -135,6 +135,23 @@ const commands = [
     .setDMPermission(false)
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('github-backup')
+    .setDescription('Admin: gérer les sauvegardes GitHub')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addStringOption(o => o
+      .setName('action')
+      .setDescription('Action à effectuer')
+      .setRequired(true)
+      .addChoices(
+        { name: 'test', value: 'test' },
+        { name: 'list', value: 'list' },
+        { name: 'force-backup', value: 'force-backup' },
+        { name: 'force-restore', value: 'force-restore' }
+      )
+    )
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('map')
     .setDescription('Définir ou voir votre localisation (ville)')
     .setDMPermission(false)

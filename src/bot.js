@@ -3765,10 +3765,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try {
           const lc = await getLogsConfig(interaction.guild.id);
           const details = [];
-          if (info?.storage === 'postgres') details.push({ name: 'Stockage', value: 'Postgres' });
-          if (info?.storage === 'file') details.push({ name: 'Stockage', value: 'Fichier' });
+          if (info?.storage === 'postgres') details.push({ name: 'Stockage Local', value: 'Postgres' });
+          if (info?.storage === 'file') details.push({ name: 'Stockage Local', value: 'Fichier' });
           if (info?.historyId) details.push({ name: 'Historique ID', value: String(info.historyId) });
           if (info?.backupFile) details.push({ name: 'Backup fichier', value: String(info.backupFile) });
+          if (info?.github?.success) {
+            details.push({ name: 'GitHub', value: '✅ Sauvegardé' });
+            details.push({ name: 'Commit SHA', value: info.github.commit_sha.substring(0, 7) });
+          } else {
+            details.push({ name: 'GitHub', value: '❌ Échec/Non configuré' });
+          }
           const em = buildModEmbed(`${lc.emoji} Sauvegarde`, `Sauvegarde Discord — méthode: slash`, [ { name: 'Auteur', value: `${interaction.user}` }, ...details ]);
           await sendLog(interaction.guild, 'backup', em);
         } catch (_) {}
@@ -3793,7 +3799,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const result = await restoreLatest();
         try {
           const lc = await getLogsConfig(interaction.guild.id);
-          const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration depuis dernier snapshot`, [ { name: 'Source', value: String(result?.source||'inconnue') }, { name: 'Auteur', value: `${interaction.user}` } ]);
+          const sourceLabels = {
+            'github': '🐙 GitHub',
+            'postgres_history': '🐘 Postgres (Historique)',
+            'postgres_current': '🐘 Postgres (Actuel)',
+            'file_backup': '📁 Fichier (Backup)',
+            'file_current': '📁 Fichier (Actuel)',
+            'default': '🔧 Configuration par défaut'
+          };
+          const sourceDisplay = sourceLabels[result?.source] || result?.source || 'inconnue';
+          const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration depuis dernier snapshot`, [ { name: 'Source', value: sourceDisplay }, { name: 'Auteur', value: `${interaction.user}` } ]);
           await sendLog(interaction.guild, 'backup', em);
         } catch (_) {}
         return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
@@ -3806,6 +3821,76 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: 'Erreur restauration.', ephemeral: true });
       }
     }
+
+    // Admin-only: /github-backup (gestion des sauvegardes GitHub)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'github-backup') {
+      try {
+        const ok = await isStaffMember(interaction.guild, interaction.member);
+        if (!ok) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        
+        const action = interaction.options.getString('action', true);
+        const GitHubBackup = require('./storage/githubBackup');
+        const github = new GitHubBackup();
+
+        switch (action) {
+          case 'test':
+            const testResult = await github.testConnection();
+            if (testResult.success) {
+              return interaction.editReply({ 
+                content: `✅ **Connexion GitHub OK**\n🔗 Dépôt: \`${testResult.repo}\`\n📝 Push: ${testResult.permissions.push ? '✅' : '❌'}\n👑 Admin: ${testResult.permissions.admin ? '✅' : '❌'}` 
+              });
+            } else {
+              return interaction.editReply({ content: `❌ **Erreur GitHub**\n${testResult.error}` });
+            }
+
+          case 'list':
+            if (!github.isConfigured()) {
+              return interaction.editReply({ content: '❌ GitHub non configuré (variables GITHUB_TOKEN et GITHUB_REPO requises)' });
+            }
+            const backups = await github.listBackups(10);
+            if (backups.length === 0) {
+              return interaction.editReply({ content: '📭 Aucune sauvegarde GitHub trouvée.' });
+            }
+            const list = backups.map((b, i) => `${i+1}. \`${b.sha.substring(0,7)}\` - ${new Date(b.date).toLocaleString('fr-FR')}\n   ${b.message}`).join('\n\n');
+            return interaction.editReply({ content: `📋 **Dernières sauvegardes GitHub:**\n\n${list}` });
+
+          case 'force-backup':
+            if (!github.isConfigured()) {
+              return interaction.editReply({ content: '❌ GitHub non configuré' });
+            }
+            const { readConfig } = require('./storage/jsonStore');
+            const cfg = await readConfig();
+            const backupResult = await github.backup(cfg);
+            return interaction.editReply({ 
+              content: `✅ **Sauvegarde GitHub forcée**\n🔗 Commit: \`${backupResult.commit_sha.substring(0,7)}\`\n⏰ ${new Date(backupResult.timestamp).toLocaleString('fr-FR')}` 
+            });
+
+          case 'force-restore':
+            if (!github.isConfigured()) {
+              return interaction.editReply({ content: '❌ GitHub non configuré' });
+            }
+            const restoreResult = await github.restore();
+            if (restoreResult.success) {
+              const { writeConfig } = require('./storage/jsonStore');
+              await writeConfig(restoreResult.data);
+              return interaction.editReply({ 
+                content: `✅ **Restauration GitHub forcée**\n⏰ Depuis: ${new Date(restoreResult.metadata.timestamp).toLocaleString('fr-FR')}` 
+              });
+            } else {
+              return interaction.editReply({ content: '❌ Échec de la restauration GitHub' });
+            }
+
+          default:
+            return interaction.editReply({ content: '❌ Action inconnue' });
+        }
+
+      } catch (e) {
+        console.error('[GitHub-Backup] Erreur:', e);
+        return interaction.reply({ content: `❌ Erreur: ${e.message}`, ephemeral: true });
+      }
+    }
+
     // Lecteur manuel supprimé: UI s'ouvrira automatiquement au /play
     // Basic /play (join + search + play)
     if (interaction.isChatInputCommand() && interaction.commandName === 'play') {
