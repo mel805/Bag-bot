@@ -4167,6 +4167,250 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    // Gestionnaires d'interaction pour le système de couleurs
+    if (interaction.isStringSelectMenu() && interaction.customId === 'couleur_target_select') {
+      const targetType = interaction.values[0];
+      
+      if (targetType === 'user') {
+        // Sélection d'un membre
+        const userSelect = new UserSelectMenuBuilder()
+          .setCustomId('couleur_user_select')
+          .setPlaceholder('Choisir un membre...')
+          .setMinValues(1)
+          .setMaxValues(1);
+
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur - Membre')
+          .setDescription('Sélectionnez le membre qui recevra une couleur.')
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+
+        await interaction.update({
+          embeds: [embed],
+          components: [new ActionRowBuilder().addComponents(userSelect)]
+        });
+      } else if (targetType === 'role') {
+        // Sélection d'un rôle
+        const roleSelect = new RoleSelectMenuBuilder()
+          .setCustomId('couleur_role_select')
+          .setPlaceholder('Choisir un rôle...')
+          .setMinValues(1)
+          .setMaxValues(1);
+
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur - Rôle')
+          .setDescription('Sélectionnez le rôle dont vous voulez modifier la couleur.')
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+
+        await interaction.update({
+          embeds: [embed],
+          components: [new ActionRowBuilder().addComponents(roleSelect)]
+        });
+      }
+      return;
+    }
+
+    if (interaction.isUserSelectMenu() && interaction.customId === 'couleur_user_select') {
+      const userId = interaction.values[0];
+      const user = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (!user) return interaction.update({ content: '❌ Membre introuvable.', embeds: [], components: [] });
+
+      // Étape 2 : sélection de la catégorie de couleur
+      const categorySelect = new StringSelectMenuBuilder()
+        .setCustomId(`couleur_category_select:user:${userId}`)
+        .setPlaceholder('Choisir une catégorie de couleur...')
+        .addOptions([
+          { label: '🌸 Couleurs Pastel', value: 'pastel', description: 'Couleurs douces et apaisantes' },
+          { label: '🔥 Couleurs Vives', value: 'vif', description: 'Couleurs éclatantes et énergiques' },
+          { label: '🌙 Couleurs Sombres', value: 'sombre', description: 'Couleurs profondes et mystérieuses' }
+        ]);
+
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle('🎨 Attribution de couleur - Catégorie')
+        .setDescription(`**Membre sélectionné:** ${user.user.tag}\n\nChoisissez maintenant une catégorie de couleur.`)
+        .setThumbnail(user.user.displayAvatarURL())
+        .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp();
+
+      await interaction.update({
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(categorySelect)]
+      });
+      return;
+    }
+
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'couleur_role_select') {
+      const roleId = interaction.values[0];
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (!role) return interaction.update({ content: '❌ Rôle introuvable.', embeds: [], components: [] });
+
+      // Étape 2 : sélection de la catégorie de couleur
+      const categorySelect = new StringSelectMenuBuilder()
+        .setCustomId(`couleur_category_select:role:${roleId}`)
+        .setPlaceholder('Choisir une catégorie de couleur...')
+        .addOptions([
+          { label: '🌸 Couleurs Pastel', value: 'pastel', description: 'Couleurs douces et apaisantes' },
+          { label: '🔥 Couleurs Vives', value: 'vif', description: 'Couleurs éclatantes et énergiques' },
+          { label: '🌙 Couleurs Sombres', value: 'sombre', description: 'Couleurs profondes et mystérieuses' }
+        ]);
+
+      const embed = new EmbedBuilder()
+        .setColor(role.color || THEME_COLOR_PRIMARY)
+        .setTitle('🎨 Attribution de couleur - Catégorie')
+        .setDescription(`**Rôle sélectionné:** ${role.name}\n\nChoisissez maintenant une catégorie de couleur.`)
+        .setThumbnail(THEME_IMAGE)
+        .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp();
+
+      await interaction.update({
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(categorySelect)]
+      });
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_category_select:')) {
+      const [, , , targetType, targetId] = interaction.customId.split(':');
+      const category = interaction.values[0];
+      const colors = COLOR_PALETTES[category] || [];
+
+      // Étape 3 : sélection de la couleur spécifique
+      const colorSelect = new StringSelectMenuBuilder()
+        .setCustomId(`couleur_final_select:${targetType}:${targetId}:${category}`)
+        .setPlaceholder('Choisir une couleur...')
+        .setMinValues(1)
+        .setMaxValues(1);
+
+      // Ajouter les couleurs (maximum 25 options)
+      colors.slice(0, 25).forEach(color => {
+        colorSelect.addOptions({
+          label: `${color.emoji} ${color.name}`,
+          value: color.hex,
+          description: `#${color.hex}`
+        });
+      });
+
+      const categoryNames = { pastel: 'Pastel', vif: 'Vives', sombre: 'Sombres' };
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle(`🎨 Attribution de couleur - ${categoryNames[category]}`)
+        .setDescription(`Choisissez une couleur ${categoryNames[category].toLowerCase()}.`)
+        .setThumbnail(THEME_IMAGE)
+        .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp();
+
+      await interaction.update({
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(colorSelect)]
+      });
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_final_select:')) {
+      const [, , , targetType, targetId, category] = interaction.customId.split(':');
+      const colorHex = interaction.values[0];
+      const colorInt = parseInt(colorHex, 16);
+      
+      await interaction.deferUpdate();
+
+      try {
+        if (targetType === 'user') {
+          // Attribution à un membre
+          const targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
+          if (!targetMember) {
+            return interaction.editReply({ content: '❌ Membre introuvable.', embeds: [], components: [] });
+          }
+
+          // Chercher un rôle de couleur existant
+          const existingColorRole = targetMember.roles.cache.find(role => 
+            role.name.startsWith('Couleur-') && role.managed === false
+          );
+
+          let colorRole;
+          if (existingColorRole) {
+            // Modifier le rôle existant
+            colorRole = await existingColorRole.edit({ color: colorInt });
+          } else {
+            // Créer un nouveau rôle de couleur
+            colorRole = await interaction.guild.roles.create({
+              name: `Couleur-${targetMember.user.username}`,
+              color: colorInt,
+              permissions: [],
+              reason: `Rôle de couleur créé par ${interaction.user.tag}`
+            });
+            
+            // Placer le rôle tout en haut de la hiérarchie (juste sous le rôle du bot)
+            try {
+              const botRole = interaction.guild.members.me?.roles.highest;
+              const targetPosition = botRole ? botRole.position - 1 : interaction.guild.roles.cache.size - 1;
+              await colorRole.setPosition(Math.max(1, targetPosition));
+            } catch (posError) {
+              console.log('Impossible de repositionner le rôle:', posError.message);
+            }
+            
+            // Attribuer le rôle au membre
+            await targetMember.roles.add(colorRole);
+          }
+
+          const selectedColor = Object.values(COLOR_PALETTES).flat().find(c => c.hex === colorHex);
+          const embed = new EmbedBuilder()
+            .setColor(colorInt)
+            .setTitle('🎨 Couleur attribuée avec succès !')
+            .setDescription(`**${targetMember.user.tag}** a reçu la couleur **${selectedColor?.name || colorHex}**`)
+            .addFields([
+              { name: 'Rôle', value: colorRole.name, inline: true },
+              { name: 'Couleur', value: `\`#${colorHex}\``, inline: true },
+              { name: 'Catégorie', value: category.charAt(0).toUpperCase() + category.slice(1), inline: true }
+            ])
+            .setThumbnail(targetMember.user.displayAvatarURL())
+            .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [embed], components: [] });
+
+        } else if (targetType === 'role') {
+          // Modification d'un rôle existant
+          const role = interaction.guild.roles.cache.get(targetId);
+          if (!role) {
+            return interaction.editReply({ content: '❌ Rôle introuvable.', embeds: [], components: [] });
+          }
+
+          await role.edit({ color: colorInt });
+
+          const selectedColor = Object.values(COLOR_PALETTES).flat().find(c => c.hex === colorHex);
+          const embed = new EmbedBuilder()
+            .setColor(colorInt)
+            .setTitle('🎨 Couleur de rôle modifiée !')
+            .setDescription(`Le rôle **${role.name}** a reçu la couleur **${selectedColor?.name || colorHex}**`)
+            .addFields([
+              { name: 'Rôle', value: role.name, inline: true },
+              { name: 'Couleur', value: `\`#${colorHex}\``, inline: true },
+              { name: 'Catégorie', value: category.charAt(0).toUpperCase() + category.slice(1), inline: true }
+            ])
+            .setThumbnail(THEME_IMAGE)
+            .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [embed], components: [] });
+        }
+
+      } catch (error) {
+        console.error('Erreur attribution couleur:', error);
+        await interaction.editReply({ 
+          content: '❌ Erreur lors de l\'attribution de la couleur. Vérifiez les permissions du bot.',
+          embeds: [], 
+          components: [] 
+        });
+      }
+      return;
+    }
+
     // Admin-only: /backup (export config + force snapshot)
     if (interaction.isChatInputCommand() && interaction.commandName === 'backup') {
       try {
