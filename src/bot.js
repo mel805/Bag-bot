@@ -5339,6 +5339,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'solde') {
       const eco = await getEconomyConfig(interaction.guild.id);
       const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      
+      // Log de debug pour diagnostiquer le problème
+      console.log(`[ECONOMY DEBUG] Balance check: User ${interaction.user.id} in guild ${interaction.guild.id}: amount=${u.amount}, money=${u.money}`);
+      
       const embed = buildEcoEmbed({
         title: 'Votre solde',
         description: `
@@ -5667,8 +5671,13 @@ client.on(Events.MessageCreate, async (message) => {
         
         // Récupérer le solde actuel de l'utilisateur
         const userEco = await getEconomyUser(message.guild.id, message.author.id);
-        userEco.money = (userEco.money || 0) + reward;
+        const beforeAmount = userEco.amount || 0;
+        userEco.amount = beforeAmount + reward;
+        userEco.money = userEco.amount; // Synchroniser pour compatibilité
         await setEconomyUser(message.guild.id, message.author.id, userEco);
+        
+        // Log de debug pour diagnostiquer le problème
+        console.log(`[ECONOMY DEBUG] Message reward: User ${message.author.id} in guild ${message.guild.id}: ${beforeAmount} + ${reward} = ${userEco.amount}`);
       }
     } catch (_) {}
   } catch (_) {}
@@ -5734,8 +5743,13 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
             if (intervals > 0) {
               const totalReward = intervals * (Math.floor(Math.random() * (max - min + 1)) + min);
               const userEco = await getEconomyUser(guild.id, userId);
-              userEco.money = (userEco.money || 0) + totalReward;
+              const beforeAmount = userEco.amount || 0;
+              userEco.amount = beforeAmount + totalReward;
+              userEco.money = userEco.amount; // Synchroniser pour compatibilité
               await setEconomyUser(guild.id, userId, userEco);
+              
+              // Log de debug pour diagnostiquer le problème
+              console.log(`[ECONOMY DEBUG] Voice session reward: User ${userId} in guild ${guild.id}: ${beforeAmount} + ${totalReward} = ${userEco.amount}`);
             }
           }
         } catch (_) {}
@@ -5771,9 +5785,14 @@ setInterval(async () => {
                 // Vérifier si assez de temps s'est écoulé depuis la dernière récompense
                 if (now - lastVoiceReward >= intervalMs) {
                   const reward = Math.floor(Math.random() * (max - min + 1)) + min;
-                  userEco.money = (userEco.money || 0) + reward;
+                  const beforeAmount = userEco.amount || 0;
+                  userEco.amount = beforeAmount + reward;
+                  userEco.money = userEco.amount; // Synchroniser pour compatibilité
                   userEco.lastVoiceReward = now;
                   await setEconomyUser(guildId, userId, userEco);
+                  
+                  // Log de debug pour diagnostiquer le problème
+                  console.log(`[ECONOMY DEBUG] Voice reward: User ${userId} in guild ${guildId}: ${beforeAmount} + ${reward} = ${userEco.amount}`);
                 }
               } catch (_) {}
             }
