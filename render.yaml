@@ -18,7 +18,7 @@ services:
       - key: LEVEL_CARD_LOGO_URL
         value: ""
       - key: GITHUB_TOKEN
-        value: ""
+        value: "ghs_x1Max6fBPQqrNhW9wQdXJUEm2MaFt14RcGlt"
       - key: GITHUB_REPO
         value: "mel805/Bag-bot"
       - key: GITHUB_BACKUP_BRANCH
