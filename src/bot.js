@@ -2386,19 +2386,42 @@ client.once(Events.ClientReady, (readyClient) => {
       
       manager.on('nodeError', (node, err) => {
         console.error(`[Music] 💥 Node error: ${node.options.identifier || node.options.host}:${node.options.port} - ${err?.message || err}`);
-        // Try to reconnect after error with exponential backoff
-        const reconnectDelay = Math.min(30000, (node.reconnectAttempts || 0) * 5000 + 5000);
-        node.reconnectAttempts = (node.reconnectAttempts || 0) + 1;
         
-        // Stop trying after 10 attempts to prevent infinite loops
-        if (node.reconnectAttempts > 10) {
-          console.error(`[Music] 🚫 Node ${node.options.identifier} disabled after 10 failed attempts`);
+        // Initialize reconnect attempts if not exists
+        if (!node.reconnectAttempts) node.reconnectAttempts = 0;
+        node.reconnectAttempts++;
+        
+        // Stop trying after 5 attempts for Render environment (faster failover)
+        if (node.reconnectAttempts > 5) {
+          console.error(`[Music] 🚫 Node ${node.options.identifier} disabled after 5 failed attempts (Render optimized)`);
+          node.disabled = true;
+          node.lastDisabled = Date.now();
+          
+          // Try to connect to next available node immediately
+          setTimeout(() => {
+            const availableNodes = Array.from(client.music.nodes.values())
+              .filter(n => !n.disabled && !n.connected)
+              .sort((a, b) => (a.options.priority || 99) - (b.options.priority || 99));
+            
+            if (availableNodes.length > 0) {
+              const nextNode = availableNodes[0];
+              console.log(`[Music] 🔄 Switching to next available node: ${nextNode.options.identifier}`);
+              try {
+                nextNode.connect();
+              } catch (e) {
+                console.error(`[Music] Failed to connect to fallback node: ${e?.message || e}`);
+              }
+            }
+          }, 2000);
           return;
         }
         
+        // Exponential backoff with shorter delays for Render
+        const reconnectDelay = Math.min(15000, node.reconnectAttempts * 3000 + 2000);
+        
         setTimeout(() => {
           try {
-            if (!node.connected) {
+            if (!node.connected && !node.disabled) {
               console.log(`[Music] 🔄 Attempting to reconnect node: ${node.options.identifier} (attempt ${node.reconnectAttempts})`);
               node.connect();
             }
@@ -2419,33 +2442,45 @@ client.once(Events.ClientReady, (readyClient) => {
       manager.init(client.user.id);
       client.on('raw', (d) => { try { client.music?.updateVoiceState(d); } catch (_) {} });
       
-      // Enhanced periodic node health check with intelligent reconnection
+      // Enhanced periodic node health check optimized for Render
       setInterval(() => {
         try {
           const allNodes = Array.from(client.music.nodes.values());
           const connectedNodes = allNodes.filter(n => n.connected);
+          const disabledNodes = allNodes.filter(n => n.disabled);
           const totalNodes = allNodes.length;
           
           if (connectedNodes.length === 0 && totalNodes > 0) {
-            console.warn(`[Music] ⚠️  No nodes connected (0/${totalNodes}). Attempting smart reconnection...`);
+            console.warn(`[Music] ⚠️  No nodes connected (0/${totalNodes}). Attempting smart reconnection for Render...`);
             
-            // Try to connect nodes in priority order (local first, then public)
-            const priorityOrder = ['local-lavalink', 'lavalink-public-1', 'lavalink-public-2', 'lavalink-fallback'];
+            // Reset disabled status after 5 minutes for potential recovery
+            disabledNodes.forEach(node => {
+              if (node.lastDisabled && (Date.now() - node.lastDisabled) > 300000) {
+                console.log(`[Music] 🔄 Re-enabling node after cooldown: ${node.options.identifier}`);
+                node.disabled = false;
+                node.reconnectAttempts = 0;
+              }
+            });
+            
+            // Try to connect nodes in priority order (Render optimized)
+            const priorityOrder = ['lavalink-render-primary', 'lavalink-render-secondary', 'lavalink-render-backup', 'lavalink-render-fallback'];
             
             for (const priority of priorityOrder) {
               const node = allNodes.find(n => n.options.identifier === priority);
-              if (node && !node.connected && (node.reconnectAttempts || 0) < 5) {
+              if (node && !node.connected && !node.disabled && (node.reconnectAttempts || 0) < 3) {
                 try {
-                  console.log(`[Music] 🔄 Trying priority node: ${priority}`);
+                  console.log(`[Music] 🔄 Trying priority node: ${priority} (attempt ${(node.reconnectAttempts || 0) + 1})`);
                   node.connect();
-                  break; // Only try one at a time
+                  break; // Only try one at a time to avoid overwhelming
                 } catch (e) {
                   console.error(`[Music] Failed to connect ${priority}: ${e?.message || e}`);
                 }
               }
             }
           } else if (connectedNodes.length > 0) {
-            console.log(`[Music] 📊 Node status: ${connectedNodes.length}/${totalNodes} connected (${connectedNodes.map(n => n.options.identifier).join(', ')})`);
+            const nodeNames = connectedNodes.map(n => n.options.identifier).join(', ');
+            const disabledCount = disabledNodes.length;
+            console.log(`[Music] 📊 Node status: ${connectedNodes.length}/${totalNodes} connected (${nodeNames})${disabledCount > 0 ? ` | ${disabledCount} disabled` : ''}`);
           }
         } catch (e) {
           console.error(`[Music] Health check error: ${e?.message || e}`);
