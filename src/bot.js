@@ -1747,6 +1747,48 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
   return { embed, components };
 }
 
+async function buildTopEconomieEmbed(guild, entriesSorted, offset, limit) {
+  const slice = entriesSorted.slice(offset, offset + limit);
+  const formatNum = (n) => (Number(n) || 0).toLocaleString('fr-FR');
+  const medalFor = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`);
+  const eco = await getEconomyConfig(guild.id);
+  const currency = eco.currency?.name || 'BAG$';
+  const symbol = eco.currency?.symbol || '🪙';
+  
+  const lines = await Promise.all(slice.map(async ([uid, st], idx) => {
+    const rank = offset + idx;
+    const mem = guild.members.cache.get(uid) || await guild.members.fetch(uid).catch(() => null);
+    const display = mem ? (mem.nickname || mem.user.username) : `<@${uid}>`;
+    const amount = formatNum(st.amount || 0);
+    const charm = st.charm || 0;
+    const perv = st.perversion || 0;
+    return `${medalFor(rank)} **${display}** • ${amount} ${symbol} • 🫦 ${charm} • 😈 ${perv}`;
+  }));
+  
+  const color = pickThemeColorForGuild(guild);
+  const total = entriesSorted.length;
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: `${guild.name} • Classement Économie`, iconURL: guild.iconURL?.() || undefined })
+    .setDescription(lines.join('\n') || '—')
+    .setThumbnail(THEME_IMAGE)
+    .setFooter({ text: `Boy and Girls (BAG) • ${offset + 1}-${Math.min(total, offset + limit)} sur ${total}`, iconURL: THEME_FOOTER_ICON })
+    .setTimestamp(new Date());
+
+  const components = [];
+  const row = new ActionRowBuilder();
+  const hasPrev = offset > 0;
+  const hasNext = offset + limit < total;
+  const prevOffset = Math.max(0, offset - limit);
+  const nextOffset = offset + limit;
+  const prevBtn = new ButtonBuilder().setCustomId(`top_economie_page:${prevOffset}:${limit}`).setLabel('⟨ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(!hasPrev);
+  const nextBtn = new ButtonBuilder().setCustomId(`top_economie_page:${nextOffset}:${limit}`).setLabel('Suivant ⟩').setStyle(ButtonStyle.Primary).setDisabled(!hasNext);
+  row.addComponents(prevBtn, nextBtn);
+  components.push(row);
+
+  return { embed, components };
+}
+
 // Add Economy config UI (basic Settings page)
 async function buildEconomySettingsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
@@ -4025,22 +4067,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const limit = Math.max(1, Math.min(25, interaction.options.getInteger('limite') || 10));
         const eco = await getEconomyConfig(interaction.guild.id);
         const entries = Object.entries(eco.balances || {});
-        const sorted = entries.sort((a,b) => (b[1]?.amount||0) - (a[1]?.amount||0)).slice(0, limit);
-        const lines = [];
-        for (let i=0; i<sorted.length; i++) {
-          const [uid, state] = sorted[i];
-          let tag = `<@${uid}>`;
-          try { const m = await interaction.guild.members.fetch(uid); tag = m.user ? `${m.user.username}` : tag; } catch (_) {}
-          const charm = state?.charm || 0;
-          const perv = state?.perversion || 0;
-          lines.push(`${i+1}. ${tag} — ${state?.amount||0} ${eco.currency?.name || 'BAG$'} • 🫦 ${charm} • 😈 ${perv}`);
-        }
-        const embed = buildEcoEmbed({
-          title: 'Classement Économie',
-          description: lines.join('\n') || '—',
-          fields: [ { name: 'Devise', value: `${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`, inline: true }, { name: 'Entrées', value: String(sorted.length), inline: true } ],
-        });
-        return interaction.reply({ embeds: [embed] });
+        if (!entries.length) return interaction.reply({ content: 'Aucune donnée économique pour le moment.', ephemeral: true });
+        entries.sort((a, b) => (b[1]?.amount || 0) - (a[1]?.amount || 0));
+        const { embed, components } = await buildTopEconomieEmbed(interaction.guild, entries, 0, limit);
+        return interaction.reply({ embeds: [embed], components });
       } else {
         return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
       }
@@ -4073,6 +4103,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return (ub.xp || 0) - (ua.xp || 0);
       });
       const { embed, components } = await buildTopNiveauEmbed(interaction.guild, entries, offset, Math.min(25, Math.max(1, limit)));
+      return interaction.update({ embeds: [embed], components });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('top_economie_page:')) {
+      const parts = interaction.customId.split(':');
+      const offset = Number(parts[1]) || 0;
+      const limit = Number(parts[2]) || 10;
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const entries = Object.entries(eco.balances || {});
+      entries.sort((a, b) => (b[1]?.amount || 0) - (a[1]?.amount || 0));
+      const { embed, components } = await buildTopEconomieEmbed(interaction.guild, entries, offset, Math.min(25, Math.max(1, limit)));
       return interaction.update({ embeds: [embed], components });
     }
 
@@ -4183,17 +4224,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // removed economy_set_base and economy_set_cooldowns
 
     if (interaction.isButton() && interaction.customId === 'economy_gifs') {
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildEconomyGifRows(interaction.guild, 'work');
-      await interaction.update({ embeds: [embed], components: [...rows] });
-      return;
+      try {
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildEconomyGifRows(interaction.guild, 'work');
+        await interaction.update({ embeds: [embed], components: [...rows] });
+        return;
+      } catch (error) {
+        console.error('Erreur economy_gifs:', error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: '❌ Erreur lors de l\'affichage des GIFs.', ephemeral: true });
+        }
+        return;
+      }
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'economy_gifs_action') {
-      const key = interaction.values[0];
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildEconomyGifRows(interaction.guild, key);
-      await interaction.update({ embeds: [embed], components: [...rows] });
-      return;
+      try {
+        const key = interaction.values[0];
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildEconomyGifRows(interaction.guild, key);
+        await interaction.update({ embeds: [embed], components: [...rows] });
+        return;
+      } catch (error) {
+        console.error('Erreur economy_gifs_action:', error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: '❌ Erreur lors de la sélection d\'action GIF.', ephemeral: true });
+        }
+        return;
+      }
     }
     if (interaction.isButton() && interaction.customId.startsWith('economy_gifs_add:')) {
       const parts = interaction.customId.split(':');
