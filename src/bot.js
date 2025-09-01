@@ -1738,11 +1738,25 @@ async function buildEconomyKarmaRows(guild) {
   return [rowType, rowRules, rowActions];
 }
 
-async function buildAutoThreadRows(guild) {
+async function buildAutoThreadRows(guild, page = 0) {
   const cfg = await getAutoThreadConfig(guild.id);
-  const channelsAdd = new ChannelSelectMenuBuilder().setCustomId('autothread_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(5).addChannelTypes(ChannelType.GuildText);
-  const channelsRemove = new StringSelectMenuBuilder().setCustomId('autothread_channels_remove').setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (cfg.channels||[]).length || 1)));
-  const opts = (cfg.channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  const channelsAdd = new ChannelSelectMenuBuilder().setCustomId('autothread_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(25).addChannelTypes(ChannelType.GuildText);
+  
+  // Pagination pour la suppression si plus de 25 canaux
+  const allChannels = cfg.channels || [];
+  const pageSize = 25;
+  const totalPages = Math.ceil(allChannels.length / pageSize);
+  const startIndex = page * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, allChannels.length);
+  const channelsForPage = allChannels.slice(startIndex, endIndex);
+  
+  const channelsRemove = new StringSelectMenuBuilder()
+    .setCustomId(`autothread_channels_remove:${page}`)
+    .setPlaceholder(totalPages > 1 ? `Retirer des salons… (page ${page + 1}/${totalPages})` : 'Retirer des salons…')
+    .setMinValues(1)
+    .setMaxValues(Math.max(1, channelsForPage.length || 1));
+  
+  const opts = channelsForPage.map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
   if (opts.length) channelsRemove.addOptions(...opts); else channelsRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
   const naming = new StringSelectMenuBuilder().setCustomId('autothread_naming').setPlaceholder('Nom du fil…').addOptions(
     { label: 'Membre + numéro', value: 'member_num', default: cfg.naming?.mode === 'member_num' },
@@ -1758,12 +1772,46 @@ async function buildAutoThreadRows(guild) {
     { label: 'Illimité', value: 'max', default: cfg.archive?.policy === 'max' },
   );
   const customBtn = new ButtonBuilder().setCustomId('autothread_custom_pattern').setLabel(`Pattern: ${cfg.naming?.customPattern ? cfg.naming.customPattern.slice(0,20) : 'non défini'}`).setStyle(ButtonStyle.Secondary);
+  
   const rows = [
     new ActionRowBuilder().addComponents(channelsAdd),
     new ActionRowBuilder().addComponents(channelsRemove),
     new ActionRowBuilder().addComponents(naming),
     new ActionRowBuilder().addComponents(archive),
   ];
+  
+  // Ajouter les boutons de pagination si nécessaire
+  if (totalPages > 1) {
+    const prevBtn = new ButtonBuilder()
+      .setCustomId(`autothread_page:${Math.max(0, page - 1)}`)
+      .setLabel('◀ Précédent')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page === 0);
+    
+    const nextBtn = new ButtonBuilder()
+      .setCustomId(`autothread_page:${Math.min(totalPages - 1, page + 1)}`)
+      .setLabel('Suivant ▶')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page === totalPages - 1);
+    
+    const infoBtn = new ButtonBuilder()
+      .setCustomId('autothread_info')
+      .setLabel(`${allChannels.length} canaux configurés`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(true);
+    
+    rows.push(new ActionRowBuilder().addComponents(prevBtn, infoBtn, nextBtn));
+  } else if (allChannels.length > 0) {
+    // Afficher le nombre de canaux même sans pagination
+    const infoBtn = new ButtonBuilder()
+      .setCustomId('autothread_info')
+      .setLabel(`${allChannels.length} canaux configurés`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(true);
+    
+    rows.push(new ActionRowBuilder().addComponents(infoBtn));
+  }
+  
   if ((cfg.naming?.mode || 'member_num') === 'custom') {
     rows.push(new ActionRowBuilder().addComponents(customBtn));
   } else if ((cfg.naming?.mode || 'member_num') === 'nsfw') {
@@ -1771,6 +1819,7 @@ async function buildAutoThreadRows(guild) {
     const remBtn = new ButtonBuilder().setCustomId('autothread_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
     rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
   }
+  
   return rows;
 }
 
@@ -1782,10 +1831,12 @@ async function buildCountingRows(guild) {
   if (opts.length) chRem.addOptions(...opts); else chRem.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
   const formulas = new ButtonBuilder().setCustomId('counting_toggle_formulas').setLabel(cfg.allowFormulas ? 'Formules: ON' : 'Formules: OFF').setStyle(cfg.allowFormulas ? ButtonStyle.Success : ButtonStyle.Secondary);
   const reset = new ButtonBuilder().setCustomId('counting_reset').setLabel(`Remise à zéro (actuel: ${cfg.state?.current||0})`).setStyle(ButtonStyle.Danger);
+  const resetTrophies = new ButtonBuilder().setCustomId('counting_reset_trophies').setLabel('Reset trophées 🏆').setStyle(ButtonStyle.Danger);
   return [
     new ActionRowBuilder().addComponents(chAdd),
     new ActionRowBuilder().addComponents(chRem),
     new ActionRowBuilder().addComponents(formulas, reset),
+    new ActionRowBuilder().addComponents(resetTrophies),
   ];
 }
 
@@ -1849,13 +1900,23 @@ async function buildConfessRows(guild, mode = 'sfw') {
   const logSelect = new ChannelSelectMenuBuilder().setCustomId('confess_log_select').setPlaceholder(cf.logChannelId ? `Salon de logs actuel: <#${cf.logChannelId}>` : 'Choisir le salon de logs…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const replyToggle = new ButtonBuilder().setCustomId('confess_toggle_replies').setLabel(cf.allowReplies ? 'Réponses: ON' : 'Réponses: OFF').setStyle(cf.allowReplies ? ButtonStyle.Success : ButtonStyle.Secondary);
   const nameToggle = new ButtonBuilder().setCustomId('confess_toggle_naming').setLabel(cf.threadNaming === 'nsfw' ? 'Nom de fil: NSFW+' : 'Nom de fil: Normal').setStyle(ButtonStyle.Secondary);
-  return [
+  
+  const rows = [
     new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
     new ActionRowBuilder().addComponents(logSelect),
     new ActionRowBuilder().addComponents(replyToggle, nameToggle),
   ];
+  
+  // Ajouter les boutons de gestion des noms NSFW si le mode NSFW est activé
+  if (cf.threadNaming === 'nsfw') {
+    const addBtn = new ButtonBuilder().setCustomId('confess_nsfw_add').setLabel('Ajouter noms NSFW').setStyle(ButtonStyle.Primary);
+    const remBtn = new ButtonBuilder().setCustomId('confess_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
+    rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
+  }
+  
+  return rows;
 }
 
 function actionKeyToLabel(key) {
@@ -2151,22 +2212,31 @@ client.once(Events.ClientReady, (readyClient) => {
     try {
       const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
       if (!guild) return;
-      // Force a read+write round-trip to create snapshot/rolling backups
-      const { readConfig, writeConfig } = require('./storage/jsonStore');
-      const state = await readConfig();
-      await writeConfig(state);
+      
+      // Force a read+write round-trip to create snapshot/rolling backups avec GitHub
+      const { backupNow } = require('./storage/jsonStore');
+      const backupInfo = await backupNow();
+      
       const cfg = await getLogsConfig(guild.id);
       if (!cfg?.categories?.backup) return;
       
-      // Simuler les infos pour le snapshot automatique
+      // Utiliser les vraies informations de sauvegarde (incluant GitHub)
       const autoInfo = { 
         storage: 'auto', 
-        local: { success: true }, 
-        github: { success: false, configured: false, error: 'Snapshot automatique (GitHub non déclenché)' },
-        details: { timestamp: new Date().toISOString() }
+        local: backupInfo.local || { success: true }, 
+        github: backupInfo.github || { success: false, configured: false, error: 'GitHub non configuré' },
+        details: { 
+          timestamp: new Date().toISOString(),
+          dataSize: backupInfo.details?.dataSize || 0,
+          guildsCount: backupInfo.details?.guildsCount || 0,
+          usersCount: backupInfo.details?.usersCount || 0
+        }
       };
+      
       await sendDetailedBackupLog(guild, autoInfo, 'automatique', null);
-    } catch (_) {}
+    } catch (error) {
+      console.error('[Backup Auto] Erreur:', error.message);
+    }
   }, 30 * 60 * 1000);
 });
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -2348,7 +2418,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const rows = await buildConfessRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'autothread') {
-        const rows = await buildAutoThreadRows(interaction.guild);
+        const rows = await buildAutoThreadRows(interaction.guild, 0);
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'counting') {
         const rows = await buildCountingRows(interaction.guild);
@@ -2872,6 +2942,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildConfessRows(interaction.guild, 'sfw');
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
+    if (interaction.isButton() && interaction.customId === 'confess_nsfw_add') {
+      const modal = new ModalBuilder().setCustomId('confess_nsfw_add_modal').setTitle('Ajouter noms NSFW');
+      const input = new TextInputBuilder().setCustomId('names').setLabel('Noms (un par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'confess_nsfw_add_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const text = interaction.fields.getTextInputValue('names') || '';
+      const add = text.split('\n').map(s => s.trim()).filter(Boolean);
+      const cf = await getConfessConfig(interaction.guild.id);
+      const set = new Set([...(cf.nsfwNames||[]), ...add]);
+      await updateConfessConfig(interaction.guild.id, { nsfwNames: Array.from(set) });
+      return interaction.editReply({ content: `✅ Ajouté ${add.length} nom(s) NSFW pour les confessions.` });
+    }
+    if (interaction.isButton() && interaction.customId === 'confess_nsfw_remove') {
+      const cf = await getConfessConfig(interaction.guild.id);
+      const list = (cf.nsfwNames||[]).slice(0,25);
+      const sel = new StringSelectMenuBuilder().setCustomId('confess_nsfw_remove_select').setPlaceholder('Supprimer des noms NSFW…').setMinValues(1).setMaxValues(Math.max(1, list.length || 1));
+      if (list.length) sel.addOptions(...list.map((n,i)=>({ label: n.slice(0,80), value: String(i) })));
+      else sel.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+      return interaction.reply({ components: [new ActionRowBuilder().addComponents(sel)], ephemeral: true });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'confess_nsfw_remove_select') {
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const cf = await getConfessConfig(interaction.guild.id);
+      const idxs = new Set(interaction.values.map(v=>Number(v)).filter(n=>Number.isFinite(n)));
+      const next = (cf.nsfwNames||[]).filter((_,i)=>!idxs.has(i));
+      await updateConfessConfig(interaction.guild.id, { nsfwNames: next });
+      return interaction.update({ content: '✅ Noms NSFW supprimés.', components: [] });
+    }
 
     // Truth/Dare config handlers
     if (interaction.isStringSelectMenu() && interaction.customId === 'td_mode') {
@@ -3081,14 +3183,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildAutoThreadRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_channels_remove') {
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('autothread_channels_remove')) {
       if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const [, , , pageStr] = interaction.customId.split(':');
+      const currentPage = parseInt(pageStr) || 0;
       const cfg = await getAutoThreadConfig(interaction.guild.id);
       const remove = new Set(interaction.values.map(String));
       const next = (cfg.channels||[]).filter(id => !remove.has(String(id)));
       await updateAutoThreadConfig(interaction.guild.id, { channels: next });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildAutoThreadRows(interaction.guild);
+      // Recalculer la page après suppression
+      const newTotalPages = Math.ceil(next.length / 25);
+      const newPage = Math.min(currentPage, Math.max(0, newTotalPages - 1));
+      const rows = await buildAutoThreadRows(interaction.guild, newPage);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_naming') {
@@ -3152,6 +3259,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await setCountingState(interaction.guild.id, { current: 0, lastUserId: '' });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildCountingRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'counting_reset_trophies') {
+      await updateCountingConfig(interaction.guild.id, { achievedNumbers: [] });
+      await setCountingState(interaction.guild.id, { current: 0, lastUserId: '' });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildCountingRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('autothread_page:')) {
+      const [, , pageStr] = interaction.customId.split(':');
+      const page = parseInt(pageStr) || 0;
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildAutoThreadRows(interaction.guild, page);
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'autothread_nsfw_add') {
@@ -3959,6 +4080,90 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } catch (_) {
         return interaction.reply({ content: 'Erreur Action/Vérité.', ephemeral: true });
       }
+    }
+
+    // Admin-only: /couleur (attribuer une couleur de rôle)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'couleur') {
+      try {
+        const ok = await isStaffMember(interaction.guild, interaction.member);
+        if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+        
+        const targetUser = interaction.options.getUser('membre', true);
+        const colorInput = interaction.options.getString('couleur', true);
+        const roleName = interaction.options.getString('nom') || `Couleur-${targetUser.username}`;
+        
+        // Valider le format de couleur hexadécimale
+        const colorRegex = /^#?([A-Fa-f0-9]{6})$/;
+        const match = colorInput.match(colorRegex);
+        if (!match) {
+          return interaction.reply({ 
+            content: '❌ Format de couleur invalide. Utilisez le format hexadécimal (ex: #FF0000 ou FF0000)', 
+            ephemeral: true 
+          });
+        }
+        
+        const colorHex = parseInt(match[1], 16);
+        const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        if (!targetMember) {
+          return interaction.reply({ content: '❌ Membre introuvable sur ce serveur.', ephemeral: true });
+        }
+        
+        await interaction.deferReply();
+        
+        // Chercher un rôle de couleur existant pour cet utilisateur (rôles commençant par "Couleur-")
+        const existingColorRole = targetMember.roles.cache.find(role => 
+          role.name.startsWith('Couleur-') && role.managed === false
+        );
+        
+        let colorRole;
+        if (existingColorRole) {
+          // Modifier la couleur du rôle existant
+          try {
+            colorRole = await existingColorRole.edit({ color: colorHex });
+          } catch (error) {
+            return interaction.editReply({ content: '❌ Impossible de modifier la couleur du rôle existant. Vérifiez les permissions.' });
+          }
+        } else {
+          // Créer un nouveau rôle de couleur
+          try {
+            colorRole = await interaction.guild.roles.create({
+              name: roleName,
+              color: colorHex,
+              permissions: [],
+              reason: `Rôle de couleur créé par ${interaction.user.tag}`
+            });
+            
+            // Attribuer le rôle au membre
+            await targetMember.roles.add(colorRole);
+          } catch (error) {
+            return interaction.editReply({ content: '❌ Impossible de créer le rôle de couleur. Vérifiez les permissions du bot.' });
+          }
+        }
+        
+        const embed = new EmbedBuilder()
+          .setColor(colorHex)
+          .setTitle('🎨 Couleur attribuée')
+          .setDescription(`**${targetUser.tag}** a reçu la couleur **${colorInput.toUpperCase()}**`)
+          .addFields([
+            { name: 'Rôle', value: colorRole.name, inline: true },
+            { name: 'Couleur', value: `\`${colorInput.toUpperCase()}\``, inline: true }
+          ])
+          .setThumbnail(targetUser.displayAvatarURL())
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+        
+      } catch (error) {
+        console.error('Erreur commande couleur:', error);
+        const reply = { content: '❌ Une erreur est survenue lors de l\'attribution de la couleur.' };
+        if (interaction.deferred) {
+          await interaction.editReply(reply);
+        } else {
+          await interaction.reply({ ...reply, ephemeral: true });
+        }
+      }
+      return;
     }
 
     // Admin-only: /backup (export config + force snapshot)
@@ -4977,8 +5182,10 @@ client.on(Events.MessageCreate, async (message) => {
       const cfg = await getCountingConfig(message.guild.id);
       if (cfg.channels && cfg.channels.includes(message.channel.id)) {
         const raw = (message.content || '').trim();
-        // Keep only digits, operators, parentheses, spaces, caret, and sqrt symbol
-        const onlyDigitsAndOps = raw.replace(/[^0-9+\-*\/().\s^√]/g, '');
+        // Keep only digits, operators, parentheses, spaces, caret, sqrt symbol, and mathematical symbols × ÷
+        let onlyDigitsAndOps = raw.replace(/[^0-9+\-*\/().\s^√×÷]/g, '');
+        // Remplacer les symboles mathématiques par leurs équivalents
+        onlyDigitsAndOps = onlyDigitsAndOps.replace(/×/g, '*').replace(/÷/g, '/');
         // If any letters are present in the original message, ignore (do not reset)
         const state0 = cfg.state || { current: 0, lastUserId: '' };
         const expected0 = (state0.current || 0) + 1;
@@ -5032,7 +5239,23 @@ client.on(Events.MessageCreate, async (message) => {
             await message.reply({ embeds: [new EmbedBuilder().setColor(0xec407a).setTitle('❌ Mauvais numéro').setDescription('Attendu: **' + expected + '**\nRemise à zéro → **1**\n<@' + message.author.id + '>, on se retrouve au début 💕').setFooter({ text: 'BAG • Comptage', iconURL: THEME_FOOTER_ICON }).setThumbnail(THEME_IMAGE)] }).catch(()=>{});
           } else {
             await setCountingState(message.guild.id, { current: next, lastUserId: message.author.id });
-            try { await message.react('✅'); } catch (_) {}
+            
+            // Vérifier si c'est la première fois que ce nombre est atteint
+            const isFirstTime = !cfg.achievedNumbers || !cfg.achievedNumbers.includes(next);
+            if (isFirstTime) {
+              // Ajouter le nombre à la liste des nombres atteints
+              const updatedAchieved = [...(cfg.achievedNumbers || []), next];
+              await updateCountingConfig(message.guild.id, { achievedNumbers: updatedAchieved });
+              
+              // Ajouter les réactions : trophée + check
+              try { 
+                await message.react('🏆'); 
+                await message.react('✅'); 
+              } catch (_) {}
+            } else {
+              // Juste le check habituel
+              try { await message.react('✅'); } catch (_) {}
+            }
           }
         }
       }

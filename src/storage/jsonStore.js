@@ -141,7 +141,8 @@ async function writeConfig(cfg) {
 // Force a snapshot of current state into the configured storage
 async function backupNow() {
   const cfg = await readConfig();
-  await writeConfig(cfg);
+  // Ne pas appeler writeConfig ici car cela ferait un double appel GitHub
+  // await writeConfig(cfg);
   const info = { 
     storage: USE_PG ? 'postgres' : 'file', 
     backupFile: null, 
@@ -164,26 +165,29 @@ async function backupNow() {
   }
   info.details.usersCount = Math.max(info.details.usersCount, Object.keys(cfg.guilds || {}).length);
   
-  // Sauvegarde locale (existante)
+  // Sauvegarde locale (créer une nouvelle sauvegarde)
   try {
     if (USE_PG) {
       const pool = await getPg();
       const client = await pool.connect();
       try {
         await client.query('CREATE TABLE IF NOT EXISTS app_config_history (id SERIAL PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
-        const { rows } = await client.query('SELECT id FROM app_config_history ORDER BY id DESC LIMIT 1');
+        const { rows } = await client.query('INSERT INTO app_config_history (data) VALUES ($1) RETURNING id', [cfg]);
         info.historyId = rows?.[0]?.id || null;
         info.local.success = true;
+        console.log(`[Backup] Sauvegarde PostgreSQL créée: ID ${info.historyId}`);
       } finally {
         client.release();
       }
     } else {
       const backupsDir = path.join(DATA_DIR, 'backups');
-      const entries = (await fsp.readdir(backupsDir)).filter(n => n.endsWith('.json')).sort();
-      if (entries.length) {
-        info.backupFile = path.join(backupsDir, entries[entries.length - 1]);
-        info.local.success = true;
-      }
+      await fsp.mkdir(backupsDir, { recursive: true });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFile = path.join(backupsDir, `backup-${timestamp}.json`);
+      await fsp.writeFile(backupFile, JSON.stringify(cfg, null, 2), 'utf8');
+      info.backupFile = backupFile;
+      info.local.success = true;
+      console.log(`[Backup] Sauvegarde fichier créée: ${backupFile}`);
     }
   } catch (error) {
     info.local.error = error.message;
@@ -700,6 +704,7 @@ function ensureCountingShape(g) {
   if (!c.state || typeof c.state !== 'object') c.state = { current: 0, lastUserId: '' };
   if (typeof c.state.current !== 'number') c.state.current = 0;
   if (typeof c.state.lastUserId !== 'string') c.state.lastUserId = '';
+  if (!Array.isArray(c.achievedNumbers)) c.achievedNumbers = [];
 }
 function ensureDisboardShape(g) {
   if (!g.disboard || typeof g.disboard !== 'object') g.disboard = {};

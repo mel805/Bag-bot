@@ -120,6 +120,18 @@ const commands = [
     .setDescription('Attribuer une couleur de rôle à un membre')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setDMPermission(false)
+    .addUserOption(option => 
+      option.setName('membre')
+        .setDescription('Le membre à qui attribuer la couleur')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('couleur')
+        .setDescription('Couleur au format hexadécimal (ex: #FF0000 pour rouge)')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('nom')
+        .setDescription('Nom du rôle de couleur (optionnel)')
+        .setRequired(false))
     .toJSON(),
   new SlashCommandBuilder().setName('actionverite').setDescription('Démarrer Action ou Vérité dans ce salon autorisé').toJSON(),
   new SlashCommandBuilder()
