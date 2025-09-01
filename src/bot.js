@@ -1797,19 +1797,14 @@ async function buildAutoThreadRows(guild, page = 0) {
     { label: 'Numérique', value: 'numeric', default: cfg.naming?.mode === 'numeric' },
     { label: 'Date + numéro', value: 'date_num', default: cfg.naming?.mode === 'date_num' },
   );
-  const archive = new StringSelectMenuBuilder().setCustomId('autothread_archive').setPlaceholder('Délai d\'archivage…').addOptions(
-    { label: '1 jour', value: '1d', default: cfg.archive?.policy === '1d' },
-    { label: '7 jours', value: '7d', default: cfg.archive?.policy === '7d' },
-    { label: '1 mois', value: '1m', default: cfg.archive?.policy === '1m' },
-    { label: 'Illimité', value: 'max', default: cfg.archive?.policy === 'max' },
-  );
   const customBtn = new ButtonBuilder().setCustomId('autothread_custom_pattern').setLabel(`Pattern: ${cfg.naming?.customPattern ? cfg.naming.customPattern.slice(0,20) : 'non défini'}`).setStyle(ButtonStyle.Secondary);
+  const archiveOpenBtn = new ButtonBuilder().setCustomId('autothread_archive_open').setLabel('Archivage…').setStyle(ButtonStyle.Secondary);
   
+  // Garder au maximum 4 rows (avec la row Retour = 5 max)
   const rows = [
     new ActionRowBuilder().addComponents(channelsAdd),
     new ActionRowBuilder().addComponents(channelsRemove),
     new ActionRowBuilder().addComponents(naming),
-    new ActionRowBuilder().addComponents(archive),
   ];
   
   // Créer une row combinée pour les contrôles additionnels (max 5 boutons par row)
@@ -1832,15 +1827,8 @@ async function buildAutoThreadRows(guild, page = 0) {
     additionalButtons.push(prevBtn, nextBtn);
   }
   
-  // Bouton info/status
-  if (allChannels.length > 0) {
-    const infoBtn = new ButtonBuilder()
-      .setCustomId('autothread_info')
-      .setLabel(`${allChannels.length} canaux`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true);
-    additionalButtons.push(infoBtn);
-  }
+  // Ajout accès archivage (ephemeral)
+  additionalButtons.push(archiveOpenBtn);
   
   // Boutons pour modes spéciaux
   if ((cfg.naming?.mode || 'member_num') === 'custom') {
@@ -1962,19 +1950,19 @@ async function buildConfessRows(guild, mode = 'sfw') {
     .filter(opt => opt !== null);
     
   if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
-  const logSelect = new ChannelSelectMenuBuilder().setCustomId('confess_log_select').setPlaceholder(cf.logChannelId ? `Salon de logs actuel: <#${cf.logChannelId}>` : 'Choisir le salon de logs…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const replyToggle = new ButtonBuilder().setCustomId('confess_toggle_replies').setLabel(cf.allowReplies ? 'Réponses: ON' : 'Réponses: OFF').setStyle(cf.allowReplies ? ButtonStyle.Success : ButtonStyle.Secondary);
   const nameToggle = new ButtonBuilder().setCustomId('confess_toggle_naming').setLabel(cf.threadNaming === 'nsfw' ? 'Nom de fil: NSFW+' : 'Nom de fil: Normal').setStyle(ButtonStyle.Secondary);
+  const logsOpenBtn = new ButtonBuilder().setCustomId('confess_logs_open').setLabel('Salon de logs…').setStyle(ButtonStyle.Secondary);
   
+  // Limite 4 rows (Back + 4 = 5 max)
   const rows = [
     new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
-    new ActionRowBuilder().addComponents(logSelect),
   ];
   
   // Combiner les boutons dans une seule row pour respecter la limite de 5 ActionRow
-  const toggleButtons = [replyToggle, nameToggle];
+  const toggleButtons = [replyToggle, nameToggle, logsOpenBtn];
   if (cf.threadNaming === 'nsfw') {
     const addBtn = new ButtonBuilder().setCustomId('confess_nsfw_add').setLabel('+ NSFW').setStyle(ButtonStyle.Primary);
     const remBtn = new ButtonBuilder().setCustomId('confess_nsfw_remove').setLabel('- NSFW').setStyle(ButtonStyle.Danger);
@@ -2932,15 +2920,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '❌ Erreur lors de la suppression des canaux confessions.', ephemeral: true });
       }
     }
-    if (interaction.isChannelSelectMenu() && interaction.customId === 'confess_log_select') {
+    // Sous-menu éphémère pour choisir le salon de logs
+    if (interaction.isButton() && interaction.customId === 'confess_logs_open') {
+      const cf = await getConfessConfig(interaction.guild.id);
+      const logSelect = new ChannelSelectMenuBuilder().setCustomId('confess_log_select_ephemeral').setPlaceholder(cf.logChannelId ? `Salon de logs actuel: <#${cf.logChannelId}>` : 'Choisir le salon de logs…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
+      return interaction.reply({ components: [new ActionRowBuilder().addComponents(logSelect)], ephemeral: true });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'confess_log_select_ephemeral') {
       try {
         const channelId = interaction.values[0];
         await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
         const embed = await buildConfigEmbed(interaction.guild);
         const rows = await buildConfessRows(interaction.guild, 'sfw');
-        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        try { await interaction.update({ content: '✅ Salon de logs mis à jour.', components: [] }); } catch (_) {}
+        try { return await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) { return; }
       } catch (error) {
-        console.error('Error in confess_log_select:', error);
+        console.error('Error in confess_log_select_ephemeral:', error);
         return interaction.reply({ content: '❌ Erreur lors de la configuration du salon de logs confessions.', ephemeral: true });
       }
     }
@@ -3325,16 +3320,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '❌ Erreur lors de la mise à jour du mode de nommage.', ephemeral: true });
       }
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_archive') {
+    // Ouvre un sous-menu éphémère pour choisir l'archivage sans dépasser 5 rows
+    if (interaction.isButton() && interaction.customId === 'autothread_archive_open') {
+      const cfg = await getAutoThreadConfig(interaction.guild.id);
+      const archive = new StringSelectMenuBuilder().setCustomId('autothread_archive_select').setPlaceholder('Délai d\'archivage…').addOptions(
+        { label: '1 jour', value: '1d', default: cfg.archive?.policy === '1d' },
+        { label: '7 jours', value: '7d', default: cfg.archive?.policy === '7d' },
+        { label: '1 mois', value: '1m', default: cfg.archive?.policy === '1m' },
+        { label: 'Illimité', value: 'max', default: cfg.archive?.policy === 'max' },
+      );
+      return interaction.reply({ components: [new ActionRowBuilder().addComponents(archive)], ephemeral: true });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_archive_select') {
       try {
         const policy = interaction.values[0];
         const cfg = await getAutoThreadConfig(interaction.guild.id);
         await updateAutoThreadConfig(interaction.guild.id, { archive: { ...(cfg.archive||{}), policy } });
         const embed = await buildConfigEmbed(interaction.guild);
         const rows = await buildAutoThreadRows(interaction.guild);
-        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        // Fermer le menu éphémère et rafraîchir la vue
+        try { await interaction.update({ content: '✅ Archivage mis à jour.', components: [] }); } catch (_) {}
+        try { return await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) { return; }
       } catch (error) {
-        console.error('Error in autothread_archive:', error);
+        console.error('Error in autothread_archive_select:', error);
         return interaction.reply({ content: '❌ Erreur lors de la mise à jour de la politique d\'archivage.', ephemeral: true });
       }
     }
