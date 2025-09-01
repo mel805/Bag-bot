@@ -154,6 +154,7 @@ async function renderLevelCardLandscape({
   width = 1600,
   height = 900,
 }) {
+  console.log('[LevelCard] Génération carte niveau:', { memberName, level, roleName, logoUrl, isCertified, isRoleAward });
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
@@ -246,7 +247,9 @@ async function renderLevelCardLandscape({
   const logoY = y;
   if (logoUrl) {
     try {
+      console.log('[LevelCard] Tentative de chargement du logo:', logoUrl);
       const img = await loadImage(logoUrl);
+      console.log('[LevelCard] Logo chargé avec succès, dimensions:', img.width, 'x', img.height);
       // anneau doré
       ctx.beginPath();
       ctx.arc(width/2, logoY + logoSize/2, logoSize/2 + 10, 0, Math.PI*2);
@@ -261,7 +264,10 @@ async function renderLevelCardLandscape({
       ctx.clip();
       ctx.drawImage(img, width/2 - logoSize/2, logoY, logoSize, logoSize);
       ctx.restore();
-    } catch {
+      console.log('[LevelCard] Logo affiché avec succès');
+    } catch (error) {
+      console.error('[LevelCard] Erreur lors du chargement du logo:', error.message);
+      console.log('[LevelCard] URL du logo qui a échoué:', logoUrl);
       // fallback rond doré
       ctx.beginPath();
       ctx.arc(width/2, logoY + logoSize/2, logoSize/2, 0, Math.PI*2);
@@ -272,7 +278,10 @@ async function renderLevelCardLandscape({
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('BAG', width/2, logoY + logoSize/2);
+      console.log('[LevelCard] Fallback BAG affiché');
     }
+  } else {
+    console.log('[LevelCard] Aucune URL de logo fournie');
   }
 
   // Félicitations (seulement pour annonces de niveau)

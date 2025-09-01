@@ -272,7 +272,9 @@ async function renderPrestigeCardBlueLandscape({
   const logoY = y;
   if (logoUrl) {
     try {
+      console.log('[PrestigeBlue] Tentative de chargement du logo:', logoUrl);
       const img = await loadImage(logoUrl);
+      console.log('[PrestigeBlue] Logo chargé avec succès, dimensions:', img.width, 'x', img.height);
       ctx.beginPath();
       ctx.arc(width/2, logoY + logoSize/2, logoSize/2 + 9, 0, Math.PI*2);
       ctx.strokeStyle = blueGradient(ctx, width/2 - logoSize/2, logoY, logoSize, logoSize);
@@ -286,7 +288,24 @@ async function renderPrestigeCardBlueLandscape({
       ctx.clip();
       ctx.drawImage(img, width/2 - logoSize/2, logoY, logoSize, logoSize);
       ctx.restore();
-    } catch {}
+      console.log('[PrestigeBlue] Logo affiché avec succès');
+    } catch (error) {
+      console.error('[PrestigeBlue] Erreur lors du chargement du logo:', error.message);
+      console.log('[PrestigeBlue] URL du logo qui a échoué:', logoUrl);
+      // fallback rond bleu
+      ctx.beginPath();
+      ctx.arc(width/2, logoY + logoSize/2, logoSize/2, 0, Math.PI*2);
+      ctx.fillStyle = blueGradient(ctx, width/2 - logoSize/2, logoY, logoSize, logoSize);
+      ctx.fill();
+      setFont(ctx, '800 72px');
+      ctx.fillStyle = '#0a0a0a';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('BAG', width/2, logoY + logoSize/2);
+      console.log('[PrestigeBlue] Fallback BAG affiché');
+    }
+  } else {
+    console.log('[PrestigeBlue] Aucune URL de logo fournie');
   }
 
   // Félicitations (affiché uniquement pour annonce de niveau)

@@ -169,9 +169,9 @@ require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
-const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || '';
+const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || 'https://cdn.discordapp.com/attachments/1408458115283812484/1411752143173714040/IMG_20250831_183646.png';
 const CERTIFIED_ROSEGOLD = String(process.env.CERTIFIED_ROSEGOLD || 'false').toLowerCase() === 'true';
-const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || '';
+const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || 'https://cdn.discordapp.com/attachments/1408458115283812484/1411752143173714040/IMG_20250831_183646.png';
 
 if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
@@ -1577,10 +1577,18 @@ function memberDisplayName(guild, memberOrMention, userIdFallback) {
   return userIdFallback ? `Membre ${userIdFallback}` : 'Membre';
 }
 function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
+  console.log('[Announce] Tentative d\'annonce de niveau:', { guildId: guild.id, newLevel, enabled: levels.announce?.levelUp?.enabled, channelId: levels.announce?.levelUp?.channelId });
   const ann = levels.announce?.levelUp || {};
-  if (!ann.enabled || !ann.channelId) return;
+  if (!ann.enabled || !ann.channelId) {
+    console.log('[Announce] Annonce de niveau désactivée ou canal manquant');
+    return;
+  }
   const channel = guild.channels.cache.get(ann.channelId);
-  if (!channel || !channel.isTextBased?.()) return;
+  if (!channel || !channel.isTextBased?.()) {
+    console.log('[Announce] Canal d\'annonce de niveau introuvable ou invalide');
+    return;
+  }
+  console.log('[Announce] Canal d\'annonce de niveau trouvé:', channel.name);
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
   const lastReward = getLastRewardForLevel(levels, newLevel);
@@ -1637,10 +1645,18 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
 }
 
 function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
+  console.log('[Announce] Tentative d\'annonce de rôle récompense:', { guildId: guild.id, roleId, enabled: levels.announce?.roleAward?.enabled, channelId: levels.announce?.roleAward?.channelId });
   const ann = levels.announce?.roleAward || {};
-  if (!ann.enabled || !ann.channelId || !roleId) return;
+  if (!ann.enabled || !ann.channelId || !roleId) {
+    console.log('[Announce] Annonce de rôle désactivée, canal manquant ou roleId manquant');
+    return;
+  }
   const channel = guild.channels.cache.get(ann.channelId);
-  if (!channel || !channel.isTextBased?.()) return;
+  if (!channel || !channel.isTextBased?.()) {
+    console.log('[Announce] Canal d\'annonce de rôle introuvable ou invalide');
+    return;
+  }
+  console.log('[Announce] Canal d\'annonce de rôle trouvé:', channel.name);
   const roleName = guild.roles.cache.get(roleId)?.name || `Rôle ${roleId}`;
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
