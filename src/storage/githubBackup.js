@@ -248,7 +248,22 @@ class GitHubBackup {
     }
 
     try {
-      const repo = await this.githubRequest('');
+      // Utiliser l'endpoint sans slash final pour éviter l'erreur 404
+      const url = `https://api.github.com/repos/${this.repo}`;
+      const headers = {
+        'Authorization': `token ${this.token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'BAG-Discord-Bot'
+      };
+
+      const response = await fetch(url, { headers });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`GitHub API Error ${response.status}: ${errorText}`);
+      }
+
+      const repo = await response.json();
       return { 
         success: true, 
         repo: repo.full_name,
