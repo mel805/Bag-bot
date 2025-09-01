@@ -2117,9 +2117,18 @@ async function buildEconomyActionsRows(guild, selectedKey) {
     return { label: `${actionKeyToLabel(k)} • ${karma} • ${c.moneyMin||0}-${c.moneyMax||0} • ${c.cooldown||0}s`, value: k, default: selectedKey === k };
   });
   if (options.length === 0) options.push({ label: 'Aucune action', value: 'none' });
-  const select = new StringSelectMenuBuilder().setCustomId('economy_actions_pick').setPlaceholder('Choisir une action à modifier…').addOptions(...options);
-  const row = new ActionRowBuilder().addComponents(select);
-  return [row];
+
+  // Discord limite un StringSelect à 25 options max. Découper en plusieurs menus si nécessaire.
+  const rows = [];
+  for (let i = 0; i < options.length; i += 25) {
+    const chunk = options.slice(i, i + 25);
+    const select = new StringSelectMenuBuilder()
+      .setCustomId('economy_actions_pick')
+      .setPlaceholder('Choisir une action à modifier…')
+      .addOptions(...chunk);
+    rows.push(new ActionRowBuilder().addComponents(select));
+  }
+  return rows;
 }
 
 async function buildEconomyActionDetailRows(guild, selectedKey) {
@@ -2140,8 +2149,16 @@ async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
   const allKeys = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
-  const pick = new StringSelectMenuBuilder().setCustomId('economy_gifs_action').setPlaceholder('Choisir une action…').addOptions(...opts);
-  const rows = [new ActionRowBuilder().addComponents(pick)];
+  // Paginons si > 25 options
+  const rows = [];
+  for (let i = 0; i < opts.length; i += 25) {
+    const chunk = opts.slice(i, i + 25);
+    const pick = new StringSelectMenuBuilder()
+      .setCustomId('economy_gifs_action')
+      .setPlaceholder('Choisir une action…')
+      .addOptions(...chunk);
+    rows.push(new ActionRowBuilder().addComponents(pick));
+  }
   if (currentKey && allKeys.includes(currentKey)) {
     const conf = eco.actions?.gifs?.[currentKey] || { success: [], fail: [] };
     const addSucc = new ButtonBuilder().setCustomId(`economy_gifs_add:success:${currentKey}`).setLabel('Ajouter GIF succès').setStyle(ButtonStyle.Success);
