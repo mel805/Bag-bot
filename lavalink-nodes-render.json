@@ -1,0 +1,46 @@
+[
+  {
+    "identifier": "lavalink-render-primary",
+    "host": "lava-v3.ajieblogs.eu.org",
+    "port": 443,
+    "password": "https://dsc.gg/ajidevserver",
+    "secure": true,
+    "retryAmount": 3,
+    "retryDelay": 8000,
+    "priority": 1,
+    "note": "Serveur principal pour Render - Europe stable"
+  },
+  {
+    "identifier": "lavalink-render-secondary",
+    "host": "lavalink.oops.wtf",
+    "port": 443,
+    "password": "www.freelavalink.ga",
+    "secure": true,
+    "retryAmount": 3,
+    "retryDelay": 10000,
+    "priority": 2,
+    "note": "Serveur secondaire pour Render"
+  },
+  {
+    "identifier": "lavalink-render-backup",
+    "host": "lavalink.devamop.in",
+    "port": 443,
+    "password": "DevamOP",
+    "secure": true,
+    "retryAmount": 2,
+    "retryDelay": 12000,
+    "priority": 3,
+    "note": "Serveur de sauvegarde pour Render"
+  },
+  {
+    "identifier": "lavalink-render-fallback",
+    "host": "lava.link",
+    "port": 80,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 1,
+    "retryDelay": 15000,
+    "priority": 4,
+    "note": "Serveur de dernier recours"
+  }
+]
