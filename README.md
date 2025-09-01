@@ -27,13 +27,13 @@ Déploiement Render
   - Un volume nommé `bag-bot-data` est monté sur `/var/data` (persistant)
   
 Important: ne déployez qu’UNE option à la fois avec le même `DISCORD_TOKEN` (ne pas faire tourner deux services simultanément avec le même bot).
- - Variables d'env:
-   - `DISCORD_TOKEN`: token du bot
-   - `CLIENT_ID`: application client id
-   - `GUILD_ID`: serveur principal (pour `/register`)
-   - `PORT`: fourni par Render (serveur HTTP keepalive intégré)
-   - `DATABASE_URL` (optionnel): Postgres Render
-   - `DATA_DIR` (optionnel, si pas de Postgres): chemin vers un volume monté (ex: `/var/data`)
+- Variables d'env:
+  - `DISCORD_TOKEN`: token du bot
+  - `CLIENT_ID`: application client id
+  - `GUILD_ID`: serveur principal (pour `/register`)
+  - `PORT`: fourni par Render (serveur HTTP keepalive intégré)
+  - `DATABASE_URL` (optionnel): Postgres Render
+  - `DATA_DIR` (optionnel, si pas de Postgres): chemin vers un volume monté (ex: `/var/data`)
 
 Persistance
 - Si `DATABASE_URL` est défini (et `pg` installée), la config est persistée dans Postgres (table `app_config`).
@@ -58,4 +58,10 @@ Commandes dédiées
 - `/restore` (Admin):
   - Avec fichier ou texte JSON: remplace la config par le contenu fourni.
   - Sans argument: restaure la dernière sauvegarde disponible (Postgres: dernier `app_config_history`, sinon dernier fichier dans `data/backups/`).
+
+### Enregistrement automatique des commandes (Render)
+- À chaque déploiement Render, le démarrage exécute `node src/deploy-commands.js` via `npm run render-start`.
+- Prérequis: définir `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` dans les variables d’environnement du service Render.
+- Tolérance d’erreurs: l’étape d’enregistrement est encapsulée dans `(node src/deploy-commands.js || true)` pour ne pas bloquer le démarrage si une variable manque; consulter les logs Render pour le détail.
+- Déclenchement manuel: `npm run register` peut être utilisé localement ou dans un shell Render pour forcer la réinscription des commandes.
 
