@@ -573,6 +573,16 @@ function ensureEconomyShape(g) {
   if (typeof e.rewards.voice.enabled !== 'boolean') e.rewards.voice.enabled = true;
   if (typeof e.rewards.voice.intervalMinutes !== 'number') e.rewards.voice.intervalMinutes = 5;
   if (!e.actions || typeof e.actions !== 'object') e.actions = {};
+  // Ensure GIFs container exists under actions, and migrate from legacy economy.gifs if present
+  if (!e.actions.gifs || typeof e.actions.gifs !== 'object') {
+    if (e.gifs && typeof e.gifs === 'object') {
+      // Migrate legacy GIFs structure (economy.gifs -> economy.actions.gifs)
+      e.actions.gifs = { ...e.gifs };
+      try { delete e.gifs; } catch (_) {}
+    } else {
+      e.actions.gifs = {};
+    }
+  }
   const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
