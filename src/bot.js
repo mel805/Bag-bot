@@ -1753,7 +1753,18 @@ async function buildAutoThreadRows(guild, page = 0) {
   const channelsAdd = new ChannelSelectMenuBuilder().setCustomId('autothread_channels_add').setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(25).addChannelTypes(ChannelType.GuildText);
   
   // Pagination pour la suppression si plus de 25 canaux
-  const allChannels = cfg.channels || [];
+  // Filter out invalid/deleted channels before processing
+  const validChannels = (cfg.channels || []).filter(id => {
+    const channel = guild.channels.cache.get(id);
+    return channel && channel.type === ChannelType.GuildText;
+  });
+  
+  // Update config if invalid channels were found and removed
+  if (validChannels.length !== (cfg.channels || []).length) {
+    await updateAutoThreadConfig(guild.id, { channels: validChannels });
+  }
+  
+  const allChannels = validChannels;
   const pageSize = 25;
   const totalPages = Math.ceil(allChannels.length / pageSize);
   const startIndex = page * pageSize;
@@ -1766,7 +1777,18 @@ async function buildAutoThreadRows(guild, page = 0) {
     .setMinValues(1)
     .setMaxValues(Math.max(1, channelsForPage.length || 1));
   
-  const opts = channelsForPage.map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  // Ensure we only map valid channels with proper names
+  const opts = channelsForPage
+    .map(id => {
+      const channel = guild.channels.cache.get(id);
+      if (!channel) return null;
+      return { 
+        label: channel.name || `Channel ${id}`, 
+        value: id 
+      };
+    })
+    .filter(opt => opt !== null);
+    
   if (opts.length) channelsRemove.addOptions(...opts); else channelsRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
   const naming = new StringSelectMenuBuilder().setCustomId('autothread_naming').setPlaceholder('Nom du fil…').addOptions(
     { label: 'Membre + numéro', value: 'member_num', default: cfg.naming?.mode === 'member_num' },
@@ -2436,8 +2458,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const rows = await buildConfessRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'autothread') {
-        const rows = await buildAutoThreadRows(interaction.guild, 0);
-        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        try {
+          const rows = await buildAutoThreadRows(interaction.guild, 0);
+          await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        } catch (error) {
+          console.error('Error building autothread configuration:', error);
+          await interaction.update({ embeds: [embed], components: [buildBackRow()], content: '❌ Erreur lors du chargement de la configuration autothread.' });
+        }
       } else if (section === 'counting') {
         const rows = await buildCountingRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
@@ -3183,44 +3210,72 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     // AutoThread config handlers
     if (interaction.isChannelSelectMenu() && interaction.customId === 'autothread_channels_add') {
-      const cfg = await getAutoThreadConfig(interaction.guild.id);
-      const set = new Set(cfg.channels || []);
-      for (const id of interaction.values) set.add(String(id));
-      await updateAutoThreadConfig(interaction.guild.id, { channels: Array.from(set) });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const cfg = await getAutoThreadConfig(interaction.guild.id);
+        const set = new Set(cfg.channels || []);
+        
+        // Validate that selected channels are text channels
+        for (const id of interaction.values) {
+          const channel = interaction.guild.channels.cache.get(id);
+          if (channel && channel.type === ChannelType.GuildText) {
+            set.add(String(id));
+          }
+        }
+        
+        await updateAutoThreadConfig(interaction.guild.id, { channels: Array.from(set) });
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildAutoThreadRows(interaction.guild);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in autothread_channels_add:', error);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ajout des canaux autothread.', ephemeral: true });
+      }
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('autothread_channels_remove')) {
-      if (interaction.values.includes('none')) return interaction.deferUpdate();
-      const [, , , pageStr] = interaction.customId.split(':');
-      const currentPage = parseInt(pageStr) || 0;
-      const cfg = await getAutoThreadConfig(interaction.guild.id);
-      const remove = new Set(interaction.values.map(String));
-      const next = (cfg.channels||[]).filter(id => !remove.has(String(id)));
-      await updateAutoThreadConfig(interaction.guild.id, { channels: next });
-      const embed = await buildConfigEmbed(interaction.guild);
-      // Recalculer la page après suppression
-      const newTotalPages = Math.ceil(next.length / 25);
-      const newPage = Math.min(currentPage, Math.max(0, newTotalPages - 1));
-      const rows = await buildAutoThreadRows(interaction.guild, newPage);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        if (interaction.values.includes('none')) return interaction.deferUpdate();
+        const [, , , pageStr] = interaction.customId.split(':');
+        const currentPage = parseInt(pageStr) || 0;
+        const cfg = await getAutoThreadConfig(interaction.guild.id);
+        const remove = new Set(interaction.values.map(String));
+        const next = (cfg.channels||[]).filter(id => !remove.has(String(id)));
+        await updateAutoThreadConfig(interaction.guild.id, { channels: next });
+        const embed = await buildConfigEmbed(interaction.guild);
+        // Recalculer la page après suppression
+        const newTotalPages = Math.ceil(next.length / 25);
+        const newPage = Math.min(currentPage, Math.max(0, newTotalPages - 1));
+        const rows = await buildAutoThreadRows(interaction.guild, newPage);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in autothread_channels_remove:', error);
+        return interaction.reply({ content: '❌ Erreur lors de la suppression des canaux autothread.', ephemeral: true });
+      }
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_naming') {
-      const mode = interaction.values[0];
-      const cfg = await getAutoThreadConfig(interaction.guild.id);
-      await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), mode } });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const mode = interaction.values[0];
+        const cfg = await getAutoThreadConfig(interaction.guild.id);
+        await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), mode } });
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildAutoThreadRows(interaction.guild);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in autothread_naming:', error);
+        return interaction.reply({ content: '❌ Erreur lors de la mise à jour du mode de nommage.', ephemeral: true });
+      }
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_archive') {
-      const policy = interaction.values[0];
-      const cfg = await getAutoThreadConfig(interaction.guild.id);
-      await updateAutoThreadConfig(interaction.guild.id, { archive: { ...(cfg.archive||{}), policy } });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const policy = interaction.values[0];
+        const cfg = await getAutoThreadConfig(interaction.guild.id);
+        await updateAutoThreadConfig(interaction.guild.id, { archive: { ...(cfg.archive||{}), policy } });
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildAutoThreadRows(interaction.guild);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in autothread_archive:', error);
+        return interaction.reply({ content: '❌ Erreur lors de la mise à jour de la politique d\'archivage.', ephemeral: true });
+      }
     }
     if (interaction.isButton() && interaction.customId === 'autothread_custom_pattern') {
       const modal = new ModalBuilder().setCustomId('autothread_custom_modal').setTitle('Pattern de nom de fil');
@@ -3277,11 +3332,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId.startsWith('autothread_page:')) {
-      const [, , pageStr] = interaction.customId.split(':');
-      const page = parseInt(pageStr) || 0;
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildAutoThreadRows(interaction.guild, page);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const [, , pageStr] = interaction.customId.split(':');
+        const page = parseInt(pageStr) || 0;
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildAutoThreadRows(interaction.guild, page);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in autothread_page:', error);
+        return interaction.reply({ content: '❌ Erreur lors de la navigation des pages autothread.', ephemeral: true });
+      }
     }
     if (interaction.isButton() && interaction.customId === 'autothread_nsfw_add') {
       const modal = new ModalBuilder().setCustomId('autothread_nsfw_add_modal').setTitle('Ajouter noms NSFW');

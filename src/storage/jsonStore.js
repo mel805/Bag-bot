@@ -704,6 +704,10 @@ function ensureAutoThreadShape(g) {
   if (!g.autothread || typeof g.autothread !== 'object') g.autothread = {};
   const at = g.autothread;
   if (!Array.isArray(at.channels)) at.channels = [];
+  
+  // Validate and clean channel IDs - remove any non-string or empty values
+  at.channels = at.channels.filter(id => typeof id === 'string' && id.trim().length > 0);
+  
   if (!at.naming || typeof at.naming !== 'object') at.naming = { mode: 'member_num', customPattern: '' };
   if (!['member_num','custom','nsfw','numeric','date_num'].includes(at.naming.mode)) at.naming.mode = 'member_num';
   if (typeof at.naming.customPattern !== 'string') at.naming.customPattern = '';
@@ -835,6 +839,12 @@ async function updateAutoThreadConfig(guildId, partial) {
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   ensureAutoThreadShape(cfg.guilds[guildId]);
   const current = cfg.guilds[guildId].autothread;
+  
+  // Validate channels if being updated
+  if (partial.channels) {
+    partial.channels = partial.channels.filter(id => typeof id === 'string' && id.trim().length > 0);
+  }
+  
   cfg.guilds[guildId].autothread = { ...current, ...partial };
   await writeConfig(cfg);
   return cfg.guilds[guildId].autothread;
