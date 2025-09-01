@@ -5766,11 +5766,7 @@ function emojiForHex(hex) {
   } catch (_) { return '⬛'; }
 }
 
-const COLOR_PALETTES = {
-  pastel: ['#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF','#F8BBD0','#F48FB1','#E1BEE7','#D1C4E9','#C5CAE9','#BBDEFB','#B3E5FC','#B2EBF2','#C8E6C9','#DCEDC8'],
-  vif: ['#F44336','#E91E63','#9C27B0','#673AB7','#3F51B5','#2196F3','#03A9F4','#00BCD4','#009688','#4CAF50','#8BC34A','#CDDC39','#FFEB3B','#FFC107','#FF9800','#FF5722','#795548'],
-  sombre: ['#1B1B1B','#212121','#263238','#2E3440','#37474F','#3E4C59','#424242','#455A64','#4E5D6C','#546E7A','#5C6B73','#607D8B','#6B7C8C'],
-};
+
 
 async function buildTruthDareRows(guild, mode = 'sfw') {
   const td = await getTruthDareConfig(guild.id);
