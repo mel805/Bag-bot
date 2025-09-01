@@ -4453,7 +4453,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_category_select:')) {
-      const [, , , targetType, targetId] = interaction.customId.split(':');
+      const [, targetType, targetId] = interaction.customId.split(':');
       const category = interaction.values[0];
       const colors = COLOR_PALETTES[category] || [];
 
@@ -4474,13 +4474,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
 
       const categoryNames = { pastel: 'Pastel', vif: 'Vives', sombre: 'Sombres' };
+      const fields = colors.slice(0, 15).map(color => ({
+        name: `${color.emoji} ${color.name}`,
+        value: `#${color.hex}`,
+        inline: true,
+      }));
       const embed = new EmbedBuilder()
         .setColor(THEME_COLOR_PRIMARY)
         .setTitle(`🎨 Attribution de couleur - ${categoryNames[category]}`)
         .setDescription(`Choisissez une couleur ${categoryNames[category].toLowerCase()}.`)
         .setThumbnail(THEME_IMAGE)
         .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
-        .setTimestamp();
+        .setTimestamp()
+        .addFields(fields);
 
       await interaction.update({
         embeds: [embed],
@@ -4490,7 +4496,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_final_select:')) {
-      const [, , , targetType, targetId, category] = interaction.customId.split(':');
+      const [, targetType, targetId, category] = interaction.customId.split(':');
       const colorHex = interaction.values[0];
       const colorInt = parseInt(colorHex, 16);
       
