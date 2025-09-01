@@ -17,12 +17,12 @@ Scripts
 Déploiement Render
 - Option 1 (recommandé) – Postgres: utilisez `render.yaml`
   - Build Command: `npm run render-build`
-  - Start Command: `npm run render-start`
+  - Start Command: `npm run render-start` (restaure config, enregistre les commandes, lance le bot)
   - Variables: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, et `DATABASE_URL` (injectée par la DB Render via blueprint)
   - La build migre automatiquement la config locale vers Postgres si `data/config.json` existe.
 - Option 2 – Volume persistant (sans Postgres): utilisez `render.volume.yaml`
   - Build Command: `npm run render-build`
-  - Start Command: `npm run render-start`
+  - Start Command: `npm run render-start` (restaure config, enregistre les commandes, lance le bot)
   - Variables: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `DATA_DIR=/var/data`
   - Un volume nommé `bag-bot-data` est monté sur `/var/data` (persistant)
   

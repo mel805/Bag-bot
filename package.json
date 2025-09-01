@@ -10,7 +10,7 @@
     "redeploy:cmd": "node src/deploy-commands.js",
     "migrate:pg": "node src/migrate/to-postgres.js",
     "render-build": "npm ci && node src/migrate/to-postgres.js || true",
-    "render-start": "node src/migrate/render-restore.js && node src/bot.js",
+    "render-start": "node src/migrate/render-restore.js && (node src/deploy-commands.js || true) && node src/bot.js",
     "build": "echo 'No build step'"
   },
   "engines": {
