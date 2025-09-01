@@ -4183,15 +4183,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // removed economy_set_base and economy_set_cooldowns
 
     if (interaction.isButton() && interaction.customId === 'economy_gifs') {
+      await interaction.deferUpdate();
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildEconomyGifRows(interaction.guild, 'work');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.editReply({ embeds: [embed], components: [...rows] });
+      return;
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'economy_gifs_action') {
+      await interaction.deferUpdate();
       const key = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildEconomyGifRows(interaction.guild, key);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.editReply({ embeds: [embed], components: [...rows] });
+      return;
     }
     if (interaction.isButton() && interaction.customId.startsWith('economy_gifs_add:')) {
       const parts = interaction.customId.split(':');
@@ -4219,8 +4223,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: `✅ Ajouté ${urls.length} GIF(s) à ${actionKeyToLabel(key)} (${kind}).` });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('economy_gifs_remove_success:')) {
+      await interaction.deferUpdate();
       const key = interaction.customId.split(':')[1];
-      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      if (interaction.values.includes('none')) return;
       const idxs = interaction.values.map(v => Number(v)).filter(n => Number.isFinite(n));
       const eco = await getEconomyConfig(interaction.guild.id);
       const gifs = { ...(eco.actions?.gifs || {}) };
@@ -4230,11 +4235,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), gifs } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildEconomyGifRows(interaction.guild, key);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.editReply({ embeds: [embed], components: [...rows] });
+      return;
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('economy_gifs_remove_fail:')) {
+      await interaction.deferUpdate();
       const key = interaction.customId.split(':')[1];
-      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      if (interaction.values.includes('none')) return;
       const idxs = interaction.values.map(v => Number(v)).filter(n => Number.isFinite(n));
       const eco = await getEconomyConfig(interaction.guild.id);
       const gifs = { ...(eco.actions?.gifs || {}) };
@@ -4244,7 +4251,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, { actions: { ...(eco.actions||{}), gifs } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildEconomyGifRows(interaction.guild, key);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.editReply({ embeds: [embed], components: [...rows] });
+      return;
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'economy_cd_modal') {
