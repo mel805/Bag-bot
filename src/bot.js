@@ -5566,17 +5566,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // French economy top-level commands
     if (interaction.isChatInputCommand() && interaction.commandName === 'solde') {
       const eco = await getEconomyConfig(interaction.guild.id);
-      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-      
-      // Log de debug pour diagnostiquer le problème
-      console.log(`[ECONOMY DEBUG] Balance check: User ${interaction.user.id} in guild ${interaction.guild.id}: amount=${u.amount}, money=${u.money}`);
-      
+      const target = interaction.options.getUser('membre', false) || interaction.user;
+      const u = await getEconomyUser(interaction.guild.id, target.id);
+      const isSelf = target.id === interaction.user.id;
+      // Log debug
+      console.log(`[ECONOMY DEBUG] Balance check: User ${target.id} in guild ${interaction.guild.id}: amount=${u.amount}, money=${u.money}`);
+      const title = isSelf ? 'Votre solde' : `Solde de ${target.username}`;
       const embed = buildEcoEmbed({
-        title: 'Votre solde',
-        description: `
-**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}
-**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}
-`,
+        title,
+        description: `\n**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}\n**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}\n`,
       });
       return interaction.reply({ embeds: [embed] });
     }
