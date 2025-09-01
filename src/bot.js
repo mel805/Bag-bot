@@ -5182,8 +5182,10 @@ client.on(Events.MessageCreate, async (message) => {
       const cfg = await getCountingConfig(message.guild.id);
       if (cfg.channels && cfg.channels.includes(message.channel.id)) {
         const raw = (message.content || '').trim();
-        // Keep only digits, operators, parentheses, spaces, caret, and sqrt symbol
-        const onlyDigitsAndOps = raw.replace(/[^0-9+\-*\/().\s^√]/g, '');
+        // Keep only digits, operators, parentheses, spaces, caret, sqrt symbol, and mathematical symbols × ÷
+        let onlyDigitsAndOps = raw.replace(/[^0-9+\-*\/().\s^√×÷]/g, '');
+        // Remplacer les symboles mathématiques par leurs équivalents
+        onlyDigitsAndOps = onlyDigitsAndOps.replace(/×/g, '*').replace(/÷/g, '/');
         // If any letters are present in the original message, ignore (do not reset)
         const state0 = cfg.state || { current: 0, lastUserId: '' };
         const expected0 = (state0.current || 0) + 1;
