@@ -2278,7 +2278,7 @@ client.once(Events.ClientReady, (readyClient) => {
   }
   // Init Erela.js (if available) with multiple fallback nodes
   try {
-    if (ErelaManager) {
+    if (ErelaManager && process.env.ENABLE_MUSIC !== 'false') {
       let nodes = [];
       try {
         if (process.env.LAVALINK_NODES) {
@@ -2365,17 +2365,26 @@ client.once(Events.ClientReady, (readyClient) => {
       
       manager.on('nodeError', (node, err) => {
         console.error(`[Music] 💥 Node error: ${node.options.identifier || node.options.host}:${node.options.port} - ${err?.message || err}`);
-        // Try to reconnect after error
+        // Try to reconnect after error with exponential backoff
+        const reconnectDelay = Math.min(30000, (node.reconnectAttempts || 0) * 5000 + 5000);
+        node.reconnectAttempts = (node.reconnectAttempts || 0) + 1;
+        
+        // Stop trying after 10 attempts to prevent infinite loops
+        if (node.reconnectAttempts > 10) {
+          console.error(`[Music] 🚫 Node ${node.options.identifier} disabled after 10 failed attempts`);
+          return;
+        }
+        
         setTimeout(() => {
           try {
             if (!node.connected) {
-              console.log(`[Music] 🔄 Attempting to reconnect node: ${node.options.identifier || node.options.host}`);
+              console.log(`[Music] 🔄 Attempting to reconnect node: ${node.options.identifier} (attempt ${node.reconnectAttempts})`);
               node.connect();
             }
           } catch (e) {
             console.error(`[Music] Failed to reconnect node: ${e?.message || e}`);
           }
-        }, 5000);
+        }, reconnectDelay);
       });
       
       manager.on('playerMove', (player, oldChannel, newChannel) => { 

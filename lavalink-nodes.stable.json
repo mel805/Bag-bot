@@ -1,0 +1,22 @@
+[
+  {
+    "identifier": "local-fallback",
+    "host": "127.0.0.1",
+    "port": 2334,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 3,
+    "retryDelay": 10000,
+    "note": "Nœud local - plus stable"
+  },
+  {
+    "identifier": "lava-link-public",
+    "host": "lava.link",
+    "port": 80,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 2,
+    "retryDelay": 15000,
+    "note": "Serveur public alternatif"
+  }
+]
