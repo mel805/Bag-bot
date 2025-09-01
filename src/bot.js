@@ -2427,19 +2427,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'confess') {
         const rows = await buildConfessRows(interaction.guild, 'sfw');
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'autothread') {
         const rows = await buildAutoThreadRows(interaction.guild, 0);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'counting') {
         const rows = await buildCountingRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'logs') {
         const rows = await buildLogsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'booster') {
         const rows = await buildBoosterRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
@@ -2835,14 +2835,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const mode = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('confess_channels_add:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       await addConfessChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('confess_channels_remove:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
@@ -2850,14 +2850,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await removeConfessChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'confess_log_select') {
       const channelId = interaction.values[0];
       await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
 
     // Logs config handlers
@@ -2866,14 +2866,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { enabled: !cfg.enabled });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'logs_pseudo') {
       const cfg = await getLogsConfig(interaction.guild.id);
       await updateLogsConfig(interaction.guild.id, { pseudo: !cfg.pseudo });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'logs_emoji') {
       // Simple rotate among a set
@@ -2884,14 +2884,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { emoji: next });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'logs_channel') {
       const id = interaction.values?.[0] || '';
       await updateLogsConfig(interaction.guild.id, { channelId: id });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       try { await interaction.followUp({ content: id ? `✅ Salon global: <#${id}>` : '✅ Salon global effacé', ephemeral: true }); } catch (_) {}
       return;
     }
@@ -2900,7 +2900,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       client._logsPerCat.set(interaction.guild.id, interaction.values[0]);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('logs_channel_set:')) {
       const cat = interaction.customId.split(':')[1] || 'moderation';
@@ -2912,7 +2912,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { channels });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       try { await interaction.followUp({ content: `✅ Salon pour ${cat}: <#${id}>`, ephemeral: true }); } catch (_) {}
       return;
     }
@@ -2943,7 +2943,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateConfessConfig(interaction.guild.id, { allowReplies: allow });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_naming') {
       const cf = await getConfessConfig(interaction.guild.id);
@@ -2951,7 +2951,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateConfessConfig(interaction.guild.id, { threadNaming: next });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_nsfw_add') {
       const modal = new ModalBuilder().setCustomId('confess_nsfw_add_modal').setTitle('Ajouter noms NSFW');
@@ -3192,7 +3192,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoThreadConfig(interaction.guild.id, { channels: Array.from(set) });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('autothread_channels_remove')) {
       if (interaction.values.includes('none')) return interaction.deferUpdate();
@@ -3207,7 +3207,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const newTotalPages = Math.ceil(next.length / 25);
       const newPage = Math.min(currentPage, Math.max(0, newTotalPages - 1));
       const rows = await buildAutoThreadRows(interaction.guild, newPage);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_naming') {
       const mode = interaction.values[0];
@@ -3215,7 +3215,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), mode } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_archive') {
       const policy = interaction.values[0];
@@ -3223,7 +3223,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoThreadConfig(interaction.guild.id, { archive: { ...(cfg.archive||{}), policy } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'autothread_custom_pattern') {
       const modal = new ModalBuilder().setCustomId('autothread_custom_modal').setTitle('Pattern de nom de fil');
@@ -3284,7 +3284,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const page = parseInt(pageStr) || 0;
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild, page);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'autothread_nsfw_add') {
       const modal = new ModalBuilder().setCustomId('autothread_nsfw_add_modal').setTitle('Ajouter noms NSFW');
