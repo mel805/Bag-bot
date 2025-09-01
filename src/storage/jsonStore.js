@@ -142,27 +142,52 @@ async function writeConfig(cfg) {
 async function backupNow() {
   const cfg = await readConfig();
   await writeConfig(cfg);
-  const info = { storage: USE_PG ? 'postgres' : 'file', backupFile: null, historyId: null, github: null };
+  const info = { 
+    storage: USE_PG ? 'postgres' : 'file', 
+    backupFile: null, 
+    historyId: null, 
+    github: null,
+    local: { success: false, error: null },
+    details: {
+      dataSize: JSON.stringify(cfg).length,
+      guildsCount: Object.keys(cfg.guilds || {}).length,
+      usersCount: 0,
+      timestamp: new Date().toISOString()
+    }
+  };
+
+  // Compter le nombre total d'utilisateurs avec des données
+  for (const guildId in cfg.guilds || {}) {
+    const guild = cfg.guilds[guildId];
+    if (guild.levels?.users) info.details.usersCount += Object.keys(guild.levels.users).length;
+    if (guild.economy?.balances) info.details.usersCount += Object.keys(guild.economy.balances).length;
+  }
+  info.details.usersCount = Math.max(info.details.usersCount, Object.keys(cfg.guilds || {}).length);
   
   // Sauvegarde locale (existante)
-  if (USE_PG) {
-    try {
+  try {
+    if (USE_PG) {
       const pool = await getPg();
       const client = await pool.connect();
       try {
         await client.query('CREATE TABLE IF NOT EXISTS app_config_history (id SERIAL PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
         const { rows } = await client.query('SELECT id FROM app_config_history ORDER BY id DESC LIMIT 1');
         info.historyId = rows?.[0]?.id || null;
+        info.local.success = true;
       } finally {
         client.release();
       }
-    } catch (_) {}
-  } else {
-    try {
+    } else {
       const backupsDir = path.join(DATA_DIR, 'backups');
       const entries = (await fsp.readdir(backupsDir)).filter(n => n.endsWith('.json')).sort();
-      if (entries.length) info.backupFile = path.join(backupsDir, entries[entries.length - 1]);
-    } catch (_) {}
+      if (entries.length) {
+        info.backupFile = path.join(backupsDir, entries[entries.length - 1]);
+        info.local.success = true;
+      }
+    }
+  } catch (error) {
+    info.local.error = error.message;
+    console.error('[Backup] Erreur sauvegarde locale:', error.message);
   }
 
   // Sauvegarde GitHub (nouvelle)
@@ -172,12 +197,14 @@ async function backupNow() {
     
     if (github.isConfigured()) {
       const result = await github.backup(cfg);
-      info.github = result;
+      info.github = { ...result, configured: true };
       console.log('[Backup] Sauvegarde GitHub réussie:', result.commit_sha);
     } else {
+      info.github = { success: false, configured: false, error: 'GitHub non configuré (GITHUB_TOKEN et GITHUB_REPO requis)' };
       console.log('[Backup] GitHub non configuré, sauvegarde locale uniquement');
     }
   } catch (error) {
+    info.github = { success: false, configured: true, error: error.message };
     console.error('[Backup] Erreur sauvegarde GitHub:', error.message);
     // Ne pas faire échouer la sauvegarde locale si GitHub échoue
   }
