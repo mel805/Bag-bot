@@ -646,6 +646,36 @@ async function handleEconomyAction(interaction, actionKey) {
   const msgSet = ((eco.actions?.messages || {})[actionKey]) || { success: [], fail: [] };
   const successRate = Number(conf.successRate ?? 1);
   const success = Math.random() < successRate;
+  // XP config
+  const xpOnSuccess = Math.max(0, Number(conf.xpDelta || 0));
+  const xpOnFail = Math.max(0, Number(conf.failXpDelta || 0));
+  const partnerXpShare = Math.max(0, Number(conf.partnerXpShare || 0));
+  const awardXp = async (userId, baseXp) => {
+    try {
+      const levels = await getLevelsConfig(interaction.guild.id);
+      if (!levels?.enabled) return;
+      const add = Math.max(0, Math.round(baseXp));
+      if (add <= 0) return;
+      const stats = await getUserStats(interaction.guild.id, userId);
+      const prevLevel = stats.level || 0;
+      stats.xp = (stats.xp||0) + add;
+      const norm = xpToLevel(stats.xp, levels.levelCurve || { base: 100, factor: 1.2 });
+      stats.level = norm.level;
+      stats.xpSinceLevel = norm.xpSinceLevel;
+      await setUserStats(interaction.guild.id, userId, stats);
+      if (stats.level > prevLevel) {
+        const mem = await fetchMember(interaction.guild, userId);
+        if (mem) {
+          maybeAnnounceLevelUp(interaction.guild, mem, levels, stats.level);
+          const rid = (levels.rewards || {})[String(stats.level)];
+          if (rid) {
+            try { await mem.roles.add(rid); } catch (_) {}
+            maybeAnnounceRoleAward(interaction.guild, mem, levels, rid);
+          }
+        }
+      }
+    } catch (_) {}
+  };
   let moneyDelta = 0;
   let karmaField = null;
   let imageUrl = undefined;
@@ -688,6 +718,14 @@ async function handleEconomyAction(interaction, actionKey) {
     ];
     const embed = buildEcoEmbed({ title: 'Don effectué', description: desc, fields });
     if (imageUrl) embed.setImage(imageUrl);
+    // XP awards (actor + partner)
+    try {
+      const baseXp = success ? xpOnSuccess : xpOnFail; // give is always success, but keep consistent
+      await awardXp(interaction.user.id, baseXp);
+      if (cible && cible.id !== interaction.user.id && partnerXpShare > 0) {
+        await awardXp(cible.id, Math.round(baseXp * partnerXpShare));
+      }
+    } catch (_) {}
     return interaction.reply({ embeds: [embed] });
   }
   if (actionKey === 'steal') {
@@ -716,6 +754,10 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       const embed = buildEcoEmbed({ title: 'Vol réussi', description: desc, fields });
       if (imageUrl) embed.setImage(imageUrl);
+      // XP awards (actor + partner if applicable — not used for steal)
+      try {
+        await awardXp(interaction.user.id, xpOnSuccess);
+      } catch (_) {}
       return interaction.reply({ embeds: [embed], ephemeral: true });
     } else {
       const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
@@ -739,6 +781,9 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       const embed = buildEcoEmbed({ title: 'Vol raté', description: desc, fields });
       if (imageUrl) embed.setImage(imageUrl);
+      try {
+        await awardXp(interaction.user.id, xpOnFail);
+      } catch (_) {}
       return interaction.reply({ embeds: [embed] });
     }
   }
@@ -746,6 +791,20 @@ async function handleEconomyAction(interaction, actionKey) {
   u.amount = Math.max(0, (u.amount||0) + moneyDelta);
   setCd(actionKey, cdToSet);
   await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+  // XP awards (actor + partner/complice if present)
+  try {
+    const baseXp = success ? xpOnSuccess : xpOnFail;
+    await awardXp(interaction.user.id, baseXp);
+    let partnerUser = null;
+    if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep'].includes(actionKey)) {
+      partnerUser = interaction.options.getUser('cible', false);
+    } else if (actionKey === 'crime') {
+      partnerUser = interaction.options.getUser('complice', false);
+    }
+    if (partnerUser && partnerUser.id !== interaction.user.id && partnerXpShare > 0) {
+      await awardXp(partnerUser.id, Math.round(baseXp * partnerXpShare));
+    }
+  } catch (_) {}
   const nice = actionKeyToLabel(actionKey);
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
   const currency = eco.currency?.name || 'BAG$';
@@ -755,7 +814,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','massage','dance'].includes(actionKey)) {
+      if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep'].includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
@@ -2014,7 +2073,38 @@ async function buildConfessRows(guild, mode = 'sfw') {
 }
 
 function actionKeyToLabel(key) {
-  const map = { work: 'travailler', fish: 'pêcher', give: 'donner', steal: 'voler', kiss: 'embrasser', flirt: 'flirter', seduce: 'séduire', fuck: 'fuck', massage: 'masser', dance: 'danser', crime: 'crime' };
+  const map = {
+    work: 'travailler',
+    fish: 'pêcher',
+    give: 'donner',
+    steal: 'voler',
+    kiss: 'embrasser',
+    flirt: 'flirter',
+    seduce: 'séduire',
+    fuck: 'fuck',
+    massage: 'masser',
+    dance: 'danser',
+    crime: 'crime',
+    // Hot & Fun
+    shower: 'douche',
+    wet: 'wet',
+    bed: 'lit',
+    undress: 'déshabiller',
+    // Domination / Soumission
+    collar: 'collier',
+    leash: 'laisse',
+    kneel: 'à genoux',
+    order: 'ordonner',
+    punish: 'punir',
+    // Séduction & RP doux
+    rose: 'rose',
+    wine: 'vin',
+    pillowfight: 'bataille oreillers',
+    sleep: 'dormir',
+    // Délires / Jeux
+    oops: 'oups',
+    caught: 'surpris'
+  };
   return map[key] || key;
 }
 
@@ -2048,7 +2138,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
+  const allKeys = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   const pick = new StringSelectMenuBuilder().setCustomId('economy_gifs_action').setPlaceholder('Choisir une action…').addOptions(...opts);
   const rows = [new ActionRowBuilder().addComponents(pick)];
@@ -4275,6 +4365,55 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'crime') {
       return handleEconomyAction(interaction, 'crime');
     }
+    // New Hot & Fun
+    if (interaction.isChatInputCommand() && interaction.commandName === 'shower') {
+      return handleEconomyAction(interaction, 'shower');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'wet') {
+      return handleEconomyAction(interaction, 'wet');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'bed') {
+      return handleEconomyAction(interaction, 'bed');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'undress') {
+      return handleEconomyAction(interaction, 'undress');
+    }
+    // Domination / Soumission
+    if (interaction.isChatInputCommand() && interaction.commandName === 'collar') {
+      return handleEconomyAction(interaction, 'collar');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'leash') {
+      return handleEconomyAction(interaction, 'leash');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'kneel') {
+      return handleEconomyAction(interaction, 'kneel');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'order') {
+      return handleEconomyAction(interaction, 'order');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'punish') {
+      return handleEconomyAction(interaction, 'punish');
+    }
+    // Séduction & RP doux
+    if (interaction.isChatInputCommand() && interaction.commandName === 'rose') {
+      return handleEconomyAction(interaction, 'rose');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'wine') {
+      return handleEconomyAction(interaction, 'wine');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'pillowfight') {
+      return handleEconomyAction(interaction, 'pillowfight');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'sleep') {
+      return handleEconomyAction(interaction, 'sleep');
+    }
+    // Délires / Jeux
+    if (interaction.isChatInputCommand() && interaction.commandName === 'oops') {
+      return handleEconomyAction(interaction, 'oops');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'caught') {
+      return handleEconomyAction(interaction, 'caught');
+    }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
       const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Boutique BAG').setDescription('Sélectionnez un article à acheter.').setThumbnail(THEME_IMAGE).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON });
@@ -5427,29 +5566,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // French economy top-level commands
     if (interaction.isChatInputCommand() && interaction.commandName === 'solde') {
       const eco = await getEconomyConfig(interaction.guild.id);
-      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-      
-      // Log de debug pour diagnostiquer le problème
-      console.log(`[ECONOMY DEBUG] Balance check: User ${interaction.user.id} in guild ${interaction.guild.id}: amount=${u.amount}, money=${u.money}`);
-      
+      const target = interaction.options.getUser('membre', false) || interaction.user;
+      const u = await getEconomyUser(interaction.guild.id, target.id);
+      const isSelf = target.id === interaction.user.id;
+      // Log debug
+      console.log(`[ECONOMY DEBUG] Balance check: User ${target.id} in guild ${interaction.guild.id}: amount=${u.amount}, money=${u.money}`);
+      const title = isSelf ? 'Votre solde' : `Solde de ${target.username}`;
       const embed = buildEcoEmbed({
-        title: 'Votre solde',
-        description: `
-**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}
-**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}
-`,
-      });
-      return interaction.reply({ embeds: [embed] });
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-      const embed = buildEcoEmbed({
-        title: 'Votre économie',
+        title,
         description: `\n**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}\n**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}\n`,
       });
       return interaction.reply({ embeds: [embed] });
     }
+    // removed /economie command
     /*
 // GIFs per action (success/fail)
 const ACTION_GIFS = {

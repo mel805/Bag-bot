@@ -559,7 +559,7 @@ function ensureEconomyShape(g) {
   if (!e.settings || typeof e.settings !== 'object') e.settings = {};
   if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
   if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
-  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120, crime: 1800 };
+  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120, crime: 1800, shower: 120, wet: 90, bed: 180, undress: 120, collar: 120, leash: 120, kneel: 60, order: 60, punish: 300, rose: 60, wine: 180, pillowfight: 120, sleep: 300, oops: 30, caught: 60 };
   
   // Récompenses pour messages et vocal
   if (!e.rewards || typeof e.rewards !== 'object') e.rewards = {};
@@ -573,7 +573,7 @@ function ensureEconomyShape(g) {
   if (typeof e.rewards.voice.enabled !== 'boolean') e.rewards.voice.enabled = true;
   if (typeof e.rewards.voice.intervalMinutes !== 'number') e.rewards.voice.intervalMinutes = 5;
   if (!e.actions || typeof e.actions !== 'object') e.actions = {};
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -589,8 +589,56 @@ function ensureEconomyShape(g) {
     seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 3, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 5, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
-    dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.5, partnerKarmaShare: 1.5 },
     crime: { moneyMin: 30, moneyMax: 80, karma: 'perversion', karmaDelta: 4, cooldown: 1800, successRate: 0.6, failMoneyMin: 15, failMoneyMax: 30, failKarmaDelta: 4, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    // Hot & Fun
+    shower: { moneyMin: 5, moneyMax: 20, karma: 'perversion', karmaDelta: 2, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    wet: { moneyMin: 5, moneyMax: 15, karma: 'perversion', karmaDelta: 2, cooldown: 90, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    bed: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 3, cooldown: 180, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 2, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    undress: { moneyMin: 5, moneyMax: 15, karma: 'perversion', karmaDelta: 2, cooldown: 120, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
+    // Domination / Soumission
+    collar: { moneyMin: 5, moneyMax: 20, karma: 'perversion', karmaDelta: 3, cooldown: 120, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 6, failKarmaDelta: 2, partnerMoneyShare: 1.0, partnerKarmaShare: 1.5 },
+    leash: { moneyMin: 5, moneyMax: 20, karma: 'perversion', karmaDelta: 3, cooldown: 120, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 6, failKarmaDelta: 2, partnerMoneyShare: 1.0, partnerKarmaShare: 1.5 },
+    kneel: { moneyMin: 5, moneyMax: 15, karma: 'perversion', karmaDelta: 2, cooldown: 60, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.5 },
+    order: { moneyMin: 5, moneyMax: 15, karma: 'perversion', karmaDelta: 2, cooldown: 60, successRate: 0.9, failMoneyMin: 1, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    punish: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 4, cooldown: 300, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 3, partnerMoneyShare: 1.0, partnerKarmaShare: 1.5 },
+    // Séduction & RP doux
+    rose: { moneyMin: 5, moneyMax: 10, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.95, failMoneyMin: 1, failMoneyMax: 3, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.3 },
+    wine: { moneyMin: 10, moneyMax: 25, karma: 'charm', karmaDelta: 2, cooldown: 180, successRate: 0.85, failMoneyMin: 3, failMoneyMax: 6, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.3 },
+    pillowfight: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 120, successRate: 0.9, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.3 },
+    sleep: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 300, successRate: 0.9, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.3 },
+    // Délires coquins / Jeux
+    oops: { moneyMin: 3, moneyMax: 8, karma: 'perversion', karmaDelta: 1, cooldown: 30, successRate: 0.95, failMoneyMin: 1, failMoneyMax: 2, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
+    caught: { moneyMin: 3, moneyMax: 12, karma: 'perversion', karmaDelta: 1, cooldown: 60, successRate: 0.9, failMoneyMin: 1, failMoneyMax: 3, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
+  };
+  // Add XP parameters defaults for actions (success/fail) + partner XP share
+  const xpDefaults = {
+    work: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 0.0 },
+    fish: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 0.0 },
+    give: { xpDelta: 5, failXpDelta: 0, partnerXpShare: 0.0 },
+    steal: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 0.0 },
+    kiss: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    flirt: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
+    seduce: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
+    fuck: { xpDelta: 20, failXpDelta: 5, partnerXpShare: 1.0 },
+    massage: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
+    dance: { xpDelta: 6, failXpDelta: 2, partnerXpShare: 1.0 },
+    crime: { xpDelta: 15, failXpDelta: 5, partnerXpShare: 1.0 },
+    shower: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    wet: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
+    bed: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
+    undress: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 0.0 },
+    collar: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    leash: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    kneel: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
+    order: { xpDelta: 6, failXpDelta: 2, partnerXpShare: 1.0 },
+    punish: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
+    rose: { xpDelta: 6, failXpDelta: 1, partnerXpShare: 1.0 },
+    wine: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
+    pillowfight: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
+    sleep: { xpDelta: 6, failXpDelta: 1, partnerXpShare: 1.0 },
+    oops: { xpDelta: 4, failXpDelta: 1, partnerXpShare: 0.0 },
+    caught: { xpDelta: 5, failXpDelta: 1, partnerXpShare: 0.0 },
   };
   for (const [k, d] of Object.entries(defaults)) {
     if (!e.actions.config[k] || typeof e.actions.config[k] !== 'object') e.actions.config[k] = { ...d };
@@ -608,6 +656,11 @@ function ensureEconomyShape(g) {
       if (typeof c.partnerMoneyShare !== 'number') c.partnerMoneyShare = d.partnerMoneyShare;
       if (typeof c.partnerKarmaShare !== 'number') c.partnerKarmaShare = d.partnerKarmaShare;
     }
+    // Ensure XP fields exist
+    const xd = xpDefaults[k] || { xpDelta: 5, failXpDelta: 1, partnerXpShare: 0.0 };
+    if (typeof e.actions.config[k].xpDelta !== 'number') e.actions.config[k].xpDelta = xd.xpDelta;
+    if (typeof e.actions.config[k].failXpDelta !== 'number') e.actions.config[k].failXpDelta = xd.failXpDelta;
+    if (typeof e.actions.config[k].partnerXpShare !== 'number') e.actions.config[k].partnerXpShare = xd.partnerXpShare;
   }
   // Ensure per-action messages shape (personalized success/fail messages)
   if (!e.actions.messages || typeof e.actions.messages !== 'object') e.actions.messages = {};
@@ -651,6 +704,70 @@ function ensureEconomyShape(g) {
     steal: {
       success: ['Vol réussi, quelle dextérité !', 'Vous avez filé avec le butin.'],
       fail: ['Pris la main dans le sac…', 'La cible vous a repéré !']
+    },
+    // Hot & Fun
+    shower: {
+      success: ['Douche chaude… ou froide surprise 😏🚿', 'Ça chauffe sous la douche !'],
+      fail: ['L’eau est glacée… brrr !', 'Oups, la serviette a glissé…']
+    },
+    wet: {
+      success: ['Ambiance humide garantie 💧', 'Ça devient glissant…'],
+      fail: ['Rien à signaler… trop sec.']
+    },
+    bed: {
+      success: ['Invitation au lit acceptée 😏', 'Le lit vous tend les bras.'],
+      fail: ['Pas d’humeur pour se coucher.']
+    },
+    undress: {
+      success: ['Déshabillage progressif engagé…', 'Tout en douceur.'],
+      fail: ['Boutons récalcitrants…']
+    },
+    // Domination / Soumission
+    collar: {
+      success: ['Collier posé 🔗', 'Un lien se crée…'],
+      fail: ['Refusé…']
+    },
+    leash: {
+      success: ['En laisse 🐾', 'Suivez-moi.'],
+      fail: ['La laisse s’échappe…']
+    },
+    kneel: {
+      success: ['À genoux, bon/ne soumis/e.', 'Obéissance parfaite.'],
+      fail: ['Résistance détectée.']
+    },
+    order: {
+      success: ['Ordre donné, exécution immédiate.', 'Vous imposez votre volonté.'],
+      fail: ['Ordre ignoré…']
+    },
+    punish: {
+      success: ['Punition appliquée 😈', 'Leçon mémorable.'],
+      fail: ['Grâce accordée.']
+    },
+    // Séduction & RP doux
+    rose: {
+      success: ['Une rose offerte 🌹', 'Le cœur fond.'],
+      fail: ['La rose fane…']
+    },
+    wine: {
+      success: ['Verre partagé 🍷', 'Tchin !'],
+      fail: ['Pas de verre ce soir.']
+    },
+    pillowfight: {
+      success: ['Bataille d’oreillers épique 🛏️', 'Pluie de plumes !'],
+      fail: ['Oreillers introuvables…']
+    },
+    sleep: {
+      success: ['Endormi dans ses bras 💤', 'Rêves doux.'],
+      fail: ['Insomnie…']
+    },
+    // Délires coquins / Jeux
+    oops: {
+      success: ['Oups, j’ai glissé…', 'Quelle maladresse sexy !'],
+      fail: ['On refait ?']
+    },
+    caught: {
+      success: ['Surpris en flagrant délit 👀', 'Pris sur le fait !'],
+      fail: ['Personne ne vous a vu.']
     }
   };
   for (const [k, def] of Object.entries(msgDefaults)) {

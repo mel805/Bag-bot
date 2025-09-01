@@ -53,7 +53,7 @@ const commands = [
     .addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true))
     .addIntegerOption(o=>o.setName('valeur').setDescription('Montant').setRequired(true))
     .toJSON(),
-  new SlashCommandBuilder().setName('solde').setDescription('Voir votre solde').toJSON(),
+  new SlashCommandBuilder().setName('solde').setDescription('Voir un solde').addUserOption(o=>o.setName('membre').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('travailler').setDescription('Gagner de l\'argent en travaillant').toJSON(),
   new SlashCommandBuilder().setName('pêcher').setDescription('Pêcher pour gagner de l\'argent').toJSON(),
   new SlashCommandBuilder().setName('donner').setDescription('Donner de l\'argent à un membre').addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addIntegerOption(o=>o.setName('montant').setDescription('Montant').setRequired(true).setMinValue(1)).toJSON(),
@@ -77,7 +77,6 @@ const commands = [
     .setDescription('View your level or another member\'s')
     .addUserOption(o => o.setName('member').setDescription('Member (optional)').setRequired(false))
     .toJSON(),
-  new SlashCommandBuilder().setName('economie').setDescription('Voir votre économie (argent, charme, perversion)').toJSON(),
   new SlashCommandBuilder()
     .setName('top')
     .setDescription('Classements')
@@ -87,11 +86,7 @@ const commands = [
       .setDescription('Classement des niveaux')
       .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
     )
-    .addSubcommand(sc => sc
-      .setName('economie')
-      .setDescription('Classement par argent')
-      .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
-    )
+    // removed old economie subcommand
     .toJSON(),
   new SlashCommandBuilder().setName('crime').setDescription('Commettre un crime… au risque 😈').addUserOption(o=>o.setName('complice').setDescription('Complice (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder()
@@ -151,6 +146,25 @@ const commands = [
       )
     )
     .toJSON(),
+  // Hot & Fun — catégorie
+  new SlashCommandBuilder().setName('shower').setDescription('Gif douche chaude ou douche froide surprise 🚿').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('wet').setDescription('Ambiance humide, suggestive 💧').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('bed').setDescription('Invitation au lit 😏').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('undress').setDescription('Déshabillage progressif').toJSON(),
+  // Domination / Soumission
+  new SlashCommandBuilder().setName('collar').setDescription('Poser un collier, gif de soumission 🔗').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('leash').setDescription('Tenir en laisse 🐾').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('kneel').setDescription('Soumission à genoux').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('order').setDescription('Donner un ordre (RP dominant)').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('punish').setDescription('Punition sexy (fessée, corde, etc.)').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  // Séduction & RP doux
+  new SlashCommandBuilder().setName('rose').setDescription('Offrir une rose 🌹').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('wine').setDescription('Partager un verre 🍷').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('pillowfight').setDescription('Bataille d’oreillers sexy/fun 🛏️').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('sleep').setDescription('S’endormir dans les bras de quelqu’un 💤').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  // Délires coquins / Jeux
+  new SlashCommandBuilder().setName('oops').setDescription('Gif "oups j’ai glissé" (maladresse sexy)').toJSON(),
+  new SlashCommandBuilder().setName('caught').setDescription('Surpris en flagrant délit 👀').toJSON(),
   new SlashCommandBuilder()
     .setName('map')
     .setDescription('Définir ou voir votre localisation (ville)')
