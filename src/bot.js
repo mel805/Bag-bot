@@ -1707,8 +1707,7 @@ async function buildBoosterRows(guild) {
   const voiceXp = new ButtonBuilder().setCustomId('booster_voicexp').setLabel(`XP vocal x${b.voiceXpMult}`).setStyle(ButtonStyle.Primary);
   const cdMult = new ButtonBuilder().setCustomId('booster_cd').setLabel(`Cooldown x${b.actionCooldownMult}`).setStyle(ButtonStyle.Secondary);
   const priceMult = new ButtonBuilder().setCustomId('booster_shop').setLabel(`Prix boutique x${b.shopPriceMult}`).setStyle(ButtonStyle.Secondary);
-  const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
-  const row1 = new ActionRowBuilder().addComponents(toggle, back);
+  const row1 = new ActionRowBuilder().addComponents(toggle);
   const row2 = new ActionRowBuilder().addComponents(textXp, voiceXp, cdMult, priceMult);
   return [row1, row2];
 }
@@ -1791,44 +1790,48 @@ async function buildAutoThreadRows(guild, page = 0) {
     new ActionRowBuilder().addComponents(archive),
   ];
   
-  // Ajouter les boutons de pagination si nécessaire
+  // Créer une row combinée pour les contrôles additionnels (max 5 boutons par row)
+  const additionalButtons = [];
+  
+  // Boutons de pagination
   if (totalPages > 1) {
     const prevBtn = new ButtonBuilder()
       .setCustomId(`autothread_page:${Math.max(0, page - 1)}`)
-      .setLabel('◀ Précédent')
+      .setLabel('◀')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page === 0);
     
     const nextBtn = new ButtonBuilder()
       .setCustomId(`autothread_page:${Math.min(totalPages - 1, page + 1)}`)
-      .setLabel('Suivant ▶')
+      .setLabel('▶')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page === totalPages - 1);
     
-    const infoBtn = new ButtonBuilder()
-      .setCustomId('autothread_info')
-      .setLabel(`${allChannels.length} canaux configurés`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true);
-    
-    rows.push(new ActionRowBuilder().addComponents(prevBtn, infoBtn, nextBtn));
-  } else if (allChannels.length > 0) {
-    // Afficher le nombre de canaux même sans pagination
-    const infoBtn = new ButtonBuilder()
-      .setCustomId('autothread_info')
-      .setLabel(`${allChannels.length} canaux configurés`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true);
-    
-    rows.push(new ActionRowBuilder().addComponents(infoBtn));
+    additionalButtons.push(prevBtn, nextBtn);
   }
   
+  // Bouton info/status
+  if (allChannels.length > 0) {
+    const infoBtn = new ButtonBuilder()
+      .setCustomId('autothread_info')
+      .setLabel(`${allChannels.length} canaux`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(true);
+    additionalButtons.push(infoBtn);
+  }
+  
+  // Boutons pour modes spéciaux
   if ((cfg.naming?.mode || 'member_num') === 'custom') {
-    rows.push(new ActionRowBuilder().addComponents(customBtn));
+    additionalButtons.push(customBtn);
   } else if ((cfg.naming?.mode || 'member_num') === 'nsfw') {
-    const addBtn = new ButtonBuilder().setCustomId('autothread_nsfw_add').setLabel('Ajouter noms NSFW').setStyle(ButtonStyle.Primary);
-    const remBtn = new ButtonBuilder().setCustomId('autothread_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
-    rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
+    const addBtn = new ButtonBuilder().setCustomId('autothread_nsfw_add').setLabel('+ NSFW').setStyle(ButtonStyle.Primary);
+    const remBtn = new ButtonBuilder().setCustomId('autothread_nsfw_remove').setLabel('- NSFW').setStyle(ButtonStyle.Danger);
+    additionalButtons.push(addBtn, remBtn);
+  }
+  
+  // Ajouter la row des boutons additionnels si elle contient des éléments
+  if (additionalButtons.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(...additionalButtons.slice(0, 5))); // Max 5 boutons
   }
   
   return rows;
@@ -1895,7 +1898,10 @@ async function buildLogsRows(guild) {
   else multi.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
   const rowMulti = new ActionRowBuilder().addComponents(multi);
 
-  return [rowToggles, rowGlobal, rowPerCat, rowPerCatCh, rowMulti];
+  // Combiner les rows pour respecter la limite de 5 ActionRow (4 + buildBackRow)
+  // Fusionner rowPerCat et rowMulti ne peut pas se faire car ce sont 2 SelectMenu
+  // Donc on garde les 4 plus importantes et on enlève rowMulti
+  return [rowToggles, rowGlobal, rowPerCat, rowPerCatCh];
 }
 
 async function buildConfessRows(guild, mode = 'sfw') {
@@ -1917,15 +1923,16 @@ async function buildConfessRows(guild, mode = 'sfw') {
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
     new ActionRowBuilder().addComponents(logSelect),
-    new ActionRowBuilder().addComponents(replyToggle, nameToggle),
   ];
   
-  // Ajouter les boutons de gestion des noms NSFW si le mode NSFW est activé
+  // Combiner les boutons dans une seule row pour respecter la limite de 5 ActionRow
+  const toggleButtons = [replyToggle, nameToggle];
   if (cf.threadNaming === 'nsfw') {
-    const addBtn = new ButtonBuilder().setCustomId('confess_nsfw_add').setLabel('Ajouter noms NSFW').setStyle(ButtonStyle.Primary);
-    const remBtn = new ButtonBuilder().setCustomId('confess_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
-    rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
+    const addBtn = new ButtonBuilder().setCustomId('confess_nsfw_add').setLabel('+ NSFW').setStyle(ButtonStyle.Primary);
+    const remBtn = new ButtonBuilder().setCustomId('confess_nsfw_remove').setLabel('- NSFW').setStyle(ButtonStyle.Danger);
+    toggleButtons.push(addBtn, remBtn);
   }
+  rows.push(new ActionRowBuilder().addComponents(...toggleButtons));
   
   return rows;
 }
@@ -2924,19 +2931,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { categories: cats });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'logs_cats_toggle') {
-      const cfg = await getLogsConfig(interaction.guild.id);
-      const set = new Set(interaction.values);
-      const cats = { ...(cfg.categories||{}) };
-      // Flip selected ones
-      for (const k of set) { cats[k] = !cats[k]; }
-      await updateLogsConfig(interaction.guild.id, { categories: cats });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
-    }
+    // Gestionnaire logs_cats_toggle supprimé car le SelectMenu a été retiré pour respecter les limites Discord
     if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
       const cf = await getConfessConfig(interaction.guild.id);
       const allow = !cf.allowReplies;
