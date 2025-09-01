@@ -169,9 +169,9 @@ require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
-const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || 'https://cdn.discordapp.com/attachments/1408458115283812484/1411752143173714040/IMG_20250831_183646.png';
+const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || './bag.png';
 const CERTIFIED_ROSEGOLD = String(process.env.CERTIFIED_ROSEGOLD || 'false').toLowerCase() === 'true';
-const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || 'https://cdn.discordapp.com/attachments/1408458115283812484/1411752143173714040/IMG_20250831_183646.png';
+const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || './bag.png';
 
 if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
