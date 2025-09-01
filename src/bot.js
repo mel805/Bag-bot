@@ -4131,86 +4131,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Admin-only: /couleur (attribuer une couleur de rôle)
+    // Admin-only: /couleur (attribuer une couleur de rôle avec sélecteurs)
     if (interaction.isChatInputCommand() && interaction.commandName === 'couleur') {
       try {
         const ok = await isStaffMember(interaction.guild, interaction.member);
         if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
         
-        const targetUser = interaction.options.getUser('membre', true);
-        const colorInput = interaction.options.getString('couleur', true);
-        const roleName = interaction.options.getString('nom') || `Couleur-${targetUser.username}`;
-        
-        // Valider le format de couleur hexadécimale
-        const colorRegex = /^#?([A-Fa-f0-9]{6})$/;
-        const match = colorInput.match(colorRegex);
-        if (!match) {
-          return interaction.reply({ 
-            content: '❌ Format de couleur invalide. Utilisez le format hexadécimal (ex: #FF0000 ou FF0000)', 
-            ephemeral: true 
-          });
-        }
-        
-        const colorHex = parseInt(match[1], 16);
-        const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-        if (!targetMember) {
-          return interaction.reply({ content: '❌ Membre introuvable sur ce serveur.', ephemeral: true });
-        }
-        
-        await interaction.deferReply();
-        
-        // Chercher un rôle de couleur existant pour cet utilisateur (rôles commençant par "Couleur-")
-        const existingColorRole = targetMember.roles.cache.find(role => 
-          role.name.startsWith('Couleur-') && role.managed === false
-        );
-        
-        let colorRole;
-        if (existingColorRole) {
-          // Modifier la couleur du rôle existant
-          try {
-            colorRole = await existingColorRole.edit({ color: colorHex });
-          } catch (error) {
-            return interaction.editReply({ content: '❌ Impossible de modifier la couleur du rôle existant. Vérifiez les permissions.' });
-          }
-        } else {
-          // Créer un nouveau rôle de couleur
-          try {
-            colorRole = await interaction.guild.roles.create({
-              name: roleName,
-              color: colorHex,
-              permissions: [],
-              reason: `Rôle de couleur créé par ${interaction.user.tag}`
-            });
-            
-            // Attribuer le rôle au membre
-            await targetMember.roles.add(colorRole);
-          } catch (error) {
-            return interaction.editReply({ content: '❌ Impossible de créer le rôle de couleur. Vérifiez les permissions du bot.' });
-          }
-        }
-        
+        // Première étape : sélection du type de cible
+        const targetSelect = new StringSelectMenuBuilder()
+          .setCustomId('couleur_target_select')
+          .setPlaceholder('Choisir le type de cible...')
+          .addOptions([
+            { label: '👤 Membre spécifique', value: 'user', description: 'Attribuer une couleur à un membre' },
+            { label: '🎭 Rôle existant', value: 'role', description: 'Modifier la couleur d\'un rôle existant' }
+          ]);
+
         const embed = new EmbedBuilder()
-          .setColor(colorHex)
-          .setTitle('🎨 Couleur attribuée')
-          .setDescription(`**${targetUser.tag}** a reçu la couleur **${colorInput.toUpperCase()}**`)
-          .addFields([
-            { name: 'Rôle', value: colorRole.name, inline: true },
-            { name: 'Couleur', value: `\`${colorInput.toUpperCase()}\``, inline: true }
-          ])
-          .setThumbnail(targetUser.displayAvatarURL())
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur')
+          .setDescription('Sélectionnez d\'abord le type de cible pour la couleur.')
+          .setThumbnail(THEME_IMAGE)
           .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
           .setTimestamp();
-        
-        await interaction.editReply({ embeds: [embed] });
+
+        await interaction.reply({
+          embeds: [embed],
+          components: [new ActionRowBuilder().addComponents(targetSelect)],
+          ephemeral: true
+        });
         
       } catch (error) {
         console.error('Erreur commande couleur:', error);
-        const reply = { content: '❌ Une erreur est survenue lors de l\'attribution de la couleur.' };
-        if (interaction.deferred) {
-          await interaction.editReply(reply);
-        } else {
-          await interaction.reply({ ...reply, ephemeral: true });
-        }
+        await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true });
       }
       return;
     }
@@ -5489,6 +5441,61 @@ async function buildShopRows(guild) {
 }
 
 let SUITE_EMOJI = '💞';
+
+// Palettes de couleurs pour la commande /couleur
+const COLOR_PALETTES = {
+  pastel: [
+    { name: 'Rose Pastel', hex: 'FFB3BA', emoji: '🌸' },
+    { name: 'Pêche Pastel', hex: 'FFDFBA', emoji: '🍑' },
+    { name: 'Jaune Pastel', hex: 'FFFFBA', emoji: '🌻' },
+    { name: 'Vert Pastel', hex: 'BAFFC9', emoji: '🌿' },
+    { name: 'Bleu Pastel', hex: 'BAE1FF', emoji: '💙' },
+    { name: 'Violet Pastel', hex: 'D4BAFF', emoji: '💜' },
+    { name: 'Lavande', hex: 'E6E6FA', emoji: '🪻' },
+    { name: 'Menthe', hex: 'AAFFEE', emoji: '🌱' },
+    { name: 'Corail Pastel', hex: 'FFB5B5', emoji: '🐚' },
+    { name: 'Lilas', hex: 'DDA0DD', emoji: '🌺' },
+    { name: 'Aqua Pastel', hex: 'B0E0E6', emoji: '🌊' },
+    { name: 'Vanille', hex: 'F3E5AB', emoji: '🍦' },
+    { name: 'Rose Poudré', hex: 'F8BBD9', emoji: '🎀' },
+    { name: 'Ciel Pastel', hex: 'C7CEEA', emoji: '☁️' },
+    { name: 'Saumon Pastel', hex: 'FFB07A', emoji: '🐟' }
+  ],
+  vif: [
+    { name: 'Rouge Vif', hex: 'FF0000', emoji: '❤️' },
+    { name: 'Orange Vif', hex: 'FF8C00', emoji: '🧡' },
+    { name: 'Jaune Vif', hex: 'FFD700', emoji: '💛' },
+    { name: 'Vert Vif', hex: '00FF00', emoji: '💚' },
+    { name: 'Bleu Vif', hex: '0080FF', emoji: '💙' },
+    { name: 'Violet Vif', hex: '8A2BE2', emoji: '💜' },
+    { name: 'Rose Vif', hex: 'FF1493', emoji: '💖' },
+    { name: 'Cyan Vif', hex: '00FFFF', emoji: '🩵' },
+    { name: 'Magenta', hex: 'FF00FF', emoji: '🩷' },
+    { name: 'Lime', hex: '32CD32', emoji: '🍋' },
+    { name: 'Turquoise', hex: '40E0D0', emoji: '🌀' },
+    { name: 'Corail Vif', hex: 'FF7F50', emoji: '🔥' },
+    { name: 'Indigo', hex: '4B0082', emoji: '🌌' },
+    { name: 'Écarlate', hex: 'DC143C', emoji: '⭐' },
+    { name: 'Émeraude', hex: '50C878', emoji: '💎' }
+  ],
+  sombre: [
+    { name: 'Rouge Sombre', hex: '8B0000', emoji: '🍎' },
+    { name: 'Orange Sombre', hex: 'CC5500', emoji: '🍊' },
+    { name: 'Jaune Sombre', hex: 'B8860B', emoji: '🟨' },
+    { name: 'Vert Sombre', hex: '006400', emoji: '🌲' },
+    { name: 'Bleu Sombre', hex: '000080', emoji: '🌀' },
+    { name: 'Violet Sombre', hex: '4B0082', emoji: '🍇' },
+    { name: 'Rose Sombre', hex: 'C71585', emoji: '🌹' },
+    { name: 'Brun Chocolat', hex: '7B3F00', emoji: '🍫' },
+    { name: 'Bordeaux', hex: '722F37', emoji: '🍷' },
+    { name: 'Vert Forêt', hex: '228B22', emoji: '🌳' },
+    { name: 'Bleu Marine', hex: '191970', emoji: '🌊' },
+    { name: 'Prune', hex: '663399', emoji: '🟣' },
+    { name: 'Anthracite', hex: '36454F', emoji: '⚫' },
+    { name: 'Olive', hex: '808000', emoji: '🫒' },
+    { name: 'Acajou', hex: 'C04000', emoji: '🪵' }
+  ]
+};
 
 function emojiForHex(hex) {
   try {
