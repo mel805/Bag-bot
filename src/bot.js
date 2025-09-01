@@ -3509,19 +3509,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Admin-only: /backup (export config)
+    // Admin-only: /backup (export config + force snapshot)
     if (interaction.isChatInputCommand() && interaction.commandName === 'backup') {
       try {
         const ok = await isStaffMember(interaction.guild, interaction.member);
         if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
         await interaction.deferReply({ ephemeral: true });
-        const { readConfig } = require('./storage/jsonStore');
+        const { readConfig, backupNow } = require('./storage/jsonStore');
+        const info = await backupNow();
         const cfg = await readConfig();
         const json = Buffer.from(JSON.stringify(cfg, null, 2), 'utf8');
         const file = { attachment: json, name: 'bag-backup.json' };
         try {
           const lc = await getLogsConfig(interaction.guild.id);
-          const em = buildModEmbed(`${lc.emoji} Sauvegarde`, `Sauvegarde Discord — méthode: slash`, [ { name: 'Auteur', value: `${interaction.user}` } ]);
+          const details = [];
+          if (info?.storage === 'postgres') details.push({ name: 'Stockage', value: 'Postgres' });
+          if (info?.storage === 'file') details.push({ name: 'Stockage', value: 'Fichier' });
+          if (info?.historyId) details.push({ name: 'Historique ID', value: String(info.historyId) });
+          if (info?.backupFile) details.push({ name: 'Backup fichier', value: String(info.backupFile) });
+          const em = buildModEmbed(`${lc.emoji} Sauvegarde`, `Sauvegarde Discord — méthode: slash`, [ { name: 'Auteur', value: `${interaction.user}` }, ...details ]);
           await sendLog(interaction.guild, 'backup', em);
         } catch (_) {}
         return interaction.editReply({ content: '📦 Sauvegarde générée.', files: [file] });
@@ -3535,7 +3541,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Admin-only: /restore (import config)
+    // Admin-only: /restore (import config ou restaurer dernier snapshot)
     if (interaction.isChatInputCommand() && interaction.commandName === 'restore') {
       try {
         const ok = await isStaffMember(interaction.guild, interaction.member);
@@ -3548,7 +3554,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
           try { const r = await fetch(att.url); text = await r.text(); } catch (_) {}
         }
         if (!text && raw && raw.trim()) text = raw.trim();
-        if (!text) return interaction.editReply({ content: 'Fournissez un fichier ou un JSON.' });
+        if (!text) {
+          const { restoreLatest } = require('./storage/jsonStore');
+          const result = await restoreLatest();
+          try {
+            const lc = await getLogsConfig(interaction.guild.id);
+            const em = buildModEmbed(`${lc.emoji} Restauration`, `Restauration depuis dernier snapshot`, [ { name: 'Source', value: String(result?.source||'inconnue') }, { name: 'Auteur', value: `${interaction.user}` } ]);
+            await sendLog(interaction.guild, 'backup', em);
+          } catch (_) {}
+          return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
+        }
         let parsed = null;
         try { parsed = JSON.parse(text); } catch (_) { return interaction.editReply({ content: 'JSON invalide.' }); }
         if (!parsed || typeof parsed !== 'object' || !parsed.guilds) return interaction.editReply({ content: 'Format inattendu: champ "guilds" manquant.' });
