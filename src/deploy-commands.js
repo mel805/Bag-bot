@@ -86,7 +86,11 @@ const commands = [
       .setDescription('Classement des niveaux')
       .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
     )
-    // removed old economie subcommand
+    .addSubcommand(sc => sc
+      .setName('économie')
+      .setDescription('Classement économique')
+      .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
+    )
     .toJSON(),
   new SlashCommandBuilder().setName('crime').setDescription('Commettre un crime… au risque 😈').addUserOption(o=>o.setName('complice').setDescription('Complice (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder()
