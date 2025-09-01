@@ -4,7 +4,7 @@ services:
     env: node
     autoDeploy: true
     plan: free
-    buildCommand: npm run render-build
+    buildCommand: npm ci
     startCommand: npm run render-start
     envVars:
       - key: DISCORD_TOKEN
