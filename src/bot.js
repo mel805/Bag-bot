@@ -1928,13 +1928,39 @@ async function buildLogsRows(guild) {
 
 async function buildConfessRows(guild, mode = 'sfw') {
   const cf = await getConfessConfig(guild.id);
+  
+  // Filter out invalid/deleted channels before processing
+  const validChannels = (cf[mode].channels || []).filter(id => {
+    const channel = guild.channels.cache.get(id);
+    return channel && channel.type === ChannelType.GuildText;
+  });
+  
+  // Update config if invalid channels were found and removed
+  if (validChannels.length !== (cf[mode].channels || []).length) {
+    const updateData = {};
+    updateData[mode] = { ...cf[mode], channels: validChannels };
+    await updateConfessConfig(guild.id, updateData);
+  }
+  
   const modeSelect = new StringSelectMenuBuilder().setCustomId('confess_mode').setPlaceholder('Mode…').addOptions(
     { label: 'Confessions', value: 'sfw', default: mode === 'sfw' },
     { label: 'Confessions NSFW', value: 'nsfw', default: mode === 'nsfw' },
   );
   const channelAdd = new ChannelSelectMenuBuilder().setCustomId(`confess_channels_add:${mode}`).setPlaceholder('Ajouter des salons…').setMinValues(1).setMaxValues(3).addChannelTypes(ChannelType.GuildText);
-  const channelRemove = new StringSelectMenuBuilder().setCustomId(`confess_channels_remove:${mode}`).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, (cf[mode].channels||[]).length || 1)));
-  const opts = (cf[mode].channels||[]).map(id => ({ label: guild.channels.cache.get(id)?.name || id, value: id }));
+  const channelRemove = new StringSelectMenuBuilder().setCustomId(`confess_channels_remove:${mode}`).setPlaceholder('Retirer des salons…').setMinValues(1).setMaxValues(Math.max(1, Math.min(25, validChannels.length || 1)));
+  
+  // Ensure we only map valid channels with proper names
+  const opts = validChannels
+    .map(id => {
+      const channel = guild.channels.cache.get(id);
+      if (!channel) return null;
+      return { 
+        label: channel.name || `Channel ${id}`, 
+        value: id 
+      };
+    })
+    .filter(opt => opt !== null);
+    
   if (opts.length) channelRemove.addOptions(...opts); else channelRemove.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
   const logSelect = new ChannelSelectMenuBuilder().setCustomId('confess_log_select').setPlaceholder(cf.logChannelId ? `Salon de logs actuel: <#${cf.logChannelId}>` : 'Choisir le salon de logs…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const replyToggle = new ButtonBuilder().setCustomId('confess_toggle_replies').setLabel(cf.allowReplies ? 'Réponses: ON' : 'Réponses: OFF').setStyle(cf.allowReplies ? ButtonStyle.Success : ButtonStyle.Secondary);
@@ -2455,8 +2481,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const rows = await buildTruthDareRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'confess') {
-        const rows = await buildConfessRows(interaction.guild, 'sfw');
-        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        try {
+          const rows = await buildConfessRows(interaction.guild, 'sfw');
+          await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        } catch (error) {
+          console.error('Error building confess configuration:', error);
+          await interaction.update({ embeds: [embed], components: [buildBackRow()], content: '❌ Erreur lors du chargement de la configuration confessions.' });
+        }
       } else if (section === 'autothread') {
         try {
           const rows = await buildAutoThreadRows(interaction.guild, 0);
@@ -2866,32 +2897,52 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Confess config handlers
     if (interaction.isStringSelectMenu() && interaction.customId === 'confess_mode') {
-      const mode = interaction.values[0];
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const mode = interaction.values[0];
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildConfessRows(interaction.guild, mode);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in confess_mode:', error);
+        return interaction.reply({ content: '❌ Erreur lors du changement de mode confessions.', ephemeral: true });
+      }
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('confess_channels_add:')) {
-      const mode = interaction.customId.split(':')[1] || 'sfw';
-      await addConfessChannels(interaction.guild.id, interaction.values, mode);
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const mode = interaction.customId.split(':')[1] || 'sfw';
+        await addConfessChannels(interaction.guild.id, interaction.values, mode);
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildConfessRows(interaction.guild, mode);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in confess_channels_add:', error);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ajout des canaux confessions.', ephemeral: true });
+      }
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('confess_channels_remove:')) {
-      const mode = interaction.customId.split(':')[1] || 'sfw';
-      if (interaction.values.includes('none')) return interaction.deferUpdate();
-      await removeConfessChannels(interaction.guild.id, interaction.values, mode);
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const mode = interaction.customId.split(':')[1] || 'sfw';
+        if (interaction.values.includes('none')) return interaction.deferUpdate();
+        await removeConfessChannels(interaction.guild.id, interaction.values, mode);
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildConfessRows(interaction.guild, mode);
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in confess_channels_remove:', error);
+        return interaction.reply({ content: '❌ Erreur lors de la suppression des canaux confessions.', ephemeral: true });
+      }
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'confess_log_select') {
-      const channelId = interaction.values[0];
-      await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const channelId = interaction.values[0];
+        await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildConfessRows(interaction.guild, 'sfw');
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in confess_log_select:', error);
+        return interaction.reply({ content: '❌ Erreur lors de la configuration du salon de logs confessions.', ephemeral: true });
+      }
     }
 
     // Logs config handlers
@@ -2962,20 +3013,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     // Gestionnaire logs_cats_toggle supprimé car le SelectMenu a été retiré pour respecter les limites Discord
     if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
-      const cf = await getConfessConfig(interaction.guild.id);
-      const allow = !cf.allowReplies;
-      await updateConfessConfig(interaction.guild.id, { allowReplies: allow });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const cf = await getConfessConfig(interaction.guild.id);
+        const allow = !cf.allowReplies;
+        await updateConfessConfig(interaction.guild.id, { allowReplies: allow });
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildConfessRows(interaction.guild, 'sfw');
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in confess_toggle_replies:', error);
+        return interaction.reply({ content: '❌ Erreur lors du toggle des réponses confessions.', ephemeral: true });
+      }
     }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_naming') {
-      const cf = await getConfessConfig(interaction.guild.id);
-      const next = cf.threadNaming === 'nsfw' ? 'normal' : 'nsfw';
-      await updateConfessConfig(interaction.guild.id, { threadNaming: next });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try {
+        const cf = await getConfessConfig(interaction.guild.id);
+        const next = cf.threadNaming === 'nsfw' ? 'normal' : 'nsfw';
+        await updateConfessConfig(interaction.guild.id, { threadNaming: next });
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildConfessRows(interaction.guild, 'sfw');
+        return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      } catch (error) {
+        console.error('Error in confess_toggle_naming:', error);
+        return interaction.reply({ content: '❌ Erreur lors du toggle du nommage confessions.', ephemeral: true });
+      }
     }
     if (interaction.isButton() && interaction.customId === 'confess_nsfw_add') {
       const modal = new ModalBuilder().setCustomId('confess_nsfw_add_modal').setTitle('Ajouter noms NSFW');

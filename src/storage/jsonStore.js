@@ -693,6 +693,11 @@ function ensureConfessShape(g) {
   if (!cf.nsfw || typeof cf.nsfw !== 'object') cf.nsfw = { channels: [] };
   if (!Array.isArray(cf.sfw.channels)) cf.sfw.channels = [];
   if (!Array.isArray(cf.nsfw.channels)) cf.nsfw.channels = [];
+  
+  // Validate and clean channel IDs - remove any non-string or empty values
+  cf.sfw.channels = cf.sfw.channels.filter(id => typeof id === 'string' && id.trim().length > 0);
+  cf.nsfw.channels = cf.nsfw.channels.filter(id => typeof id === 'string' && id.trim().length > 0);
+  
   if (typeof cf.logChannelId !== 'string') cf.logChannelId = '';
   if (typeof cf.allowReplies !== 'boolean') cf.allowReplies = true;
   if (cf.threadNaming !== 'nsfw' && cf.threadNaming !== 'normal') cf.threadNaming = 'normal';
