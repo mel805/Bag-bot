@@ -2212,22 +2212,31 @@ client.once(Events.ClientReady, (readyClient) => {
     try {
       const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
       if (!guild) return;
-      // Force a read+write round-trip to create snapshot/rolling backups
-      const { readConfig, writeConfig } = require('./storage/jsonStore');
-      const state = await readConfig();
-      await writeConfig(state);
+      
+      // Force a read+write round-trip to create snapshot/rolling backups avec GitHub
+      const { backupNow } = require('./storage/jsonStore');
+      const backupInfo = await backupNow();
+      
       const cfg = await getLogsConfig(guild.id);
       if (!cfg?.categories?.backup) return;
       
-      // Simuler les infos pour le snapshot automatique
+      // Utiliser les vraies informations de sauvegarde (incluant GitHub)
       const autoInfo = { 
         storage: 'auto', 
-        local: { success: true }, 
-        github: { success: false, configured: false, error: 'Snapshot automatique (GitHub non déclenché)' },
-        details: { timestamp: new Date().toISOString() }
+        local: backupInfo.local || { success: true }, 
+        github: backupInfo.github || { success: false, configured: false, error: 'GitHub non configuré' },
+        details: { 
+          timestamp: new Date().toISOString(),
+          dataSize: backupInfo.details?.dataSize || 0,
+          guildsCount: backupInfo.details?.guildsCount || 0,
+          usersCount: backupInfo.details?.usersCount || 0
+        }
       };
+      
       await sendDetailedBackupLog(guild, autoInfo, 'automatique', null);
-    } catch (_) {}
+    } catch (error) {
+      console.error('[Backup Auto] Erreur:', error.message);
+    }
   }, 30 * 60 * 1000);
 });
 client.on(Events.InteractionCreate, async (interaction) => {
