@@ -130,6 +130,20 @@ async function fetchStaticMapBuffer(centerLat, centerLon, zoom, markerList, widt
     return null;
   }
 }
+function buildStaticMapUrl(centerLat, centerLon, zoom, markerList, width = 800, height = 500) {
+  const token = process.env.LOCATIONIQ_TOKEN || '';
+  if (!token) return null;
+  let url = `https://maps.locationiq.com/v3/staticmap?key=${encodeURIComponent(token)}&center=${encodeURIComponent(String(centerLat))},${encodeURIComponent(String(centerLon))}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(String(width))}x${encodeURIComponent(String(height))}&format=png`;
+  const safeMarkers = Array.isArray(markerList) ? markerList : [];
+  for (const m of safeMarkers) {
+    const icon = m.icon || 'small-red-cutout';
+    const lat = Number(m.lat);
+    const lon = Number(m.lon);
+    if (!isFinite(lat) || !isFinite(lon)) continue;
+    url += `&markers=icon:${encodeURIComponent(icon)}|${encodeURIComponent(String(lat))},${encodeURIComponent(String(lon))}`;
+  }
+  return url;
+}
 require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
@@ -1955,11 +1969,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
             { name: 'Longitude', value: String(stored.lon), inline: true },
           )
           .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
-        const mapBuf = await fetchStaticMapBuffer(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 800, 500);
-        if (mapBuf) {
-          return interaction.editReply({ embeds: [embed], files: [{ attachment: mapBuf, name: 'map.png' }] });
+        let file = null;
+        const buf = await fetchStaticMapBuffer(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 800, 500);
+        if (buf) file = { attachment: buf, name: 'map.png' };
+        if (!file) {
+          const mapUrl = buildStaticMapUrl(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 800, 500);
+          if (mapUrl) embed.setImage(mapUrl);
+          return interaction.editReply({ embeds: [embed] });
         }
-        return interaction.editReply({ embeds: [embed] });
+        return interaction.editReply({ embeds: [embed], files: [file] });
       } catch (_) {
         return interaction.reply({ content: 'Erreur géolocalisation.', ephemeral: true });
       }
@@ -1969,7 +1987,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'proche') {
       try {
         if (!process.env.LOCATIONIQ_TOKEN) return interaction.reply({ content: 'Service de géolocalisation indisponible. Configurez LOCATIONIQ_TOKEN.', ephemeral: true });
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral: true });
         const radius = Math.max(10, Math.min(1000, interaction.options.getInteger('distance') || 200));
         const selfLoc = await getUserLocation(interaction.guild.id, interaction.user.id);
         if (!selfLoc) return interaction.editReply('Définissez d\'abord votre ville avec `/map`');
@@ -1992,11 +2010,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const markers = [{ lat: selfLoc.lat, lon: selfLoc.lon, icon: 'small-blue-cutout' }];
         for (const x of nearby) markers.push({ lat: all[x.uid].lat, lon: all[x.uid].lon, icon: 'small-red-cutout' });
         const z = zoomForRadiusKm(radius);
-        const mapBuf = await fetchStaticMapBuffer(selfLoc.lat, selfLoc.lon, z, markers, 800, 500);
-        if (mapBuf) {
-          return interaction.editReply({ embeds: [embed], files: [{ attachment: mapBuf, name: 'nearby.png' }] });
+        let file = null;
+        const buf = await fetchStaticMapBuffer(selfLoc.lat, selfLoc.lon, z, markers, 800, 500);
+        if (buf) file = { attachment: buf, name: 'nearby.png' };
+        if (!file) {
+          const mapUrl = buildStaticMapUrl(selfLoc.lat, selfLoc.lon, z, markers, 800, 500);
+          if (mapUrl) embed.setImage(mapUrl);
+          return interaction.editReply({ embeds: [embed] });
         }
-        return interaction.editReply({ embeds: [embed] });
+        return interaction.editReply({ embeds: [embed], files: [file] });
       } catch (_) {
         return interaction.reply({ content: 'Erreur proximité.', ephemeral: true });
       }
@@ -2023,9 +2045,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
               { name: 'Carte', value: url }
             )
             .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
-          const mapBuf = await fetchStaticMapBuffer(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 800, 500);
-          if (mapBuf) return interaction.editReply({ embeds: [embed], files: [{ attachment: mapBuf, name: 'member.png' }] });
-          return interaction.editReply({ embeds: [embed] });
+          let file = null;
+          const buf = await fetchStaticMapBuffer(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 800, 500);
+          if (buf) file = { attachment: buf, name: 'member.png' };
+          if (!file) {
+            const mapUrl = buildStaticMapUrl(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 800, 500);
+            if (mapUrl) embed.setImage(mapUrl);
+            return interaction.editReply({ embeds: [embed] });
+          }
+          return interaction.editReply({ embeds: [embed], files: [file] });
         }
         const all = await getAllLocations(interaction.guild.id);
         const ids = Object.keys(all);
@@ -2043,15 +2071,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
         // Try to compute map center and show up to 25 markers
         const points = ids.slice(0, 25).map(uid => ({ lat: Number(all[uid].lat), lon: Number(all[uid].lon) })).filter(p => isFinite(p.lat) && isFinite(p.lon));
-        let files = [];
         if (points.length) {
           const avgLat = points.reduce((s,p)=>s+p.lat,0)/points.length;
           const avgLon = points.reduce((s,p)=>s+p.lon,0)/points.length;
           const markers = points.map(p => ({ lat: p.lat, lon: p.lon, icon: 'small-red-cutout' }));
-          const mapBuf = await fetchStaticMapBuffer(avgLat, avgLon, 5, markers, 800, 500);
-          if (mapBuf) files = [{ attachment: mapBuf, name: 'members.png' }];
+          let file = null;
+          const buf = await fetchStaticMapBuffer(avgLat, avgLon, 5, markers, 800, 500);
+          if (buf) file = { attachment: buf, name: 'members.png' };
+          if (!file) {
+            const mapUrl = buildStaticMapUrl(avgLat, avgLon, 5, markers, 800, 500);
+            if (mapUrl) embed.setImage(mapUrl);
+            return interaction.editReply({ embeds: [embed] });
+          }
+          return interaction.editReply({ embeds: [embed], files: [file] });
         }
-        return interaction.editReply({ embeds: [embed], files });
+        return interaction.editReply({ embeds: [embed] });
       } catch (_) {
         return interaction.reply({ content: 'Erreur localisation.', ephemeral: true });
       }

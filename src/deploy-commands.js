@@ -137,11 +137,13 @@ const commands = [
   new SlashCommandBuilder()
     .setName('map')
     .setDescription('Définir ou voir votre localisation (ville)')
+    .setDMPermission(false)
     .addStringOption(o=>o.setName('ville').setDescription('Votre ville (ex: Paris)').setRequired(true))
     .toJSON(),
   new SlashCommandBuilder()
     .setName('proche')
     .setDescription('Voir les membres proches (≤ 200 km) sur une carte')
+    .setDMPermission(false)
     .addIntegerOption(o=>o.setName('distance').setDescription('Distance max en km (10-1000)').setRequired(false).setMinValue(10).setMaxValue(1000))
     .toJSON(),
   new SlashCommandBuilder()
