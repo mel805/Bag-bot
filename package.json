@@ -11,7 +11,11 @@
     "migrate:pg": "node src/migrate/to-postgres.js",
     "render-build": "npm ci && node src/migrate/to-postgres.js || true",
     "render-start": "node src/migrate/render-restore.js && (node src/deploy-commands.js || true) && node src/bot.js",
-    "build": "echo 'No build step'"
+    "build": "echo 'No build step'",
+    "deploy:commands": "bash scripts/deploy-commands.sh",
+    "deploy:render": "bash scripts/render-deploy.sh",
+    "deploy:check": "bash scripts/render-deploy.sh --check-only",
+    "deploy:fast": "bash scripts/render-deploy.sh --skip-tests --skip-build"
   },
   "engines": {
     "node": ">=18.17"
