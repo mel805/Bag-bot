@@ -4569,6 +4569,58 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    // Retour à la sélection de catégorie
+    if (interaction.isButton() && interaction.customId.startsWith('couleur_back_to_category:')) {
+      const [, targetType, targetId] = interaction.customId.split(':');
+      if (targetType === 'user') {
+        const user = await interaction.guild.members.fetch(targetId).catch(() => null);
+        if (!user) return interaction.update({ content: '❌ Membre introuvable.', embeds: [], components: [] });
+
+        const categorySelect = new StringSelectMenuBuilder()
+          .setCustomId(`couleur_category_select:user:${targetId}`)
+          .setPlaceholder('Choisir une catégorie de couleur...')
+          .addOptions([
+            { label: '🌸 Couleurs Pastel', value: 'pastel', description: 'Couleurs douces et apaisantes' },
+            { label: '🔥 Couleurs Vives', value: 'vif', description: 'Couleurs éclatantes et énergiques' },
+            { label: '🌙 Couleurs Sombres', value: 'sombre', description: 'Couleurs profondes et mystérieuses' }
+          ]);
+
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur - Catégorie')
+          .setDescription(`**Membre sélectionné:** ${user.user.tag}\n\nChoisissez maintenant une catégorie de couleur.`)
+          .setThumbnail(user.user.displayAvatarURL())
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+
+        await interaction.update({ embeds: [embed], components: [new ActionRowBuilder().addComponents(categorySelect)], files: [] });
+        return;
+      } else if (targetType === 'role') {
+        const role = interaction.guild.roles.cache.get(targetId);
+        if (!role) return interaction.update({ content: '❌ Rôle introuvable.', embeds: [], components: [] });
+
+        const categorySelect = new StringSelectMenuBuilder()
+          .setCustomId(`couleur_category_select:role:${targetId}`)
+          .setPlaceholder('Choisir une catégorie de couleur...')
+          .addOptions([
+            { label: '🌸 Couleurs Pastel', value: 'pastel', description: 'Couleurs douces et apaisantes' },
+            { label: '🔥 Couleurs Vives', value: 'vif', description: 'Couleurs éclatantes et énergiques' },
+            { label: '🌙 Couleurs Sombres', value: 'sombre', description: 'Couleurs profondes et mystérieuses' }
+          ]);
+
+        const embed = new EmbedBuilder()
+          .setColor(role.color || THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur - Catégorie')
+          .setDescription(`**Rôle sélectionné:** ${role.name}\n\nChoisissez maintenant une catégorie de couleur.`)
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+
+        await interaction.update({ embeds: [embed], components: [new ActionRowBuilder().addComponents(categorySelect)], files: [] });
+        return;
+      }
+    }
+
     // Admin-only: /backup (export config + force snapshot)
     if (interaction.isChatInputCommand() && interaction.commandName === 'backup') {
       try {
@@ -6018,6 +6070,10 @@ function buildColorSelectView(targetType, targetId, category, offset = 0) {
     .setLabel('Suivant ⟩')
     .setStyle(ButtonStyle.Primary)
     .setDisabled(off + limit >= total);
+  const backBtn = new ButtonBuilder()
+    .setCustomId(`couleur_back_to_category:${targetType}:${targetId}`)
+    .setLabel('↩️ Retour')
+    .setStyle(ButtonStyle.Secondary);
 
   const categoryNames = { pastel: 'Pastel', vif: 'Vives', sombre: 'Sombres' };
   const fields = colors.map(color => ({ name: `${color.emoji} ${color.name}`, value: `#${color.hex}`, inline: true }));
@@ -6035,7 +6091,7 @@ function buildColorSelectView(targetType, targetId, category, offset = 0) {
 
   const rows = [
     new ActionRowBuilder().addComponents(colorSelect),
-    new ActionRowBuilder().addComponents(prevBtn, nextBtn),
+    new ActionRowBuilder().addComponents(backBtn, prevBtn, nextBtn),
   ];
 
   return { embed, rows, files: [attachment] };
