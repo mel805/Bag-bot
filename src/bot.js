@@ -450,7 +450,7 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       const embed = buildEcoEmbed({ title: 'Vol réussi', description: desc, fields });
       if (imageUrl) embed.setImage(imageUrl);
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     } else {
       const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
       u.amount = Math.max(0, (u.amount||0) - lost);
@@ -1970,13 +1970,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
           )
           .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
         let file = null;
-        const buf = await fetchStaticMapBuffer(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 800, 500);
+        const buf = await fetchStaticMapBuffer(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 600, 400);
         if (buf) file = { attachment: buf, name: 'map.png' };
         if (!file) {
           const mapUrl = buildStaticMapUrl(stored.lat, stored.lon, 10, [{ lat: stored.lat, lon: stored.lon, icon: 'small-blue-cutout' }], 800, 500);
           if (mapUrl) embed.setImage(mapUrl);
           return interaction.editReply({ embeds: [embed] });
         }
+        embed.setImage('attachment://map.png');
         return interaction.editReply({ embeds: [embed], files: [file] });
       } catch (_) {
         return interaction.reply({ content: 'Erreur géolocalisation.', ephemeral: true });
@@ -2011,13 +2012,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         for (const x of nearby) markers.push({ lat: all[x.uid].lat, lon: all[x.uid].lon, icon: 'small-red-cutout' });
         const z = zoomForRadiusKm(radius);
         let file = null;
-        const buf = await fetchStaticMapBuffer(selfLoc.lat, selfLoc.lon, z, markers, 800, 500);
+        const buf = await fetchStaticMapBuffer(selfLoc.lat, selfLoc.lon, z, markers, 600, 400);
         if (buf) file = { attachment: buf, name: 'nearby.png' };
         if (!file) {
-          const mapUrl = buildStaticMapUrl(selfLoc.lat, selfLoc.lon, z, markers, 800, 500);
+          const mapUrl = buildStaticMapUrl(selfLoc.lat, selfLoc.lon, z, markers, 600, 400);
           if (mapUrl) embed.setImage(mapUrl);
           return interaction.editReply({ embeds: [embed] });
         }
+        embed.setImage('attachment://nearby.png');
         return interaction.editReply({ embeds: [embed], files: [file] });
       } catch (_) {
         return interaction.reply({ content: 'Erreur proximité.', ephemeral: true });
@@ -2046,13 +2048,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
             )
             .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
           let file = null;
-          const buf = await fetchStaticMapBuffer(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 800, 500);
+          const buf = await fetchStaticMapBuffer(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 600, 400);
           if (buf) file = { attachment: buf, name: 'member.png' };
           if (!file) {
-            const mapUrl = buildStaticMapUrl(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 800, 500);
+            const mapUrl = buildStaticMapUrl(loc.lat, loc.lon, 10, [{ lat: loc.lat, lon: loc.lon, icon: 'small-blue-cutout' }], 600, 400);
             if (mapUrl) embed.setImage(mapUrl);
             return interaction.editReply({ embeds: [embed] });
           }
+          embed.setImage('attachment://member.png');
           return interaction.editReply({ embeds: [embed], files: [file] });
         }
         const all = await getAllLocations(interaction.guild.id);
@@ -2076,13 +2079,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const avgLon = points.reduce((s,p)=>s+p.lon,0)/points.length;
           const markers = points.map(p => ({ lat: p.lat, lon: p.lon, icon: 'small-red-cutout' }));
           let file = null;
-          const buf = await fetchStaticMapBuffer(avgLat, avgLon, 5, markers, 800, 500);
+          const buf = await fetchStaticMapBuffer(avgLat, avgLon, 5, markers, 600, 400);
           if (buf) file = { attachment: buf, name: 'members.png' };
           if (!file) {
-            const mapUrl = buildStaticMapUrl(avgLat, avgLon, 5, markers, 800, 500);
+            const mapUrl = buildStaticMapUrl(avgLat, avgLon, 5, markers, 600, 400);
             if (mapUrl) embed.setImage(mapUrl);
             return interaction.editReply({ embeds: [embed] });
           }
+          embed.setImage('attachment://members.png');
           return interaction.editReply({ embeds: [embed], files: [file] });
         }
         return interaction.editReply({ embeds: [embed] });
