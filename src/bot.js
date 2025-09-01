@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events, AttachmentBuilder } = require('discord.js');
 let ErelaManager;
 try { ({ Manager: ErelaManager } = require('erela.js')); } catch (_) { ErelaManager = null; }
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig, getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
@@ -4455,43 +4455,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_category_select:')) {
       const [, targetType, targetId] = interaction.customId.split(':');
       const category = interaction.values[0];
-      const colors = COLOR_PALETTES[category] || [];
 
-      // Étape 3 : sélection de la couleur spécifique
-      const colorSelect = new StringSelectMenuBuilder()
-        .setCustomId(`couleur_final_select:${targetType}:${targetId}:${category}`)
-        .setPlaceholder('Choisir une couleur...')
-        .setMinValues(1)
-        .setMaxValues(1);
-
-      // Ajouter les couleurs (maximum 25 options)
-      colors.slice(0, 25).forEach(color => {
-        colorSelect.addOptions({
-          label: `${color.emoji} ${color.name}`,
-          value: color.hex,
-          description: `#${color.hex}`
-        });
-      });
-
-      const categoryNames = { pastel: 'Pastel', vif: 'Vives', sombre: 'Sombres' };
-      const fields = colors.slice(0, 15).map(color => ({
-        name: `${color.emoji} ${color.name}`,
-        value: `#${color.hex}`,
-        inline: true,
-      }));
-      const embed = new EmbedBuilder()
-        .setColor(THEME_COLOR_PRIMARY)
-        .setTitle(`🎨 Attribution de couleur - ${categoryNames[category]}`)
-        .setDescription(`Choisissez une couleur ${categoryNames[category].toLowerCase()}.`)
-        .setThumbnail(THEME_IMAGE)
-        .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
-        .setTimestamp()
-        .addFields(fields);
-
-      await interaction.update({
-        embeds: [embed],
-        components: [new ActionRowBuilder().addComponents(colorSelect)]
-      });
+      const view = buildColorSelectView(targetType, targetId, category, 0);
+      await interaction.update({ embeds: [view.embed], components: view.rows, files: view.files });
       return;
     }
 
@@ -4591,6 +4557,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           components: [] 
         });
       }
+      return;
+    }
+
+    // Pagination des palettes de couleurs
+    if (interaction.isButton() && interaction.customId.startsWith('couleur_palette_page:')) {
+      const [, targetType, targetId, category, offsetStr] = interaction.customId.split(':');
+      const offset = Number(offsetStr) || 0;
+      const view = buildColorSelectView(targetType, targetId, category, offset);
+      await interaction.update({ embeds: [view.embed], components: view.rows, files: view.files });
       return;
     }
 
@@ -5942,6 +5917,129 @@ const COLOR_PALETTES = {
     { name: 'Acajou', hex: 'C04000', emoji: '🪵' }
   ]
 };
+
+function getTextColorForBackground(hex) {
+  try {
+    const h = hex.startsWith('#') ? hex.slice(1) : hex;
+    const r = parseInt(h.slice(0, 2), 16) / 255;
+    const g = parseInt(h.slice(2, 4), 16) / 255;
+    const b = parseInt(h.slice(4, 6), 16) / 255;
+    const [R, G, B] = [r, g, b].map(c => {
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    const luminance = 0.2126 * R + 0.7152 * G + 0.0722 * B;
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  } catch (_) { return '#000000'; }
+}
+
+function buildPalettePreviewAttachment(colors, category, offset) {
+  const cols = 5;
+  const rows = 3;
+  const tileW = 220;
+  const tileH = 120;
+  const padding = 20;
+  const width = cols * tileW + (padding * 2);
+  const height = rows * tileH + (padding * 2);
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+
+  // Background
+  ctx.fillStyle = '#141414';
+  ctx.fillRect(0, 0, width, height);
+
+  const startX = padding;
+  const startY = padding;
+  for (let index = 0; index < colors.length && index < cols * rows; index++) {
+    const color = colors[index];
+    const c = index % cols;
+    const r = Math.floor(index / cols);
+    const x = startX + c * tileW;
+    const y = startY + r * tileH;
+
+    // Tile background color
+    ctx.fillStyle = '#' + color.hex;
+    ctx.fillRect(x + 8, y + 8, tileW - 16, tileH - 16);
+
+    // Border
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 8, y + 8, tileW - 16, tileH - 16);
+
+    // Text (name and hex)
+    const txtColor = getTextColorForBackground(color.hex);
+    ctx.fillStyle = txtColor;
+    ctx.font = 'bold 22px Sans';
+    ctx.textBaseline = 'top';
+    ctx.fillText(color.emoji + ' ' + color.name, x + 18, y + 16, tileW - 36);
+    ctx.font = 'bold 20px Sans';
+    ctx.fillText('#' + color.hex, x + 18, y + tileH - 42, tileW - 36);
+  }
+
+  const filename = `palette_${category}_${offset||0}.png`;
+  const buffer = canvas.toBuffer('image/png');
+  const attachment = new AttachmentBuilder(buffer, { name: filename });
+  return { attachment, filename };
+}
+
+function clampPaletteOffset(total, offset, limit) {
+  if (total <= 0) return 0;
+  const last = Math.max(0, (Math.ceil(total / limit) - 1) * limit);
+  if (!Number.isFinite(offset) || offset < 0) return 0;
+  if (offset > last) return last;
+  return Math.floor(offset / limit) * limit;
+}
+
+function buildColorSelectView(targetType, targetId, category, offset = 0) {
+  const colorsAll = COLOR_PALETTES[category] || [];
+  const limit = 15;
+  const total = colorsAll.length;
+  const off = clampPaletteOffset(total, Number(offset) || 0, limit);
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const pageIndex = total === 0 ? 1 : Math.floor(off / limit) + 1;
+  const colors = colorsAll.slice(off, off + limit);
+
+  const colorSelect = new StringSelectMenuBuilder()
+    .setCustomId(`couleur_final_select:${targetType}:${targetId}:${category}`)
+    .setPlaceholder('Choisir une couleur…')
+    .setMinValues(1)
+    .setMaxValues(1);
+  colors.forEach(color => {
+    colorSelect.addOptions({ label: `${color.emoji} ${color.name}`, value: color.hex, description: `#${color.hex}` });
+  });
+
+  const prevBtn = new ButtonBuilder()
+    .setCustomId(`couleur_palette_page:${targetType}:${targetId}:${category}:${Math.max(0, off - limit)}`)
+    .setLabel('⟨ Précédent')
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(off <= 0);
+  const nextBtn = new ButtonBuilder()
+    .setCustomId(`couleur_palette_page:${targetType}:${targetId}:${category}:${off + limit}`)
+    .setLabel('Suivant ⟩')
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(off + limit >= total);
+
+  const categoryNames = { pastel: 'Pastel', vif: 'Vives', sombre: 'Sombres' };
+  const fields = colors.map(color => ({ name: `${color.emoji} ${color.name}`, value: `#${color.hex}`, inline: true }));
+  const embed = new EmbedBuilder()
+    .setColor(THEME_COLOR_PRIMARY)
+    .setTitle(`🎨 Attribution de couleur — ${categoryNames[category]}`)
+    .setDescription(`Sélectionnez une couleur (${pageIndex}/${pageCount}). Utilisez les boutons pour naviguer.`)
+    .setThumbnail(THEME_IMAGE)
+    .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+    .setTimestamp()
+    .addFields(fields);
+
+  const { attachment, filename } = buildPalettePreviewAttachment(colors, category, off);
+  embed.setImage(`attachment://${filename}`);
+
+  const rows = [
+    new ActionRowBuilder().addComponents(colorSelect),
+    new ActionRowBuilder().addComponents(prevBtn, nextBtn),
+  ];
+
+  return { embed, rows, files: [attachment] };
+}
 
 function emojiForHex(hex) {
   try {
