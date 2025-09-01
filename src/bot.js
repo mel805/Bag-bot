@@ -477,6 +477,46 @@ function startYtProxyServer() {
   } catch (_) { /* ignore */ }
 }
 
+// Local Lavalink + WS proxy (optional)
+let localLavalinkStarted = false;
+let localLavalinkProxyStarted = false;
+function shouldEnableLocalLavalink() {
+  return String(process.env.ENABLE_LOCAL_LAVALINK || 'false').toLowerCase() === 'true';
+}
+function startLocalLavalink() {
+  if (localLavalinkStarted) return;
+  try {
+    const { spawn } = require('node:child_process');
+    const cwd = '/workspace/lavalink';
+    const child = spawn('java', ['-jar', 'Lavalink.jar'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', (d) => { try { const t = d.toString('utf8'); if (/Lavalink is ready to accept connections\./.test(t)) console.log('[LocalLL]', t.trim()); } catch (_) {} });
+    child.stderr.on('data', (d) => { try { console.warn('[LocalLL-err]', d.toString('utf8').trim()); } catch (_) {} });
+    child.on('error', (e) => { try { console.error('[LocalLL] failed to start:', e?.message || e); } catch (_) {} });
+    localLavalinkStarted = true;
+    console.log('[LocalLL] Starting Lavalink.jar on 127.0.0.1:2333');
+  } catch (e) {
+    try { console.error('[LocalLL] spawn error:', e?.message || e); } catch (_) {}
+  }
+}
+function startLocalLavalinkProxy() {
+  if (localLavalinkProxyStarted) return;
+  try {
+    const { spawn } = require('node:child_process');
+    const env = { ...process.env, LAVALINK_HOST: '127.0.0.1', LAVALINK_PORT: '2333', LAVALINK_PROXY_HOST: '127.0.0.1', LAVALINK_PROXY_PORT: '2334' };
+    const child = spawn(process.execPath, ['/workspace/lavalink/ws-proxy.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', (d) => { try { console.log(d.toString('utf8').trim()); } catch (_) {} });
+    child.stderr.on('data', (d) => { try { console.warn('[LL-Proxy-err]', d.toString('utf8').trim()); } catch (_) {} });
+    child.on('error', (e) => { try { console.error('[LL-Proxy] failed to start:', e?.message || e); } catch (_) {} });
+    localLavalinkProxyStarted = true;
+  } catch (e) {
+    try { console.error('[LL-Proxy] spawn error:', e?.message || e); } catch (_) {}
+  }
+}
+function startLocalLavalinkStack() {
+  startLocalLavalink();
+  startLocalLavalinkProxy();
+}
+
 const THEME_COLOR_PRIMARY = 0x1e88e5; // blue
 const THEME_COLOR_ACCENT = 0xec407a; // pink
 const THEME_COLOR_NSFW = 0xd32f2f; // deep red for NSFW
@@ -2073,6 +2113,10 @@ client.once(Events.ClientReady, (readyClient) => {
   // Boot persistance dès le départ et journaliser le mode choisi
   ensureStorageExists().then(()=>console.log('[bot] Storage initialized')).catch((e)=>console.warn('[bot] Storage init error:', e?.message||e));
   startYtProxyServer();
+  if (shouldEnableLocalLavalink()) {
+    console.log('[Music] ENABLE_LOCAL_LAVALINK=true -> starting local Lavalink + proxy');
+    startLocalLavalinkStack();
+  }
   // Init Erela.js (if available) with public nodes
   try {
     if (ErelaManager) {
@@ -2086,6 +2130,10 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       } catch (e) { console.error('Invalid LAVALINK_NODES env:', e?.message || e); }
+      if (!nodes.length && shouldEnableLocalLavalink()) {
+        nodes = [{ host: '127.0.0.1', port: 2334, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false }];
+        console.log('[Music] Using local Lavalink proxy node at 127.0.0.1:2334');
+      }
       if (!nodes.length) {
         console.warn('[Music] No LAVALINK_NODES provided. Music will be disabled.');
       }
