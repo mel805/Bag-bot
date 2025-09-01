@@ -15,9 +15,18 @@ Scripts
 - Migration Postgres: `npm run migrate:pg`
 
 Déploiement Render
-- Build Command: `npm run render-build`
-- Start Command: `npm run render-start`
-- Ajouter `DATABASE_URL` (Postgres Render) est recommandé. Au premier déploiement, la build exécutera la migration depuis `data/config.json` si présent.
+- Option 1 (recommandé) – Postgres: utilisez `render.yaml`
+  - Build Command: `npm run render-build`
+  - Start Command: `npm run render-start`
+  - Variables: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, et `DATABASE_URL` (injectée par la DB Render via blueprint)
+  - La build migre automatiquement la config locale vers Postgres si `data/config.json` existe.
+- Option 2 – Volume persistant (sans Postgres): utilisez `render.volume.yaml`
+  - Build Command: `npm run render-build`
+  - Start Command: `npm run render-start`
+  - Variables: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `DATA_DIR=/var/data`
+  - Un volume nommé `bag-bot-data` est monté sur `/var/data` (persistant)
+  
+Important: ne déployez qu’UNE option à la fois avec le même `DISCORD_TOKEN` (ne pas faire tourner deux services simultanément avec le même bot).
  - Variables d'env:
    - `DISCORD_TOKEN`: token du bot
    - `CLIENT_ID`: application client id

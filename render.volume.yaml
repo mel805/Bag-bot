@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: bag-discord-bot-fs
+    env: node
+    autoDeploy: true
+    plan: free
+    buildCommand: npm run render-build
+    startCommand: npm run render-start
+    envVars:
+      - key: DISCORD_TOKEN
+        value: ""
+      - key: CLIENT_ID
+        value: ""
+      - key: GUILD_ID
+        value: ""
+      - key: DATA_DIR
+        value: "/var/data"
+volumes:
+  - name: bag-bot-data
+    sizeGB: 1
+services[0].volumes:
+  - name: bag-bot-data
+    mountPath: /var/data
