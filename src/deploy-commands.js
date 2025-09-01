@@ -77,7 +77,6 @@ const commands = [
     .setDescription('View your level or another member\'s')
     .addUserOption(o => o.setName('member').setDescription('Member (optional)').setRequired(false))
     .toJSON(),
-  new SlashCommandBuilder().setName('economie').setDescription('Voir votre économie (argent, charme, perversion)').toJSON(),
   new SlashCommandBuilder()
     .setName('top')
     .setDescription('Classements')
@@ -87,11 +86,7 @@ const commands = [
       .setDescription('Classement des niveaux')
       .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
     )
-    .addSubcommand(sc => sc
-      .setName('economie')
-      .setDescription('Classement par argent')
-      .addIntegerOption(o => o.setName('limite').setDescription('Nombre de membres à afficher (1-25)').setRequired(false).setMinValue(1).setMaxValue(25))
-    )
+    // removed old economie subcommand
     .toJSON(),
   new SlashCommandBuilder().setName('crime').setDescription('Commettre un crime… au risque 😈').addUserOption(o=>o.setName('complice').setDescription('Complice (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder()

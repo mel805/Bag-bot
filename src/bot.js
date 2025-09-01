@@ -5580,15 +5580,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
       return interaction.reply({ embeds: [embed] });
     }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-      const embed = buildEcoEmbed({
-        title: 'Votre économie',
-        description: `\n**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}\n**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}\n`,
-      });
-      return interaction.reply({ embeds: [embed] });
-    }
+    // removed /economie command
     /*
 // GIFs per action (success/fail)
 const ACTION_GIFS = {
