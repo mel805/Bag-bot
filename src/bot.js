@@ -4012,6 +4012,90 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
+    // Admin-only: /couleur (attribuer une couleur de rôle)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'couleur') {
+      try {
+        const ok = await isStaffMember(interaction.guild, interaction.member);
+        if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+        
+        const targetUser = interaction.options.getUser('membre', true);
+        const colorInput = interaction.options.getString('couleur', true);
+        const roleName = interaction.options.getString('nom') || `Couleur-${targetUser.username}`;
+        
+        // Valider le format de couleur hexadécimale
+        const colorRegex = /^#?([A-Fa-f0-9]{6})$/;
+        const match = colorInput.match(colorRegex);
+        if (!match) {
+          return interaction.reply({ 
+            content: '❌ Format de couleur invalide. Utilisez le format hexadécimal (ex: #FF0000 ou FF0000)', 
+            ephemeral: true 
+          });
+        }
+        
+        const colorHex = parseInt(match[1], 16);
+        const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        if (!targetMember) {
+          return interaction.reply({ content: '❌ Membre introuvable sur ce serveur.', ephemeral: true });
+        }
+        
+        await interaction.deferReply();
+        
+        // Chercher un rôle de couleur existant pour cet utilisateur (rôles commençant par "Couleur-")
+        const existingColorRole = targetMember.roles.cache.find(role => 
+          role.name.startsWith('Couleur-') && role.managed === false
+        );
+        
+        let colorRole;
+        if (existingColorRole) {
+          // Modifier la couleur du rôle existant
+          try {
+            colorRole = await existingColorRole.edit({ color: colorHex });
+          } catch (error) {
+            return interaction.editReply({ content: '❌ Impossible de modifier la couleur du rôle existant. Vérifiez les permissions.' });
+          }
+        } else {
+          // Créer un nouveau rôle de couleur
+          try {
+            colorRole = await interaction.guild.roles.create({
+              name: roleName,
+              color: colorHex,
+              permissions: [],
+              reason: `Rôle de couleur créé par ${interaction.user.tag}`
+            });
+            
+            // Attribuer le rôle au membre
+            await targetMember.roles.add(colorRole);
+          } catch (error) {
+            return interaction.editReply({ content: '❌ Impossible de créer le rôle de couleur. Vérifiez les permissions du bot.' });
+          }
+        }
+        
+        const embed = new EmbedBuilder()
+          .setColor(colorHex)
+          .setTitle('🎨 Couleur attribuée')
+          .setDescription(`**${targetUser.tag}** a reçu la couleur **${colorInput.toUpperCase()}**`)
+          .addFields([
+            { name: 'Rôle', value: colorRole.name, inline: true },
+            { name: 'Couleur', value: `\`${colorInput.toUpperCase()}\``, inline: true }
+          ])
+          .setThumbnail(targetUser.displayAvatarURL())
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+        
+      } catch (error) {
+        console.error('Erreur commande couleur:', error);
+        const reply = { content: '❌ Une erreur est survenue lors de l\'attribution de la couleur.' };
+        if (interaction.deferred) {
+          await interaction.editReply(reply);
+        } else {
+          await interaction.reply({ ...reply, ephemeral: true });
+        }
+      }
+      return;
+    }
+
     // Admin-only: /backup (export config + force snapshot)
     if (interaction.isChatInputCommand() && interaction.commandName === 'backup') {
       try {
