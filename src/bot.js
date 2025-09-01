@@ -67,6 +67,39 @@ async function getCachedImage(url) {
     return null;
   }
 }
+// Geocoding via LocationIQ and distance computations for /map, /proche, /localisation
+async function geocodeCityToCoordinates(cityQuery) {
+  const token = process.env.LOCATIONIQ_TOKEN || '';
+  if (!token) return null;
+  try {
+    const q = encodeURIComponent(String(cityQuery||'').trim());
+    if (!q) return null;
+    const endpoint = `https://eu1.locationiq.com/v1/search?key=${token}&q=${q}&format=json&limit=1&normalizecity=1&accept-language=fr`;
+    const r = await fetch(endpoint);
+    if (!r.ok) return null;
+    const arr = await r.json();
+    if (!Array.isArray(arr) || !arr.length) return null;
+    const it = arr[0] || {};
+    const lat = Number(it.lat || it.latitude || 0);
+    const lon = Number(it.lon || it.longitude || 0);
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    const display = String(it.display_name || it.address?.city || it.address?.town || it.address?.village || cityQuery).trim();
+    return { lat, lon, displayName: display };
+  } catch (_) {
+    return null;
+  }
+}
+function toRad(deg) {
+  return (deg * Math.PI) / 180;
+}
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.round(R * c);
+}
 require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
@@ -1872,6 +1905,102 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const row = buildTopSectionRow();
       await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       return;
+    }
+
+    // Map: let a user set or view their city location
+    if (interaction.isChatInputCommand() && interaction.commandName === 'map') {
+      try {
+        const city = (interaction.options.getString('ville', true) || '').trim();
+        if (!process.env.LOCATIONIQ_TOKEN) return interaction.reply({ content: 'Service de géolocalisation indisponible. Configurez LOCATIONIQ_TOKEN.', ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        const hit = await geocodeCityToCoordinates(city);
+        if (!hit) return interaction.editReply({ content: 'Ville introuvable. Essayez: "Ville, Pays".' });
+        const stored = await setUserLocation(interaction.guild.id, interaction.user.id, hit.lat, hit.lon, hit.displayName);
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Localisation enregistrée')
+          .setDescription(`${interaction.user} → ${stored.city || hit.displayName}`)
+          .addFields(
+            { name: 'Latitude', value: String(stored.lat), inline: true },
+            { name: 'Longitude', value: String(stored.lon), inline: true },
+          )
+          .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+        return interaction.editReply({ embeds: [embed] });
+      } catch (_) {
+        return interaction.reply({ content: 'Erreur géolocalisation.', ephemeral: true });
+      }
+    }
+
+    // Proche: list nearby members within a distance radius
+    if (interaction.isChatInputCommand() && interaction.commandName === 'proche') {
+      try {
+        if (!process.env.LOCATIONIQ_TOKEN) return interaction.reply({ content: 'Service de géolocalisation indisponible. Configurez LOCATIONIQ_TOKEN.', ephemeral: true });
+        await interaction.deferReply();
+        const radius = Math.max(10, Math.min(1000, interaction.options.getInteger('distance') || 200));
+        const selfLoc = await getUserLocation(interaction.guild.id, interaction.user.id);
+        if (!selfLoc) return interaction.editReply('Définissez d\'abord votre ville avec `/map`');
+        const all = await getAllLocations(interaction.guild.id);
+        const entries = Object.entries(all).filter(([uid, loc]) => uid !== interaction.user.id && isFinite(loc?.lat) && isFinite(loc?.lon));
+        const withDist = await Promise.all(entries.map(async ([uid, loc]) => {
+          const km = haversineDistanceKm(selfLoc.lat, selfLoc.lon, Number(loc.lat), Number(loc.lon));
+          const mem = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(()=>null);
+          return { uid, member: mem, city: String(loc.city||'').trim(), km };
+        }));
+        const nearby = withDist.filter(x => x.km <= radius).sort((a,b)=>a.km-b.km).slice(0, 25);
+        const lines = nearby.length ? nearby.map(x => `${x.member ? x.member : `<@${x.uid}>`} — ${x.km} km${x.city?` • ${x.city}`:''}`).join('\n') : 'Aucun membre à proximité.';
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Membres proches')
+          .setDescription(lines)
+          .addFields({ name: 'Rayon', value: `${radius} km`, inline: true })
+          .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+        return interaction.editReply({ embeds: [embed] });
+      } catch (_) {
+        return interaction.reply({ content: 'Erreur proximité.', ephemeral: true });
+      }
+    }
+
+    // Localisation: admin overview or per-member location
+    if (interaction.isChatInputCommand() && interaction.commandName === 'localisation') {
+      try {
+        const ok = await isStaffMember(interaction.guild, interaction.member);
+        if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        const target = interaction.options.getUser('membre');
+        if (target) {
+          const loc = await getUserLocation(interaction.guild.id, target.id);
+          if (!loc) return interaction.editReply({ content: `Aucune localisation connue pour ${target}.` });
+          const url = `https://www.openstreetmap.org/?mlat=${loc.lat}&mlon=${loc.lon}#map=10/${loc.lat}/${loc.lon}`;
+          const embed = new EmbedBuilder()
+            .setColor(THEME_COLOR_PRIMARY)
+            .setTitle('Localisation membre')
+            .setDescription(`${target} — ${loc.city || '—'}`)
+            .addFields(
+              { name: 'Latitude', value: String(loc.lat), inline: true },
+              { name: 'Longitude', value: String(loc.lon), inline: true },
+              { name: 'Carte', value: url }
+            )
+            .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+          return interaction.editReply({ embeds: [embed] });
+        }
+        const all = await getAllLocations(interaction.guild.id);
+        const ids = Object.keys(all);
+        const lines = (await Promise.all(ids.slice(0, 25).map(async (uid) => {
+          const mem = interaction.guild.members.cache.get(uid) || await interaction.guild.members.fetch(uid).catch(()=>null);
+          const loc = all[uid];
+          const name = mem ? (mem.nickname || mem.user.username) : uid;
+          return `• ${name} — ${loc.city || `${loc.lat}, ${loc.lon}`}`;
+        })) ).join('\n') || '—';
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Localisations membres')
+          .setDescription(lines)
+          .addFields({ name: 'Total', value: String(ids.length), inline: true })
+          .setFooter({ text: 'BAG • Localisation', iconURL: THEME_FOOTER_ICON });
+        return interaction.editReply({ embeds: [embed] });
+      } catch (_) {
+        return interaction.reply({ content: 'Erreur localisation.', ephemeral: true });
+      }
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_section') {
@@ -4214,6 +4343,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
 **Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}
 **Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}
 `,
+      });
+      return interaction.reply({ embeds: [embed] });
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'economie') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+      const embed = buildEcoEmbed({
+        title: 'Votre économie',
+        description: `\n**Montant**: ${u.amount || 0} ${eco.currency?.name || 'BAG$'}\n**Karma charme**: ${u.charm || 0} • **Karma perversion**: ${u.perversion || 0}\n`,
       });
       return interaction.reply({ embeds: [embed] });
     }
