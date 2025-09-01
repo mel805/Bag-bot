@@ -508,9 +508,12 @@ async function getEconomyUser(guildId, userId) {
   const eco = cfg.guilds[guildId].economy;
   const u = eco.balances?.[userId] || { amount: 0, cooldowns: {}, charm: 0, perversion: 0 };
   if (typeof u.amount !== 'number') u.amount = 0;
+  // Alias pour compatibilité : money = amount
+  if (typeof u.money !== 'number') u.money = u.amount;
   if (!u.cooldowns || typeof u.cooldowns !== 'object') u.cooldowns = {};
   if (typeof u.charm !== 'number') u.charm = 0;
   if (typeof u.perversion !== 'number') u.perversion = 0;
+  if (typeof u.lastVoiceReward !== 'number') u.lastVoiceReward = 0;
   return u;
 }
 
@@ -519,6 +522,8 @@ async function setEconomyUser(guildId, userId, state) {
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
   if (!cfg.guilds[guildId].economy.balances) cfg.guilds[guildId].economy.balances = {};
+  // Synchroniser money avec amount pour compatibilité
+  if (typeof state.money === 'number') state.amount = state.money;
   cfg.guilds[guildId].economy.balances[userId] = state;
   await writeConfig(cfg);
 }
@@ -533,6 +538,18 @@ function ensureEconomyShape(g) {
   if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
   if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
   if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120, crime: 1800 };
+  
+  // Récompenses pour messages et vocal
+  if (!e.rewards || typeof e.rewards !== 'object') e.rewards = {};
+  if (!e.rewards.message || typeof e.rewards.message !== 'object') e.rewards.message = { min: 1, max: 3, enabled: true };
+  if (typeof e.rewards.message.min !== 'number') e.rewards.message.min = 1;
+  if (typeof e.rewards.message.max !== 'number') e.rewards.message.max = 3;
+  if (typeof e.rewards.message.enabled !== 'boolean') e.rewards.message.enabled = true;
+  if (!e.rewards.voice || typeof e.rewards.voice !== 'object') e.rewards.voice = { min: 2, max: 5, enabled: true, intervalMinutes: 5 };
+  if (typeof e.rewards.voice.min !== 'number') e.rewards.voice.min = 2;
+  if (typeof e.rewards.voice.max !== 'number') e.rewards.voice.max = 5;
+  if (typeof e.rewards.voice.enabled !== 'boolean') e.rewards.voice.enabled = true;
+  if (typeof e.rewards.voice.intervalMinutes !== 'number') e.rewards.voice.intervalMinutes = 5;
   if (!e.actions || typeof e.actions !== 'object') e.actions = {};
   const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;

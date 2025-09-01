@@ -1653,8 +1653,19 @@ async function buildEconomySettingsRows(guild) {
   const eco = await getEconomyConfig(guild.id);
   const curBtn = new ButtonBuilder().setCustomId('economy_set_currency').setLabel(`Devise: ${eco.currency?.symbol || '🪙'} ${eco.currency?.name || 'BAG$'}`).setStyle(ButtonStyle.Secondary);
   const gifsBtn = new ButtonBuilder().setCustomId('economy_gifs').setLabel('GIF actions').setStyle(ButtonStyle.Primary);
-  const row = new ActionRowBuilder().addComponents(curBtn, gifsBtn);
-  return [row];
+  
+  // Boutons pour l'argent gagné par message et en vocal
+  const messageMin = eco.rewards?.message?.min || 1;
+  const messageMax = eco.rewards?.message?.max || 3;
+  const voiceMin = eco.rewards?.voice?.min || 2;
+  const voiceMax = eco.rewards?.voice?.max || 5;
+  
+  const msgMoneyBtn = new ButtonBuilder().setCustomId('economy_message_money').setLabel(`Argent texte: ${messageMin}-${messageMax}`).setStyle(ButtonStyle.Success);
+  const voiceMoneyBtn = new ButtonBuilder().setCustomId('economy_voice_money').setLabel(`Argent vocal: ${voiceMin}-${voiceMax}`).setStyle(ButtonStyle.Success);
+  
+  const row1 = new ActionRowBuilder().addComponents(curBtn, gifsBtn);
+  const row2 = new ActionRowBuilder().addComponents(msgMoneyBtn, voiceMoneyBtn);
+  return [row1, row2];
 }
 
 function buildEconomyMenuSelect(selectedPage) {
@@ -1696,8 +1707,7 @@ async function buildBoosterRows(guild) {
   const voiceXp = new ButtonBuilder().setCustomId('booster_voicexp').setLabel(`XP vocal x${b.voiceXpMult}`).setStyle(ButtonStyle.Primary);
   const cdMult = new ButtonBuilder().setCustomId('booster_cd').setLabel(`Cooldown x${b.actionCooldownMult}`).setStyle(ButtonStyle.Secondary);
   const priceMult = new ButtonBuilder().setCustomId('booster_shop').setLabel(`Prix boutique x${b.shopPriceMult}`).setStyle(ButtonStyle.Secondary);
-  const back = new ButtonBuilder().setCustomId('config_back_home').setLabel('Retour').setStyle(ButtonStyle.Secondary);
-  const row1 = new ActionRowBuilder().addComponents(toggle, back);
+  const row1 = new ActionRowBuilder().addComponents(toggle);
   const row2 = new ActionRowBuilder().addComponents(textXp, voiceXp, cdMult, priceMult);
   return [row1, row2];
 }
@@ -1780,44 +1790,48 @@ async function buildAutoThreadRows(guild, page = 0) {
     new ActionRowBuilder().addComponents(archive),
   ];
   
-  // Ajouter les boutons de pagination si nécessaire
+  // Créer une row combinée pour les contrôles additionnels (max 5 boutons par row)
+  const additionalButtons = [];
+  
+  // Boutons de pagination
   if (totalPages > 1) {
     const prevBtn = new ButtonBuilder()
       .setCustomId(`autothread_page:${Math.max(0, page - 1)}`)
-      .setLabel('◀ Précédent')
+      .setLabel('◀')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page === 0);
     
     const nextBtn = new ButtonBuilder()
       .setCustomId(`autothread_page:${Math.min(totalPages - 1, page + 1)}`)
-      .setLabel('Suivant ▶')
+      .setLabel('▶')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page === totalPages - 1);
     
-    const infoBtn = new ButtonBuilder()
-      .setCustomId('autothread_info')
-      .setLabel(`${allChannels.length} canaux configurés`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true);
-    
-    rows.push(new ActionRowBuilder().addComponents(prevBtn, infoBtn, nextBtn));
-  } else if (allChannels.length > 0) {
-    // Afficher le nombre de canaux même sans pagination
-    const infoBtn = new ButtonBuilder()
-      .setCustomId('autothread_info')
-      .setLabel(`${allChannels.length} canaux configurés`)
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(true);
-    
-    rows.push(new ActionRowBuilder().addComponents(infoBtn));
+    additionalButtons.push(prevBtn, nextBtn);
   }
   
+  // Bouton info/status
+  if (allChannels.length > 0) {
+    const infoBtn = new ButtonBuilder()
+      .setCustomId('autothread_info')
+      .setLabel(`${allChannels.length} canaux`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(true);
+    additionalButtons.push(infoBtn);
+  }
+  
+  // Boutons pour modes spéciaux
   if ((cfg.naming?.mode || 'member_num') === 'custom') {
-    rows.push(new ActionRowBuilder().addComponents(customBtn));
+    additionalButtons.push(customBtn);
   } else if ((cfg.naming?.mode || 'member_num') === 'nsfw') {
-    const addBtn = new ButtonBuilder().setCustomId('autothread_nsfw_add').setLabel('Ajouter noms NSFW').setStyle(ButtonStyle.Primary);
-    const remBtn = new ButtonBuilder().setCustomId('autothread_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
-    rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
+    const addBtn = new ButtonBuilder().setCustomId('autothread_nsfw_add').setLabel('+ NSFW').setStyle(ButtonStyle.Primary);
+    const remBtn = new ButtonBuilder().setCustomId('autothread_nsfw_remove').setLabel('- NSFW').setStyle(ButtonStyle.Danger);
+    additionalButtons.push(addBtn, remBtn);
+  }
+  
+  // Ajouter la row des boutons additionnels si elle contient des éléments
+  if (additionalButtons.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(...additionalButtons.slice(0, 5))); // Max 5 boutons
   }
   
   return rows;
@@ -1884,7 +1898,10 @@ async function buildLogsRows(guild) {
   else multi.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
   const rowMulti = new ActionRowBuilder().addComponents(multi);
 
-  return [rowToggles, rowGlobal, rowPerCat, rowPerCatCh, rowMulti];
+  // Combiner les rows pour respecter la limite de 5 ActionRow (4 + buildBackRow)
+  // Fusionner rowPerCat et rowMulti ne peut pas se faire car ce sont 2 SelectMenu
+  // Donc on garde les 4 plus importantes et on enlève rowMulti
+  return [rowToggles, rowGlobal, rowPerCat, rowPerCatCh];
 }
 
 async function buildConfessRows(guild, mode = 'sfw') {
@@ -1906,15 +1923,16 @@ async function buildConfessRows(guild, mode = 'sfw') {
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
     new ActionRowBuilder().addComponents(logSelect),
-    new ActionRowBuilder().addComponents(replyToggle, nameToggle),
   ];
   
-  // Ajouter les boutons de gestion des noms NSFW si le mode NSFW est activé
+  // Combiner les boutons dans une seule row pour respecter la limite de 5 ActionRow
+  const toggleButtons = [replyToggle, nameToggle];
   if (cf.threadNaming === 'nsfw') {
-    const addBtn = new ButtonBuilder().setCustomId('confess_nsfw_add').setLabel('Ajouter noms NSFW').setStyle(ButtonStyle.Primary);
-    const remBtn = new ButtonBuilder().setCustomId('confess_nsfw_remove').setLabel('Supprimer noms NSFW').setStyle(ButtonStyle.Danger);
-    rows.push(new ActionRowBuilder().addComponents(addBtn, remBtn));
+    const addBtn = new ButtonBuilder().setCustomId('confess_nsfw_add').setLabel('+ NSFW').setStyle(ButtonStyle.Primary);
+    const remBtn = new ButtonBuilder().setCustomId('confess_nsfw_remove').setLabel('- NSFW').setStyle(ButtonStyle.Danger);
+    toggleButtons.push(addBtn, remBtn);
   }
+  rows.push(new ActionRowBuilder().addComponents(...toggleButtons));
   
   return rows;
 }
@@ -2416,19 +2434,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'confess') {
         const rows = await buildConfessRows(interaction.guild, 'sfw');
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'autothread') {
         const rows = await buildAutoThreadRows(interaction.guild, 0);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'counting') {
         const rows = await buildCountingRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'logs') {
         const rows = await buildLogsRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'booster') {
         const rows = await buildBoosterRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
@@ -2824,14 +2842,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const mode = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('confess_channels_add:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       await addConfessChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('confess_channels_remove:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
@@ -2839,14 +2857,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await removeConfessChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'confess_log_select') {
       const channelId = interaction.values[0];
       await updateConfessConfig(interaction.guild.id, { logChannelId: String(channelId||'') });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
 
     // Logs config handlers
@@ -2855,14 +2873,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { enabled: !cfg.enabled });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'logs_pseudo') {
       const cfg = await getLogsConfig(interaction.guild.id);
       await updateLogsConfig(interaction.guild.id, { pseudo: !cfg.pseudo });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'logs_emoji') {
       // Simple rotate among a set
@@ -2873,14 +2891,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { emoji: next });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId === 'logs_channel') {
       const id = interaction.values?.[0] || '';
       await updateLogsConfig(interaction.guild.id, { channelId: id });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       try { await interaction.followUp({ content: id ? `✅ Salon global: <#${id}>` : '✅ Salon global effacé', ephemeral: true }); } catch (_) {}
       return;
     }
@@ -2889,7 +2907,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       client._logsPerCat.set(interaction.guild.id, interaction.values[0]);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('logs_channel_set:')) {
       const cat = interaction.customId.split(':')[1] || 'moderation';
@@ -2901,7 +2919,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { channels });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [...rows] });
+      await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       try { await interaction.followUp({ content: `✅ Salon pour ${cat}: <#${id}>`, ephemeral: true }); } catch (_) {}
       return;
     }
@@ -2913,26 +2931,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLogsConfig(interaction.guild.id, { categories: cats });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'logs_cats_toggle') {
-      const cfg = await getLogsConfig(interaction.guild.id);
-      const set = new Set(interaction.values);
-      const cats = { ...(cfg.categories||{}) };
-      // Flip selected ones
-      for (const k of set) { cats[k] = !cats[k]; }
-      await updateLogsConfig(interaction.guild.id, { categories: cats });
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildLogsRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
-    }
+    // Gestionnaire logs_cats_toggle supprimé car le SelectMenu a été retiré pour respecter les limites Discord
     if (interaction.isButton() && interaction.customId === 'confess_toggle_replies') {
       const cf = await getConfessConfig(interaction.guild.id);
       const allow = !cf.allowReplies;
       await updateConfessConfig(interaction.guild.id, { allowReplies: allow });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_toggle_naming') {
       const cf = await getConfessConfig(interaction.guild.id);
@@ -2940,7 +2948,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateConfessConfig(interaction.guild.id, { threadNaming: next });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildConfessRows(interaction.guild, 'sfw');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'confess_nsfw_add') {
       const modal = new ModalBuilder().setCustomId('confess_nsfw_add_modal').setTitle('Ajouter noms NSFW');
@@ -3181,7 +3189,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoThreadConfig(interaction.guild.id, { channels: Array.from(set) });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('autothread_channels_remove')) {
       if (interaction.values.includes('none')) return interaction.deferUpdate();
@@ -3196,7 +3204,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const newTotalPages = Math.ceil(next.length / 25);
       const newPage = Math.min(currentPage, Math.max(0, newTotalPages - 1));
       const rows = await buildAutoThreadRows(interaction.guild, newPage);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_naming') {
       const mode = interaction.values[0];
@@ -3204,7 +3212,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoThreadConfig(interaction.guild.id, { naming: { ...(cfg.naming||{}), mode } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'autothread_archive') {
       const policy = interaction.values[0];
@@ -3212,7 +3220,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoThreadConfig(interaction.guild.id, { archive: { ...(cfg.archive||{}), policy } });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'autothread_custom_pattern') {
       const modal = new ModalBuilder().setCustomId('autothread_custom_modal').setTitle('Pattern de nom de fil');
@@ -3273,7 +3281,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const page = parseInt(pageStr) || 0;
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildAutoThreadRows(interaction.guild, page);
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isButton() && interaction.customId === 'autothread_nsfw_add') {
       const modal = new ModalBuilder().setCustomId('autothread_nsfw_add_modal').setTitle('Ajouter noms NSFW');
@@ -3847,6 +3855,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: `✅ Devise mise à jour: ${eco.currency.symbol} ${eco.currency.name}` });
     }
 
+    if (interaction.isButton() && interaction.customId === 'economy_message_money') {
+      const modal = new ModalBuilder().setCustomId('economy_message_money_modal').setTitle('Argent par message');
+      const minInput = new TextInputBuilder().setCustomId('min').setLabel('Montant minimum').setStyle(TextInputStyle.Short).setPlaceholder('1').setRequired(true);
+      const maxInput = new TextInputBuilder().setCustomId('max').setLabel('Montant maximum').setStyle(TextInputStyle.Short).setPlaceholder('3').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(minInput), new ActionRowBuilder().addComponents(maxInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'economy_voice_money') {
+      const modal = new ModalBuilder().setCustomId('economy_voice_money_modal').setTitle('Argent en vocal');
+      const minInput = new TextInputBuilder().setCustomId('min').setLabel('Montant minimum').setStyle(TextInputStyle.Short).setPlaceholder('2').setRequired(true);
+      const maxInput = new TextInputBuilder().setCustomId('max').setLabel('Montant maximum').setStyle(TextInputStyle.Short).setPlaceholder('5').setRequired(true);
+      const intervalInput = new TextInputBuilder().setCustomId('interval').setLabel('Intervalle (minutes)').setStyle(TextInputStyle.Short).setPlaceholder('5').setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(minInput), new ActionRowBuilder().addComponents(maxInput), new ActionRowBuilder().addComponents(intervalInput));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'economy_message_money_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const min = parseInt(interaction.fields.getTextInputValue('min')) || 1;
+      const max = parseInt(interaction.fields.getTextInputValue('max')) || 3;
+      if (min > max) return interaction.editReply({ content: `❌ Le montant minimum ne peut pas être supérieur au maximum.` });
+      const eco = await getEconomyConfig(interaction.guild.id);
+      await updateEconomyConfig(interaction.guild.id, { rewards: { ...eco.rewards, message: { ...eco.rewards.message, min, max } } });
+      return interaction.editReply({ content: `✅ Récompense message mise à jour: ${min}-${max} ${eco.currency?.symbol || '🪙'}` });
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'economy_voice_money_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const min = parseInt(interaction.fields.getTextInputValue('min')) || 2;
+      const max = parseInt(interaction.fields.getTextInputValue('max')) || 5;
+      const interval = parseInt(interaction.fields.getTextInputValue('interval')) || 5;
+      if (min > max) return interaction.editReply({ content: `❌ Le montant minimum ne peut pas être supérieur au maximum.` });
+      if (interval < 1) return interaction.editReply({ content: `❌ L'intervalle doit être d'au moins 1 minute.` });
+      const eco = await getEconomyConfig(interaction.guild.id);
+      await updateEconomyConfig(interaction.guild.id, { rewards: { ...eco.rewards, voice: { ...eco.rewards.voice, min, max, intervalMinutes: interval } } });
+      return interaction.editReply({ content: `✅ Récompense vocal mise à jour: ${min}-${max} ${eco.currency?.symbol || '🪙'} toutes les ${interval} minutes` });
+    }
+
     // removed economy_set_base and economy_set_cooldowns
 
     if (interaction.isButton() && interaction.customId === 'economy_gifs') {
@@ -4082,86 +4131,282 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Admin-only: /couleur (attribuer une couleur de rôle)
+    // Admin-only: /couleur (attribuer une couleur de rôle avec sélecteurs)
     if (interaction.isChatInputCommand() && interaction.commandName === 'couleur') {
       try {
         const ok = await isStaffMember(interaction.guild, interaction.member);
         if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
         
-        const targetUser = interaction.options.getUser('membre', true);
-        const colorInput = interaction.options.getString('couleur', true);
-        const roleName = interaction.options.getString('nom') || `Couleur-${targetUser.username}`;
+        // Première étape : sélection du type de cible
+        const targetSelect = new StringSelectMenuBuilder()
+          .setCustomId('couleur_target_select')
+          .setPlaceholder('Choisir le type de cible...')
+          .addOptions([
+            { label: '👤 Membre spécifique', value: 'user', description: 'Attribuer une couleur à un membre' },
+            { label: '🎭 Rôle existant', value: 'role', description: 'Modifier la couleur d\'un rôle existant' }
+          ]);
+
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur')
+          .setDescription('Sélectionnez d\'abord le type de cible pour la couleur.')
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+
+        await interaction.reply({
+          embeds: [embed],
+          components: [new ActionRowBuilder().addComponents(targetSelect)],
+          ephemeral: true
+        });
         
-        // Valider le format de couleur hexadécimale
-        const colorRegex = /^#?([A-Fa-f0-9]{6})$/;
-        const match = colorInput.match(colorRegex);
-        if (!match) {
-          return interaction.reply({ 
-            content: '❌ Format de couleur invalide. Utilisez le format hexadécimal (ex: #FF0000 ou FF0000)', 
-            ephemeral: true 
-          });
-        }
-        
-        const colorHex = parseInt(match[1], 16);
-        const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-        if (!targetMember) {
-          return interaction.reply({ content: '❌ Membre introuvable sur ce serveur.', ephemeral: true });
-        }
-        
-        await interaction.deferReply();
-        
-        // Chercher un rôle de couleur existant pour cet utilisateur (rôles commençant par "Couleur-")
-        const existingColorRole = targetMember.roles.cache.find(role => 
-          role.name.startsWith('Couleur-') && role.managed === false
-        );
-        
-        let colorRole;
-        if (existingColorRole) {
-          // Modifier la couleur du rôle existant
-          try {
-            colorRole = await existingColorRole.edit({ color: colorHex });
-          } catch (error) {
-            return interaction.editReply({ content: '❌ Impossible de modifier la couleur du rôle existant. Vérifiez les permissions.' });
+      } catch (error) {
+        console.error('Erreur commande couleur:', error);
+        await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true });
+      }
+      return;
+    }
+
+    // Gestionnaires d'interaction pour le système de couleurs
+    if (interaction.isStringSelectMenu() && interaction.customId === 'couleur_target_select') {
+      const targetType = interaction.values[0];
+      
+      if (targetType === 'user') {
+        // Sélection d'un membre
+        const userSelect = new UserSelectMenuBuilder()
+          .setCustomId('couleur_user_select')
+          .setPlaceholder('Choisir un membre...')
+          .setMinValues(1)
+          .setMaxValues(1);
+
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur - Membre')
+          .setDescription('Sélectionnez le membre qui recevra une couleur.')
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+
+        await interaction.update({
+          embeds: [embed],
+          components: [new ActionRowBuilder().addComponents(userSelect)]
+        });
+      } else if (targetType === 'role') {
+        // Sélection d'un rôle
+        const roleSelect = new RoleSelectMenuBuilder()
+          .setCustomId('couleur_role_select')
+          .setPlaceholder('Choisir un rôle...')
+          .setMinValues(1)
+          .setMaxValues(1);
+
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('🎨 Attribution de couleur - Rôle')
+          .setDescription('Sélectionnez le rôle dont vous voulez modifier la couleur.')
+          .setThumbnail(THEME_IMAGE)
+          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp();
+
+        await interaction.update({
+          embeds: [embed],
+          components: [new ActionRowBuilder().addComponents(roleSelect)]
+        });
+      }
+      return;
+    }
+
+    if (interaction.isUserSelectMenu() && interaction.customId === 'couleur_user_select') {
+      const userId = interaction.values[0];
+      const user = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (!user) return interaction.update({ content: '❌ Membre introuvable.', embeds: [], components: [] });
+
+      // Étape 2 : sélection de la catégorie de couleur
+      const categorySelect = new StringSelectMenuBuilder()
+        .setCustomId(`couleur_category_select:user:${userId}`)
+        .setPlaceholder('Choisir une catégorie de couleur...')
+        .addOptions([
+          { label: '🌸 Couleurs Pastel', value: 'pastel', description: 'Couleurs douces et apaisantes' },
+          { label: '🔥 Couleurs Vives', value: 'vif', description: 'Couleurs éclatantes et énergiques' },
+          { label: '🌙 Couleurs Sombres', value: 'sombre', description: 'Couleurs profondes et mystérieuses' }
+        ]);
+
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle('🎨 Attribution de couleur - Catégorie')
+        .setDescription(`**Membre sélectionné:** ${user.user.tag}\n\nChoisissez maintenant une catégorie de couleur.`)
+        .setThumbnail(user.user.displayAvatarURL())
+        .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp();
+
+      await interaction.update({
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(categorySelect)]
+      });
+      return;
+    }
+
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'couleur_role_select') {
+      const roleId = interaction.values[0];
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (!role) return interaction.update({ content: '❌ Rôle introuvable.', embeds: [], components: [] });
+
+      // Étape 2 : sélection de la catégorie de couleur
+      const categorySelect = new StringSelectMenuBuilder()
+        .setCustomId(`couleur_category_select:role:${roleId}`)
+        .setPlaceholder('Choisir une catégorie de couleur...')
+        .addOptions([
+          { label: '🌸 Couleurs Pastel', value: 'pastel', description: 'Couleurs douces et apaisantes' },
+          { label: '🔥 Couleurs Vives', value: 'vif', description: 'Couleurs éclatantes et énergiques' },
+          { label: '🌙 Couleurs Sombres', value: 'sombre', description: 'Couleurs profondes et mystérieuses' }
+        ]);
+
+      const embed = new EmbedBuilder()
+        .setColor(role.color || THEME_COLOR_PRIMARY)
+        .setTitle('🎨 Attribution de couleur - Catégorie')
+        .setDescription(`**Rôle sélectionné:** ${role.name}\n\nChoisissez maintenant une catégorie de couleur.`)
+        .setThumbnail(THEME_IMAGE)
+        .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp();
+
+      await interaction.update({
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(categorySelect)]
+      });
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_category_select:')) {
+      const [, , , targetType, targetId] = interaction.customId.split(':');
+      const category = interaction.values[0];
+      const colors = COLOR_PALETTES[category] || [];
+
+      // Étape 3 : sélection de la couleur spécifique
+      const colorSelect = new StringSelectMenuBuilder()
+        .setCustomId(`couleur_final_select:${targetType}:${targetId}:${category}`)
+        .setPlaceholder('Choisir une couleur...')
+        .setMinValues(1)
+        .setMaxValues(1);
+
+      // Ajouter les couleurs (maximum 25 options)
+      colors.slice(0, 25).forEach(color => {
+        colorSelect.addOptions({
+          label: `${color.emoji} ${color.name}`,
+          value: color.hex,
+          description: `#${color.hex}`
+        });
+      });
+
+      const categoryNames = { pastel: 'Pastel', vif: 'Vives', sombre: 'Sombres' };
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle(`🎨 Attribution de couleur - ${categoryNames[category]}`)
+        .setDescription(`Choisissez une couleur ${categoryNames[category].toLowerCase()}.`)
+        .setThumbnail(THEME_IMAGE)
+        .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp();
+
+      await interaction.update({
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(colorSelect)]
+      });
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_final_select:')) {
+      const [, , , targetType, targetId, category] = interaction.customId.split(':');
+      const colorHex = interaction.values[0];
+      const colorInt = parseInt(colorHex, 16);
+      
+      await interaction.deferUpdate();
+
+      try {
+        if (targetType === 'user') {
+          // Attribution à un membre
+          const targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
+          if (!targetMember) {
+            return interaction.editReply({ content: '❌ Membre introuvable.', embeds: [], components: [] });
           }
-        } else {
-          // Créer un nouveau rôle de couleur
-          try {
+
+          // Chercher un rôle de couleur existant
+          const existingColorRole = targetMember.roles.cache.find(role => 
+            role.name.startsWith('Couleur-') && role.managed === false
+          );
+
+          let colorRole;
+          if (existingColorRole) {
+            // Modifier le rôle existant
+            colorRole = await existingColorRole.edit({ color: colorInt });
+          } else {
+            // Créer un nouveau rôle de couleur
             colorRole = await interaction.guild.roles.create({
-              name: roleName,
-              color: colorHex,
+              name: `Couleur-${targetMember.user.username}`,
+              color: colorInt,
               permissions: [],
               reason: `Rôle de couleur créé par ${interaction.user.tag}`
             });
             
+            // Placer le rôle tout en haut de la hiérarchie (juste sous le rôle du bot)
+            try {
+              const botRole = interaction.guild.members.me?.roles.highest;
+              const targetPosition = botRole ? botRole.position - 1 : interaction.guild.roles.cache.size - 1;
+              await colorRole.setPosition(Math.max(1, targetPosition));
+            } catch (posError) {
+              console.log('Impossible de repositionner le rôle:', posError.message);
+            }
+            
             // Attribuer le rôle au membre
             await targetMember.roles.add(colorRole);
-          } catch (error) {
-            return interaction.editReply({ content: '❌ Impossible de créer le rôle de couleur. Vérifiez les permissions du bot.' });
           }
+
+          const selectedColor = Object.values(COLOR_PALETTES).flat().find(c => c.hex === colorHex);
+          const embed = new EmbedBuilder()
+            .setColor(colorInt)
+            .setTitle('🎨 Couleur attribuée avec succès !')
+            .setDescription(`**${targetMember.user.tag}** a reçu la couleur **${selectedColor?.name || colorHex}**`)
+            .addFields([
+              { name: 'Rôle', value: colorRole.name, inline: true },
+              { name: 'Couleur', value: `\`#${colorHex}\``, inline: true },
+              { name: 'Catégorie', value: category.charAt(0).toUpperCase() + category.slice(1), inline: true }
+            ])
+            .setThumbnail(targetMember.user.displayAvatarURL())
+            .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [embed], components: [] });
+
+        } else if (targetType === 'role') {
+          // Modification d'un rôle existant
+          const role = interaction.guild.roles.cache.get(targetId);
+          if (!role) {
+            return interaction.editReply({ content: '❌ Rôle introuvable.', embeds: [], components: [] });
+          }
+
+          await role.edit({ color: colorInt });
+
+          const selectedColor = Object.values(COLOR_PALETTES).flat().find(c => c.hex === colorHex);
+          const embed = new EmbedBuilder()
+            .setColor(colorInt)
+            .setTitle('🎨 Couleur de rôle modifiée !')
+            .setDescription(`Le rôle **${role.name}** a reçu la couleur **${selectedColor?.name || colorHex}**`)
+            .addFields([
+              { name: 'Rôle', value: role.name, inline: true },
+              { name: 'Couleur', value: `\`#${colorHex}\``, inline: true },
+              { name: 'Catégorie', value: category.charAt(0).toUpperCase() + category.slice(1), inline: true }
+            ])
+            .setThumbnail(THEME_IMAGE)
+            .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [embed], components: [] });
         }
-        
-        const embed = new EmbedBuilder()
-          .setColor(colorHex)
-          .setTitle('🎨 Couleur attribuée')
-          .setDescription(`**${targetUser.tag}** a reçu la couleur **${colorInput.toUpperCase()}**`)
-          .addFields([
-            { name: 'Rôle', value: colorRole.name, inline: true },
-            { name: 'Couleur', value: `\`${colorInput.toUpperCase()}\``, inline: true }
-          ])
-          .setThumbnail(targetUser.displayAvatarURL())
-          .setFooter({ text: 'BAG • Couleurs', iconURL: THEME_FOOTER_ICON })
-          .setTimestamp();
-        
-        await interaction.editReply({ embeds: [embed] });
-        
+
       } catch (error) {
-        console.error('Erreur commande couleur:', error);
-        const reply = { content: '❌ Une erreur est survenue lors de l\'attribution de la couleur.' };
-        if (interaction.deferred) {
-          await interaction.editReply(reply);
-        } else {
-          await interaction.reply({ ...reply, ephemeral: true });
-        }
+        console.error('Erreur attribution couleur:', error);
+        await interaction.editReply({ 
+          content: '❌ Erreur lors de l\'attribution de la couleur. Vérifiez les permissions du bot.',
+          embeds: [], 
+          components: [] 
+        });
       }
       return;
     }
@@ -5291,6 +5536,20 @@ client.on(Events.MessageCreate, async (message) => {
         }
       }
     }
+
+    // Système de récompenses économiques pour les messages
+    try {
+      const eco = await getEconomyConfig(message.guild.id);
+      if (eco.rewards?.message?.enabled) {
+        const { min, max } = eco.rewards.message;
+        const reward = Math.floor(Math.random() * (max - min + 1)) + min;
+        
+        // Récupérer le solde actuel de l'utilisateur
+        const userEco = await getEconomyUser(message.guild.id, message.author.id);
+        userEco.money = (userEco.money || 0) + reward;
+        await setEconomyUser(message.guild.id, message.author.id, userEco);
+      }
+    } catch (_) {}
   } catch (_) {}
 });
 
@@ -5345,11 +5604,64 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
           }
           return;
         }
+        // Système de récompenses économiques pour le vocal (lors de la sortie)
+        try {
+          const eco = await getEconomyConfig(guild.id);
+          if (eco.rewards?.voice?.enabled) {
+            const { min, max, intervalMinutes } = eco.rewards.voice;
+            const intervals = Math.floor(minutes / intervalMinutes);
+            if (intervals > 0) {
+              const totalReward = intervals * (Math.floor(Math.random() * (max - min + 1)) + min);
+              const userEco = await getEconomyUser(guild.id, userId);
+              userEco.money = (userEco.money || 0) + totalReward;
+              await setEconomyUser(guild.id, userId, userEco);
+            }
+          }
+        } catch (_) {}
+
         await setUserStats(guild.id, userId, stats);
       }
     }
   } catch (_) {}
 });
+
+// Système de récompenses vocales périodiques
+setInterval(async () => {
+  try {
+    for (const [guildId, guild] of client.guilds.cache) {
+      try {
+        const eco = await getEconomyConfig(guildId);
+        if (!eco.rewards?.voice?.enabled) continue;
+        
+        const { min, max, intervalMinutes } = eco.rewards.voice;
+        const intervalMs = intervalMinutes * 60 * 1000;
+        const now = Date.now();
+        
+        // Parcourir tous les canaux vocaux du serveur
+        for (const [channelId, channel] of guild.channels.cache) {
+          if (channel.type === ChannelType.GuildVoice && channel.members.size > 0) {
+            for (const [userId, member] of channel.members) {
+              if (member.user.bot) continue;
+              
+              try {
+                const userEco = await getEconomyUser(guildId, userId);
+                const lastVoiceReward = userEco.lastVoiceReward || 0;
+                
+                // Vérifier si assez de temps s'est écoulé depuis la dernière récompense
+                if (now - lastVoiceReward >= intervalMs) {
+                  const reward = Math.floor(Math.random() * (max - min + 1)) + min;
+                  userEco.money = (userEco.money || 0) + reward;
+                  userEco.lastVoiceReward = now;
+                  await setEconomyUser(guildId, userId, userEco);
+                }
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+}, 60 * 1000); // Vérifier toutes les minutes
 
 async function buildShopRows(guild) {
   const eco = await getEconomyConfig(guild.id);
@@ -5373,6 +5685,61 @@ async function buildShopRows(guild) {
 }
 
 let SUITE_EMOJI = '💞';
+
+// Palettes de couleurs pour la commande /couleur
+const COLOR_PALETTES = {
+  pastel: [
+    { name: 'Rose Pastel', hex: 'FFB3BA', emoji: '🌸' },
+    { name: 'Pêche Pastel', hex: 'FFDFBA', emoji: '🍑' },
+    { name: 'Jaune Pastel', hex: 'FFFFBA', emoji: '🌻' },
+    { name: 'Vert Pastel', hex: 'BAFFC9', emoji: '🌿' },
+    { name: 'Bleu Pastel', hex: 'BAE1FF', emoji: '💙' },
+    { name: 'Violet Pastel', hex: 'D4BAFF', emoji: '💜' },
+    { name: 'Lavande', hex: 'E6E6FA', emoji: '🪻' },
+    { name: 'Menthe', hex: 'AAFFEE', emoji: '🌱' },
+    { name: 'Corail Pastel', hex: 'FFB5B5', emoji: '🐚' },
+    { name: 'Lilas', hex: 'DDA0DD', emoji: '🌺' },
+    { name: 'Aqua Pastel', hex: 'B0E0E6', emoji: '🌊' },
+    { name: 'Vanille', hex: 'F3E5AB', emoji: '🍦' },
+    { name: 'Rose Poudré', hex: 'F8BBD9', emoji: '🎀' },
+    { name: 'Ciel Pastel', hex: 'C7CEEA', emoji: '☁️' },
+    { name: 'Saumon Pastel', hex: 'FFB07A', emoji: '🐟' }
+  ],
+  vif: [
+    { name: 'Rouge Vif', hex: 'FF0000', emoji: '❤️' },
+    { name: 'Orange Vif', hex: 'FF8C00', emoji: '🧡' },
+    { name: 'Jaune Vif', hex: 'FFD700', emoji: '💛' },
+    { name: 'Vert Vif', hex: '00FF00', emoji: '💚' },
+    { name: 'Bleu Vif', hex: '0080FF', emoji: '💙' },
+    { name: 'Violet Vif', hex: '8A2BE2', emoji: '💜' },
+    { name: 'Rose Vif', hex: 'FF1493', emoji: '💖' },
+    { name: 'Cyan Vif', hex: '00FFFF', emoji: '🩵' },
+    { name: 'Magenta', hex: 'FF00FF', emoji: '🩷' },
+    { name: 'Lime', hex: '32CD32', emoji: '🍋' },
+    { name: 'Turquoise', hex: '40E0D0', emoji: '🌀' },
+    { name: 'Corail Vif', hex: 'FF7F50', emoji: '🔥' },
+    { name: 'Indigo', hex: '4B0082', emoji: '🌌' },
+    { name: 'Écarlate', hex: 'DC143C', emoji: '⭐' },
+    { name: 'Émeraude', hex: '50C878', emoji: '💎' }
+  ],
+  sombre: [
+    { name: 'Rouge Sombre', hex: '8B0000', emoji: '🍎' },
+    { name: 'Orange Sombre', hex: 'CC5500', emoji: '🍊' },
+    { name: 'Jaune Sombre', hex: 'B8860B', emoji: '🟨' },
+    { name: 'Vert Sombre', hex: '006400', emoji: '🌲' },
+    { name: 'Bleu Sombre', hex: '000080', emoji: '🌀' },
+    { name: 'Violet Sombre', hex: '4B0082', emoji: '🍇' },
+    { name: 'Rose Sombre', hex: 'C71585', emoji: '🌹' },
+    { name: 'Brun Chocolat', hex: '7B3F00', emoji: '🍫' },
+    { name: 'Bordeaux', hex: '722F37', emoji: '🍷' },
+    { name: 'Vert Forêt', hex: '228B22', emoji: '🌳' },
+    { name: 'Bleu Marine', hex: '191970', emoji: '🌊' },
+    { name: 'Prune', hex: '663399', emoji: '🟣' },
+    { name: 'Anthracite', hex: '36454F', emoji: '⚫' },
+    { name: 'Olive', hex: '808000', emoji: '🫒' },
+    { name: 'Acajou', hex: 'C04000', emoji: '🪵' }
+  ]
+};
 
 function emojiForHex(hex) {
   try {
