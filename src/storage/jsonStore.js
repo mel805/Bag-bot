@@ -507,9 +507,18 @@ async function getEconomyUser(guildId, userId) {
   if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
   const eco = cfg.guilds[guildId].economy;
   const u = eco.balances?.[userId] || { amount: 0, cooldowns: {}, charm: 0, perversion: 0 };
-  if (typeof u.amount !== 'number') u.amount = 0;
-  // Alias pour compatibilité : money = amount
-  if (typeof u.money !== 'number') u.money = u.amount;
+  
+  // Synchronisation bidirectionnelle amount/money pour compatibilité
+  if (typeof u.amount !== 'number' && typeof u.money === 'number') {
+    u.amount = u.money;
+  } else if (typeof u.amount !== 'number') {
+    u.amount = 0;
+  }
+  
+  if (typeof u.money !== 'number') {
+    u.money = u.amount;
+  }
+  
   if (!u.cooldowns || typeof u.cooldowns !== 'object') u.cooldowns = {};
   if (typeof u.charm !== 'number') u.charm = 0;
   if (typeof u.perversion !== 'number') u.perversion = 0;
@@ -522,10 +531,22 @@ async function setEconomyUser(guildId, userId, state) {
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   if (!cfg.guilds[guildId].economy) cfg.guilds[guildId].economy = { balances: {} };
   if (!cfg.guilds[guildId].economy.balances) cfg.guilds[guildId].economy.balances = {};
-  // Synchroniser money avec amount pour compatibilité
-  if (typeof state.money === 'number') state.amount = state.money;
+  
+  // Synchroniser money et amount pour compatibilité bidirectionnelle
+  if (typeof state.money === 'number' && typeof state.amount !== 'number') {
+    state.amount = state.money;
+  } else if (typeof state.amount === 'number' && typeof state.money !== 'number') {
+    state.money = state.amount;
+  } else if (typeof state.amount === 'number' && typeof state.money === 'number') {
+    // Si les deux sont définis, utiliser amount comme référence
+    state.money = state.amount;
+  }
+  
   cfg.guilds[guildId].economy.balances[userId] = state;
   await writeConfig(cfg);
+  
+  // Log de debug pour vérifier la sauvegarde
+  console.log(`[STORAGE DEBUG] Saved user ${userId} in guild ${guildId}: amount=${state.amount}, money=${state.money}`);
 }
 
 function ensureEconomyShape(g) {
@@ -533,6 +554,7 @@ function ensureEconomyShape(g) {
     g.economy = {};
   }
   const e = g.economy;
+  if (!e.balances || typeof e.balances !== 'object') e.balances = {};
   if (!e.currency || typeof e.currency !== 'object') e.currency = { symbol: '🪙', name: 'BAG$' };
   if (!e.settings || typeof e.settings !== 'object') e.settings = {};
   if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
@@ -693,6 +715,11 @@ function ensureConfessShape(g) {
   if (!cf.nsfw || typeof cf.nsfw !== 'object') cf.nsfw = { channels: [] };
   if (!Array.isArray(cf.sfw.channels)) cf.sfw.channels = [];
   if (!Array.isArray(cf.nsfw.channels)) cf.nsfw.channels = [];
+  
+  // Validate and clean channel IDs - remove any non-string or empty values
+  cf.sfw.channels = cf.sfw.channels.filter(id => typeof id === 'string' && id.trim().length > 0);
+  cf.nsfw.channels = cf.nsfw.channels.filter(id => typeof id === 'string' && id.trim().length > 0);
+  
   if (typeof cf.logChannelId !== 'string') cf.logChannelId = '';
   if (typeof cf.allowReplies !== 'boolean') cf.allowReplies = true;
   if (cf.threadNaming !== 'nsfw' && cf.threadNaming !== 'normal') cf.threadNaming = 'normal';
