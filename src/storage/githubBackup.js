@@ -32,21 +32,38 @@ class GitHubBackup {
 
     const url = `https://api.github.com/repos/${this.repo}/${endpoint}`;
     const headers = {
-      'Authorization': `token ${this.token}`,
+      'Authorization': `Bearer ${this.token}`,
       'Accept': 'application/vnd.github+json',
-      'User-Agent': 'BAG-Discord-Bot',
-      'Content-Type': 'application/json'
+      'User-Agent': 'BAG-Discord-Bot/1.0',
+      'X-GitHub-Api-Version': '2022-11-28'
     };
+    
+    // Ajouter Content-Type seulement pour les requêtes avec body
+    if (body) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const options = { method, headers };
     if (body) options.body = JSON.stringify(body);
 
     try {
+      console.log(`[GitHub] ${method} ${url}`);
       const response = await fetch(url, options);
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`GitHub API Error ${response.status}: ${errorText}`);
+        console.error(`[GitHub] API Error ${response.status}:`, errorText);
+        
+        // Messages d'erreur plus spécifiques
+        if (response.status === 401) {
+          throw new Error(`Authentification échouée. Vérifiez votre GITHUB_TOKEN.`);
+        } else if (response.status === 403) {
+          throw new Error(`Permissions insuffisantes. Le token doit avoir les permissions 'repo' et 'contents:write'.`);
+        } else if (response.status === 404) {
+          throw new Error(`Dépôt '${this.repo}' introuvable ou branche '${this.branch}' inexistante.`);
+        } else {
+          throw new Error(`GitHub API Error ${response.status}: ${errorText}`);
+        }
       }
 
       const contentType = response.headers.get('content-type');
@@ -55,6 +72,9 @@ class GitHubBackup {
       }
       return await response.text();
     } catch (error) {
+      if (error.message.startsWith('GitHub API Error') || error.message.includes('Authentification') || error.message.includes('Permissions')) {
+        throw error; // Re-lancer les erreurs GitHub spécifiques
+      }
       throw new Error(`Erreur requête GitHub: ${error.message}`);
     }
   }
@@ -99,20 +119,38 @@ class GitHubBackup {
     if (!branchSHA) {
       // Créer la branche depuis main/master
       try {
+        console.log(`[GitHub] Tentative de création de branche ${this.branch} depuis main`);
         const mainBranch = await this.githubRequest('branches/main');
         await this.githubRequest('git/refs', 'POST', {
           ref: `refs/heads/${this.branch}`,
           sha: mainBranch.commit.sha
         });
-        console.log(`[GitHub] Branche ${this.branch} créée`);
+        console.log(`[GitHub] Branche ${this.branch} créée depuis main`);
       } catch (error) {
-        // Essayer avec master si main n'existe pas
-        const masterBranch = await this.githubRequest('branches/master');
-        await this.githubRequest('git/refs', 'POST', {
-          ref: `refs/heads/${this.branch}`,
-          sha: masterBranch.commit.sha
-        });
-        console.log(`[GitHub] Branche ${this.branch} créée depuis master`);
+        try {
+          // Essayer avec master si main n'existe pas
+          console.log(`[GitHub] Tentative de création de branche ${this.branch} depuis master`);
+          const masterBranch = await this.githubRequest('branches/master');
+          await this.githubRequest('git/refs', 'POST', {
+            ref: `refs/heads/${this.branch}`,
+            sha: masterBranch.commit.sha
+          });
+          console.log(`[GitHub] Branche ${this.branch} créée depuis master`);
+        } catch (masterError) {
+          // Si ni main ni master n'existent, le dépôt est probablement vide
+          console.log(`[GitHub] Dépôt vide détecté, création d'un commit initial`);
+          
+          // Créer un commit initial avec un fichier README
+          const initialContent = Buffer.from('# Sauvegarde Bot BAG\n\nCe dépôt contient les sauvegardes automatiques du bot Discord BAG.', 'utf8').toString('base64');
+          
+          await this.githubRequest('contents/README.md', 'PUT', {
+            message: '🚀 Initialisation du dépôt de sauvegarde',
+            content: initialContent,
+            branch: this.branch
+          });
+          
+          console.log(`[GitHub] Dépôt initialisé avec branche ${this.branch}`);
+        }
       }
     }
   }
@@ -125,6 +163,10 @@ class GitHubBackup {
       throw new Error('GitHub non configuré pour la sauvegarde');
     }
 
+    if (!configData || typeof configData !== 'object') {
+      throw new Error('Données de configuration invalides');
+    }
+
     try {
       // S'assurer que la branche existe
       await this.ensureBackupBranch();
@@ -134,21 +176,31 @@ class GitHubBackup {
         metadata: {
           timestamp: new Date().toISOString(),
           version: '1.0.0',
-          bot_version: require('../../package.json').version,
-          backup_type: 'complete'
+          bot_version: require('../../package.json').version || '1.0.0',
+          backup_type: 'complete',
+          data_size: JSON.stringify(configData).length
         },
         data: configData
       };
 
+      const jsonContent = JSON.stringify(backupData, null, 2);
+      
+      // Vérifier la taille (GitHub limite à 100MB, mais on limite à 50MB pour être sûr)
+      if (jsonContent.length > 50 * 1024 * 1024) {
+        throw new Error(`Données trop volumineuses (${Math.round(jsonContent.length / 1024 / 1024)}MB). Limite: 50MB`);
+      }
+
       // Encoder en base64 pour GitHub
-      const content = Buffer.from(JSON.stringify(backupData, null, 2), 'utf8').toString('base64');
+      const content = Buffer.from(jsonContent, 'utf8').toString('base64');
+      
+      console.log(`[GitHub] Sauvegarde de ${Math.round(jsonContent.length / 1024)}KB de données`);
 
       // Obtenir le SHA du fichier existant (pour la mise à jour)
       const existingFileSHA = await this.getBackupFileSHA();
 
       // Créer le commit
       const commitData = {
-        message: `🔄 Sauvegarde automatique - ${new Date().toLocaleString('fr-FR')}`,
+        message: `🔄 Sauvegarde automatique - ${new Date().toLocaleString('fr-FR')}\n\n📊 Taille: ${Math.round(jsonContent.length / 1024)}KB\n🏰 Serveurs: ${Object.keys(configData.guilds || {}).length}`,
         content: content,
         branch: this.branch
       };
@@ -251,9 +303,10 @@ class GitHubBackup {
       // Utiliser l'endpoint sans slash final pour éviter l'erreur 404
       const url = `https://api.github.com/repos/${this.repo}`;
       const headers = {
-        'Authorization': `token ${this.token}`,
+        'Authorization': `Bearer ${this.token}`,
         'Accept': 'application/vnd.github+json',
-        'User-Agent': 'BAG-Discord-Bot'
+        'User-Agent': 'BAG-Discord-Bot/1.0',
+        'X-GitHub-Api-Version': '2022-11-28'
       };
 
       const response = await fetch(url, { headers });
