@@ -4073,7 +4073,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
         const { embed, components } = await buildTopNiveauEmbed(interaction.guild, entries, 0, Math.min(25, Math.max(1, limit)));
         return interaction.reply({ embeds: [embed], components });
-      } else if (sub === 'economie') {
+      } else if (sub === 'économie') {
         const limit = Math.max(1, Math.min(25, interaction.options.getInteger('limite') || 10));
         const eco = await getEconomyConfig(interaction.guild.id);
         const entries = Object.entries(eco.balances || {});
