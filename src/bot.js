@@ -2123,7 +2123,7 @@ async function buildEconomyActionsRows(guild, selectedKey) {
   for (let i = 0; i < options.length; i += 25) {
     const chunk = options.slice(i, i + 25);
     const select = new StringSelectMenuBuilder()
-      .setCustomId('economy_actions_pick')
+      .setCustomId(`economy_actions_pick:${Math.floor(i / 25)}`)
       .setPlaceholder('Choisir une action à modifier…')
       .addOptions(...chunk);
     rows.push(new ActionRowBuilder().addComponents(select));
@@ -2741,7 +2741,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = [buildEconomyMenuSelect('shop'), ...(await buildShopRows(interaction.guild))];
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
-    if (interaction.isStringSelectMenu() && interaction.customId === 'economy_actions_pick') {
+    if (interaction.isStringSelectMenu() && (interaction.customId === 'economy_actions_pick' || interaction.customId.startsWith('economy_actions_pick:'))) {
       const key = interaction.values[0];
       if (!client._ecoActionCurrent) client._ecoActionCurrent = new Map();
       client._ecoActionCurrent.set(interaction.guild.id, key);
