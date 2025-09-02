@@ -537,6 +537,7 @@ const THEME_COLOR_ACCENT = 0xec407a; // pink
 const THEME_COLOR_NSFW = 0xd32f2f; // deep red for NSFW
 const THEME_IMAGE = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68b08cda&is=68af3b5a&hm=2e68cb9d7dfc7a60465aa74447b310348fc2d7236e74fa7c08f9434c110d7959&';
 const THEME_FOOTER_ICON = 'https://cdn.discordapp.com/attachments/1408458115283812484/1408458115770482778/20250305162902.png?ex=68b50516&is=68b3b396&hm=1d83bbaaa9451ed0034a52c48ede5ddc55db692b15e65b4fe5c659ed4c80b77d&';
+const THEME_TICKET_FOOTER_ICON = 'https://cdn.discordapp.com/attachments/1408458115283812484/1411752143173714040/IMG_20250831_183646.png?ex=68b7c664&is=68b674e4&hm=5980bdf7a118bddd76bb4d5f57168df7b2986b23b56ff0c96d47c3827b283765&';
 
 const DELAY_OPTIONS = [
   { label: '15 minutes', ms: 15 * 60 * 1000 },
@@ -968,6 +969,7 @@ function buildTopSectionRow() {
       { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick" },
       { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
       { label: 'Économie', value: 'economy', description: "Configurer l'économie" },
+      { label: 'Tickets', value: 'tickets', description: 'Configurer les tickets' },
       { label: 'Booster', value: 'booster', description: 'Récompenses boosters de serveur' },
       { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' },
       { label: 'Confessions', value: 'confess', description: 'Configurer les confessions anonymes' },
@@ -994,7 +996,6 @@ function buildBackRow() {
     .setStyle(ButtonStyle.Secondary);
   return new ActionRowBuilder().addComponents(back);
 }
-
 function buildStaffActionRow() {
   const select = new StringSelectMenuBuilder()
     .setCustomId('config_staff_action')
@@ -1945,7 +1946,6 @@ function clearKarmaCache(guildId) {
     console.error('[Karma] Failed to clear cache:', error.message);
   }
 }
-
 // Validate and sanitize karma cache state
 function validateKarmaCache() {
   try {
@@ -2344,6 +2344,39 @@ async function buildConfessRows(guild, mode = 'sfw') {
   return rows;
 }
 
+async function buildTicketsRows(guild) {
+  const { getTicketsConfig } = require('./storage/jsonStore');
+  const t = await getTicketsConfig(guild.id);
+  const panelBtn = new ButtonBuilder().setCustomId('tickets_post_panel').setLabel('Publier panneau').setStyle(ButtonStyle.Primary);
+  const pingStaffToggle = new ButtonBuilder().setCustomId('tickets_toggle_ping_staff').setLabel(t.pingStaffOnOpen ? 'Ping staff: ON' : 'Ping staff: OFF').setStyle(t.pingStaffOnOpen ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const editPanelBtn = new ButtonBuilder().setCustomId('tickets_edit_panel').setLabel('Éditer panneau').setStyle(ButtonStyle.Secondary);
+  const newCatBtn = new ButtonBuilder().setCustomId('tickets_add_cat').setLabel('Nouvelle catégorie').setStyle(ButtonStyle.Secondary);
+  const remCatBtn = new ButtonBuilder().setCustomId('tickets_remove_cat').setLabel('Retirer catégorie').setStyle(ButtonStyle.Danger);
+
+  const controlRow = new ActionRowBuilder().addComponents(panelBtn, pingStaffToggle, editPanelBtn, newCatBtn, remCatBtn);
+
+  const channelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_category').setPlaceholder('Catégorie Discord pour les tickets…').addChannelTypes(ChannelType.GuildCategory).setMinValues(1).setMaxValues(1);
+  const panelChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_panel_channel').setPlaceholder('Salon pour publier le panneau…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
+  const transcriptChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_transcript_channel').setPlaceholder('Salon de transcription…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
+  const transcriptStyle = new StringSelectMenuBuilder().setCustomId('tickets_transcript_style').setPlaceholder('Style de transcription…').addOptions(
+    { label: 'Pro', value: 'pro', description: 'Sobre, propre' },
+    { label: 'Premium', value: 'premium', description: 'Accents premium' },
+    { label: 'Classic', value: 'classic', description: 'Simple' },
+  );
+  const channelsRow = new ActionRowBuilder().addComponents(channelSelect);
+  const panelChannelRow = new ActionRowBuilder().addComponents(panelChannelSelect);
+  const transcriptRow = new ActionRowBuilder().addComponents(transcriptChannelSelect);
+  const transcriptStyleRow = new ActionRowBuilder().addComponents(transcriptStyle);
+
+  // Per-category config editor: select category then choose ping/viewer roles
+  const catSelect = new StringSelectMenuBuilder().setCustomId('tickets_edit_cat').setPlaceholder('Choisir une catégorie à configurer…').setMinValues(1).setMaxValues(1);
+  const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
+  if (catOpts.length) catSelect.addOptions(...catOpts); else catSelect.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
+  const catRow = new ActionRowBuilder().addComponents(catSelect);
+  
+  return [controlRow, channelsRow, panelChannelRow, transcriptRow, transcriptStyleRow, catRow];
+}
+
 function actionKeyToLabel(key) {
   const map = {
     work: 'travailler',
@@ -2402,7 +2435,6 @@ async function buildEconomyActionsRows(guild, selectedKey) {
   }
   return rows;
 }
-
 async function buildEconomyActionDetailRows(guild, selectedKey) {
   const rows = await buildEconomyActionsRows(guild, selectedKey);
   if (!selectedKey || selectedKey === 'none') return rows;
@@ -2715,6 +2747,49 @@ client.once(Events.ClientReady, (readyClient) => {
     const embed = buildModEmbed(`${cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
   });
+  // Tickets: auto-close when member leaves
+  client.on(Events.GuildMemberRemove, async (m) => {
+    try {
+      const { getTicketsConfig, closeTicketRecord } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(m.guild.id);
+      const entries = Object.entries(t.records || {}).filter(([cid, rec]) => rec && String(rec.userId) === String(m.id) && !rec.closedAt);
+      for (const [channelId, rec] of entries) {
+        const ch = m.guild.channels.cache.get(channelId) || await m.guild.channels.fetch(channelId).catch(() => null);
+        if (!ch || !ch.isTextBased?.()) continue;
+        // Send transcript to transcript channel before closing
+        try {
+          const transcriptChannel = t.transcriptChannelId ? (m.guild.channels.cache.get(t.transcriptChannelId) || await m.guild.channels.fetch(t.transcriptChannelId).catch(()=>null)) : null;
+          if (transcriptChannel && transcriptChannel.isTextBased?.()) {
+            const msgs = await ch.messages.fetch({ limit: 100 }).catch(()=>null);
+            const sorted = msgs ? Array.from(msgs.values()).sort((a,b) => a.createdTimestamp - b.createdTimestamp) : [];
+            const lines = [];
+            for (const msg of sorted) {
+              const when = new Date(msg.createdTimestamp).toISOString();
+              const author = msg.author ? `${msg.author.tag}` : 'Unknown';
+              const content = (msg.cleanContent || '').replace(/\n/g, ' ');
+              lines.push(`[${when}] ${author}: ${content}`);
+            }
+            const head = `Transcription du ticket <#${ch.id}>\nAuteur: <@${rec.userId}>\nFermé: Départ serveur\nCatégorie: ${rec.categoryKey || '—'}\nOuvert: ${new Date(rec.createdAt||Date.now()).toLocaleString()}\nFermé: ${new Date().toLocaleString()}\n`;
+            const text = head + '\n' + (lines.join('\n') || '(aucun message)');
+            const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transcript-${ch.id}.txt` });
+            const color = (t.transcript?.style === 'premium') ? THEME_COLOR_ACCENT : THEME_COLOR_PRIMARY;
+            const title = (t.transcript?.style === 'premium') ? '💎 Transcription Premium' : (t.transcript?.style === 'pro' ? '🧾 Transcription Pro' : 'Transcription');
+            const tEmbed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(`Ticket: <#${ch.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON });
+            await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+          }
+        } catch (_) {}
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Ticket fermé')
+          .setDescription(`L'auteur du ticket a quitté le serveur. Ticket fermé automatiquement.`)
+          .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
+          .setTimestamp(new Date());
+        try { await ch.send({ embeds: [embed] }); } catch (_) {}
+        try { await closeTicketRecord(m.guild.id, channelId); } catch (_) {}
+        try { await ch.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
+      }
+    } catch (_) {}
+  });
   client.on(Events.MessageDelete, async (msg) => {
     try { if (!msg.guild) return; } catch (_) { return; }
     const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageDelete evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
@@ -2852,7 +2927,7 @@ client.once(Events.ClientReady, (readyClient) => {
             .setTitle('💋 Un petit bump, beau/belle gosse ?')
             .setDescription('Deux heures se sont écoulées… Faites vibrer le serveur à nouveau avec `/bump` 😈🔥')
             .setThumbnail(THEME_IMAGE)
-            .setFooter({ text: 'BAG • Disboard', iconURL: THEME_FOOTER_ICON })
+            .setFooter({ text: 'BAG • Disboard', iconURL: THEME_TICKET_FOOTER_ICON })
             .setTimestamp(new Date());
           await ch.send({ embeds: [embed] }).catch(()=>{});
         }
@@ -3142,6 +3217,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
             content: '❌ Erreur lors du chargement de la configuration économie. Cache vidé, réessayez.' 
           });
         }
+      } else if (section === 'tickets') {
+        const rows = await buildTicketsRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'truthdare') {
         const rows = await buildTruthDareRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
@@ -3173,6 +3251,326 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
+      return;
+    }
+
+    // Tickets config handlers
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_category') {
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      const catId = interaction.values[0];
+      await updateTicketsConfig(interaction.guild.id, { categoryId: catId });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_panel_channel') {
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      const chId = interaction.values[0];
+      await updateTicketsConfig(interaction.guild.id, { panelChannelId: chId });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_transcript_channel') {
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      const chId = interaction.values[0];
+      await updateTicketsConfig(interaction.guild.id, { transcriptChannelId: chId });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_transcript_style') {
+      const style = interaction.values[0];
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      await updateTicketsConfig(interaction.guild.id, { transcript: { style } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_edit_cat') {
+      const key = interaction.values[0];
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const cat = (t.categories || []).find(c => c.key === key);
+      if (!cat) return interaction.reply({ content: 'Catégorie introuvable.', ephemeral: true });
+      const pingRoles = new RoleSelectMenuBuilder().setCustomId(`tickets_cat_ping_roles:${key}`).setPlaceholder('Rôles staff à ping…').setMinValues(0).setMaxValues(25);
+      const viewerRoles = new RoleSelectMenuBuilder().setCustomId(`tickets_cat_view_roles:${key}`).setPlaceholder('Rôles ayant accès…').setMinValues(0).setMaxValues(25);
+      const rowPing = new ActionRowBuilder().addComponents(pingRoles);
+      const rowView = new ActionRowBuilder().addComponents(viewerRoles);
+      const embed = await buildConfigEmbed(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), rowPing, rowView] });
+    }
+    if (interaction.isRoleSelectMenu() && interaction.customId.startsWith('tickets_cat_ping_roles:')) {
+      const key = interaction.customId.split(':')[1];
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const categories = (t.categories || []).map(c => c.key === key ? { ...c, staffPingRoleIds: interaction.values } : c);
+      await updateTicketsConfig(interaction.guild.id, { categories });
+      return interaction.deferUpdate();
+    }
+    if (interaction.isRoleSelectMenu() && interaction.customId.startsWith('tickets_cat_view_roles:')) {
+      const key = interaction.customId.split(':')[1];
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const categories = (t.categories || []).map(c => c.key === key ? { ...c, extraViewerRoleIds: interaction.values } : c);
+      await updateTicketsConfig(interaction.guild.id, { categories });
+      return interaction.deferUpdate();
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_add_cat') {
+      const modal = new ModalBuilder().setCustomId('tickets_add_cat_modal').setTitle('Nouvelle catégorie');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('key').setLabel('Clé (unique)').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('label').setLabel('Nom visible').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Emoji (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description').setStyle(TextInputStyle.Paragraph).setRequired(false))
+      );
+      try { await interaction.showModal(modal); } catch (_) {}
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_remove_cat') {
+      const { getTicketsConfig, removeTicketCategory } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      if (!Array.isArray(t.categories) || !t.categories.length) return interaction.reply({ content: 'Aucune catégorie à retirer.', ephemeral: true });
+      const ids = t.categories.map(c => c.key);
+      // Remove the last selected in UI if available; otherwise remove last
+      const key = ids[ids.length - 1];
+      await removeTicketCategory(interaction.guild.id, key);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_post_panel') {
+      await interaction.deferReply({ ephemeral: true });
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const panelChannel = interaction.guild.channels.cache.get(t.panelChannelId) || await interaction.guild.channels.fetch(t.panelChannelId).catch(()=>null);
+      if (!panelChannel || !panelChannel.isTextBased?.()) {
+        return interaction.editReply({ content: 'Configurez d\'abord le salon du panneau.' });
+      }
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle(t.panelTitle || '🎫 Ouvrir un ticket')
+        .setDescription(t.panelText || 'Choisissez une catégorie pour créer un ticket. Un membre du staff vous assistera.')
+        .setThumbnail(THEME_IMAGE)
+        .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
+        .setTimestamp(new Date());
+      const select = new StringSelectMenuBuilder().setCustomId('ticket_open').setPlaceholder('Sélectionnez une catégorie…').setMinValues(1).setMaxValues(1);
+      const opts = (t.categories || []).slice(0, 25).map(c => ({ label: c.label, value: c.key, description: c.description?.slice(0, 90) || undefined, emoji: c.emoji || undefined }));
+      if (!opts.length) return interaction.editReply({ content: 'Ajoutez au moins une catégorie de ticket.' });
+      select.addOptions(...opts);
+      const row = new ActionRowBuilder().addComponents(select);
+      const msg = await panelChannel.send({ embeds: [embed], components: [row] }).catch(()=>null);
+      if (!msg) return interaction.editReply({ content: 'Impossible d\'envoyer le panneau.' });
+      await updateTicketsConfig(interaction.guild.id, { panelMessageId: msg.id });
+      return interaction.editReply({ content: '✅ Panneau publié.' });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_edit_panel') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member || !(await isStaffMember(interaction.guild, member))) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const modal = new ModalBuilder().setCustomId('tickets_edit_panel_modal').setTitle('Éditer le panneau');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('title').setLabel('Titre').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(t.panelTitle||'')) ),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('text').setLabel('Description').setStyle(TextInputStyle.Paragraph).setRequired(true).setValue(String(t.panelText||'')) )
+      );
+      try { await interaction.showModal(modal); } catch (_) {}
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'tickets_edit_panel_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const title = (interaction.fields.getTextInputValue('title')||'').trim().slice(0, 100);
+      const text = (interaction.fields.getTextInputValue('text')||'').trim().slice(0, 1000);
+      const { updateTicketsConfig, getTicketsConfig } = require('./storage/jsonStore');
+      await updateTicketsConfig(interaction.guild.id, { panelTitle: title, panelText: text });
+      // Optionally update existing panel message if configured
+      try {
+        const t = await getTicketsConfig(interaction.guild.id);
+        if (t.panelChannelId && t.panelMessageId) {
+          const ch = interaction.guild.channels.cache.get(t.panelChannelId) || await interaction.guild.channels.fetch(t.panelChannelId).catch(()=>null);
+          const msg = ch ? (await ch.messages.fetch(t.panelMessageId).catch(()=>null)) : null;
+          if (msg) {
+            const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(text).setThumbnail(THEME_IMAGE).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON }).setTimestamp(new Date());
+            const { getTicketsConfig } = require('./storage/jsonStore');
+            const cfg = await getTicketsConfig(interaction.guild.id);
+            const select = new StringSelectMenuBuilder().setCustomId('ticket_open').setPlaceholder('Sélectionnez une catégorie…').setMinValues(1).setMaxValues(1);
+            const opts = (cfg.categories || []).slice(0, 25).map(c => ({ label: c.label, value: c.key, description: c.description?.slice(0, 90) || undefined, emoji: c.emoji || undefined }));
+            if (opts.length) select.addOptions(...opts);
+            const row = new ActionRowBuilder().addComponents(select);
+            await msg.edit({ embeds: [embed], components: [row] }).catch(()=>{});
+          }
+        }
+      } catch (_) {}
+      return interaction.editReply({ content: '✅ Panneau mis à jour.' });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_toggle_ping_staff') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member || !(await isStaffMember(interaction.guild, member))) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const next = !t.pingStaffOnOpen;
+      await updateTicketsConfig(interaction.guild.id, { pingStaffOnOpen: next });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'tickets_add_cat_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const key = (interaction.fields.getTextInputValue('key')||'').trim().slice(0, 50);
+      const label = (interaction.fields.getTextInputValue('label')||'').trim().slice(0, 50);
+      const emoji = (interaction.fields.getTextInputValue('emoji')||'').trim().slice(0, 10);
+      const desc = (interaction.fields.getTextInputValue('desc')||'').trim().slice(0, 200);
+      if (!key || !label) return interaction.editReply({ content: 'Clé et nom requis.' });
+      const { addTicketCategory } = require('./storage/jsonStore');
+      await addTicketCategory(interaction.guild.id, { key, label, emoji, description: desc });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      try { await interaction.editReply({ content: '✅ Catégorie ajoutée.' }); } catch (_) {}
+      try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
+      return;
+    }
+    // Ticket open via panel
+    if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_open') {
+      await interaction.deferReply({ ephemeral: true });
+      const { getTicketsConfig, addTicketRecord } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const catKey = interaction.values[0];
+      const cat = (t.categories || []).find(c => c.key === catKey);
+      if (!cat) return interaction.editReply({ content: 'Catégorie invalide.' });
+      const parent = t.categoryId ? (interaction.guild.channels.cache.get(t.categoryId) || await interaction.guild.channels.fetch(t.categoryId).catch(()=>null)) : null;
+      const channelName = `ticket-${String(t.counter || 1)}`;
+      const ch = await interaction.guild.channels.create({ name: channelName, parent: parent?.id, type: ChannelType.GuildText, topic: `Ticket ${channelName} • ${interaction.user.tag} • ${cat.label}` }).catch(()=>null);
+      if (!ch) return interaction.editReply({ content: 'Impossible de créer le ticket.' });
+      await ch.permissionOverwrites?.create?.(interaction.user.id, { ViewChannel: true, SendMessages: true }).catch(()=>{});
+      try {
+        const staffIds = await getGuildStaffRoleIds(interaction.guild.id);
+        for (const rid of staffIds) {
+          await ch.permissionOverwrites?.create?.(rid, { ViewChannel: true, SendMessages: true }).catch(()=>{});
+        }
+      } catch (_) {}
+      // Extra viewer roles per-category
+      try {
+        for (const rid of (cat.extraViewerRoleIds || [])) {
+          await ch.permissionOverwrites?.create?.(rid, { ViewChannel: true, SendMessages: true }).catch(()=>{});
+        }
+      } catch (_) {}
+      await addTicketRecord(interaction.guild.id, ch.id, interaction.user.id, catKey);
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle(`${cat.emoji ? cat.emoji + ' ' : ''}Ticket • ${cat.label}`)
+        .setDescription(`${cat.description || 'Expliquez votre demande ci-dessous.'}`)
+        .addFields(
+          { name: 'Auteur', value: `${interaction.user}`, inline: true },
+          { name: 'Catégorie', value: `${cat.label}`, inline: true }
+        )
+        .setThumbnail(interaction.user.displayAvatarURL?.() || THEME_IMAGE)
+        .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
+        .setTimestamp(new Date());
+      const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('S\'approprier').setStyle(ButtonStyle.Success);
+      const transferBtn = new ButtonBuilder().setCustomId('ticket_transfer').setLabel('Transférer').setStyle(ButtonStyle.Secondary);
+      const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('Fermer').setStyle(ButtonStyle.Danger);
+      const row = new ActionRowBuilder().addComponents(claimBtn, transferBtn, closeBtn);
+      // Mention the user and optionally ping staff roles
+      let content = `${interaction.user} merci d'expliquer votre demande.`;
+      if (t.pingStaffOnOpen) {
+        try {
+          const pings = (cat.staffPingRoleIds && cat.staffPingRoleIds.length) ? cat.staffPingRoleIds : await getGuildStaffRoleIds(interaction.guild.id);
+          if (Array.isArray(pings) && pings.length) content += `\n${pings.map(id => `<@&${id}>`).join(' ')}`;
+        } catch (_) {}
+      }
+      await ch.send({ content, embeds: [embed], components: [row], allowedMentions: { users: [interaction.user.id], roles: t.pingStaffOnOpen ? undefined : [] } }).catch(()=>{});
+      await interaction.editReply({ content: `✅ Ticket créé: ${ch}` });
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'ticket_claim') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { setTicketClaim, getTicketsConfig } = require('./storage/jsonStore');
+      const rec = await setTicketClaim(interaction.guild.id, interaction.channel.id, interaction.user.id);
+      if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const t = await getTicketsConfig(interaction.guild.id);
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('Ticket pris en charge').setDescription(`${interaction.user} prend en charge ce ticket.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON }).setTimestamp(new Date());
+      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === 'ticket_close') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { closeTicketRecord, getTicketsConfig } = require('./storage/jsonStore');
+      const rec = await closeTicketRecord(interaction.guild.id, interaction.channel.id);
+      if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const t = await getTicketsConfig(interaction.guild.id);
+      // Build transcript and send to configured channel
+      try {
+        const transcriptChannel = t.transcriptChannelId ? (interaction.guild.channels.cache.get(t.transcriptChannelId) || await interaction.guild.channels.fetch(t.transcriptChannelId).catch(()=>null)) : null;
+        if (transcriptChannel && transcriptChannel.isTextBased?.()) {
+          const msgs = await interaction.channel.messages.fetch({ limit: 100 }).catch(()=>null);
+          const sorted = msgs ? Array.from(msgs.values()).sort((a,b) => a.createdTimestamp - b.createdTimestamp) : [];
+          const lines = [];
+          for (const msg of sorted) {
+            const when = new Date(msg.createdTimestamp).toISOString();
+            const author = msg.author ? `${msg.author.tag}` : 'Unknown';
+            const content = (msg.cleanContent || '').replace(/\n/g, ' ');
+            lines.push(`[${when}] ${author}: ${content}`);
+          }
+          const head = `Transcription du ticket <#${interaction.channel.id}>\nAuteur: <@${rec.userId}>\nFermé par: ${interaction.user}\nCatégorie: ${rec.categoryKey || '—'}\nOuvert: ${new Date(rec.createdAt||Date.now()).toLocaleString()}\nFermé: ${new Date().toLocaleString()}\n`;
+          const text = head + '\n' + (lines.join('\n') || '(aucun message)');
+          const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+          const color = (t.transcript?.style === 'premium') ? THEME_COLOR_ACCENT : THEME_COLOR_PRIMARY;
+          const title = (t.transcript?.style === 'premium') ? '💎 Transcription Premium' : (t.transcript?.style === 'pro' ? '🧾 Transcription Pro' : 'Transcription');
+          const tEmbed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(`Ticket: <#${interaction.channel.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON });
+          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+        }
+      } catch (_) {}
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Ticket fermé').setDescription(`Fermé par ${interaction.user}.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON }).setTimestamp(new Date());
+      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
+      // Optionally lock channel
+      try { await interaction.channel.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'ticket_transfer') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const select = new UserSelectMenuBuilder()
+        .setCustomId('ticket_transfer_select')
+        .setPlaceholder('Choisir le membre du staff destinataire…')
+        .setMinValues(1)
+        .setMaxValues(1);
+      const row = new ActionRowBuilder().addComponents(select);
+      return interaction.reply({ content: 'Sélectionnez le destinataire du ticket.', components: [row], ephemeral: true });
+    }
+    if (interaction.isUserSelectMenu() && interaction.customId === 'ticket_transfer_select') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const targetId = interaction.values[0];
+      const targetMember = await interaction.guild.members.fetch(targetId).catch(()=>null);
+      if (!targetMember) return interaction.reply({ content: 'Membre introuvable.', ephemeral: true });
+      const targetIsStaff = await isStaffMember(interaction.guild, targetMember);
+      if (!targetIsStaff) return interaction.reply({ content: 'Le destinataire doit être membre du staff.', ephemeral: true });
+      const { setTicketClaim } = require('./storage/jsonStore');
+      const rec = await setTicketClaim(interaction.guild.id, interaction.channel.id, targetId);
+      if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
+      try { await interaction.update({ content: '✅ Ticket transféré.', components: [] }); } catch (_) {}
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_ACCENT)
+        .setTitle('Ticket transféré')
+        .setDescription(`Transféré à ${targetMember} par ${interaction.user}.`)
+        .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
+        .setTimestamp(new Date());
+      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
       return;
     }
 
@@ -3491,7 +3889,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = buildTopSectionRow();
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
-    
     // Economy diagnostic button
     if (interaction.isButton() && interaction.customId === 'config_economy_diagnostic') {
       try {
@@ -4964,7 +5361,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = buildEcoEmbed({ title: 'Ajout d\'argent', description: `Membre: ${member}\nMontant ajouté: ${montant} ${eco.currency?.name || 'BAG$'}\nSolde: ${before} → ${u.amount}` });
       return interaction.editReply({ embeds: [embed] });
     }
-
     // /niveau (FR) and /level (EN alias): show user's level with prestige-style landscape card
     if (interaction.isChatInputCommand() && (interaction.commandName === 'niveau' || interaction.commandName === 'level')) {
       try { await interaction.deferReply(); } catch (_) {}
@@ -5890,7 +6286,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: 'Erreur restauration.', ephemeral: true });
       }
     }
-
     // Admin-only: /github-backup (gestion des sauvegardes GitHub)
     if (interaction.isChatInputCommand() && interaction.commandName === 'github-backup') {
       try {
@@ -6365,7 +6760,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.editReply('👋 Déconnexion du vocal.');
       } catch (e) { try { return await interaction.editReply('Erreur quit.'); } catch (_) { return; } }
     }
-
     // Music: radio
     if (interaction.isChatInputCommand() && interaction.commandName === 'radio') {
       try {
@@ -6865,7 +7259,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
-    
     if (interaction.isUserSelectMenu() && interaction.customId.startsWith('suite_invite_select_')) {
       const ownerId = interaction.customId.split('_')[3];
       if (interaction.user.id !== ownerId) {
@@ -7338,7 +7731,6 @@ client.on(Events.MessageCreate, async (message) => {
     } catch (_) {}
   } catch (_) {}
 });
-
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   try {
     const guild = newState.guild || oldState.guild;
@@ -7813,7 +8205,6 @@ async function calculateShopPrice(guild, user, basePrice) {
   const finalMultiplier = Math.max(0, 1 + totalDeltaPercent / 100);
   return Math.max(0, Math.floor(basePrice * finalMultiplier));
 }
-
 // Build detailed boutique embed showing base prices and karma-modified prices
 async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   const eco = await getEconomyConfig(guild.id);

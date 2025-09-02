@@ -320,6 +320,7 @@ async function getGuildConfig(guildId) {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
   if (!Array.isArray(cfg.guilds[guildId].staffRoleIds)) cfg.guilds[guildId].staffRoleIds = [];
+  ensureTicketsShape(cfg.guilds[guildId]);
   if (!cfg.guilds[guildId].levels) {
     cfg.guilds[guildId].levels = {
       enabled: false,
@@ -885,6 +886,131 @@ function ensureConfessShape(g) {
   if (typeof cf.counter !== 'number') cf.counter = 1;
 }
 
+function ensureTicketsShape(g) {
+  if (!g.tickets || typeof g.tickets !== 'object') g.tickets = {};
+  const t = g.tickets;
+  if (typeof t.enabled !== 'boolean') t.enabled = true;
+  if (typeof t.categoryId !== 'string') t.categoryId = '';
+  if (typeof t.panelChannelId !== 'string') t.panelChannelId = '';
+  if (typeof t.panelMessageId !== 'string') t.panelMessageId = '';
+  if (!Array.isArray(t.categories)) {
+    t.categories = [
+      { key: 'support', label: 'Support', emoji: '🛟', description: 'Décrivez votre problème de support ci-dessous. Un membre du staff vous répondra bientôt.' },
+      { key: 'plainte', label: 'Plainte', emoji: '📝', description: 'Expliquez votre plainte avec le plus de détails possible.' },
+      { key: 'demande', label: 'Demande', emoji: '💡', description: 'Expliquez votre demande ou votre suggestion ici.' },
+    ];
+  }
+  // Validate categories
+  t.categories = t.categories
+    .filter(c => c && typeof c === 'object')
+    .map(c => ({
+      key: String(c.key || '').trim() || 'cat_' + Math.random().toString(36).slice(2, 8),
+      label: String(c.label || c.key || 'Catégorie'),
+      emoji: typeof c.emoji === 'string' ? c.emoji : '',
+      description: String(c.description || ''),
+      staffPingRoleIds: Array.isArray(c.staffPingRoleIds) ? c.staffPingRoleIds.map(String) : [],
+      extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds) ? c.extraViewerRoleIds.map(String) : [],
+    }));
+  if (typeof t.counter !== 'number') t.counter = 1;
+  if (!t.records || typeof t.records !== 'object') t.records = {};
+  if (typeof t.panelTitle !== 'string') t.panelTitle = '🎫 Ouvrir un ticket';
+  if (typeof t.panelText !== 'string') t.panelText = 'Choisissez une catégorie pour créer un ticket. Un membre du staff vous assistera.';
+  if (typeof t.logChannelId !== 'string') t.logChannelId = '';
+  if (typeof t.pingStaffOnOpen !== 'boolean') t.pingStaffOnOpen = false;
+  if (typeof t.transcriptChannelId !== 'string') t.transcriptChannelId = '';
+  if (!t.transcript || typeof t.transcript !== 'object') t.transcript = { style: 'pro' };
+  if (!['pro','premium','classic'].includes(t.transcript.style)) t.transcript.style = 'pro';
+}
+
+async function getTicketsConfig(guildId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTicketsShape(cfg.guilds[guildId]);
+  return cfg.guilds[guildId].tickets;
+}
+
+async function updateTicketsConfig(guildId, partial) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTicketsShape(cfg.guilds[guildId]);
+  cfg.guilds[guildId].tickets = { ...cfg.guilds[guildId].tickets, ...partial };
+  await writeConfig(cfg);
+  return cfg.guilds[guildId].tickets;
+}
+
+async function addTicketCategory(guildId, category) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTicketsShape(cfg.guilds[guildId]);
+  const t = cfg.guilds[guildId].tickets;
+  const entry = {
+    key: String(category.key || '').trim() || 'cat_' + Math.random().toString(36).slice(2, 8),
+    label: String(category.label || 'Catégorie'),
+    emoji: typeof category.emoji === 'string' ? category.emoji : '',
+    description: String(category.description || ''),
+    staffPingRoleIds: Array.isArray(category.staffPingRoleIds) ? category.staffPingRoleIds.map(String) : [],
+    extraViewerRoleIds: Array.isArray(category.extraViewerRoleIds) ? category.extraViewerRoleIds.map(String) : [],
+  };
+  if (!Array.isArray(t.categories)) t.categories = [];
+  // Avoid duplicate keys
+  const exists = t.categories.some(c => c.key === entry.key);
+  if (!exists) t.categories.push(entry);
+  await writeConfig(cfg);
+  return t.categories;
+}
+
+async function removeTicketCategory(guildId, key) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return [];
+  ensureTicketsShape(cfg.guilds[guildId]);
+  const t = cfg.guilds[guildId].tickets;
+  t.categories = (t.categories || []).filter(c => c.key !== key);
+  await writeConfig(cfg);
+  return t.categories;
+}
+
+async function addTicketRecord(guildId, channelId, userId, categoryKey) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
+  ensureTicketsShape(cfg.guilds[guildId]);
+  const t = cfg.guilds[guildId].tickets;
+  const id = String(channelId);
+  t.records[id] = {
+    userId: String(userId),
+    categoryKey: String(categoryKey || ''),
+    createdAt: Date.now(),
+    claimedBy: '',
+    closedAt: 0,
+  };
+  t.counter = (typeof t.counter === 'number' ? t.counter : 0) + 1;
+  await writeConfig(cfg);
+  return t.records[id];
+}
+
+async function setTicketClaim(guildId, channelId, staffUserId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return null;
+  ensureTicketsShape(cfg.guilds[guildId]);
+  const t = cfg.guilds[guildId].tickets;
+  const rec = t.records[String(channelId)];
+  if (!rec) return null;
+  rec.claimedBy = String(staffUserId || '');
+  await writeConfig(cfg);
+  return rec;
+}
+
+async function closeTicketRecord(guildId, channelId) {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return null;
+  ensureTicketsShape(cfg.guilds[guildId]);
+  const t = cfg.guilds[guildId].tickets;
+  const rec = t.records[String(channelId)];
+  if (!rec) return null;
+  rec.closedAt = Date.now();
+  await writeConfig(cfg);
+  return rec;
+}
+
 function ensureAutoThreadShape(g) {
   if (!g.autothread || typeof g.autothread !== 'object') g.autothread = {};
   const at = g.autothread;
@@ -1175,6 +1301,14 @@ module.exports = {
   getGuildConfig,
   getGuildStaffRoleIds,
   setGuildStaffRoleIds,
+  // Tickets
+  getTicketsConfig,
+  updateTicketsConfig,
+  addTicketCategory,
+  removeTicketCategory,
+  addTicketRecord,
+  setTicketClaim,
+  closeTicketRecord,
   getAutoKickConfig,
   updateAutoKickConfig,
   addPendingJoiner,
