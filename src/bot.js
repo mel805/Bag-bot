@@ -2471,7 +2471,15 @@ async function buildSuitesRows(guild) {
     .setMinValues(1)
     .setMaxValues(1)
     .addChannelTypes(ChannelType.GuildCategory);
-  return [new ActionRowBuilder().addComponents(cat)];
+  const prices = eco.suites?.prices || { day: 0, week: 0, month: 0 };
+  const priceBtn = new ButtonBuilder()
+    .setCustomId('suites_edit_prices')
+    .setLabel(`Tarifs: ${prices.day||0}/${prices.week||0}/${prices.month||0}`)
+    .setStyle(ButtonStyle.Primary);
+  return [
+    new ActionRowBuilder().addComponents(cat),
+    new ActionRowBuilder().addComponents(priceBtn)
+  ];
 }
 
 process.on('unhandledRejection', (reason) => {
@@ -3445,6 +3453,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = [buildEconomyMenuSelect('suites'), ...(await buildSuitesRows(interaction.guild))];
       return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'suites_edit_prices') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const prices = eco.suites?.prices || { day: 0, week: 0, month: 0 };
+      const modal = new ModalBuilder().setCustomId('suites_prices_modal').setTitle('Tarifs des suites privées');
+      const day = new TextInputBuilder().setCustomId('day').setLabel('Prix 1 jour').setStyle(TextInputStyle.Short).setPlaceholder(String(prices.day||0)).setRequired(true);
+      const week = new TextInputBuilder().setCustomId('week').setLabel('Prix 7 jours').setStyle(TextInputStyle.Short).setPlaceholder(String(prices.week||0)).setRequired(true);
+      const month = new TextInputBuilder().setCustomId('month').setLabel('Prix 30 jours').setStyle(TextInputStyle.Short).setPlaceholder(String(prices.month||0)).setRequired(true);
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(day),
+        new ActionRowBuilder().addComponents(week),
+        new ActionRowBuilder().addComponents(month),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'suites_prices_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const day = Math.max(0, Number((interaction.fields.getTextInputValue('day')||'0').trim()));
+      const week = Math.max(0, Number((interaction.fields.getTextInputValue('week')||'0').trim()));
+      const month = Math.max(0, Number((interaction.fields.getTextInputValue('month')||'0').trim()));
+      if (!Number.isFinite(day) || !Number.isFinite(week) || !Number.isFinite(month)) {
+        return interaction.editReply({ content: '❌ Valeurs invalides.' });
+      }
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const suites = { ...(eco.suites || {}), prices: { day, week, month } };
+      await updateEconomyConfig(interaction.guild.id, { suites });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = [buildEconomyMenuSelect('suites'), ...(await buildSuitesRows(interaction.guild))];
+      await interaction.editReply({ content: '✅ Tarifs des suites mis à jour.' });
+      try { await interaction.followUp({ embeds: [embed], components: [...rows], ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isButton() && interaction.customId === 'config_back_home') {
       const embed = await buildConfigEmbed(interaction.guild);
@@ -7752,9 +7792,12 @@ async function calculateShopPrice(guild, user, basePrice) {
   
   // Add booster discount
   try {
-    const member = await guild.members.fetch(user.id).catch(() => null);
-    const isBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
     const b = eco.booster || {};
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const isNitroBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
+    const boosterRoleIds = Array.isArray(b.roles) ? b.roles.map(String) : [];
+    const hasBoosterRole = member ? boosterRoleIds.some((rid) => member.roles?.cache?.has(rid)) : false;
+    const isBooster = isNitroBooster || hasBoosterRole;
     if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
       const boosterMult = Number(b.shopPriceMult);
       const boosterDeltaPercent = -((1 - boosterMult) * 100); // remise → delta négatif
@@ -7783,9 +7826,12 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   let isBooster = false;
   let boosterMult = 1;
   try {
-    const member = await guild.members.fetch(user.id).catch(() => null);
-    isBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
     const b = eco.booster || {};
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const isNitroBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
+    const boosterRoleIds = Array.isArray(b.roles) ? b.roles.map(String) : [];
+    const hasBoosterRole = member ? boosterRoleIds.some((rid) => member.roles?.cache?.has(rid)) : false;
+    isBooster = isNitroBooster || hasBoosterRole;
     if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
       boosterMult = Number(b.shopPriceMult);
     }
