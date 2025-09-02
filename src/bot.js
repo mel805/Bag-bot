@@ -1877,7 +1877,7 @@ async function buildEconomyMenuRows(guild, page) {
     
     if (p === 'karma') {
       const rows = await buildEconomyKarmaRows(guild);
-      return [buildEconomyMenuSelect(p), ...rows];
+      return [...rows];
     }
     if (p === 'actions') {
       const sel = client._ecoActionCurrent.get(guild.id) || null;
@@ -1912,8 +1912,19 @@ async function buildBoosterRows(guild) {
   const priceMult = new ButtonBuilder().setCustomId('booster_shop').setLabel(`Prix boutique x${b.shopPriceMult}`).setStyle(ButtonStyle.Secondary);
   const row1 = new ActionRowBuilder().addComponents(toggle);
   const row2 = new ActionRowBuilder().addComponents(textXp, voiceXp, cdMult, priceMult);
-  return [row1, row2];
+  // Rôles associés aux boosters
+  const addRoles = new RoleSelectMenuBuilder().setCustomId('booster_roles_add').setPlaceholder('Ajouter des rôles (boosters)').setMinValues(1).setMaxValues(25);
+  const currentRoles = Array.isArray(b.roles) ? b.roles : [];
+  const rolesLabel = currentRoles.length ? currentRoles.map(id => guild.roles.cache.get(id) || `<@&${id}>`).map(r => (typeof r === 'string' ? r : r.toString())).join(', ') : 'Aucun';
+  const removeOpts = currentRoles.length ? currentRoles.map(id => ({ label: (guild.roles.cache.get(id)?.name || id).toString().slice(0,100), value: String(id) })) : [{ label: 'Aucun', value: 'none' }];
+  const removeSelect = new StringSelectMenuBuilder().setCustomId('booster_roles_remove').setPlaceholder(`Retirer des rôles (${rolesLabel})`);
+  if (currentRoles.length) removeSelect.setMinValues(1).setMaxValues(Math.min(25, currentRoles.length)).addOptions(...removeOpts);
+  else removeSelect.setMinValues(0).setMaxValues(1).addOptions(...removeOpts).setDisabled(true);
+  const row3 = new ActionRowBuilder().addComponents(addRoles);
+  const row4 = new ActionRowBuilder().addComponents(removeSelect);
+  return [row1, row2, row3, row4];
 }
+
 
 // Initialize and validate economy cache maps
 function initializeEconomyCaches() {
@@ -3168,17 +3179,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
         
         const embed = await buildConfigEmbed(interaction.guild);
         const topRows = buildTopSectionRow();
+        const baseRows = [topRows[0]]; // n'utiliser que la première rangée (sélecteur de section)
         let rows;
         
         if (page === 'suites') {
           rows = [buildEconomyMenuSelect(page), ...(await buildSuitesRows(interaction.guild))];
         } else if (page === 'shop') {
           rows = [buildEconomyMenuSelect(page), ...(await buildShopRows(interaction.guild))];
+        } else if (page === 'karma') {
+          // Karma renvoie déjà 4 rangées; on n'ajoute pas buildEconomyMenuSelect pour éviter d'excéder 5 rangées au total avec la barre du haut
+          rows = await buildEconomyMenuRows(interaction.guild, page);
         } else {
           rows = await buildEconomyMenuRows(interaction.guild, page);
         }
         
-        return interaction.update({ embeds: [embed], components: [...topRows, ...rows] });
+        // Discord permet max 5 rangées par message
+        const limited = [...baseRows, ...rows].slice(0, 5);
+        return interaction.update({ embeds: [embed], components: limited });
       } catch (error) {
         console.error('[Economy] Menu navigation failed:', error.message);
         console.error('[Economy] Menu stack trace:', error.stack);
@@ -3189,11 +3206,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try {
           const embed = await buildConfigEmbed(interaction.guild);
           const backRow = buildBackRow();
-          return interaction.update({ 
-            embeds: [embed], 
-            components: [backRow],
-            content: '❌ Erreur lors de la navigation dans les menus économie. Cache vidé, retournez au menu principal.' 
-          });
+          return interaction.update({ embeds: [embed], components: [backRow], content: '❌ Erreur lors de la navigation dans les menus économie. Cache vidé, retournez au menu principal.' });
         } catch (fallbackError) {
           console.error('[Economy] Fallback failed:', fallbackError.message);
           return interaction.reply({ content: '❌ Erreur critique dans la configuration économie.', ephemeral: true }).catch(() => {});
@@ -3581,6 +3594,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, { booster: b });
       return interaction.editReply({ content: '✅ Réglage mis à jour.' });
     }
+    if (interaction.isRoleSelectMenu && interaction.isRoleSelectMenu() && interaction.customId === 'booster_roles_add') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const b = eco.booster || {};
+      const current = new Set(Array.isArray(b.roles) ? b.roles : []);
+      for (const rid of interaction.values) current.add(rid);
+      b.roles = Array.from(current);
+      await updateEconomyConfig(interaction.guild.id, { booster: b });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildBoosterRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'booster_roles_remove') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const b = eco.booster || {};
+      const current = new Set(Array.isArray(b.roles) ? b.roles : []);
+      for (const rid of interaction.values) current.delete(rid);
+      b.roles = Array.from(current);
+      await updateEconomyConfig(interaction.guild.id, { booster: b });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildBoosterRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
     // Karma delete selected
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('eco_karma_rules:')) {
       try {
@@ -3940,8 +3975,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
           
           // Log the manual reset
           const cfg = await getLogsConfig(interaction.guild.id);
-          if (cfg?.categories?.economy) {
-            const channel = interaction.guild.channels.cache.get(cfg.categories.economy);
+          if (cfg?.channels?.economy) {
+            const channel = interaction.guild.channels.cache.get(cfg.channels.economy);
             if (channel) {
               const embed = new EmbedBuilder()
                 .setTitle('🔄 Reset Manuel du Karma')
@@ -5404,9 +5439,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
-      const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user);
+      const PAGE_SIZE = 10;
+      const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user, 0, PAGE_SIZE);
       const rows = await buildBoutiqueRows(interaction.guild);
-      return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+      const { entriesCount } = await getBoutiqueEntriesCount(interaction.guild);
+      const components = entriesCount > PAGE_SIZE ? [...rows, buildBoutiquePageRow(0, PAGE_SIZE, entriesCount)] : [...rows];
+      return interaction.reply({ embeds: [embed], components, ephemeral: true });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('boutique_page:')) {
+      const parts = interaction.customId.split(':');
+      const offset = Math.max(0, Number(parts[1]) || 0);
+      const limit = Math.max(1, Math.min(25, Number(parts[2]) || 10));
+      const { entriesCount } = await getBoutiqueEntriesCount(interaction.guild);
+      const safeOffset = Math.min(offset, Math.max(0, entriesCount - 1));
+      const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user, safeOffset, limit);
+      const rows = await buildBoutiqueRows(interaction.guild);
+      const pageRow = buildBoutiquePageRow(safeOffset, limit, entriesCount);
+      return interaction.update({ embeds: [embed], components: [...rows, pageRow] });
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'actionverite') {
       try {
@@ -7327,6 +7376,8 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   } catch (_) {}
 });
 
+// Note: automatic booster role assignment removed per request
+
 // Système de récompenses vocales périodiques
 setInterval(async () => {
   try {
@@ -7696,7 +7747,8 @@ async function calculateShopPrice(guild, user, basePrice) {
   const eco = await getEconomyConfig(guild.id);
   const userEco = await getEconomyUser(guild.id, user.id);
   
-  let totalDiscountPercent = 0;
+  // totalDeltaPercent: positif = augmente le prix, négatif = baisse le prix
+  let totalDeltaPercent = 0;
   
   // Add booster discount
   try {
@@ -7705,22 +7757,22 @@ async function calculateShopPrice(guild, user, basePrice) {
     const b = eco.booster || {};
     if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
       const boosterMult = Number(b.shopPriceMult);
-      const boosterDiscountPercent = (1 - boosterMult) * 100;
-      totalDiscountPercent += boosterDiscountPercent;
+      const boosterDeltaPercent = -((1 - boosterMult) * 100); // remise → delta négatif
+      totalDeltaPercent += boosterDeltaPercent;
     }
   } catch (_) {}
   
   // Add karma discount
   const karmaPercent = calculateKarmaShopModifier(eco.karmaModifiers?.shop, userEco.charm || 0, userEco.perversion || 0);
-  totalDiscountPercent += karmaPercent;
+  totalDeltaPercent += karmaPercent; // positif = augmentation, négatif = remise
   
   // Apply cumulative discount
-  const finalMultiplier = Math.max(0, 1 - totalDiscountPercent / 100);
+  const finalMultiplier = Math.max(0, 1 + totalDeltaPercent / 100);
   return Math.max(0, Math.floor(basePrice * finalMultiplier));
 }
 
 // Build detailed boutique embed showing base prices and karma-modified prices
-async function buildBoutiqueEmbed(guild, user) {
+async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   const eco = await getEconomyConfig(guild.id);
   const userEco = await getEconomyUser(guild.id, user.id);
   const userCharm = userEco.charm || 0;
@@ -7749,12 +7801,12 @@ async function buildBoutiqueEmbed(guild, user) {
     .setThumbnail(THEME_IMAGE)
     .setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON });
   
-  // Calculate total discount for display
-  let totalDiscountPercent = 0;
+  // Calculate total delta for display (positif = augmente, négatif = baisse)
+  let totalDeltaPercent = 0;
   if (isBooster && boosterMult !== 1) {
-    totalDiscountPercent += (1 - boosterMult) * 100;
+    totalDeltaPercent += -((1 - boosterMult) * 100);
   }
-  totalDiscountPercent += karmaPercent;
+  totalDeltaPercent += karmaPercent;
   
   // User info
   let description = `💰 **Votre solde :** ${userEco.amount || 0} ${currency}\n`;
@@ -7763,18 +7815,18 @@ async function buildBoutiqueEmbed(guild, user) {
   // Show individual modifiers
   if (isBooster && boosterMult !== 1) {
     const boosterDiscount = (1 - boosterMult) * 100;
-    description += `🚀 **Bonus booster :** -${Math.round(boosterDiscount)}%\n`;
+    description += `🚀 **Bonus booster :** ${Math.round(-boosterDiscount)}%\n`;
   }
   if (karmaPercent !== 0) {
     const sign = karmaPercent > 0 ? '+' : '';
     description += `🎯 **Modification karma :** ${sign}${karmaPercent}%\n`;
   }
   
-  // Show total cumulative discount
-  if (totalDiscountPercent !== 0) {
-    const sign = totalDiscountPercent > 0 ? '+' : '';
-    const totalText = totalDiscountPercent >= 100 ? '**ARTICLES GRATUITS!** 🎉' : `**Total : ${sign}${Math.round(totalDiscountPercent)}%**`;
-    description += `💸 **Remise cumulée :** ${totalText}\n`;
+  // Show total cumulative delta
+  if (totalDeltaPercent !== 0) {
+    const sign = totalDeltaPercent > 0 ? '+' : '';
+    const totalText = totalDeltaPercent <= -100 ? '**ARTICLES GRATUITS!** 🎉' : `**Total : ${sign}${Math.round(totalDeltaPercent)}%**`;
+    description += `💸 **Impact cumulé :** ${totalText}\n`;
   }
   
   description += '\n**Articles disponibles :**';
@@ -7783,45 +7835,69 @@ async function buildBoutiqueEmbed(guild, user) {
   
   const fields = [];
   
-  // Helper function to calculate final price with cumulative modifiers
+  // Helper function to calculate final price with cumulative modifiers (positive = augmente, négatif = baisse)
   const calculateFinalPrice = (basePrice) => {
     let price = basePrice;
     
-    // Calculate total discount percentage
-    let totalDiscountPercent = 0;
+    let totalDeltaPercent = 0;
     
-    // Add booster discount (convert multiplier to percentage)
+    // Booster delta (multiplier < 1 => remise négative)
     if (isBooster && boosterMult !== 1) {
       const boosterDiscountPercent = (1 - boosterMult) * 100;
-      totalDiscountPercent += boosterDiscountPercent;
+      totalDeltaPercent += -boosterDiscountPercent;
     }
     
-    // Add karma discount percentage
-    totalDiscountPercent += karmaPercent;
+    // Karma delta (déjà signé)
+    totalDeltaPercent += karmaPercent;
     
-    // Apply cumulative discount (can go to 0 but not negative)
-    const finalMultiplier = Math.max(0, 1 - totalDiscountPercent / 100);
+    const finalMultiplier = Math.max(0, 1 + totalDeltaPercent / 100);
     price = Math.max(0, Math.floor(basePrice * finalMultiplier));
     
-    return { finalPrice: price, totalDiscountPercent };
+    return { finalPrice: price, totalDeltaPercent };
   };
   
   // Helper function to format price display with discount info
   const formatPrice = (basePrice) => {
-    const { finalPrice, totalDiscountPercent } = calculateFinalPrice(basePrice);
+    const { finalPrice, totalDeltaPercent } = calculateFinalPrice(basePrice);
     
     if (finalPrice === basePrice) {
       return `**${finalPrice}** ${currency}`;
     } else {
-      const discountText = totalDiscountPercent >= 100 ? ' (GRATUIT!)' : ` (-${Math.round(totalDiscountPercent)}%)`;
-      return `~~${basePrice}~~ **${finalPrice}** ${currency}${discountText}`;
+      const suffix = totalDeltaPercent <= -100 ? ' (GRATUIT!)' : ` (${totalDeltaPercent>0?'+':''}${Math.round(totalDeltaPercent)}%)`;
+      return `~~${basePrice}~~ **${finalPrice}** ${currency}${suffix}`;
     }
   };
   
+  // Pagination des entrées: concaténer items + roles + suites comme une liste linéaire
+  const entries = [];
+  if (Array.isArray(eco.shop?.items)) {
+    for (const item of eco.shop.items) entries.push({ type: 'item', data: item });
+  }
+  if (Array.isArray(eco.shop?.roles)) {
+    for (const role of eco.shop.roles) entries.push({ type: 'role', data: role });
+  }
+  if (eco.suites) {
+    const prices = eco.suites.prices || { day: 0, week: 0, month: 0 };
+    const durations = [
+      { key: 'day', name: 'Suite privée (1 jour)', emoji: '🏠' },
+      { key: 'week', name: 'Suite privée (7 jours)', emoji: '🏡' },
+      { key: 'month', name: 'Suite privée (30 jours)', emoji: '🏰' }
+    ];
+    for (const dur of durations) entries.push({ type: 'suite', data: { key: dur.key, name: dur.name, emoji: dur.emoji, price: Number(prices[dur.key] || 0) } });
+  }
+  const total = entries.length;
+  const slice = entries.slice(offset, offset + limit);
+  
+  // Regrouper par sections pour l'embed (Discord limite 25 fields et la taille globale)
+  // On reconstruit des champs pour les éléments affichés uniquement
+  const itemsShown = slice.filter(e => e.type === 'item').map(e => e.data);
+  const rolesShown = slice.filter(e => e.type === 'role').map(e => e.data);
+  const suitesShown = slice.filter(e => e.type === 'suite').map(e => e.data);
+
   // Objets
-  if (eco.shop?.items?.length) {
+  if (itemsShown.length) {
     let itemsText = '';
-    for (const item of eco.shop.items) {
+    for (const item of itemsShown) {
       const basePrice = item.price || 0;
       itemsText += `• ${item.name || item.id} - ${formatPrice(basePrice)}\n`;
     }
@@ -7829,9 +7905,9 @@ async function buildBoutiqueEmbed(guild, user) {
   }
   
   // Rôles
-  if (eco.shop?.roles?.length) {
+  if (rolesShown.length) {
     let rolesText = '';
-    for (const role of eco.shop.roles) {
+    for (const role of rolesShown) {
       const roleName = guild.roles.cache.get(role.roleId)?.name || role.name || role.roleId;
       const duration = role.durationDays ? ` (${role.durationDays}j)` : ' (permanent)';
       const basePrice = role.price || 0;
@@ -7841,18 +7917,10 @@ async function buildBoutiqueEmbed(guild, user) {
   }
   
   // Suites privées
-  if (eco.suites) {
-    const prices = eco.suites.prices || { day: 0, week: 0, month: 0 };
-    const durations = [
-      { key: 'day', name: 'Suite privée (1 jour)', emoji: '🏠' },
-      { key: 'week', name: 'Suite privée (7 jours)', emoji: '🏡' },
-      { key: 'month', name: 'Suite privée (30 jours)', emoji: '🏰' }
-    ];
-    
+  if (suitesShown.length) {
     let suitesText = '';
-    for (const dur of durations) {
-      const basePrice = Number(prices[dur.key] || 0);
-      suitesText += `${dur.emoji} ${dur.name} - ${formatPrice(basePrice)}\n`;
+    for (const s of suitesShown) {
+      suitesText += `${s.emoji} ${s.name} - ${formatPrice(s.price)}\n`;
     }
     if (suitesText) fields.push({ name: `${eco.suites.emoji || '💞'} Suites Privées`, value: suitesText, inline: false });
   }
@@ -7863,6 +7931,12 @@ async function buildBoutiqueEmbed(guild, user) {
     embed.addFields(...fields);
   }
   
+  // Footer pagination
+  if (total > limit) {
+    const from = Math.min(total, offset + 1);
+    const to = Math.min(total, offset + limit);
+    embed.setFooter({ text: `Boy and Girls (BAG) • ${from}-${to} sur ${total}`, iconURL: THEME_FOOTER_ICON });
+  }
   return embed;
 }
 
@@ -7902,6 +7976,25 @@ async function buildBoutiqueRows(guild) {
   return [row];
 }
 
+function buildBoutiquePageRow(offset, limit, total) {
+  const hasPrev = offset > 0;
+  const hasNext = offset + limit < total;
+  const prevOffset = Math.max(0, offset - limit);
+  const nextOffset = offset + limit;
+  const prevBtn = new ButtonBuilder().setCustomId(`boutique_page:${prevOffset}:${limit}`).setLabel('⟨ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(!hasPrev);
+  const nextBtn = new ButtonBuilder().setCustomId(`boutique_page:${nextOffset}:${limit}`).setLabel('Suivant ⟩').setStyle(ButtonStyle.Primary).setDisabled(!hasNext);
+  return new ActionRowBuilder().addComponents(prevBtn, nextBtn);
+}
+
+async function getBoutiqueEntriesCount(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  let count = 0;
+  count += Array.isArray(eco.shop?.items) ? eco.shop.items.length : 0;
+  count += Array.isArray(eco.shop?.roles) ? eco.shop.roles.length : 0;
+  if (eco.suites) count += 3; // day/week/month
+  return { entriesCount: count };
+}
+
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
     const ak = await getAutoKickConfig(member.guild.id);
@@ -7909,3 +8002,4 @@ client.on(Events.GuildMemberAdd, async (member) => {
     await addPendingJoiner(member.guild.id, member.id, Date.now());
   } catch (_) {}
 });
+// Note: no automatic booster role assignment on join
