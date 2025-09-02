@@ -2356,6 +2356,7 @@ async function buildTicketsRows(guild, submenu) {
       current === 'panel' ? 'Sous-menu: Panel' :
       current === 'ping' ? 'Sous-menu: Rôles à ping' :
       current === 'categories' ? 'Sous-menu: Catégories' :
+      current === 'naming' ? 'Sous-menu: Nommage' :
       current === 'transcript' ? 'Sous-menu: Transcript' :
       'Sous-menu: Rôles d’accès'
     )
@@ -2367,6 +2368,7 @@ async function buildTicketsRows(guild, submenu) {
       { label: 'Catégories', value: 'categories', description: 'Gérer les catégories', default: current === 'categories' },
       { label: 'Rôles d’accès', value: 'access', description: 'Rôles ayant accès', default: current === 'access' },
       { label: 'Transcript', value: 'transcript', description: 'Type et salon de transcription', default: current === 'transcript' },
+      { label: 'Nommage', value: 'naming', description: 'Format du nom des tickets', default: current === 'naming' },
     );
   const menuRow = new ActionRowBuilder().addComponents(ticketsMenu);
 
@@ -2427,6 +2429,29 @@ async function buildTicketsRows(guild, submenu) {
       .setMaxValues(1);
     rows.push(new ActionRowBuilder().addComponents(styleSel));
     rows.push(new ActionRowBuilder().addComponents(transCh));
+    return rows;
+  }
+
+  if (current === 'naming') {
+    const mode = t.naming?.mode || 'ticket_num';
+    const modeSel = new StringSelectMenuBuilder()
+      .setCustomId('tickets_naming_mode')
+      .setPlaceholder(`Mode actuel: ${mode}`)
+      .setMinValues(1)
+      .setMaxValues(1)
+      .addOptions(
+        { label: 'ticket + numéro', value: 'ticket_num', description: 'Ex: ticket-12', default: mode === 'ticket_num' },
+        { label: 'nom + numéro', value: 'member_num', description: 'Ex: julie-12', default: mode === 'member_num' },
+        { label: 'catégorie + numéro', value: 'category_num', description: 'Ex: support-12', default: mode === 'category_num' },
+        { label: 'modèle personnalisé', value: 'custom', description: 'Utilise {num} {user} {cat} {date}', default: mode === 'custom' },
+        { label: 'numérique seul', value: 'numeric', description: 'Ex: 12', default: mode === 'numeric' },
+        { label: 'date + numéro', value: 'date_num', description: 'Ex: 2025-01-01-12', default: mode === 'date_num' },
+      );
+    const pattern = (t.naming?.customPattern || '{user}-{num}').slice(0, 80);
+    const editPatternBtn = new ButtonBuilder().setCustomId('tickets_edit_pattern').setLabel('Éditer le modèle').setStyle(ButtonStyle.Primary).setDisabled(mode !== 'custom');
+    const showPatternBtn = new ButtonBuilder().setCustomId('tickets_pattern_display').setLabel(`Actuel: ${pattern}`).setStyle(ButtonStyle.Secondary).setDisabled(true);
+    rows.push(new ActionRowBuilder().addComponents(modeSel));
+    rows.push(new ActionRowBuilder().addComponents(editPatternBtn, showPatternBtn));
     return rows;
   }
 
@@ -2828,19 +2853,31 @@ client.once(Events.ClientReady, (readyClient) => {
             const msgs = await ch.messages.fetch({ limit: 100 }).catch(()=>null);
             const sorted = msgs ? Array.from(msgs.values()).sort((a,b) => a.createdTimestamp - b.createdTimestamp) : [];
             const lines = [];
+            const head = `Transcription du ticket <#${ch.id}>\nAuteur: <@${rec.userId}>\nFermé: Départ serveur\nCatégorie: ${rec.categoryKey || '—'}\nOuvert: ${new Date(rec.createdAt||Date.now()).toLocaleString()}\nFermé: ${new Date().toLocaleString()}\n`;
+            function esc(s) { return String(s||'').replace(/[&<>"]|'/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+            const staffRoleIds = await getGuildStaffRoleIds(m.guild.id).catch(()=>[]);
+            const htmlLines = [];
             for (const msg of sorted) {
               const when = new Date(msg.createdTimestamp).toISOString();
               const author = msg.author ? `${msg.author.tag}` : 'Unknown';
-              const content = (msg.cleanContent || '').replace(/\n/g, ' ');
+              const contentTxt = (msg.cleanContent || '');
+              const content = contentTxt.replace(/\n/g, ' ');
               lines.push(`[${when}] ${author}: ${content}`);
+              let cls = '';
+              if (msg.author?.bot) cls = 'bot';
+              else if (String(msg.author?.id) === String(rec.userId)) cls = 'member';
+              else if (msg.member && Array.isArray(staffRoleIds) && staffRoleIds.some((rid) => msg.member.roles?.cache?.has?.(rid))) cls = 'staff';
+              const lineHtml = `<div class="msg"><span class="time">[${esc(when)}]</span> <span class="author">${esc(author)}</span>: <span class="content ${cls}">${esc(contentTxt)}</span></div>`;
+              htmlLines.push(lineHtml);
             }
-            const head = `Transcription du ticket <#${ch.id}>\nAuteur: <@${rec.userId}>\nFermé: Départ serveur\nCatégorie: ${rec.categoryKey || '—'}\nOuvert: ${new Date(rec.createdAt||Date.now()).toLocaleString()}\nFermé: ${new Date().toLocaleString()}\n`;
             const text = head + '\n' + (lines.join('\n') || '(aucun message)');
             const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transcript-${ch.id}.txt` });
+            const htmlDoc = `<!doctype html><html><head><meta charset="utf-8"><title>Transcription ${esc(ch.name||ch.id)}</title><style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;background:#0b0f12;color:#e0e6ed;margin:16px} h2{margin:0 0 8px 0} .meta{color:#90a4ae;white-space:pre-wrap;margin-bottom:8px} .time{color:#90a4ae} .msg{margin:4px 0} .content{white-space:pre-wrap} .content.member{color:#4caf50} .content.staff{color:#ffb74d} .content.bot{color:#64b5f6}</style></head><body><h2>Transcription du ticket ${esc(ch.name||('#'+ch.id))}</h2><div class="meta">${esc(head)}</div><hr/>${htmlLines.join('\n')}</body></html>`;
+            const fileHtml = new AttachmentBuilder(Buffer.from(htmlDoc, 'utf8'), { name: `transcript-${ch.id}.html` });
             const color = (t.transcript?.style === 'premium') ? THEME_COLOR_ACCENT : THEME_COLOR_PRIMARY;
             const title = (t.transcript?.style === 'premium') ? '💎 Transcription Premium' : (t.transcript?.style === 'pro' ? '🧾 Transcription Pro' : 'Transcription');
             const tEmbed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(`Ticket: <#${ch.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON });
-            await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+            await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file, fileHtml], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
           }
         } catch (_) {}
         const embed = new EmbedBuilder()
@@ -3358,6 +3395,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildTicketsRows(interaction.guild, 'transcript');
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_naming_mode') {
+      const mode = interaction.values[0];
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      await updateTicketsConfig(interaction.guild.id, { naming: { ...(t.naming||{}), mode } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'naming');
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_edit_pattern') {
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const modal = new ModalBuilder().setCustomId('tickets_edit_pattern_modal').setTitle('Modèle de nom de ticket');
+      const hint = '{user}, {cat}, {num}, {date}';
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('pattern').setLabel(`Modèle (${hint})`).setStyle(TextInputStyle.Short).setRequired(true).setValue(String(t.naming?.customPattern||'{user}-{num}').slice(0, 80)))
+      );
+      try { await interaction.showModal(modal); } catch (_) {}
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'tickets_edit_pattern_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const pattern = (interaction.fields.getTextInputValue('pattern')||'').trim().slice(0, 80);
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      await updateTicketsConfig(interaction.guild.id, { naming: { ...(t.naming||{}), customPattern: pattern } });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'naming');
+      try { await interaction.editReply({ content: '✅ Modèle mis à jour.' }); } catch (_) {}
+      try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
+      return;
+    }
     if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_pick_cat_ping') {
       const key = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
@@ -3579,7 +3648,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cat = (t.categories || []).find(c => c.key === catKey);
       if (!cat) return interaction.editReply({ content: 'Catégorie invalide.' });
       const parent = t.categoryId ? (interaction.guild.channels.cache.get(t.categoryId) || await interaction.guild.channels.fetch(t.categoryId).catch(()=>null)) : null;
-      const channelName = `ticket-${String(t.counter || 1)}`;
+      const num = (t.counter || 1);
+      const sanitize = (s) => String(s || '')
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9_-]+/g, '');
+      const now = new Date();
+      const userPart = sanitize(interaction.member?.displayName || interaction.user.username);
+      const catPart = sanitize(cat.label || cat.key || 'ticket');
+      let baseName = 'ticket-' + num;
+      const mode = t.naming?.mode || 'ticket_num';
+      if (mode === 'member_num') baseName = `${userPart}-${num}`;
+      else if (mode === 'category_num') baseName = `${catPart}-${num}`;
+      else if (mode === 'numeric') baseName = String(num);
+      else if (mode === 'date_num') baseName = `${now.toISOString().slice(0,10)}-${num}`;
+      else if (mode === 'custom' && t.naming?.customPattern) {
+        const pattern = String(t.naming.customPattern || '{user}-{num}');
+        const replaced = pattern
+          .replace(/\{num\}/g, String(num))
+          .replace(/\{user\}/g, userPart)
+          .replace(/\{cat\}/g, catPart)
+          .replace(/\{date\}/g, now.toISOString().slice(0,10));
+        baseName = sanitize(replaced).replace(/-{2,}/g, '-');
+        if (!baseName) baseName = 'ticket-' + num;
+      }
+      const prefix = cat.emoji ? `${cat.emoji}-` : '';
+      const channelName = (prefix + baseName).slice(0, 90);
       const ch = await interaction.guild.channels.create({ name: channelName, parent: parent?.id, type: ChannelType.GuildText, topic: `Ticket ${channelName} • ${interaction.user.tag} • ${cat.label}` }).catch(()=>null);
       if (!ch) return interaction.editReply({ content: 'Impossible de créer le ticket.' });
       await ch.permissionOverwrites?.create?.(interaction.user.id, { ViewChannel: true, SendMessages: true }).catch(()=>{});
@@ -3656,23 +3751,35 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const msgs = await interaction.channel.messages.fetch({ limit: 100 }).catch(()=>null);
           const sorted = msgs ? Array.from(msgs.values()).sort((a,b) => a.createdTimestamp - b.createdTimestamp) : [];
           const lines = [];
+          function esc(s) { return String(s||'').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+          const staffRoleIds = await getGuildStaffRoleIds(interaction.guild.id).catch(()=>[]);
+          const htmlLines = [];
           for (const msg of sorted) {
             const when = new Date(msg.createdTimestamp).toISOString();
             const author = msg.author ? `${msg.author.tag}` : 'Unknown';
-            const content = (msg.cleanContent || '').replace(/\n/g, ' ');
+            const contentTxt = (msg.cleanContent || '');
+            const content = contentTxt.replace(/\n/g, ' ');
             lines.push(`[${when}] ${author}: ${content}`);
+            let cls = '';
+            if (msg.author?.bot) cls = 'bot';
+            else if (String(msg.author?.id) === String(rec.userId)) cls = 'member';
+            else if (msg.member && Array.isArray(staffRoleIds) && staffRoleIds.some((rid) => msg.member.roles?.cache?.has?.(rid))) cls = 'staff';
+            const lineHtml = `<div class=\"msg\"><span class=\"time\">[${esc(when)}]</span> <span class=\"author\">${esc(author)}</span>: <span class=\"content ${cls}\">${esc(contentTxt)}</span></div>`;
+            htmlLines.push(lineHtml);
           }
           const head = `Transcription du ticket <#${interaction.channel.id}>\nAuteur: <@${rec.userId}>\nFermé par: ${interaction.user}\nCatégorie: ${rec.categoryKey || '—'}\nOuvert: ${new Date(rec.createdAt||Date.now()).toLocaleString()}\nFermé: ${new Date().toLocaleString()}\n`;
           const text = head + '\n' + (lines.join('\n') || '(aucun message)');
           const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+          const htmlDoc = `<!doctype html><html><head><meta charset=\"utf-8\"><title>Transcription ${esc(interaction.channel.name||interaction.channel.id)}</title><style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Ubuntu,\"Helvetica Neue\",Arial,sans-serif;background:#0b0f12;color:#e0e6ed;margin:16px} h2{margin:0 0 8px 0} .meta{color:#90a4ae;white-space:pre-wrap;margin-bottom:8px} .time{color:#90a4ae} .msg{margin:4px 0} .content{white-space:pre-wrap} .content.member{color:#4caf50} .content.staff{color:#ffb74d} .content.bot{color:#64b5f6}</style></head><body><h2>Transcription du ticket ${esc(interaction.channel.name||('#'+interaction.channel.id))}</h2><div class=\"meta\">${esc(head)}</div><hr/>${htmlLines.join('\\n')}</body></html>`;
+          const fileHtml = new AttachmentBuilder(Buffer.from(htmlDoc, 'utf8'), { name: `transcript-${interaction.channel.id}.html` });
           const color = (t.transcript?.style === 'premium') ? THEME_COLOR_ACCENT : THEME_COLOR_PRIMARY;
           const title = (t.transcript?.style === 'premium') ? '💎 Transcription Premium' : (t.transcript?.style === 'pro' ? '🧾 Transcription Pro' : 'Transcription');
           const tEmbed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(`Ticket: <#${interaction.channel.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON });
-          return { tEmbed, file };
+          return { tEmbed, file, fileHtml };
         }
         if (transcriptChannel && transcriptChannel.isTextBased?.()) {
           const payload = await buildTranscriptPayload();
-          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file, payload.fileHtml], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
           sentTranscript = true;
         }
         if (!sentTranscript) {
@@ -3684,7 +3791,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
               const fb = interaction.guild.channels.cache.get(fallbackId) || await interaction.guild.channels.fetch(fallbackId).catch(()=>null);
               if (fb && fb.isTextBased?.()) {
                 const payload = await buildTranscriptPayload();
-                await fb.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+                await fb.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file, payload.fileHtml], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
                 sentTranscript = true;
               }
             }
