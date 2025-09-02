@@ -2531,75 +2531,8 @@ client.once(Events.ClientReady, (readyClient) => {
     await sendLog(thread.guild, 'threads', embed);
   });
   
-  // Suite privée: Menu de gestion des membres à l'ouverture d'un canal
-  client.on(Events.ChannelCreate, async (channel) => {
-    if (!channel.guild) return;
-    
-    try {
-      const eco = await getEconomyConfig(channel.guild.id);
-      const active = eco.suites?.active || {};
-      
-      // Vérifier si ce canal fait partie d'une suite privée
-      let suiteOwner = null;
-      let suiteInfo = null;
-      for (const [userId, info] of Object.entries(active)) {
-        if (info.textId === channel.id || info.voiceId === channel.id) {
-          suiteOwner = userId;
-          suiteInfo = info;
-          break;
-        }
-      }
-      
-      if (!suiteOwner || !suiteInfo) return;
-      
-      // Ping le propriétaire de la suite et afficher le menu de gestion
-      // Seulement quand le canal texte est créé pour éviter les doublons
-      const isTextChannel = channel.id === suiteInfo.textId;
-      if (!isTextChannel) return;
-      
-      const owner = await channel.guild.members.fetch(suiteOwner).catch(() => null);
-      if (!owner) return;
-      
-      const embed = new EmbedBuilder()
-        .setTitle('🏠 Suite Privée - Gestion des Membres')
-        .setDescription(`Bienvenue dans votre suite privée !\n\nUtilisez les boutons ci-dessous pour gérer l'accès à vos canaux de suite.`)
-        .addFields([
-          { name: '📝 Canal Texte', value: `<#${suiteInfo.textId}>`, inline: true },
-          { name: '🔊 Canal Vocal', value: `<#${suiteInfo.voiceId}>`, inline: true },
-          { name: '⏰ Expiration', value: `<t:${Math.floor(suiteInfo.expiresAt/1000)}:R>`, inline: true }
-        ])
-        .setColor(0x7289DA)
-        .setFooter({ text: 'Cliquez sur les boutons pour inviter ou retirer des membres' });
-      
-      const row = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId(`suite_invite_${suiteOwner}`)
-            .setLabel('➕ Inviter un membre')
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId(`suite_remove_${suiteOwner}`)
-            .setLabel('➖ Retirer un membre')
-            .setStyle(ButtonStyle.Danger),
-          new ButtonBuilder()
-            .setCustomId(`suite_list_${suiteOwner}`)
-            .setLabel('📋 Liste des membres')
-            .setStyle(ButtonStyle.Secondary)
-        );
-      
-      // Envoyer le message avec ping dans le canal texte
-      const textChannel = channel.guild.channels.cache.get(suiteInfo.textId);
-      if (textChannel && textChannel.type === ChannelType.GuildText) {
-        await textChannel.send({
-          content: `<@${suiteOwner}> Votre suite privée est maintenant active !`,
-          embeds: [embed],
-          components: [row]
-        });
-      }
-    } catch (error) {
-      console.error('Erreur lors de la gestion du menu de suite privée:', error);
-    }
-  });
+  // Note: Le message de bienvenue des suites privées est maintenant envoyé directement
+  // lors de la création dans la logique d'achat pour éviter les problèmes de timing
   // Suites cleanup every 5 minutes
   setInterval(async () => {
     try {
@@ -5988,16 +5921,71 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { id: member.id, allow: ['ViewChannel','SendMessages','Connect','Speak'] },
         ];
         const nameBase = `suite-${member.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,20);
-        const text = await interaction.guild.channels.create({ name: `${nameBase}-txt`, type: ChannelType.GuildText, parent: parent.id, permissionOverwrites: overwrites });
-        const voice = await interaction.guild.channels.create({ name: `${nameBase}-vc`, type: ChannelType.GuildVoice, parent: parent.id, permissionOverwrites: overwrites });
         const now = Date.now();
         const ms = (daysMap[key] || 1) * 24 * 60 * 60 * 1000;
         const until = now + ms;
+        
+        // Créer les canaux
+        const text = await interaction.guild.channels.create({ name: `${nameBase}-txt`, type: ChannelType.GuildText, parent: parent.id, permissionOverwrites: overwrites });
+        const voice = await interaction.guild.channels.create({ name: `${nameBase}-vc`, type: ChannelType.GuildVoice, parent: parent.id, permissionOverwrites: overwrites });
+        
+        // Sauvegarder les données de la suite AVANT que l'event ChannelCreate ne se déclenche
         const cfg = await getEconomyConfig(interaction.guild.id);
         cfg.suites = { ...(cfg.suites||{}), active: { ...(cfg.suites?.active||{}), [member.id]: { textId: text.id, voiceId: voice.id, expiresAt: until } } };
         await updateEconomyConfig(interaction.guild.id, cfg);
-        const embed = buildEcoEmbed({ title: 'Suite privée créée', description: `Vos salons privés ont été créés pour ${daysMap[key]} jour(s).`, fields: [ { name: 'Texte', value: `<#${text.id}>`, inline: true }, { name: 'Vocal', value: `<#${voice.id}>`, inline: true }, { name: 'Expiration', value: `<t:${Math.floor(until/1000)}:R>`, inline: true } ] });
-        return interaction.update({ embeds: [embed], components: [] });
+        
+        console.log(`[Suite] Suite créée pour ${member.user.username}: textId=${text.id}, voiceId=${voice.id}`);
+        
+        // Envoyer immédiatement le message de bienvenue dans le canal texte
+        const embed = new EmbedBuilder()
+          .setTitle('🏠 Suite Privée - Gestion des Membres')
+          .setDescription(`Bienvenue dans votre suite privée !\n\nUtilisez les boutons ci-dessous pour gérer l'accès à vos canaux de suite.`)
+          .addFields([
+            { name: '📝 Canal Texte', value: `<#${text.id}>`, inline: true },
+            { name: '🔊 Canal Vocal', value: `<#${voice.id}>`, inline: true },
+            { name: '⏰ Expiration', value: `<t:${Math.floor(until/1000)}:R>`, inline: true }
+          ])
+          .setColor(0x7289DA)
+          .setFooter({ text: 'Cliquez sur les boutons pour inviter ou retirer des membres' });
+        
+        const row = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId(`suite_invite_${member.id}`)
+              .setLabel('➕ Inviter un membre')
+              .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId(`suite_remove_${member.id}`)
+              .setLabel('➖ Retirer un membre')
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId(`suite_list_${member.id}`)
+              .setLabel('📋 Liste des membres')
+              .setStyle(ButtonStyle.Secondary)
+          );
+        
+        // Envoyer le message de bienvenue avec ping
+        try {
+          await text.send({
+            content: `<@${member.id}> Votre suite privée est maintenant active !`,
+            embeds: [embed],
+            components: [row]
+          });
+          console.log(`[Suite] Message de bienvenue envoyé avec succès dans ${text.name}`);
+        } catch (messageError) {
+          console.error(`[Suite] Erreur lors de l'envoi du message de bienvenue:`, messageError);
+          // Essayer d'envoyer un message simplifié en cas d'erreur
+          try {
+            await text.send({
+              content: `<@${member.id}> Votre suite privée est maintenant active ! Utilisez les commandes slash pour gérer les invitations.`
+            });
+          } catch (fallbackError) {
+            console.error(`[Suite] Erreur même avec le message simplifié:`, fallbackError);
+          }
+        }
+        
+        const responseEmbed = buildEcoEmbed({ title: 'Suite privée créée', description: `Vos salons privés ont été créés pour ${daysMap[key]} jour(s).`, fields: [ { name: 'Texte', value: `<#${text.id}>`, inline: true }, { name: 'Vocal', value: `<#${voice.id}>`, inline: true }, { name: 'Expiration', value: `<t:${Math.floor(until/1000)}:R>`, inline: true } ] });
+        return interaction.update({ embeds: [responseEmbed], components: [] });
       }
       return interaction.reply({ content: 'Choix invalide.', ephemeral: true });
     }
@@ -6173,12 +6161,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         
         // Notifier le membre invité dans le canal texte
         if (textChannel) {
-          await textChannel.send({
-            content: `🎉 <@${targetUserId}> a été invité dans la suite privée par <@${ownerId}> !`,
-            embeds: [new EmbedBuilder()
-              .setDescription('Vous avez maintenant accès aux canaux texte et vocal de cette suite privée.')
-              .setColor(0x00FF00)]
-          });
+          try {
+            await textChannel.send({
+              content: `🎉 <@${targetUserId}> a été invité dans la suite privée par <@${ownerId}> !`,
+              embeds: [new EmbedBuilder()
+                .setDescription('Vous avez maintenant accès aux canaux texte et vocal de cette suite privée.')
+                .setColor(0x00FF00)]
+            });
+            console.log(`[Suite] Message d'invitation envoyé pour ${targetMember.user.username}`);
+          } catch (messageError) {
+            console.error(`[Suite] Erreur lors de l'envoi du message d'invitation:`, messageError);
+          }
         }
         
         return interaction.update({ embeds: [embed], components: [] });
@@ -6232,12 +6225,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         
         // Notifier dans le canal texte
         if (textChannel) {
-          await textChannel.send({
-            content: `👋 <@${targetUserId}> a été retiré de la suite privée par <@${ownerId}>.`,
-            embeds: [new EmbedBuilder()
-              .setDescription('Votre accès aux canaux de cette suite privée a été révoqué.')
-              .setColor(0xFF4444)]
-          });
+          try {
+            await textChannel.send({
+              content: `👋 <@${targetUserId}> a été retiré de la suite privée par <@${ownerId}>.`,
+              embeds: [new EmbedBuilder()
+                .setDescription('Votre accès aux canaux de cette suite privée a été révoqué.')
+                .setColor(0xFF4444)]
+            });
+            console.log(`[Suite] Message de retrait envoyé pour ${targetMember?.user.username || targetUserId}`);
+          } catch (messageError) {
+            console.error(`[Suite] Erreur lors de l'envoi du message de retrait:`, messageError);
+          }
         }
         
         return interaction.update({ embeds: [embed], components: [] });
