@@ -5406,9 +5406,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
-      const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user);
+      const PAGE_SIZE = 10;
+      const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user, 0, PAGE_SIZE);
       const rows = await buildBoutiqueRows(interaction.guild);
-      return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+      const { entriesCount } = await getBoutiqueEntriesCount(interaction.guild);
+      const components = entriesCount > PAGE_SIZE ? [...rows, buildBoutiquePageRow(0, PAGE_SIZE, entriesCount)] : [...rows];
+      return interaction.reply({ embeds: [embed], components, ephemeral: true });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('boutique_page:')) {
+      const parts = interaction.customId.split(':');
+      const offset = Math.max(0, Number(parts[1]) || 0);
+      const limit = Math.max(1, Math.min(25, Number(parts[2]) || 10));
+      const { entriesCount } = await getBoutiqueEntriesCount(interaction.guild);
+      const safeOffset = Math.min(offset, Math.max(0, entriesCount - 1));
+      const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user, safeOffset, limit);
+      const rows = await buildBoutiqueRows(interaction.guild);
+      const pageRow = buildBoutiquePageRow(safeOffset, limit, entriesCount);
+      return interaction.update({ embeds: [embed], components: [...rows, pageRow] });
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'actionverite') {
       try {
@@ -7722,7 +7736,7 @@ async function calculateShopPrice(guild, user, basePrice) {
 }
 
 // Build detailed boutique embed showing base prices and karma-modified prices
-async function buildBoutiqueEmbed(guild, user) {
+async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   const eco = await getEconomyConfig(guild.id);
   const userEco = await getEconomyUser(guild.id, user.id);
   const userCharm = userEco.charm || 0;
@@ -7820,10 +7834,36 @@ async function buildBoutiqueEmbed(guild, user) {
     }
   };
   
+  // Pagination des entrées: concaténer items + roles + suites comme une liste linéaire
+  const entries = [];
+  if (Array.isArray(eco.shop?.items)) {
+    for (const item of eco.shop.items) entries.push({ type: 'item', data: item });
+  }
+  if (Array.isArray(eco.shop?.roles)) {
+    for (const role of eco.shop.roles) entries.push({ type: 'role', data: role });
+  }
+  if (eco.suites) {
+    const prices = eco.suites.prices || { day: 0, week: 0, month: 0 };
+    const durations = [
+      { key: 'day', name: 'Suite privée (1 jour)', emoji: '🏠' },
+      { key: 'week', name: 'Suite privée (7 jours)', emoji: '🏡' },
+      { key: 'month', name: 'Suite privée (30 jours)', emoji: '🏰' }
+    ];
+    for (const dur of durations) entries.push({ type: 'suite', data: { key: dur.key, name: dur.name, emoji: dur.emoji, price: Number(prices[dur.key] || 0) } });
+  }
+  const total = entries.length;
+  const slice = entries.slice(offset, offset + limit);
+  
+  // Regrouper par sections pour l'embed (Discord limite 25 fields et la taille globale)
+  // On reconstruit des champs pour les éléments affichés uniquement
+  const itemsShown = slice.filter(e => e.type === 'item').map(e => e.data);
+  const rolesShown = slice.filter(e => e.type === 'role').map(e => e.data);
+  const suitesShown = slice.filter(e => e.type === 'suite').map(e => e.data);
+
   // Objets
-  if (eco.shop?.items?.length) {
+  if (itemsShown.length) {
     let itemsText = '';
-    for (const item of eco.shop.items) {
+    for (const item of itemsShown) {
       const basePrice = item.price || 0;
       itemsText += `• ${item.name || item.id} - ${formatPrice(basePrice)}\n`;
     }
@@ -7831,9 +7871,9 @@ async function buildBoutiqueEmbed(guild, user) {
   }
   
   // Rôles
-  if (eco.shop?.roles?.length) {
+  if (rolesShown.length) {
     let rolesText = '';
-    for (const role of eco.shop.roles) {
+    for (const role of rolesShown) {
       const roleName = guild.roles.cache.get(role.roleId)?.name || role.name || role.roleId;
       const duration = role.durationDays ? ` (${role.durationDays}j)` : ' (permanent)';
       const basePrice = role.price || 0;
@@ -7843,18 +7883,10 @@ async function buildBoutiqueEmbed(guild, user) {
   }
   
   // Suites privées
-  if (eco.suites) {
-    const prices = eco.suites.prices || { day: 0, week: 0, month: 0 };
-    const durations = [
-      { key: 'day', name: 'Suite privée (1 jour)', emoji: '🏠' },
-      { key: 'week', name: 'Suite privée (7 jours)', emoji: '🏡' },
-      { key: 'month', name: 'Suite privée (30 jours)', emoji: '🏰' }
-    ];
-    
+  if (suitesShown.length) {
     let suitesText = '';
-    for (const dur of durations) {
-      const basePrice = Number(prices[dur.key] || 0);
-      suitesText += `${dur.emoji} ${dur.name} - ${formatPrice(basePrice)}\n`;
+    for (const s of suitesShown) {
+      suitesText += `${s.emoji} ${s.name} - ${formatPrice(s.price)}\n`;
     }
     if (suitesText) fields.push({ name: `${eco.suites.emoji || '💞'} Suites Privées`, value: suitesText, inline: false });
   }
@@ -7865,6 +7897,12 @@ async function buildBoutiqueEmbed(guild, user) {
     embed.addFields(...fields);
   }
   
+  // Footer pagination
+  if (total > limit) {
+    const from = Math.min(total, offset + 1);
+    const to = Math.min(total, offset + limit);
+    embed.setFooter({ text: `Boy and Girls (BAG) • ${from}-${to} sur ${total}`, iconURL: THEME_FOOTER_ICON });
+  }
   return embed;
 }
 
@@ -7902,6 +7940,25 @@ async function buildBoutiqueRows(guild) {
   else select.addOptions({ label: 'Aucun article disponible', value: 'none' }).setDisabled(true);
   const row = new ActionRowBuilder().addComponents(select);
   return [row];
+}
+
+function buildBoutiquePageRow(offset, limit, total) {
+  const hasPrev = offset > 0;
+  const hasNext = offset + limit < total;
+  const prevOffset = Math.max(0, offset - limit);
+  const nextOffset = offset + limit;
+  const prevBtn = new ButtonBuilder().setCustomId(`boutique_page:${prevOffset}:${limit}`).setLabel('⟨ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(!hasPrev);
+  const nextBtn = new ButtonBuilder().setCustomId(`boutique_page:${nextOffset}:${limit}`).setLabel('Suivant ⟩').setStyle(ButtonStyle.Primary).setDisabled(!hasNext);
+  return new ActionRowBuilder().addComponents(prevBtn, nextBtn);
+}
+
+async function getBoutiqueEntriesCount(guild) {
+  const eco = await getEconomyConfig(guild.id);
+  let count = 0;
+  count += Array.isArray(eco.shop?.items) ? eco.shop.items.length : 0;
+  count += Array.isArray(eco.shop?.roles) ? eco.shop.roles.length : 0;
+  if (eco.suites) count += 3; // day/week/month
+  return { entriesCount: count };
 }
 
 client.on(Events.GuildMemberAdd, async (member) => {
