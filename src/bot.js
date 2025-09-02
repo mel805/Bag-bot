@@ -2361,8 +2361,14 @@ async function buildTicketsRows(guild) {
   const channelsRow = new ActionRowBuilder().addComponents(channelSelect);
   const panelChannelRow = new ActionRowBuilder().addComponents(panelChannelSelect);
   const transcriptRow = new ActionRowBuilder().addComponents(transcriptChannelSelect);
+
+  // Per-category config editor: select category then choose ping/viewer roles
+  const catSelect = new StringSelectMenuBuilder().setCustomId('tickets_edit_cat').setPlaceholder('Choisir une catégorie à configurer…').setMinValues(1).setMaxValues(1);
+  const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
+  if (catOpts.length) catSelect.addOptions(...catOpts); else catSelect.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
+  const catRow = new ActionRowBuilder().addComponents(catSelect);
   
-  return [controlRow, channelsRow, panelChannelRow, transcriptRow];
+  return [controlRow, channelsRow, panelChannelRow, transcriptRow, catRow];
 }
 
 function actionKeyToLabel(key) {
@@ -3266,6 +3272,35 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildTicketsRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_edit_cat') {
+      const key = interaction.values[0];
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const cat = (t.categories || []).find(c => c.key === key);
+      if (!cat) return interaction.reply({ content: 'Catégorie introuvable.', ephemeral: true });
+      const pingRoles = new RoleSelectMenuBuilder().setCustomId(`tickets_cat_ping_roles:${key}`).setPlaceholder('Rôles staff à ping…').setMinValues(0).setMaxValues(25);
+      const viewerRoles = new RoleSelectMenuBuilder().setCustomId(`tickets_cat_view_roles:${key}`).setPlaceholder('Rôles ayant accès…').setMinValues(0).setMaxValues(25);
+      const rowPing = new ActionRowBuilder().addComponents(pingRoles);
+      const rowView = new ActionRowBuilder().addComponents(viewerRoles);
+      const embed = await buildConfigEmbed(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), rowPing, rowView] });
+    }
+    if (interaction.isRoleSelectMenu() && interaction.customId.startsWith('tickets_cat_ping_roles:')) {
+      const key = interaction.customId.split(':')[1];
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const categories = (t.categories || []).map(c => c.key === key ? { ...c, staffPingRoleIds: interaction.values } : c);
+      await updateTicketsConfig(interaction.guild.id, { categories });
+      return interaction.deferUpdate();
+    }
+    if (interaction.isRoleSelectMenu() && interaction.customId.startsWith('tickets_cat_view_roles:')) {
+      const key = interaction.customId.split(':')[1];
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const categories = (t.categories || []).map(c => c.key === key ? { ...c, extraViewerRoleIds: interaction.values } : c);
+      await updateTicketsConfig(interaction.guild.id, { categories });
+      return interaction.deferUpdate();
+    }
     if (interaction.isButton() && interaction.customId === 'tickets_add_cat') {
       const modal = new ModalBuilder().setCustomId('tickets_add_cat_modal').setTitle('Nouvelle catégorie');
       modal.addComponents(
@@ -3361,6 +3396,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await ch.permissionOverwrites?.create?.(rid, { ViewChannel: true, SendMessages: true }).catch(()=>{});
         }
       } catch (_) {}
+      // Extra viewer roles per-category
+      try {
+        for (const rid of (cat.extraViewerRoleIds || [])) {
+          await ch.permissionOverwrites?.create?.(rid, { ViewChannel: true, SendMessages: true }).catch(()=>{});
+        }
+      } catch (_) {}
       await addTicketRecord(interaction.guild.id, ch.id, interaction.user.id, catKey);
       const embed = new EmbedBuilder()
         .setColor(THEME_COLOR_PRIMARY)
@@ -3380,7 +3421,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // Mention the user and optionally ping staff roles
       let content = `${interaction.user} merci d'expliquer votre demande.`;
       if (t.pingStaffOnOpen) {
-        try { const staffIds = await getGuildStaffRoleIds(interaction.guild.id); if (Array.isArray(staffIds) && staffIds.length) content += `\n${staffIds.map(id => `<@&${id}>`).join(' ')}`; } catch (_) {}
+        try {
+          const pings = (cat.staffPingRoleIds && cat.staffPingRoleIds.length) ? cat.staffPingRoleIds : await getGuildStaffRoleIds(interaction.guild.id);
+          if (Array.isArray(pings) && pings.length) content += `\n${pings.map(id => `<@&${id}>`).join(' ')}`;
+        } catch (_) {}
       }
       await ch.send({ content, embeds: [embed], components: [row], allowedMentions: { users: [interaction.user.id], roles: t.pingStaffOnOpen ? undefined : [] } }).catch(()=>{});
       await interaction.editReply({ content: `✅ Ticket créé: ${ch}` });

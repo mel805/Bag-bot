@@ -908,6 +908,8 @@ function ensureTicketsShape(g) {
       label: String(c.label || c.key || 'Catégorie'),
       emoji: typeof c.emoji === 'string' ? c.emoji : '',
       description: String(c.description || ''),
+      staffPingRoleIds: Array.isArray(c.staffPingRoleIds) ? c.staffPingRoleIds.map(String) : [],
+      extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds) ? c.extraViewerRoleIds.map(String) : [],
     }));
   if (typeof t.counter !== 'number') t.counter = 1;
   if (!t.records || typeof t.records !== 'object') t.records = {};
@@ -944,6 +946,8 @@ async function addTicketCategory(guildId, category) {
     label: String(category.label || 'Catégorie'),
     emoji: typeof category.emoji === 'string' ? category.emoji : '',
     description: String(category.description || ''),
+    staffPingRoleIds: Array.isArray(category.staffPingRoleIds) ? category.staffPingRoleIds.map(String) : [],
+    extraViewerRoleIds: Array.isArray(category.extraViewerRoleIds) ? category.extraViewerRoleIds.map(String) : [],
   };
   if (!Array.isArray(t.categories)) t.categories = [];
   // Avoid duplicate keys
