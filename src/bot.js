@@ -1912,7 +1912,17 @@ async function buildBoosterRows(guild) {
   const priceMult = new ButtonBuilder().setCustomId('booster_shop').setLabel(`Prix boutique x${b.shopPriceMult}`).setStyle(ButtonStyle.Secondary);
   const row1 = new ActionRowBuilder().addComponents(toggle);
   const row2 = new ActionRowBuilder().addComponents(textXp, voiceXp, cdMult, priceMult);
-  return [row1, row2];
+  // Rôles associés aux boosters
+  const addRoles = new RoleSelectMenuBuilder().setCustomId('booster_roles_add').setPlaceholder('Ajouter des rôles (boosters)').setMinValues(1).setMaxValues(25);
+  const currentRoles = Array.isArray(b.roles) ? b.roles : [];
+  const rolesLabel = currentRoles.length ? currentRoles.map(id => guild.roles.cache.get(id) || `<@&${id}>`).map(r => (typeof r === 'string' ? r : r.toString())).join(', ') : 'Aucun';
+  const removeOpts = currentRoles.length ? currentRoles.map(id => ({ label: (guild.roles.cache.get(id)?.name || id).toString().slice(0,100), value: String(id) })) : [{ label: 'Aucun', value: 'none' }];
+  const removeSelect = new StringSelectMenuBuilder().setCustomId('booster_roles_remove').setPlaceholder(`Retirer des rôles (${rolesLabel})`);
+  if (currentRoles.length) removeSelect.setMinValues(1).setMaxValues(Math.min(25, currentRoles.length)).addOptions(...removeOpts);
+  else removeSelect.setMinValues(0).setMaxValues(1).addOptions(...removeOpts).setDisabled(true);
+  const row3 = new ActionRowBuilder().addComponents(addRoles);
+  const row4 = new ActionRowBuilder().addComponents(removeSelect);
+  return [row1, row2, row3, row4];
 }
 
 // Initialize and validate economy cache maps
@@ -3582,6 +3592,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
       b[key] = v;
       await updateEconomyConfig(interaction.guild.id, { booster: b });
       return interaction.editReply({ content: '✅ Réglage mis à jour.' });
+    }
+    if (interaction.isRoleSelectMenu && interaction.isRoleSelectMenu() && interaction.customId === 'booster_roles_add') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const b = eco.booster || {};
+      const current = new Set(Array.isArray(b.roles) ? b.roles : []);
+      for (const rid of interaction.values) current.add(rid);
+      b.roles = Array.from(current);
+      await updateEconomyConfig(interaction.guild.id, { booster: b });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildBoosterRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'booster_roles_remove') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const b = eco.booster || {};
+      const current = new Set(Array.isArray(b.roles) ? b.roles : []);
+      for (const rid of interaction.values) current.delete(rid);
+      b.roles = Array.from(current);
+      await updateEconomyConfig(interaction.guild.id, { booster: b });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildBoosterRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     // Karma delete selected
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('eco_karma_rules:')) {

@@ -842,13 +842,14 @@ function ensureEconomyShape(g) {
     if (!Array.isArray(e.karmaModifiers.actions)) e.karmaModifiers.actions = [];
     if (!Array.isArray(e.karmaModifiers.grants)) e.karmaModifiers.grants = [];
   }
-  if (!e.booster || typeof e.booster !== 'object') e.booster = { enabled: true, textXpMult: 2, voiceXpMult: 2, actionCooldownMult: 0.5, shopPriceMult: 0.5 };
+  if (!e.booster || typeof e.booster !== 'object') e.booster = { enabled: true, textXpMult: 2, voiceXpMult: 2, actionCooldownMult: 0.5, shopPriceMult: 0.5, roles: [] };
   else {
     if (typeof e.booster.enabled !== 'boolean') e.booster.enabled = true;
     if (typeof e.booster.textXpMult !== 'number') e.booster.textXpMult = 2;
     if (typeof e.booster.voiceXpMult !== 'number') e.booster.voiceXpMult = 2;
     if (typeof e.booster.actionCooldownMult !== 'number') e.booster.actionCooldownMult = 0.5;
     if (typeof e.booster.shopPriceMult !== 'number') e.booster.shopPriceMult = 0.5;
+    if (!Array.isArray(e.booster.roles)) e.booster.roles = [];
   }
 }
 
