@@ -1912,24 +1912,24 @@ async function buildEconomyKarmaRows(guild) {
     .addOptions(...options);
   if (options.length === 1 && options[0].value === 'none') rulesSelect.setDisabled(true);
   const rowRules = new ActionRowBuilder().addComponents(rulesSelect);
-  const addShop = new ButtonBuilder().setCustomId('eco_karma_add_shop').setLabel('Ajouter règle boutique').setStyle(ButtonStyle.Primary);
-  const addAct = new ButtonBuilder().setCustomId('eco_karma_add_action').setLabel('Ajouter règle actions').setStyle(ButtonStyle.Primary);
-  const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('Ajouter grant').setStyle(ButtonStyle.Secondary);
+  // Boutons d'ajout de règles
+  const addShop = new ButtonBuilder().setCustomId('eco_karma_add_shop').setLabel('+ Boutique').setStyle(ButtonStyle.Primary);
+  const addAct = new ButtonBuilder().setCustomId('eco_karma_add_action').setLabel('+ Actions').setStyle(ButtonStyle.Primary);
+  const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('+ Grant').setStyle(ButtonStyle.Secondary);
   const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer').setStyle(ButtonStyle.Danger);
   const editBtn = new ButtonBuilder().setCustomId('eco_karma_edit').setLabel('Modifier').setStyle(ButtonStyle.Secondary);
   const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, editBtn, delBtn);
   
-  // Reset hebdomadaire
+  // Reset hebdomadaire - menu déroulant pour économiser l'espace
   const resetEnabled = eco.karmaReset?.enabled || false;
-  const resetToggle = new ButtonBuilder()
-    .setCustomId('eco_karma_reset_toggle')
-    .setLabel(resetEnabled ? 'Reset hebdo: ON' : 'Reset hebdo: OFF')
-    .setStyle(resetEnabled ? ButtonStyle.Success : ButtonStyle.Secondary);
-  const resetNow = new ButtonBuilder()
-    .setCustomId('eco_karma_reset_now')
-    .setLabel('Reset maintenant')
-    .setStyle(ButtonStyle.Danger);
-  const rowReset = new ActionRowBuilder().addComponents(resetToggle, resetNow);
+  const resetSelect = new StringSelectMenuBuilder()
+    .setCustomId('eco_karma_reset_menu')
+    .setPlaceholder(`Reset hebdo: ${resetEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`)
+    .addOptions(
+      { label: resetEnabled ? 'Désactiver reset hebdo' : 'Activer reset hebdo', value: 'toggle' },
+      { label: 'Reset maintenant', value: 'now', description: 'Remet tous les karma à 0' }
+    );
+  const rowReset = new ActionRowBuilder().addComponents(resetSelect);
   
   return [rowType, rowRules, rowActions, rowReset];
 }
@@ -3355,55 +3355,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Grant direct ajouté.' });
     }
-    // Karma weekly reset toggle
-    if (interaction.isButton() && interaction.customId === 'eco_karma_reset_toggle') {
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const currentEnabled = eco.karmaReset?.enabled || false;
-      eco.karmaReset = { ...(eco.karmaReset||{}), enabled: !currentEnabled };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
-      return interaction.update({ embeds: [embed], components: [...rows] });
-    }
-    // Karma reset now
-    if (interaction.isButton() && interaction.customId === 'eco_karma_reset_now') {
-      await interaction.deferReply({ ephemeral: true });
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const balances = eco.balances || {};
-      let resetCount = 0;
+    // Karma reset menu handler
+    if (interaction.isStringSelectMenu() && interaction.customId === 'eco_karma_reset_menu') {
+      const action = interaction.values[0];
       
-      for (const userId in balances) {
-        const user = balances[userId];
-        if (user.charm > 0 || user.perversion > 0) {
-          user.charm = 0;
-          user.perversion = 0;
-          resetCount++;
-        }
-      }
-      
-      if (resetCount > 0) {
-        eco.balances = balances;
+      if (action === 'toggle') {
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const currentEnabled = eco.karmaReset?.enabled || false;
+        eco.karmaReset = { ...(eco.karmaReset||{}), enabled: !currentEnabled };
         await updateEconomyConfig(interaction.guild.id, eco);
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+        return interaction.update({ embeds: [embed], components: [...rows] });
+      } else if (action === 'now') {
+        await interaction.deferReply({ ephemeral: true });
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const balances = eco.balances || {};
+        let resetCount = 0;
         
-        // Log the manual reset
-        const cfg = await getLogsConfig(interaction.guild.id);
-        if (cfg?.categories?.economy) {
-          const channel = interaction.guild.channels.cache.get(cfg.categories.economy);
-          if (channel) {
-            const embed = new EmbedBuilder()
-              .setTitle('🔄 Reset Manuel du Karma')
-              .setDescription(`Le karma de ${resetCount} utilisateur(s) a été remis à zéro par ${interaction.user}.`)
-              .setColor(0xff9900)
-              .setTimestamp();
-            try {
-              await channel.send({ embeds: [embed] });
-            } catch (_) {}
+        for (const userId in balances) {
+          const user = balances[userId];
+          if (user.charm > 0 || user.perversion > 0) {
+            user.charm = 0;
+            user.perversion = 0;
+            resetCount++;
           }
         }
         
-        return interaction.editReply({ content: `✅ Karma remis à zéro pour ${resetCount} utilisateur(s).` });
-      } else {
-        return interaction.editReply({ content: 'Aucun utilisateur avec du karma à remettre à zéro.' });
+        if (resetCount > 0) {
+          eco.balances = balances;
+          await updateEconomyConfig(interaction.guild.id, eco);
+          
+          // Log the manual reset
+          const cfg = await getLogsConfig(interaction.guild.id);
+          if (cfg?.categories?.economy) {
+            const channel = interaction.guild.channels.cache.get(cfg.categories.economy);
+            if (channel) {
+              const embed = new EmbedBuilder()
+                .setTitle('🔄 Reset Manuel du Karma')
+                .setDescription(`Le karma de ${resetCount} utilisateur(s) a été remis à zéro par ${interaction.user}.`)
+                .setColor(0xff9900)
+                .setTimestamp();
+              try {
+                await channel.send({ embeds: [embed] });
+              } catch (_) {}
+            }
+          }
+          
+          return interaction.editReply({ content: `✅ Karma remis à zéro pour ${resetCount} utilisateur(s).` });
+        } else {
+          return interaction.editReply({ content: 'Aucun utilisateur avec du karma à remettre à zéro.' });
+        }
       }
     }
 
