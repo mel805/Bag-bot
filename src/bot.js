@@ -7317,7 +7317,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         const pick = list[Math.floor(Math.random() * list.length)];
         const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'));
-        try { await interaction.followUp({ embeds: [embed] }); } catch (_) {}
+        const hasAction = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'action');
+        const hasTruth = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'verite');
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
+          new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
+        );
+        try { await interaction.followUp({ embeds: [embed], components: [row] }); } catch (_) {}
       } catch (_) {}
       return;
     }
