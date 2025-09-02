@@ -1877,7 +1877,7 @@ async function buildEconomyMenuRows(guild, page) {
     
     if (p === 'karma') {
       const rows = await buildEconomyKarmaRows(guild);
-      return [buildEconomyMenuSelect(p), ...rows];
+      return [...rows];
     }
     if (p === 'actions') {
       const sel = client._ecoActionCurrent.get(guild.id) || null;
@@ -3168,17 +3168,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
         
         const embed = await buildConfigEmbed(interaction.guild);
         const topRows = buildTopSectionRow();
+        const baseRows = [topRows[0]]; // n'utiliser que la première rangée (sélecteur de section)
         let rows;
         
         if (page === 'suites') {
           rows = [buildEconomyMenuSelect(page), ...(await buildSuitesRows(interaction.guild))];
         } else if (page === 'shop') {
           rows = [buildEconomyMenuSelect(page), ...(await buildShopRows(interaction.guild))];
+        } else if (page === 'karma') {
+          // Karma renvoie déjà 4 rangées; on n'ajoute pas buildEconomyMenuSelect pour éviter d'excéder 5 rangées au total avec la barre du haut
+          rows = await buildEconomyMenuRows(interaction.guild, page);
         } else {
           rows = await buildEconomyMenuRows(interaction.guild, page);
         }
         
-        return interaction.update({ embeds: [embed], components: [...topRows, ...rows] });
+        // Discord permet max 5 rangées par message
+        const limited = [...baseRows, ...rows].slice(0, 5);
+        return interaction.update({ embeds: [embed], components: limited });
       } catch (error) {
         console.error('[Economy] Menu navigation failed:', error.message);
         console.error('[Economy] Menu stack trace:', error.stack);
@@ -3189,11 +3195,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try {
           const embed = await buildConfigEmbed(interaction.guild);
           const backRow = buildBackRow();
-          return interaction.update({ 
-            embeds: [embed], 
-            components: [backRow],
-            content: '❌ Erreur lors de la navigation dans les menus économie. Cache vidé, retournez au menu principal.' 
-          });
+          return interaction.update({ embeds: [embed], components: [backRow], content: '❌ Erreur lors de la navigation dans les menus économie. Cache vidé, retournez au menu principal.' });
         } catch (fallbackError) {
           console.error('[Economy] Fallback failed:', fallbackError.message);
           return interaction.reply({ content: '❌ Erreur critique dans la configuration économie.', ephemeral: true }).catch(() => {});
@@ -3940,8 +3942,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
           
           // Log the manual reset
           const cfg = await getLogsConfig(interaction.guild.id);
-          if (cfg?.categories?.economy) {
-            const channel = interaction.guild.channels.cache.get(cfg.categories.economy);
+          if (cfg?.channels?.economy) {
+            const channel = interaction.guild.channels.cache.get(cfg.channels.economy);
             if (channel) {
               const embed = new EmbedBuilder()
                 .setTitle('🔄 Reset Manuel du Karma')
