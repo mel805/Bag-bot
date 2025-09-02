@@ -2415,8 +2415,18 @@ async function buildTicketsRows(guild, submenu) {
 
   if (current === 'panel') {
     const controlRow = new ActionRowBuilder().addComponents(panelBtn, editPanelBtn);
-    const channelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_category').setPlaceholder('Catégorie Discord pour les tickets…').addChannelTypes(ChannelType.GuildCategory).setMinValues(1).setMaxValues(1);
-    const panelChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_panel_channel').setPlaceholder('Salon pour publier le panneau…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
+    const channelSelect = new ChannelSelectMenuBuilder()
+      .setCustomId('tickets_set_category')
+      .setPlaceholder(t.categoryId ? `Catégorie actuelle: <#${t.categoryId}>` : 'Catégorie Discord pour les tickets…')
+      .addChannelTypes(ChannelType.GuildCategory)
+      .setMinValues(1)
+      .setMaxValues(1);
+    const panelChannelSelect = new ChannelSelectMenuBuilder()
+      .setCustomId('tickets_set_panel_channel')
+      .setPlaceholder(t.panelChannelId ? `Salon actuel: <#${t.panelChannelId}>` : 'Salon pour publier le panneau…')
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+      .setMinValues(1)
+      .setMaxValues(1);
     rows.push(controlRow);
     rows.push(new ActionRowBuilder().addComponents(channelSelect));
     rows.push(new ActionRowBuilder().addComponents(panelChannelSelect));
@@ -3418,6 +3428,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_category') {
       const { updateTicketsConfig } = require('./storage/jsonStore');
       const catId = interaction.values[0];
+      const chan = interaction.guild.channels.cache.get(catId) || await interaction.guild.channels.fetch(catId).catch(()=>null);
+      if (!chan || chan.type !== ChannelType.GuildCategory) {
+        try { return await interaction.reply({ content: '❌ Catégorie invalide ou introuvable. Sélectionnez une catégorie Discord.', ephemeral: true }); } catch (_) { return; }
+      }
       await updateTicketsConfig(interaction.guild.id, { categoryId: catId });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTicketsRows(interaction.guild, 'panel');
@@ -3426,6 +3440,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_panel_channel') {
       const { updateTicketsConfig } = require('./storage/jsonStore');
       const chId = interaction.values[0];
+      const ch = interaction.guild.channels.cache.get(chId) || await interaction.guild.channels.fetch(chId).catch(()=>null);
+      if (!ch || !ch.isTextBased?.()) {
+        try { return await interaction.reply({ content: '❌ Salon invalide. Choisissez un salon texte ou annonces.', ephemeral: true }); } catch (_) { return; }
+      }
       await updateTicketsConfig(interaction.guild.id, { panelChannelId: chId });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTicketsRows(interaction.guild, 'panel');
@@ -7299,7 +7317,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         const pick = list[Math.floor(Math.random() * list.length)];
         const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'));
-        try { await interaction.followUp({ embeds: [embed] }); } catch (_) {}
+        const hasAction = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'action');
+        const hasTruth = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'verite');
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
+          new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
+        );
+        try { await interaction.followUp({ embeds: [embed], components: [row] }); } catch (_) {}
       } catch (_) {}
       return;
     }
