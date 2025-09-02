@@ -3187,6 +3187,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const row = buildTopSectionRow();
       return interaction.update({ embeds: [embed], components: [row] });
     }
+    // Karma error retry handler
+    if (interaction.isButton() && interaction.customId === 'karma_error_retry') {
+      try {
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+        return interaction.update({ embeds: [embed], components: [...rows] });
+      } catch (error) {
+        console.error('[Karma] Retry failed:', error.message);
+        return interaction.reply({ content: '❌ Impossible de charger la configuration karma. Contactez un administrateur.', ephemeral: true }).catch(() => {});
+      }
+    }
     // Karma type switch
     if (interaction.isStringSelectMenu() && interaction.customId === 'eco_karma_type') {
       const type = interaction.values[0];
