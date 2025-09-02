@@ -914,6 +914,7 @@ function ensureTicketsShape(g) {
   if (typeof t.panelTitle !== 'string') t.panelTitle = '🎫 Ouvrir un ticket';
   if (typeof t.panelText !== 'string') t.panelText = 'Choisissez une catégorie pour créer un ticket. Un membre du staff vous assistera.';
   if (typeof t.logChannelId !== 'string') t.logChannelId = '';
+  if (typeof t.pingStaffOnOpen !== 'boolean') t.pingStaffOnOpen = false;
 }
 
 async function getTicketsConfig(guildId) {

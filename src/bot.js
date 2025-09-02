@@ -2360,9 +2360,10 @@ async function buildTicketsRows(guild) {
   const catAddBtn = new ButtonBuilder().setCustomId('tickets_add_cat').setLabel('Ajouter catégorie').setStyle(ButtonStyle.Secondary);
   const catRemBtn = new ButtonBuilder().setCustomId('tickets_remove_cat').setLabel('Retirer catégorie').setStyle(ButtonStyle.Danger);
   const panelBtn = new ButtonBuilder().setCustomId('tickets_post_panel').setLabel('Publier panneau').setStyle(ButtonStyle.Primary);
+  const pingStaffToggle = new ButtonBuilder().setCustomId('tickets_toggle_ping_staff').setLabel(t.pingStaffOnOpen ? 'Ping staff: ON' : 'Ping staff: OFF').setStyle(t.pingStaffOnOpen ? ButtonStyle.Success : ButtonStyle.Secondary);
 
   const categoryRow = new ActionRowBuilder().addComponents(categorySelect);
-  const controlRow = new ActionRowBuilder().addComponents(catAddBtn, catRemBtn, panelBtn);
+  const controlRow = new ActionRowBuilder().addComponents(catAddBtn, catRemBtn, panelBtn, pingStaffToggle);
 
   const channelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_category').setPlaceholder('Catégorie Discord pour les tickets…').addChannelTypes(ChannelType.GuildCategory).setMinValues(1).setMaxValues(1);
   const panelChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_panel_channel').setPlaceholder('Salon pour publier le panneau…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
@@ -3293,6 +3294,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateTicketsConfig(interaction.guild.id, { panelMessageId: msg.id });
       return interaction.editReply({ content: '✅ Panneau publié.' });
     }
+    if (interaction.isButton() && interaction.customId === 'tickets_toggle_ping_staff') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member || !(await isStaffMember(interaction.guild, member))) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const next = !t.pingStaffOnOpen;
+      await updateTicketsConfig(interaction.guild.id, { pingStaffOnOpen: next });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
 
     if (interaction.isModalSubmit() && interaction.customId === 'tickets_add_cat_modal') {
       await interaction.deferReply({ ephemeral: true });
@@ -3345,7 +3357,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const transferBtn = new ButtonBuilder().setCustomId('ticket_transfer').setLabel('Transférer').setStyle(ButtonStyle.Secondary);
       const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('Fermer').setStyle(ButtonStyle.Danger);
       const row = new ActionRowBuilder().addComponents(claimBtn, transferBtn, closeBtn);
-      await ch.send({ content: `${interaction.user} merci d'expliquer votre demande.`, embeds: [embed], components: [row] }).catch(()=>{});
+      // Mention the user and optionally ping staff roles
+      let content = `${interaction.user} merci d'expliquer votre demande.`;
+      if (t.pingStaffOnOpen) {
+        try { const staffIds = await getGuildStaffRoleIds(interaction.guild.id); if (Array.isArray(staffIds) && staffIds.length) content += `\n${staffIds.map(id => `<@&${id}>`).join(' ')}`; } catch (_) {}
+      }
+      await ch.send({ content, embeds: [embed], components: [row], allowedMentions: { users: [interaction.user.id], roles: t.pingStaffOnOpen ? undefined : [] } }).catch(()=>{});
       await interaction.editReply({ content: `✅ Ticket créé: ${ch}` });
       return;
     }
