@@ -2530,6 +2530,76 @@ client.once(Events.ClientReady, (readyClient) => {
     const embed = buildModEmbed(`${cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
+  
+  // Suite privée: Menu de gestion des membres à l'ouverture d'un canal
+  client.on(Events.ChannelCreate, async (channel) => {
+    if (!channel.guild) return;
+    
+    try {
+      const eco = await getEconomyConfig(channel.guild.id);
+      const active = eco.suites?.active || {};
+      
+      // Vérifier si ce canal fait partie d'une suite privée
+      let suiteOwner = null;
+      let suiteInfo = null;
+      for (const [userId, info] of Object.entries(active)) {
+        if (info.textId === channel.id || info.voiceId === channel.id) {
+          suiteOwner = userId;
+          suiteInfo = info;
+          break;
+        }
+      }
+      
+      if (!suiteOwner || !suiteInfo) return;
+      
+      // Ping le propriétaire de la suite et afficher le menu de gestion
+      // Seulement quand le canal texte est créé pour éviter les doublons
+      const isTextChannel = channel.id === suiteInfo.textId;
+      if (!isTextChannel) return;
+      
+      const owner = await channel.guild.members.fetch(suiteOwner).catch(() => null);
+      if (!owner) return;
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🏠 Suite Privée - Gestion des Membres')
+        .setDescription(`Bienvenue dans votre suite privée !\n\nUtilisez les boutons ci-dessous pour gérer l'accès à vos canaux de suite.`)
+        .addFields([
+          { name: '📝 Canal Texte', value: `<#${suiteInfo.textId}>`, inline: true },
+          { name: '🔊 Canal Vocal', value: `<#${suiteInfo.voiceId}>`, inline: true },
+          { name: '⏰ Expiration', value: `<t:${Math.floor(suiteInfo.expiresAt/1000)}:R>`, inline: true }
+        ])
+        .setColor(0x7289DA)
+        .setFooter({ text: 'Cliquez sur les boutons pour inviter ou retirer des membres' });
+      
+      const row = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId(`suite_invite_${suiteOwner}`)
+            .setLabel('➕ Inviter un membre')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`suite_remove_${suiteOwner}`)
+            .setLabel('➖ Retirer un membre')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`suite_list_${suiteOwner}`)
+            .setLabel('📋 Liste des membres')
+            .setStyle(ButtonStyle.Secondary)
+        );
+      
+      // Envoyer le message avec ping dans le canal texte
+      const textChannel = channel.guild.channels.cache.get(suiteInfo.textId);
+      if (textChannel && textChannel.type === ChannelType.GuildText) {
+        await textChannel.send({
+          content: `<@${suiteOwner}> Votre suite privée est maintenant active !`,
+          embeds: [embed],
+          components: [row]
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de la gestion du menu de suite privée:', error);
+    }
+  });
   // Suites cleanup every 5 minutes
   setInterval(async () => {
     try {
@@ -5930,6 +6000,251 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.update({ embeds: [embed], components: [] });
       }
       return interaction.reply({ content: 'Choix invalide.', ephemeral: true });
+    }
+
+    // Gestion des interactions pour les suites privées
+    if (interaction.isButton() && interaction.customId.startsWith('suite_invite_')) {
+      const ownerId = interaction.customId.split('_')[2];
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '⛔ Seul le propriétaire de la suite peut gérer les membres.', ephemeral: true });
+      }
+      
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const suiteInfo = eco.suites?.active?.[ownerId];
+      if (!suiteInfo) {
+        return interaction.reply({ content: '❌ Suite privée introuvable ou expirée.', ephemeral: true });
+      }
+      
+      const row = new ActionRowBuilder()
+        .addComponents(
+          new UserSelectMenuBuilder()
+            .setCustomId(`suite_invite_select_${ownerId}`)
+            .setPlaceholder('Sélectionnez un membre à inviter...')
+            .setMaxValues(1)
+        );
+      
+      return interaction.reply({
+        content: '👥 Sélectionnez le membre que vous souhaitez inviter dans votre suite privée :',
+        components: [row],
+        ephemeral: true
+      });
+    }
+    
+    if (interaction.isButton() && interaction.customId.startsWith('suite_remove_')) {
+      const ownerId = interaction.customId.split('_')[2];
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '⛔ Seul le propriétaire de la suite peut gérer les membres.', ephemeral: true });
+      }
+      
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const suiteInfo = eco.suites?.active?.[ownerId];
+      if (!suiteInfo) {
+        return interaction.reply({ content: '❌ Suite privée introuvable ou expirée.', ephemeral: true });
+      }
+      
+      // Récupérer les membres ayant accès aux canaux
+      const textChannel = interaction.guild.channels.cache.get(suiteInfo.textId);
+      const voiceChannel = interaction.guild.channels.cache.get(suiteInfo.voiceId);
+      
+      const membersWithAccess = new Set();
+      if (textChannel) {
+        textChannel.permissionOverwrites.cache.forEach((overwrite, id) => {
+          if (id !== interaction.guild.roles.everyone.id && id !== ownerId && overwrite.type === 1) {
+            if (overwrite.allow.has('ViewChannel')) {
+              membersWithAccess.add(id);
+            }
+          }
+        });
+      }
+      
+      if (membersWithAccess.size === 0) {
+        return interaction.reply({ content: '📭 Aucun membre invité dans votre suite privée.', ephemeral: true });
+      }
+      
+      const row = new ActionRowBuilder()
+        .addComponents(
+          new UserSelectMenuBuilder()
+            .setCustomId(`suite_remove_select_${ownerId}`)
+            .setPlaceholder('Sélectionnez un membre à retirer...')
+            .setMaxValues(1)
+        );
+      
+      return interaction.reply({
+        content: '👥 Sélectionnez le membre que vous souhaitez retirer de votre suite privée :',
+        components: [row],
+        ephemeral: true
+      });
+    }
+    
+    if (interaction.isButton() && interaction.customId.startsWith('suite_list_')) {
+      const ownerId = interaction.customId.split('_')[2];
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '⛔ Seul le propriétaire de la suite peut voir cette liste.', ephemeral: true });
+      }
+      
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const suiteInfo = eco.suites?.active?.[ownerId];
+      if (!suiteInfo) {
+        return interaction.reply({ content: '❌ Suite privée introuvable ou expirée.', ephemeral: true });
+      }
+      
+      // Récupérer les membres ayant accès aux canaux
+      const textChannel = interaction.guild.channels.cache.get(suiteInfo.textId);
+      const membersWithAccess = [];
+      
+      if (textChannel) {
+        for (const [id, overwrite] of textChannel.permissionOverwrites.cache) {
+          if (id !== interaction.guild.roles.everyone.id && id !== ownerId && overwrite.type === 1) {
+            if (overwrite.allow.has('ViewChannel')) {
+              try {
+                const member = await interaction.guild.members.fetch(id);
+                membersWithAccess.push(`• <@${id}> (${member.user.username})`);
+              } catch (_) {
+                membersWithAccess.push(`• <@${id}> (membre introuvable)`);
+              }
+            }
+          }
+        }
+      }
+      
+      const embed = new EmbedBuilder()
+        .setTitle('📋 Membres de votre Suite Privée')
+        .setDescription(membersWithAccess.length > 0 ? 
+          `**Propriétaire:** <@${ownerId}>\n\n**Membres invités:**\n${membersWithAccess.join('\n')}` :
+          `**Propriétaire:** <@${ownerId}>\n\n*Aucun membre invité*`)
+        .addFields([
+          { name: '📝 Canal Texte', value: `<#${suiteInfo.textId}>`, inline: true },
+          { name: '🔊 Canal Vocal', value: `<#${suiteInfo.voiceId}>`, inline: true },
+          { name: '⏰ Expiration', value: `<t:${Math.floor(suiteInfo.expiresAt/1000)}:R>`, inline: true }
+        ])
+        .setColor(0x7289DA);
+      
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+    
+    if (interaction.isUserSelectMenu() && interaction.customId.startsWith('suite_invite_select_')) {
+      const ownerId = interaction.customId.split('_')[3];
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '⛔ Seul le propriétaire de la suite peut gérer les membres.', ephemeral: true });
+      }
+      
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const suiteInfo = eco.suites?.active?.[ownerId];
+      if (!suiteInfo) {
+        return interaction.reply({ content: '❌ Suite privée introuvable ou expirée.', ephemeral: true });
+      }
+      
+      const targetUserId = interaction.values[0];
+      const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membre introuvable.', ephemeral: true });
+      }
+      
+      // Ajouter les permissions au membre pour les deux canaux
+      const textChannel = interaction.guild.channels.cache.get(suiteInfo.textId);
+      const voiceChannel = interaction.guild.channels.cache.get(suiteInfo.voiceId);
+      
+      try {
+        if (textChannel) {
+          await textChannel.permissionOverwrites.create(targetUserId, {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true
+          });
+        }
+        
+        if (voiceChannel) {
+          await voiceChannel.permissionOverwrites.create(targetUserId, {
+            ViewChannel: true,
+            Connect: true,
+            Speak: true
+          });
+        }
+        
+        const embed = new EmbedBuilder()
+          .setTitle('✅ Membre Invité')
+          .setDescription(`${targetMember.user.username} a été invité dans votre suite privée !`)
+          .addFields([
+            { name: '👤 Membre', value: `<@${targetUserId}>`, inline: true },
+            { name: '📝 Accès Texte', value: textChannel ? '✅' : '❌', inline: true },
+            { name: '🔊 Accès Vocal', value: voiceChannel ? '✅' : '❌', inline: true }
+          ])
+          .setColor(0x00FF00);
+        
+        // Notifier le membre invité dans le canal texte
+        if (textChannel) {
+          await textChannel.send({
+            content: `🎉 <@${targetUserId}> a été invité dans la suite privée par <@${ownerId}> !`,
+            embeds: [new EmbedBuilder()
+              .setDescription('Vous avez maintenant accès aux canaux texte et vocal de cette suite privée.')
+              .setColor(0x00FF00)]
+          });
+        }
+        
+        return interaction.update({ embeds: [embed], components: [] });
+      } catch (error) {
+        console.error('Erreur lors de l\'invitation:', error);
+        return interaction.reply({ content: '❌ Erreur lors de l\'invitation du membre.', ephemeral: true });
+      }
+    }
+    
+    if (interaction.isUserSelectMenu() && interaction.customId.startsWith('suite_remove_select_')) {
+      const ownerId = interaction.customId.split('_')[3];
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '⛔ Seul le propriétaire de la suite peut gérer les membres.', ephemeral: true });
+      }
+      
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const suiteInfo = eco.suites?.active?.[ownerId];
+      if (!suiteInfo) {
+        return interaction.reply({ content: '❌ Suite privée introuvable ou expirée.', ephemeral: true });
+      }
+      
+      const targetUserId = interaction.values[0];
+      const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+      
+      // Retirer les permissions du membre pour les deux canaux
+      const textChannel = interaction.guild.channels.cache.get(suiteInfo.textId);
+      const voiceChannel = interaction.guild.channels.cache.get(suiteInfo.voiceId);
+      
+      try {
+        if (textChannel) {
+          await textChannel.permissionOverwrites.delete(targetUserId);
+        }
+        
+        if (voiceChannel) {
+          await voiceChannel.permissionOverwrites.delete(targetUserId);
+          // Déconnecter le membre s'il est dans le canal vocal
+          if (targetMember && targetMember.voice?.channelId === voiceChannel.id) {
+            await targetMember.voice.disconnect('Retiré de la suite privée');
+          }
+        }
+        
+        const embed = new EmbedBuilder()
+          .setTitle('✅ Membre Retiré')
+          .setDescription(`${targetMember?.user.username || 'Le membre'} a été retiré de votre suite privée !`)
+          .addFields([
+            { name: '👤 Membre', value: `<@${targetUserId}>`, inline: true },
+            { name: '📝 Accès Texte', value: '❌ Retiré', inline: true },
+            { name: '🔊 Accès Vocal', value: '❌ Retiré', inline: true }
+          ])
+          .setColor(0xFF4444);
+        
+        // Notifier dans le canal texte
+        if (textChannel) {
+          await textChannel.send({
+            content: `👋 <@${targetUserId}> a été retiré de la suite privée par <@${ownerId}>.`,
+            embeds: [new EmbedBuilder()
+              .setDescription('Votre accès aux canaux de cette suite privée a été révoqué.')
+              .setColor(0xFF4444)]
+          });
+        }
+        
+        return interaction.update({ embeds: [embed], components: [] });
+      } catch (error) {
+        console.error('Erreur lors du retrait:', error);
+        return interaction.reply({ content: '❌ Erreur lors du retrait du membre.', ephemeral: true });
+      }
     }
 
     // French economy top-level commands
