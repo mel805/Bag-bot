@@ -589,6 +589,36 @@ function ensureEconomyShape(g) {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
   }
   if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
+  
+  // Ensure karmaModifiers structure exists and is valid
+  if (!e.karmaModifiers || typeof e.karmaModifiers !== 'object') {
+    e.karmaModifiers = { shop: [], actions: [], grants: [] };
+  } else {
+    // Validate each karma modifier type
+    if (!Array.isArray(e.karmaModifiers.shop)) e.karmaModifiers.shop = [];
+    if (!Array.isArray(e.karmaModifiers.actions)) e.karmaModifiers.actions = [];
+    if (!Array.isArray(e.karmaModifiers.grants)) e.karmaModifiers.grants = [];
+    
+    // Validate and sanitize each rule
+    ['shop', 'actions', 'grants'].forEach(type => {
+      e.karmaModifiers[type] = e.karmaModifiers[type].filter(rule => {
+        if (!rule || typeof rule !== 'object') return false;
+        if (!rule.condition || typeof rule.condition !== 'string') return false;
+        if (type === 'grants') {
+          return typeof rule.money === 'number';
+        } else {
+          return typeof rule.percent === 'number';
+        }
+      });
+    });
+  }
+  
+  // Ensure karmaReset structure exists
+  if (!e.karmaReset || typeof e.karmaReset !== 'object') {
+    e.karmaReset = { enabled: false };
+  }
+  if (typeof e.karmaReset.enabled !== 'boolean') e.karmaReset.enabled = false;
+  
   const defaults = {
     work: { moneyMin: 40, moneyMax: 90, karma: 'charm', karmaDelta: 1, cooldown: 600, successRate: 0.9, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     fish: { moneyMin: 20, moneyMax: 60, karma: 'charm', karmaDelta: 1, cooldown: 300, successRate: 0.65, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
