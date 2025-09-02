@@ -2396,7 +2396,7 @@ async function buildTicketsRows(guild, submenu) {
       .setPlaceholder('Choisir une catégorie à configurer (rôles ping)…')
       .setMinValues(1)
       .setMaxValues(1);
-    const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
+    const catOpts = (t.categories || []).slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
     if (catOpts.length) catSelectPing.addOptions(...catOpts); else catSelectPing.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
     rows.push(new ActionRowBuilder().addComponents(pingStaffToggle));
     rows.push(new ActionRowBuilder().addComponents(catSelectPing));
@@ -2436,7 +2436,7 @@ async function buildTicketsRows(guild, submenu) {
     .setPlaceholder('Choisir une catégorie à configurer (rôles d’accès)…')
     .setMinValues(1)
     .setMaxValues(1);
-  const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
+  const catOpts = (t.categories || []).slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
   if (catOpts.length) catSelectAccess.addOptions(...catOpts); else catSelectAccess.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
   rows.push(new ActionRowBuilder().addComponents(catSelectAccess));
   return rows;
@@ -3419,7 +3419,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setPlaceholder('Choisir la catégorie à supprimer…')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(...t.categories.map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.key })));
+        .addOptions(...t.categories.slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.key })));
       const embed = await buildConfigEmbed(interaction.guild);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), new ActionRowBuilder().addComponents(select)] });
     }
@@ -3443,7 +3443,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setPlaceholder('Choisir la catégorie à modifier…')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(...t.categories.map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.key })));
+        .addOptions(...t.categories.slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.key })));
       const embed = await buildConfigEmbed(interaction.guild);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), new ActionRowBuilder().addComponents(pick)] });
     }
