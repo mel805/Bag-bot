@@ -2743,6 +2743,27 @@ client.once(Events.ClientReady, (readyClient) => {
     const embed = buildModEmbed(`${cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
   });
+  // Tickets: auto-close when member leaves
+  client.on(Events.GuildMemberRemove, async (m) => {
+    try {
+      const { getTicketsConfig, closeTicketRecord } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(m.guild.id);
+      const entries = Object.entries(t.records || {}).filter(([cid, rec]) => rec && String(rec.userId) === String(m.id) && !rec.closedAt);
+      for (const [channelId, rec] of entries) {
+        const ch = m.guild.channels.cache.get(channelId) || await m.guild.channels.fetch(channelId).catch(() => null);
+        if (!ch || !ch.isTextBased?.()) continue;
+        const embed = new EmbedBuilder()
+          .setColor(THEME_COLOR_PRIMARY)
+          .setTitle('Ticket fermé')
+          .setDescription(`L'auteur du ticket a quitté le serveur. Ticket fermé automatiquement.`)
+          .setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON })
+          .setTimestamp(new Date());
+        try { await ch.send({ embeds: [embed] }); } catch (_) {}
+        try { await closeTicketRecord(m.guild.id, channelId); } catch (_) {}
+        try { await ch.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
+      }
+    } catch (_) {}
+  });
   client.on(Events.MessageDelete, async (msg) => {
     try { if (!msg.guild) return; } catch (_) { return; }
     const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageDelete evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
