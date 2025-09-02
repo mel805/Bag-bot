@@ -2994,9 +2994,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       modal.addComponents(
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('roleId').setLabel('ID du rôle').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('duration').setLabel('Durée en jours (0=permanent)').setStyle(TextInputStyle.Short).setRequired(true))
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('duration').setLabel('Durée jours (0=permanent)').setStyle(TextInputStyle.Short).setRequired(true))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId === 'shop_add_role_modal') {
       await interaction.deferReply({ ephemeral: true });
@@ -3021,7 +3024,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('price').setLabel('Prix').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('id').setLabel('Identifiant (unique)').setStyle(TextInputStyle.Short).setRequired(true))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId === 'shop_add_item_modal') {
       await interaction.deferReply({ ephemeral: true });
@@ -3091,7 +3097,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cooldown').setLabel('Cooldown (sec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.cooldown||0))),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('successRate').setLabel('Taux de succès (0-1)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.successRate??1)))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isButton() && interaction.customId.startsWith('economy_action_edit_karma:')) {
       const key = interaction.customId.split(':')[1];
@@ -3099,10 +3108,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const c = (eco.actions?.config || {})[key] || {};
       const modal = new ModalBuilder().setCustomId(`economy_action_karma_modal:${key}`).setTitle('Réglages Karma');
       modal.addComponents(
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('karma').setLabel("Type ('charm' | 'perversion' | 'none')").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.karma||'none'))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('karma').setLabel("Type (charm/perversion/none)").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.karma||'none'))),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('karmaDelta').setLabel('Delta (succès)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.karmaDelta||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMin').setLabel('Argent échec min').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMin||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMax').setLabel('Argent échec max').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMax||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMin').setLabel('Argent min (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMin||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMax').setLabel('Argent max (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMax||0))),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failKarmaDelta').setLabel('Delta Karma (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failKarmaDelta||0)))
       );
       try { 
@@ -3118,10 +3127,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const c = (eco.actions?.config || {})[key] || {};
       const modal = new ModalBuilder().setCustomId(`economy_action_partner_modal:${key}`).setTitle('Récompenses partenaire');
       modal.addComponents(
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('partnerMoneyShare').setLabel('Part argent (multiplicateur)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.partnerMoneyShare||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('partnerKarmaShare').setLabel('Part karma (multiplicateur)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.partnerKarmaShare||0)))
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('partnerMoneyShare').setLabel('Part argent (mult.)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.partnerMoneyShare||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('partnerKarmaShare').setLabel('Part karma (mult.)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.partnerKarmaShare||0)))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_action_basic_modal:')) {
       await interaction.deferReply({ ephemeral: true });
@@ -3345,8 +3357,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const modal = new ModalBuilder().setCustomId('eco_karma_add_shop').setTitle('Règle boutique (karma)');
       modal.addComponents(
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50, perversion>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (ex: -10 pour -10%)').setStyle(TextInputStyle.Short).setRequired(true))
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50)').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (ex: -10)').setStyle(TextInputStyle.Short).setRequired(true))
       );
       try { 
         return await interaction.showModal(modal); 
@@ -3372,10 +3384,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const modal = new ModalBuilder().setCustomId('eco_karma_add_action').setTitle('Règle actions (karma)');
       modal.addComponents(
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50, perversion>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage sur gains/pertes (ex: +15)').setStyle(TextInputStyle.Short).setRequired(true))
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50)').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage gains/pertes (ex: +15)').setStyle(TextInputStyle.Short).setRequired(true))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_action') {
       await interaction.deferReply({ ephemeral: true });
@@ -3395,9 +3410,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       modal.addComponents(
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (ex: +500 ou -200)').setStyle(TextInputStyle.Short).setRequired(true))
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (ex: +500)').setStyle(TextInputStyle.Short).setRequired(true))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_grant') {
       await interaction.deferReply({ ephemeral: true });
@@ -3675,14 +3693,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const modal = new ModalBuilder().setCustomId('td_prompts_add:action:' + mode).setTitle('Ajouter des ACTIONS');
       const input = new TextInputBuilder().setCustomId('texts').setLabel('Une par ligne').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(2000);
       modal.addComponents(new ActionRowBuilder().addComponents(input));
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_add_verite:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       const modal = new ModalBuilder().setCustomId('td_prompts_add:verite:' + mode).setTitle('Ajouter des VÉRITÉS');
       const input = new TextInputBuilder().setCustomId('texts').setLabel('Une par ligne').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(2000);
       modal.addComponents(new ActionRowBuilder().addComponents(input));
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { return await interaction.showModal(modal); } catch (error) { 
+        console.error('[Modal Error]', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('td_prompts_add:')) {
       const parts = interaction.customId.split(':');
