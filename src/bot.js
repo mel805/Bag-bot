@@ -7712,7 +7712,8 @@ async function calculateShopPrice(guild, user, basePrice) {
   const eco = await getEconomyConfig(guild.id);
   const userEco = await getEconomyUser(guild.id, user.id);
   
-  let totalDiscountPercent = 0;
+  // totalDeltaPercent: positif = augmente le prix, négatif = baisse le prix
+  let totalDeltaPercent = 0;
   
   // Add booster discount
   try {
@@ -7721,17 +7722,17 @@ async function calculateShopPrice(guild, user, basePrice) {
     const b = eco.booster || {};
     if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
       const boosterMult = Number(b.shopPriceMult);
-      const boosterDiscountPercent = (1 - boosterMult) * 100;
-      totalDiscountPercent += boosterDiscountPercent;
+      const boosterDeltaPercent = -((1 - boosterMult) * 100); // remise → delta négatif
+      totalDeltaPercent += boosterDeltaPercent;
     }
   } catch (_) {}
   
   // Add karma discount
   const karmaPercent = calculateKarmaShopModifier(eco.karmaModifiers?.shop, userEco.charm || 0, userEco.perversion || 0);
-  totalDiscountPercent += karmaPercent;
+  totalDeltaPercent += karmaPercent; // positif = augmentation, négatif = remise
   
   // Apply cumulative discount
-  const finalMultiplier = Math.max(0, 1 - totalDiscountPercent / 100);
+  const finalMultiplier = Math.max(0, 1 + totalDeltaPercent / 100);
   return Math.max(0, Math.floor(basePrice * finalMultiplier));
 }
 
@@ -7765,12 +7766,12 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
     .setThumbnail(THEME_IMAGE)
     .setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON });
   
-  // Calculate total discount for display
-  let totalDiscountPercent = 0;
+  // Calculate total delta for display (positif = augmente, négatif = baisse)
+  let totalDeltaPercent = 0;
   if (isBooster && boosterMult !== 1) {
-    totalDiscountPercent += (1 - boosterMult) * 100;
+    totalDeltaPercent += -((1 - boosterMult) * 100);
   }
-  totalDiscountPercent += karmaPercent;
+  totalDeltaPercent += karmaPercent;
   
   // User info
   let description = `💰 **Votre solde :** ${userEco.amount || 0} ${currency}\n`;
@@ -7779,18 +7780,18 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   // Show individual modifiers
   if (isBooster && boosterMult !== 1) {
     const boosterDiscount = (1 - boosterMult) * 100;
-    description += `🚀 **Bonus booster :** -${Math.round(boosterDiscount)}%\n`;
+    description += `🚀 **Bonus booster :** ${Math.round(-boosterDiscount)}%\n`;
   }
   if (karmaPercent !== 0) {
     const sign = karmaPercent > 0 ? '+' : '';
     description += `🎯 **Modification karma :** ${sign}${karmaPercent}%\n`;
   }
   
-  // Show total cumulative discount
-  if (totalDiscountPercent !== 0) {
-    const sign = totalDiscountPercent > 0 ? '+' : '';
-    const totalText = totalDiscountPercent >= 100 ? '**ARTICLES GRATUITS!** 🎉' : `**Total : ${sign}${Math.round(totalDiscountPercent)}%**`;
-    description += `💸 **Remise cumulée :** ${totalText}\n`;
+  // Show total cumulative delta
+  if (totalDeltaPercent !== 0) {
+    const sign = totalDeltaPercent > 0 ? '+' : '';
+    const totalText = totalDeltaPercent <= -100 ? '**ARTICLES GRATUITS!** 🎉' : `**Total : ${sign}${Math.round(totalDeltaPercent)}%**`;
+    description += `💸 **Impact cumulé :** ${totalText}\n`;
   }
   
   description += '\n**Articles disponibles :**';
@@ -7799,38 +7800,36 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   
   const fields = [];
   
-  // Helper function to calculate final price with cumulative modifiers
+  // Helper function to calculate final price with cumulative modifiers (positive = augmente, négatif = baisse)
   const calculateFinalPrice = (basePrice) => {
     let price = basePrice;
     
-    // Calculate total discount percentage
-    let totalDiscountPercent = 0;
+    let totalDeltaPercent = 0;
     
-    // Add booster discount (convert multiplier to percentage)
+    // Booster delta (multiplier < 1 => remise négative)
     if (isBooster && boosterMult !== 1) {
       const boosterDiscountPercent = (1 - boosterMult) * 100;
-      totalDiscountPercent += boosterDiscountPercent;
+      totalDeltaPercent += -boosterDiscountPercent;
     }
     
-    // Add karma discount percentage
-    totalDiscountPercent += karmaPercent;
+    // Karma delta (déjà signé)
+    totalDeltaPercent += karmaPercent;
     
-    // Apply cumulative discount (can go to 0 but not negative)
-    const finalMultiplier = Math.max(0, 1 - totalDiscountPercent / 100);
+    const finalMultiplier = Math.max(0, 1 + totalDeltaPercent / 100);
     price = Math.max(0, Math.floor(basePrice * finalMultiplier));
     
-    return { finalPrice: price, totalDiscountPercent };
+    return { finalPrice: price, totalDeltaPercent };
   };
   
   // Helper function to format price display with discount info
   const formatPrice = (basePrice) => {
-    const { finalPrice, totalDiscountPercent } = calculateFinalPrice(basePrice);
+    const { finalPrice, totalDeltaPercent } = calculateFinalPrice(basePrice);
     
     if (finalPrice === basePrice) {
       return `**${finalPrice}** ${currency}`;
     } else {
-      const discountText = totalDiscountPercent >= 100 ? ' (GRATUIT!)' : ` (-${Math.round(totalDiscountPercent)}%)`;
-      return `~~${basePrice}~~ **${finalPrice}** ${currency}${discountText}`;
+      const suffix = totalDeltaPercent <= -100 ? ' (GRATUIT!)' : ` (${totalDeltaPercent>0?'+':''}${Math.round(totalDeltaPercent)}%)`;
+      return `~~${basePrice}~~ **${finalPrice}** ${currency}${suffix}`;
     }
   };
   
