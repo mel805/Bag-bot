@@ -1900,7 +1900,8 @@ async function buildEconomyKarmaRows(guild) {
   const rowType = new ActionRowBuilder().addComponents(typeSelect);
   const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
   const options = list.length ? list.map((r, idx) => {
-    const label = type === 'grants' ? `if ${r.condition} -> money ${r.money}` : `if ${r.condition} -> ${r.percent}%`;
+    const baseName = r.name ? `${r.name}: ` : '';
+    const label = type === 'grants' ? `${baseName}if ${r.condition} -> money ${r.money}` : `${baseName}if ${r.condition} -> ${r.percent}%`;
     return { label: label.slice(0, 100), value: String(idx) };
   }) : [{ label: 'Aucune règle', value: 'none' }];
   const rulesSelect = new StringSelectMenuBuilder()
@@ -1917,7 +1918,20 @@ async function buildEconomyKarmaRows(guild) {
   const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer').setStyle(ButtonStyle.Danger);
   const editBtn = new ButtonBuilder().setCustomId('eco_karma_edit').setLabel('Modifier').setStyle(ButtonStyle.Secondary);
   const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, editBtn, delBtn);
-  return [rowType, rowRules, rowActions];
+  
+  // Reset hebdomadaire
+  const resetEnabled = eco.karmaReset?.enabled || false;
+  const resetToggle = new ButtonBuilder()
+    .setCustomId('eco_karma_reset_toggle')
+    .setLabel(resetEnabled ? 'Reset hebdo: ON' : 'Reset hebdo: OFF')
+    .setStyle(resetEnabled ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const resetNow = new ButtonBuilder()
+    .setCustomId('eco_karma_reset_now')
+    .setLabel('Reset maintenant')
+    .setStyle(ButtonStyle.Danger);
+  const rowReset = new ActionRowBuilder().addComponents(resetToggle, resetNow);
+  
+  return [rowType, rowRules, rowActions, rowReset];
 }
 
 async function buildAutoThreadRows(guild, page = 0) {
@@ -2675,6 +2689,72 @@ client.once(Events.ClientReady, (readyClient) => {
       console.error('[Backup Auto] Erreur:', error.message);
     }
   }, 30 * 60 * 1000);
+
+  // Weekly karma reset every Monday at 00:00 UTC
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const dayOfWeek = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+      const hour = now.getUTCHours();
+      const minute = now.getUTCMinutes();
+      
+      // Check if it's Monday (1) at 00:00 UTC (with 1-minute tolerance)
+      if (dayOfWeek === 1 && hour === 0 && minute === 0) {
+        console.log('[Karma Reset] Starting weekly karma reset...');
+        
+        for (const [guildId, guild] of client.guilds.cache) {
+          try {
+            const eco = await getEconomyConfig(guildId);
+            
+            // Check if weekly reset is enabled for this guild
+            if (!eco.karmaReset?.enabled) continue;
+            
+            // Get all users in this guild's economy
+            const balances = eco.balances || {};
+            let resetCount = 0;
+            
+            for (const userId in balances) {
+              const user = balances[userId];
+              if (user.charm > 0 || user.perversion > 0) {
+                user.charm = 0;
+                user.perversion = 0;
+                resetCount++;
+              }
+            }
+            
+            if (resetCount > 0) {
+              eco.balances = balances;
+              await updateEconomyConfig(guildId, eco);
+              
+              // Log the reset if logging is configured
+              const cfg = await getLogsConfig(guildId);
+              if (cfg?.categories?.economy) {
+                const channel = guild.channels.cache.get(cfg.categories.economy);
+                if (channel) {
+                  const embed = new EmbedBuilder()
+                    .setTitle('🔄 Reset Hebdomadaire du Karma')
+                    .setDescription(`Le karma de ${resetCount} utilisateur(s) a été remis à zéro.`)
+                    .setColor(0x00ff00)
+                    .setTimestamp();
+                  try {
+                    await channel.send({ embeds: [embed] });
+                  } catch (_) {}
+                }
+              }
+              
+              console.log(`[Karma Reset] Guild ${guildId}: Reset ${resetCount} users`);
+            }
+          } catch (error) {
+            console.error(`[Karma Reset] Error for guild ${guildId}:`, error.message);
+          }
+        }
+        
+        console.log('[Karma Reset] Weekly karma reset completed');
+      }
+    } catch (error) {
+      console.error('[Karma Reset] Global error:', error.message);
+    }
+  }, 60 * 1000); // Check every minute
 });
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
@@ -3156,6 +3236,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (type === 'grants') {
         const modal = new ModalBuilder().setCustomId(`eco_karma_edit_grant:${idx}`).setTitle('Modifier grant');
         modal.addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setValue(String(rule.name||''))),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.money||0)))
         );
@@ -3163,6 +3244,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else {
         const modal = new ModalBuilder().setCustomId(`eco_karma_edit_perc:${type}:${idx}`).setTitle('Modifier règle (%)');
         modal.addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setValue(String(rule.name||''))),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.percent||0)))
         );
@@ -3172,12 +3254,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit() && interaction.customId.startsWith('eco_karma_edit_grant:')) {
       await interaction.deferReply({ ephemeral: true });
       const idx = Number(interaction.customId.split(':')[1]);
+      const name = (interaction.fields.getTextInputValue('name')||'').trim();
       const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
       const money = Number((interaction.fields.getTextInputValue('money')||'0').trim());
       const eco = await getEconomyConfig(interaction.guild.id);
       const list = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
       if (!list[idx]) return interaction.editReply({ content: 'Règle introuvable.' });
-      list[idx] = { condition, money };
+      list[idx] = { name: name || null, condition, money };
       eco.karmaModifiers = { ...(eco.karmaModifiers||{}), grants: list };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Grant modifié.' });
@@ -3186,12 +3269,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const [, type, idxStr] = interaction.customId.split(':');
       const idx = Number(idxStr);
+      const name = (interaction.fields.getTextInputValue('name')||'').trim();
       const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
       const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
       const eco = await getEconomyConfig(interaction.guild.id);
       const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
       if (!list[idx]) return interaction.editReply({ content: 'Règle introuvable.' });
-      list[idx] = { condition, percent };
+      list[idx] = { name: name || null, condition, percent };
       eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: list };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Règle modifiée.' });
@@ -3209,6 +3293,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'eco_karma_add_shop') {
       const modal = new ModalBuilder().setCustomId('eco_karma_add_shop').setTitle('Règle boutique (karma)');
       modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50, perversion>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (ex: -10 pour -10%)').setStyle(TextInputStyle.Short).setRequired(true))
       );
@@ -3216,11 +3301,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_shop') {
       await interaction.deferReply({ ephemeral: true });
+      const name = (interaction.fields.getTextInputValue('name')||'').trim();
       const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
       const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
       const eco = await getEconomyConfig(interaction.guild.id);
       const list = Array.isArray(eco.karmaModifiers?.shop) ? eco.karmaModifiers.shop : [];
-      list.push({ condition, percent });
+      list.push({ name: name || null, condition, percent });
       eco.karmaModifiers = { ...(eco.karmaModifiers||{}), shop: list };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Règle boutique ajoutée.' });
@@ -3229,6 +3315,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'eco_karma_add_action') {
       const modal = new ModalBuilder().setCustomId('eco_karma_add_action').setTitle('Règle actions (karma)');
       modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50, perversion>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage sur gains/pertes (ex: +15)').setStyle(TextInputStyle.Short).setRequired(true))
       );
@@ -3236,11 +3323,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_action') {
       await interaction.deferReply({ ephemeral: true });
+      const name = (interaction.fields.getTextInputValue('name')||'').trim();
       const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
       const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
       const eco = await getEconomyConfig(interaction.guild.id);
       const list = Array.isArray(eco.karmaModifiers?.actions) ? eco.karmaModifiers.actions : [];
-      list.push({ condition, percent });
+      list.push({ name: name || null, condition, percent });
       eco.karmaModifiers = { ...(eco.karmaModifiers||{}), actions: list };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Règle actions ajoutée.' });
@@ -3249,6 +3337,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'eco_karma_add_grant') {
       const modal = new ModalBuilder().setCustomId('eco_karma_add_grant').setTitle('Grant direct (karma)');
       modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (ex: +500 ou -200)').setStyle(TextInputStyle.Short).setRequired(true))
       );
@@ -3256,14 +3345,66 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_grant') {
       await interaction.deferReply({ ephemeral: true });
+      const name = (interaction.fields.getTextInputValue('name')||'').trim();
       const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
       const money = Number((interaction.fields.getTextInputValue('money')||'0').trim());
       const eco = await getEconomyConfig(interaction.guild.id);
       const list = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
-      list.push({ condition, money });
+      list.push({ name: name || null, condition, money });
       eco.karmaModifiers = { ...(eco.karmaModifiers||{}), grants: list };
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Grant direct ajouté.' });
+    }
+    // Karma weekly reset toggle
+    if (interaction.isButton() && interaction.customId === 'eco_karma_reset_toggle') {
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const currentEnabled = eco.karmaReset?.enabled || false;
+      eco.karmaReset = { ...(eco.karmaReset||{}), enabled: !currentEnabled };
+      await updateEconomyConfig(interaction.guild.id, eco);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    // Karma reset now
+    if (interaction.isButton() && interaction.customId === 'eco_karma_reset_now') {
+      await interaction.deferReply({ ephemeral: true });
+      const eco = await getEconomyConfig(interaction.guild.id);
+      const balances = eco.balances || {};
+      let resetCount = 0;
+      
+      for (const userId in balances) {
+        const user = balances[userId];
+        if (user.charm > 0 || user.perversion > 0) {
+          user.charm = 0;
+          user.perversion = 0;
+          resetCount++;
+        }
+      }
+      
+      if (resetCount > 0) {
+        eco.balances = balances;
+        await updateEconomyConfig(interaction.guild.id, eco);
+        
+        // Log the manual reset
+        const cfg = await getLogsConfig(interaction.guild.id);
+        if (cfg?.categories?.economy) {
+          const channel = interaction.guild.channels.cache.get(cfg.categories.economy);
+          if (channel) {
+            const embed = new EmbedBuilder()
+              .setTitle('🔄 Reset Manuel du Karma')
+              .setDescription(`Le karma de ${resetCount} utilisateur(s) a été remis à zéro par ${interaction.user}.`)
+              .setColor(0xff9900)
+              .setTimestamp();
+            try {
+              await channel.send({ embeds: [embed] });
+            } catch (_) {}
+          }
+        }
+        
+        return interaction.editReply({ content: `✅ Karma remis à zéro pour ${resetCount} utilisateur(s).` });
+      } else {
+        return interaction.editReply({ content: 'Aucun utilisateur avec du karma à remettre à zéro.' });
+      }
     }
 
     // Confess config handlers
