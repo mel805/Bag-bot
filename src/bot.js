@@ -3321,8 +3321,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON })
         .setTimestamp(new Date());
       const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('S\'approprier').setStyle(ButtonStyle.Success);
+      const transferBtn = new ButtonBuilder().setCustomId('ticket_transfer').setLabel('Transférer').setStyle(ButtonStyle.Secondary);
       const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('Fermer').setStyle(ButtonStyle.Danger);
-      const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
+      const row = new ActionRowBuilder().addComponents(claimBtn, transferBtn, closeBtn);
       await ch.send({ content: `${interaction.user} merci d'expliquer votre demande.`, embeds: [embed], components: [row] }).catch(()=>{});
       await interaction.editReply({ content: `✅ Ticket créé: ${ch}` });
       return;
@@ -3356,6 +3357,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
       // Optionally lock channel
       try { await interaction.channel.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'ticket_transfer') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const select = new UserSelectMenuBuilder()
+        .setCustomId('ticket_transfer_select')
+        .setPlaceholder('Choisir le membre du staff destinataire…')
+        .setMinValues(1)
+        .setMaxValues(1);
+      const row = new ActionRowBuilder().addComponents(select);
+      return interaction.reply({ content: 'Sélectionnez le destinataire du ticket.', components: [row], ephemeral: true });
+    }
+    if (interaction.isUserSelectMenu() && interaction.customId === 'ticket_transfer_select') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const targetId = interaction.values[0];
+      const targetMember = await interaction.guild.members.fetch(targetId).catch(()=>null);
+      if (!targetMember) return interaction.reply({ content: 'Membre introuvable.', ephemeral: true });
+      const targetIsStaff = await isStaffMember(interaction.guild, targetMember);
+      if (!targetIsStaff) return interaction.reply({ content: 'Le destinataire doit être membre du staff.', ephemeral: true });
+      const { setTicketClaim } = require('./storage/jsonStore');
+      const rec = await setTicketClaim(interaction.guild.id, interaction.channel.id, targetId);
+      if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
+      try { await interaction.update({ content: '✅ Ticket transféré.', components: [] }); } catch (_) {}
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_ACCENT)
+        .setTitle('Ticket transféré')
+        .setDescription(`Transféré à ${targetMember} par ${interaction.user}.`)
+        .setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp(new Date());
+      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
       return;
     }
 
