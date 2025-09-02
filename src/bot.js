@@ -3525,7 +3525,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const t = await getTicketsConfig(interaction.guild.id);
       const categories = (t.categories || []).map(c => c.key === key ? { ...c, staffPingRoleIds: interaction.values } : c);
       await updateTicketsConfig(interaction.guild.id, { categories });
-      return interaction.deferUpdate();
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'ping');
+      try { await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] }); }
+      catch (_) { try { await interaction.deferUpdate(); } catch (_) {} }
+      try { await interaction.followUp({ content: '✅ Rôles ping mis à jour.', ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isRoleSelectMenu() && interaction.customId.startsWith('tickets_cat_view_roles:')) {
       const key = interaction.customId.split(':')[1];
@@ -3533,7 +3538,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const t = await getTicketsConfig(interaction.guild.id);
       const categories = (t.categories || []).map(c => c.key === key ? { ...c, extraViewerRoleIds: interaction.values } : c);
       await updateTicketsConfig(interaction.guild.id, { categories });
-      return interaction.deferUpdate();
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'access');
+      try { await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] }); }
+      catch (_) { try { await interaction.deferUpdate(); } catch (_) {} }
+      try { await interaction.followUp({ content: '✅ Rôles d’accès mis à jour.', ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isButton() && interaction.customId === 'tickets_add_cat') {
       const modal = new ModalBuilder().setCustomId('tickets_add_cat_modal').setTitle('Nouvelle catégorie');
