@@ -2356,6 +2356,7 @@ async function buildTicketsRows(guild, submenu) {
       current === 'panel' ? 'Sous-menu: Panel' :
       current === 'ping' ? 'Sous-menu: Rôles à ping' :
       current === 'categories' ? 'Sous-menu: Catégories' :
+      current === 'transcript' ? 'Sous-menu: Transcript' :
       'Sous-menu: Rôles d’accès'
     )
     .setMinValues(1)
@@ -2365,6 +2366,7 @@ async function buildTicketsRows(guild, submenu) {
       { label: 'Rôles à ping', value: 'ping', description: 'Rôles ping à l’ouverture', default: current === 'ping' },
       { label: 'Catégories', value: 'categories', description: 'Gérer les catégories', default: current === 'categories' },
       { label: 'Rôles d’accès', value: 'access', description: 'Rôles ayant accès', default: current === 'access' },
+      { label: 'Transcript', value: 'transcript', description: 'Type et salon de transcription', default: current === 'transcript' },
     );
   const menuRow = new ActionRowBuilder().addComponents(ticketsMenu);
 
@@ -2374,6 +2376,7 @@ async function buildTicketsRows(guild, submenu) {
   const pingStaffToggle = new ButtonBuilder().setCustomId('tickets_toggle_ping_staff').setLabel(t.pingStaffOnOpen ? 'Ping staff: ON' : 'Ping staff: OFF').setStyle(t.pingStaffOnOpen ? ButtonStyle.Success : ButtonStyle.Secondary);
   const newCatBtn = new ButtonBuilder().setCustomId('tickets_add_cat').setLabel('Nouvelle catégorie').setStyle(ButtonStyle.Secondary);
   const remCatBtn = new ButtonBuilder().setCustomId('tickets_remove_cat').setLabel('Retirer catégorie').setStyle(ButtonStyle.Danger);
+  const editCatStartBtn = new ButtonBuilder().setCustomId('tickets_edit_cat_start').setLabel('Modifier catégorie').setStyle(ButtonStyle.Secondary);
 
   const rows = [menuRow];
 
@@ -2393,7 +2396,7 @@ async function buildTicketsRows(guild, submenu) {
       .setPlaceholder('Choisir une catégorie à configurer (rôles ping)…')
       .setMinValues(1)
       .setMaxValues(1);
-    const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
+    const catOpts = (t.categories || []).slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
     if (catOpts.length) catSelectPing.addOptions(...catOpts); else catSelectPing.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
     rows.push(new ActionRowBuilder().addComponents(pingStaffToggle));
     rows.push(new ActionRowBuilder().addComponents(catSelectPing));
@@ -2401,8 +2404,30 @@ async function buildTicketsRows(guild, submenu) {
   }
 
   if (current === 'categories') {
-    const control = new ActionRowBuilder().addComponents(newCatBtn, remCatBtn);
+    const control = new ActionRowBuilder().addComponents(newCatBtn, editCatStartBtn, remCatBtn);
     return [menuRow, control];
+  }
+
+  if (current === 'transcript') {
+    const styleSel = new StringSelectMenuBuilder()
+      .setCustomId('tickets_transcript_style')
+      .setPlaceholder(`Style actuel: ${t.transcript?.style || 'pro'}`)
+      .setMinValues(1)
+      .setMaxValues(1)
+      .addOptions(
+        { label: 'Pro', value: 'pro', description: 'Texte lisible avec en-tête', default: (t.transcript?.style || 'pro') === 'pro' },
+        { label: 'Premium', value: 'premium', description: 'Style premium (accentué)', default: t.transcript?.style === 'premium' },
+        { label: 'Classic', value: 'classic', description: 'Texte brut simple', default: t.transcript?.style === 'classic' },
+      );
+    const transCh = new ChannelSelectMenuBuilder()
+      .setCustomId('tickets_set_transcript_channel')
+      .setPlaceholder(t.transcriptChannelId ? `Salon actuel: <#${t.transcriptChannelId}>` : 'Choisir le salon de transcription…')
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+      .setMinValues(1)
+      .setMaxValues(1);
+    rows.push(new ActionRowBuilder().addComponents(styleSel));
+    rows.push(new ActionRowBuilder().addComponents(transCh));
+    return rows;
   }
 
   // access
@@ -2411,7 +2436,7 @@ async function buildTicketsRows(guild, submenu) {
     .setPlaceholder('Choisir une catégorie à configurer (rôles d’accès)…')
     .setMinValues(1)
     .setMaxValues(1);
-  const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
+  const catOpts = (t.categories || []).slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
   if (catOpts.length) catSelectAccess.addOptions(...catOpts); else catSelectAccess.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
   rows.push(new ActionRowBuilder().addComponents(catSelectAccess));
   return rows;
@@ -3322,7 +3347,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const chId = interaction.values[0];
       await updateTicketsConfig(interaction.guild.id, { transcriptChannelId: chId });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildTicketsRows(interaction.guild, 'panel');
+      const rows = await buildTicketsRows(interaction.guild, 'transcript');
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_transcript_style') {
@@ -3330,7 +3355,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const { updateTicketsConfig } = require('./storage/jsonStore');
       await updateTicketsConfig(interaction.guild.id, { transcript: { style } });
       const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildTicketsRows(interaction.guild, 'panel');
+      const rows = await buildTicketsRows(interaction.guild, 'transcript');
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_pick_cat_ping') {
@@ -3386,16 +3411,73 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
     if (interaction.isButton() && interaction.customId === 'tickets_remove_cat') {
-      const { getTicketsConfig, removeTicketCategory } = require('./storage/jsonStore');
+      const { getTicketsConfig } = require('./storage/jsonStore');
       const t = await getTicketsConfig(interaction.guild.id);
       if (!Array.isArray(t.categories) || !t.categories.length) return interaction.reply({ content: 'Aucune catégorie à retirer.', ephemeral: true });
-      const ids = t.categories.map(c => c.key);
-      // Remove the last selected in UI if available; otherwise remove last
-      const key = ids[ids.length - 1];
+      const select = new StringSelectMenuBuilder()
+        .setCustomId('tickets_remove_cat_pick')
+        .setPlaceholder('Choisir la catégorie à supprimer…')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(...t.categories.slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.key })));
+      const embed = await buildConfigEmbed(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), new ActionRowBuilder().addComponents(select)] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_remove_cat_pick') {
+      await interaction.deferReply({ ephemeral: true });
+      const key = interaction.values[0];
+      const { removeTicketCategory } = require('./storage/jsonStore');
       await removeTicketCategory(interaction.guild.id, key);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTicketsRows(interaction.guild, 'categories');
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      try { await interaction.editReply({ content: '✅ Catégorie supprimée.' }); } catch (_) {}
+      try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_edit_cat_start') {
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      if (!Array.isArray(t.categories) || !t.categories.length) return interaction.reply({ content: 'Aucune catégorie à modifier.', ephemeral: true });
+      const pick = new StringSelectMenuBuilder()
+        .setCustomId('tickets_edit_cat_pick')
+        .setPlaceholder('Choisir la catégorie à modifier…')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(...t.categories.slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.key })));
+      const embed = await buildConfigEmbed(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), new ActionRowBuilder().addComponents(pick)] });
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_edit_cat_pick') {
+      const key = interaction.values[0];
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const cat = (t.categories || []).find(c => c.key === key);
+      if (!cat) return interaction.reply({ content: 'Catégorie introuvable.', ephemeral: true });
+      const modal = new ModalBuilder().setCustomId(`tickets_edit_cat_modal:${key}`).setTitle('Modifier catégorie');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('label').setLabel('Nom visible').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cat.label||''))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Emoji').setStyle(TextInputStyle.Short).setRequired(false).setValue(String(cat.emoji||''))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description').setStyle(TextInputStyle.Paragraph).setRequired(false).setValue(String(cat.description||'')))
+      );
+      try { await interaction.showModal(modal); } catch (_) {}
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('tickets_edit_cat_modal:')) {
+      await interaction.deferReply({ ephemeral: true });
+      const key = interaction.customId.split(':')[1];
+      const label = (interaction.fields.getTextInputValue('label')||'').trim().slice(0, 50);
+      const emoji = (interaction.fields.getTextInputValue('emoji')||'').trim().slice(0, 10);
+      const desc = (interaction.fields.getTextInputValue('desc')||'').trim().slice(0, 200);
+      if (!label) return interaction.editReply({ content: 'Nom requis.' });
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const categories = (t.categories || []).map(c => c.key === key ? { ...c, label, emoji, description: desc } : c);
+      await updateTicketsConfig(interaction.guild.id, { categories });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'categories');
+      try { await interaction.editReply({ content: '✅ Catégorie modifiée.' }); } catch (_) {}
+      try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isButton() && interaction.customId === 'tickets_post_panel') {
       await interaction.deferReply({ ephemeral: true });
