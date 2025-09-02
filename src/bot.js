@@ -2348,12 +2348,13 @@ async function buildConfessRows(guild, mode = 'sfw') {
 async function buildTicketsRows(guild) {
   const { getTicketsConfig } = require('./storage/jsonStore');
   const t = await getTicketsConfig(guild.id);
-  const catAddBtn = new ButtonBuilder().setCustomId('tickets_add_cat').setLabel('Ajouter catégorie').setStyle(ButtonStyle.Secondary);
-  const catRemBtn = new ButtonBuilder().setCustomId('tickets_remove_cat').setLabel('Retirer catégorie').setStyle(ButtonStyle.Danger);
   const panelBtn = new ButtonBuilder().setCustomId('tickets_post_panel').setLabel('Publier panneau').setStyle(ButtonStyle.Primary);
   const pingStaffToggle = new ButtonBuilder().setCustomId('tickets_toggle_ping_staff').setLabel(t.pingStaffOnOpen ? 'Ping staff: ON' : 'Ping staff: OFF').setStyle(t.pingStaffOnOpen ? ButtonStyle.Success : ButtonStyle.Secondary);
+  const editPanelBtn = new ButtonBuilder().setCustomId('tickets_edit_panel').setLabel('Éditer panneau').setStyle(ButtonStyle.Secondary);
+  const newCatBtn = new ButtonBuilder().setCustomId('tickets_add_cat').setLabel('Nouvelle catégorie').setStyle(ButtonStyle.Secondary);
+  const remCatBtn = new ButtonBuilder().setCustomId('tickets_remove_cat').setLabel('Retirer catégorie').setStyle(ButtonStyle.Danger);
 
-  const controlRow = new ActionRowBuilder().addComponents(catAddBtn, catRemBtn, panelBtn, pingStaffToggle);
+  const controlRow = new ActionRowBuilder().addComponents(panelBtn, pingStaffToggle, editPanelBtn, newCatBtn, remCatBtn);
 
   const channelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_category').setPlaceholder('Catégorie Discord pour les tickets…').addChannelTypes(ChannelType.GuildCategory).setMinValues(1).setMaxValues(1);
   const panelChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_panel_channel').setPlaceholder('Salon pour publier le panneau…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
@@ -3348,6 +3349,45 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!msg) return interaction.editReply({ content: 'Impossible d\'envoyer le panneau.' });
       await updateTicketsConfig(interaction.guild.id, { panelMessageId: msg.id });
       return interaction.editReply({ content: '✅ Panneau publié.' });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_edit_panel') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member || !(await isStaffMember(interaction.guild, member))) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const modal = new ModalBuilder().setCustomId('tickets_edit_panel_modal').setTitle('Éditer le panneau');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('title').setLabel('Titre').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(t.panelTitle||'')) ),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('text').setLabel('Description').setStyle(TextInputStyle.Paragraph).setRequired(true).setValue(String(t.panelText||'')) )
+      );
+      try { await interaction.showModal(modal); } catch (_) {}
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === 'tickets_edit_panel_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const title = (interaction.fields.getTextInputValue('title')||'').trim().slice(0, 100);
+      const text = (interaction.fields.getTextInputValue('text')||'').trim().slice(0, 1000);
+      const { updateTicketsConfig, getTicketsConfig } = require('./storage/jsonStore');
+      await updateTicketsConfig(interaction.guild.id, { panelTitle: title, panelText: text });
+      // Optionally update existing panel message if configured
+      try {
+        const t = await getTicketsConfig(interaction.guild.id);
+        if (t.panelChannelId && t.panelMessageId) {
+          const ch = interaction.guild.channels.cache.get(t.panelChannelId) || await interaction.guild.channels.fetch(t.panelChannelId).catch(()=>null);
+          const msg = ch ? (await ch.messages.fetch(t.panelMessageId).catch(()=>null)) : null;
+          if (msg) {
+            const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(text).setThumbnail(THEME_IMAGE).setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
+            const { getTicketsConfig } = require('./storage/jsonStore');
+            const cfg = await getTicketsConfig(interaction.guild.id);
+            const select = new StringSelectMenuBuilder().setCustomId('ticket_open').setPlaceholder('Sélectionnez une catégorie…').setMinValues(1).setMaxValues(1);
+            const opts = (cfg.categories || []).slice(0, 25).map(c => ({ label: c.label, value: c.key, description: c.description?.slice(0, 90) || undefined, emoji: c.emoji || undefined }));
+            if (opts.length) select.addOptions(...opts);
+            const row = new ActionRowBuilder().addComponents(select);
+            await msg.edit({ embeds: [embed], components: [row] }).catch(()=>{});
+          }
+        }
+      } catch (_) {}
+      return interaction.editReply({ content: '✅ Panneau mis à jour.' });
     }
     if (interaction.isButton() && interaction.customId === 'tickets_toggle_ping_staff') {
       const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
