@@ -5947,65 +5947,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const id = choice.split(':')[1];
         const it = (eco.shop?.items || []).find(x => String(x.id) === String(id));
         if (!it) return interaction.reply({ content: 'Article indisponible.', ephemeral: true });
-        let price = Number(it.price||0);
-        // Booster shop price multiplier
-        try {
-          const b = eco.booster || {};
-          const mem = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
-          const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
-          if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) price = Math.floor(price * Number(b.shopPriceMult));
-        } catch (_) {}
-        // Apply karma shop discounts/penalties
-        try {
-          const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
-          const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
-          const perc = (eco.karmaModifiers?.shop || []).reduce((acc, r) => {
-            try {
-              const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
-              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
-              // eslint-disable-next-line no-eval
-              const ok = !!eval(expr);
-              return ok ? acc + Number(r.percent||0) : acc;
-            } catch (_) { return acc; }
-          }, 0);
-          const factor = Math.max(0, 1 + perc / 100);
-          price = Math.max(0, Math.floor(price * factor));
-        } catch (_) {}
-        if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
-        u.amount = (u.amount||0) - price;
+        
+        const basePrice = Number(it.price || 0);
+        const finalPrice = await calculateShopPrice(interaction.guild, interaction.user, basePrice);
+        
+        if ((u.amount || 0) < finalPrice) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
+        
+        u.amount = (u.amount || 0) - finalPrice;
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
-        const embed = buildEcoEmbed({ title: 'Achat réussi', description: `Vous avez acheté: ${it.name||it.id} pour ${price} ${eco.currency?.name || 'BAG$'}`, fields: [ { name: 'Solde', value: String(u.amount), inline: true } ] });
+        
+        const priceText = finalPrice === basePrice ? `${finalPrice}` : `${finalPrice} (au lieu de ${basePrice})`;
+        const embed = buildEcoEmbed({ 
+          title: 'Achat réussi', 
+          description: `Vous avez acheté: ${it.name || it.id} pour ${priceText} ${eco.currency?.name || 'BAG$'}`, 
+          fields: [{ name: 'Solde', value: String(u.amount), inline: true }] 
+        });
         return interaction.update({ embeds: [embed], components: [] });
       }
       if (choice.startsWith('role:')) {
         const [, roleId, durStr] = choice.split(':');
         const entry = (eco.shop?.roles || []).find(r => String(r.roleId) === String(roleId) && String(r.durationDays||0) === String(Number(durStr)||0));
         if (!entry) return interaction.reply({ content: 'Rôle indisponible.', ephemeral: true });
-        let price = Number(entry.price||0);
-        // Booster shop price multiplier
-        try {
-          const b = eco.booster || {};
-          const mem = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
-          const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
-          if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) price = Math.floor(price * Number(b.shopPriceMult));
-        } catch (_) {}
-        // Apply karma shop modifiers
-        try {
-          const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
-          const perc = (eco.karmaModifiers?.shop || []).reduce((acc, r) => {
-            try {
-              const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
-              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
-              // eslint-disable-next-line no-eval
-              const ok = !!eval(expr);
-              return ok ? acc + Number(r.percent||0) : acc;
-            } catch (_) { return acc; }
-          }, 0);
-          const factor = Math.max(0, 1 + perc / 100);
-          price = Math.max(0, Math.floor(price * factor));
-        } catch (_) {}
-        if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
-        u.amount = (u.amount||0) - price;
+        
+        const basePrice = Number(entry.price || 0);
+        const finalPrice = await calculateShopPrice(interaction.guild, interaction.user, basePrice);
+        
+        if ((u.amount || 0) < finalPrice) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
+        u.amount = (u.amount||0) - finalPrice;
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
         try {
           const member = await interaction.guild.members.fetch(interaction.user.id);
@@ -6020,40 +5988,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await updateEconomyConfig(interaction.guild.id, eco2);
         }
         const label = entry.name || (interaction.guild.roles.cache.get(roleId)?.name) || roleId;
-        const embed = buildEcoEmbed({ title: 'Achat réussi', description: `Rôle attribué: ${label} (${entry.durationDays?`${entry.durationDays}j`:'permanent'}) pour ${price} ${eco.currency?.name || 'BAG$'}`, fields: [ { name: 'Solde', value: String(u.amount), inline: true } ] });
+        const priceText = finalPrice === basePrice ? `${finalPrice}` : `${finalPrice} (au lieu de ${basePrice})`;
+        const embed = buildEcoEmbed({ 
+          title: 'Achat réussi', 
+          description: `Rôle attribué: ${label} (${entry.durationDays?`${entry.durationDays}j`:'permanent'}) pour ${priceText} ${eco.currency?.name || 'BAG$'}`, 
+          fields: [{ name: 'Solde', value: String(u.amount), inline: true }] 
+        });
         return interaction.update({ embeds: [embed], components: [] });
       }
       if (choice.startsWith('suite:')) {
         const key = choice.split(':')[1];
         const prices = eco.suites?.prices || { day:0, week:0, month:0 };
         const daysMap = { day: eco.suites?.durations?.day || 1, week: eco.suites?.durations?.week || 7, month: eco.suites?.durations?.month || 30 };
-        let price = Number(prices[key]||0);
-        // Booster shop price multiplier
-        try {
-          const b = eco.booster || {};
-          const mem = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
-          const isBooster = Boolean(mem?.premiumSince || mem?.premiumSinceTimestamp);
-          if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) price = Math.floor(price * Number(b.shopPriceMult));
-        } catch (_) {}
-        // Apply karma shop modifiers
-        try {
-          const actorCharm = u.charm || 0; const actorPerv = u.perversion || 0;
-          const perc = (eco.karmaModifiers?.shop || []).reduce((acc, r) => {
-            try {
-              const expr = String(r.condition||'').toLowerCase().replace(/charm/g, String(actorCharm)).replace(/perversion/g, String(actorPerv));
-              if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
-              // eslint-disable-next-line no-eval
-              const ok = !!eval(expr);
-              return ok ? acc + Number(r.percent||0) : acc;
-            } catch (_) { return acc; }
-          }, 0);
-          const factor = Math.max(0, 1 + perc / 100);
-          price = Math.max(0, Math.floor(price * factor));
-        } catch (_) {}
-        if ((u.amount||0) < price) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
+        
+        const basePrice = Number(prices[key] || 0);
+        const finalPrice = await calculateShopPrice(interaction.guild, interaction.user, basePrice);
+        
+        if ((u.amount || 0) < finalPrice) return interaction.reply({ content: 'Solde insuffisant.', ephemeral: true });
+        
         const categoryId = eco.suites?.categoryId || '';
         if (!categoryId) return interaction.reply({ content: 'Catégorie des suites non définie. Configurez-la dans /config → Économie → Suites.', ephemeral: true });
-        u.amount = (u.amount||0) - price;
+        
+        u.amount = (u.amount || 0) - finalPrice;
         await setEconomyUser(interaction.guild.id, interaction.user.id, u);
         // Create private channels
         const parent = interaction.guild.channels.cache.get(categoryId);
@@ -6127,7 +6083,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
           }
         }
         
-        const responseEmbed = buildEcoEmbed({ title: 'Suite privée créée', description: `Vos salons privés ont été créés pour ${daysMap[key]} jour(s).`, fields: [ { name: 'Texte', value: `<#${text.id}>`, inline: true }, { name: 'Vocal', value: `<#${voice.id}>`, inline: true }, { name: 'Expiration', value: `<t:${Math.floor(until/1000)}:R>`, inline: true } ] });
+        const priceText = finalPrice === basePrice ? `${finalPrice}` : `${finalPrice} (au lieu de ${basePrice})`;
+        const responseEmbed = buildEcoEmbed({ 
+          title: 'Suite privée créée', 
+          description: `Vos salons privés ont été créés pour ${daysMap[key]} jour(s) pour ${priceText} ${eco.currency?.name || 'BAG$'}.`, 
+          fields: [ 
+            { name: 'Texte', value: `<#${text.id}>`, inline: true }, 
+            { name: 'Vocal', value: `<#${voice.id}>`, inline: true }, 
+            { name: 'Expiration', value: `<t:${Math.floor(until/1000)}:R>`, inline: true },
+            { name: 'Solde', value: String(u.amount), inline: true }
+          ] 
+        });
         return interaction.update({ embeds: [responseEmbed], components: [] });
       }
       return interaction.reply({ content: 'Choix invalide.', ephemeral: true });
@@ -7167,6 +7133,34 @@ function calculateKarmaShopModifier(karmaModifiers, userCharm, userPerversion) {
   }, 0);
 }
 
+// Calculate final shop price with cumulative booster and karma modifiers
+async function calculateShopPrice(guild, user, basePrice) {
+  const eco = await getEconomyConfig(guild.id);
+  const userEco = await getEconomyUser(guild.id, user.id);
+  
+  let totalDiscountPercent = 0;
+  
+  // Add booster discount
+  try {
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const isBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
+    const b = eco.booster || {};
+    if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
+      const boosterMult = Number(b.shopPriceMult);
+      const boosterDiscountPercent = (1 - boosterMult) * 100;
+      totalDiscountPercent += boosterDiscountPercent;
+    }
+  } catch (_) {}
+  
+  // Add karma discount
+  const karmaPercent = calculateKarmaShopModifier(eco.karmaModifiers?.shop, userEco.charm || 0, userEco.perversion || 0);
+  totalDiscountPercent += karmaPercent;
+  
+  // Apply cumulative discount
+  const finalMultiplier = Math.max(0, 1 - totalDiscountPercent / 100);
+  return Math.max(0, Math.floor(basePrice * finalMultiplier));
+}
+
 // Build detailed boutique embed showing base prices and karma-modified prices
 async function buildBoutiqueEmbed(guild, user) {
   const eco = await getEconomyConfig(guild.id);
@@ -7197,42 +7191,72 @@ async function buildBoutiqueEmbed(guild, user) {
     .setThumbnail(THEME_IMAGE)
     .setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON });
   
+  // Calculate total discount for display
+  let totalDiscountPercent = 0;
+  if (isBooster && boosterMult !== 1) {
+    totalDiscountPercent += (1 - boosterMult) * 100;
+  }
+  totalDiscountPercent += karmaPercent;
+  
   // User info
   let description = `💰 **Votre solde :** ${userEco.amount || 0} ${currency}\n`;
   description += `✨ **Charme :** ${userCharm} | 😈 **Perversion :** ${userPerversion}\n`;
   
+  // Show individual modifiers
   if (isBooster && boosterMult !== 1) {
-    description += `🚀 **Booster :** x${boosterMult} sur tous les prix\n`;
+    const boosterDiscount = (1 - boosterMult) * 100;
+    description += `🚀 **Bonus booster :** -${Math.round(boosterDiscount)}%\n`;
   }
   if (karmaPercent !== 0) {
     const sign = karmaPercent > 0 ? '+' : '';
-    description += `🎯 **Modification karma :** ${sign}${karmaPercent}% sur tous les prix\n`;
+    description += `🎯 **Modification karma :** ${sign}${karmaPercent}%\n`;
   }
+  
+  // Show total cumulative discount
+  if (totalDiscountPercent !== 0) {
+    const sign = totalDiscountPercent > 0 ? '+' : '';
+    const totalText = totalDiscountPercent >= 100 ? '**ARTICLES GRATUITS!** 🎉' : `**Total : ${sign}${Math.round(totalDiscountPercent)}%**`;
+    description += `💸 **Remise cumulée :** ${totalText}\n`;
+  }
+  
   description += '\n**Articles disponibles :**';
   
   embed.setDescription(description);
   
   const fields = [];
   
-  // Helper function to calculate final price with all modifiers
+  // Helper function to calculate final price with cumulative modifiers
   const calculateFinalPrice = (basePrice) => {
     let price = basePrice;
-    // Apply booster multiplier first
+    
+    // Calculate total discount percentage
+    let totalDiscountPercent = 0;
+    
+    // Add booster discount (convert multiplier to percentage)
     if (isBooster && boosterMult !== 1) {
-      price = Math.floor(price * boosterMult);
+      const boosterDiscountPercent = (1 - boosterMult) * 100;
+      totalDiscountPercent += boosterDiscountPercent;
     }
-    // Then apply karma modifier
-    price = Math.max(0, Math.floor(price * karmaFactor));
-    return price;
+    
+    // Add karma discount percentage
+    totalDiscountPercent += karmaPercent;
+    
+    // Apply cumulative discount (can go to 0 but not negative)
+    const finalMultiplier = Math.max(0, 1 - totalDiscountPercent / 100);
+    price = Math.max(0, Math.floor(basePrice * finalMultiplier));
+    
+    return { finalPrice: price, totalDiscountPercent };
   };
   
-  // Helper function to format price display
+  // Helper function to format price display with discount info
   const formatPrice = (basePrice) => {
-    const finalPrice = calculateFinalPrice(basePrice);
+    const { finalPrice, totalDiscountPercent } = calculateFinalPrice(basePrice);
+    
     if (finalPrice === basePrice) {
       return `**${finalPrice}** ${currency}`;
     } else {
-      return `~~${basePrice}~~ **${finalPrice}** ${currency}`;
+      const discountText = totalDiscountPercent >= 100 ? ' (GRATUIT!)' : ` (-${Math.round(totalDiscountPercent)}%)`;
+      return `~~${basePrice}~~ **${finalPrice}** ${currency}${discountText}`;
     }
   };
   
