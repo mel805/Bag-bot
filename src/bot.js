@@ -7752,9 +7752,12 @@ async function calculateShopPrice(guild, user, basePrice) {
   
   // Add booster discount
   try {
-    const member = await guild.members.fetch(user.id).catch(() => null);
-    const isBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
     const b = eco.booster || {};
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const isNitroBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
+    const boosterRoleIds = Array.isArray(b.roles) ? b.roles.map(String) : [];
+    const hasBoosterRole = member ? boosterRoleIds.some((rid) => member.roles?.cache?.has(rid)) : false;
+    const isBooster = isNitroBooster || hasBoosterRole;
     if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
       const boosterMult = Number(b.shopPriceMult);
       const boosterDeltaPercent = -((1 - boosterMult) * 100); // remise → delta négatif
@@ -7783,9 +7786,12 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   let isBooster = false;
   let boosterMult = 1;
   try {
-    const member = await guild.members.fetch(user.id).catch(() => null);
-    isBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
     const b = eco.booster || {};
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const isNitroBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
+    const boosterRoleIds = Array.isArray(b.roles) ? b.roles.map(String) : [];
+    const hasBoosterRole = member ? boosterRoleIds.some((rid) => member.roles?.cache?.has(rid)) : false;
+    isBooster = isNitroBooster || hasBoosterRole;
     if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
       boosterMult = Number(b.shopPriceMult);
     }
