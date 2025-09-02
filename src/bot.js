@@ -1886,9 +1886,10 @@ async function buildBoosterRows(guild) {
 
 // Build rows to manage karma-based discounts/penalties
 async function buildEconomyKarmaRows(guild) {
-  const eco = await getEconomyConfig(guild.id);
-  // Selected type
-  const type = client._ecoKarmaType?.get?.(guild.id) || 'shop';
+  try {
+    const eco = await getEconomyConfig(guild.id);
+    // Selected type
+    const type = client._ecoKarmaType?.get?.(guild.id) || 'shop';
   const typeSelect = new StringSelectMenuBuilder()
     .setCustomId('eco_karma_type')
     .setPlaceholder('Type de règles…')
@@ -1932,6 +1933,17 @@ async function buildEconomyKarmaRows(guild) {
   const rowReset = new ActionRowBuilder().addComponents(resetSelect);
   
   return [rowType, rowRules, rowActions, rowReset];
+  } catch (error) {
+    console.error('[Karma] Failed to build karma rows:', error.message);
+    // Return basic error row
+    const errorRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('karma_error_retry')
+        .setLabel('❌ Erreur karma - Réessayer')
+        .setStyle(ButtonStyle.Danger)
+    );
+    return [errorRow];
+  }
 }
 
 async function buildAutoThreadRows(guild, page = 0) {
@@ -3093,7 +3105,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMax').setLabel('Argent échec max').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMax||0))),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failKarmaDelta').setLabel('Delta Karma (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failKarmaDelta||0)))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { 
+        return await interaction.showModal(modal); 
+      } catch (error) { 
+        console.error('[Karma] Failed to show karma modal:', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire karma. Veuillez réessayer.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isButton() && interaction.customId.startsWith('economy_action_edit_partner:')) {
       const key = interaction.customId.split(':')[1];
@@ -3122,21 +3139,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: '✅ Paramètres mis à jour.' });
     }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_action_karma_modal:')) {
-      await interaction.deferReply({ ephemeral: true });
-      const key = interaction.customId.split(':')[1];
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const c = (eco.actions?.config || {})[key] || {};
-      const karma = String((interaction.fields.getTextInputValue('karma')||'none').trim());
-      const karmaDelta = Number((interaction.fields.getTextInputValue('karmaDelta')||'0').trim());
-      const failMoneyMin = Number((interaction.fields.getTextInputValue('failMoneyMin')||'0').trim());
-      const failMoneyMax = Number((interaction.fields.getTextInputValue('failMoneyMax')||'0').trim());
-      const failKarmaDelta = Number((interaction.fields.getTextInputValue('failKarmaDelta')||'0').trim());
-      if (!['charm','perversion','none'].includes(karma)) return interaction.editReply({ content: 'Type karma invalide.' });
-      if (!eco.actions) eco.actions = {};
-      if (!eco.actions.config) eco.actions.config = {};
-      eco.actions.config[key] = { ...(c||{}), karma, karmaDelta, failMoneyMin, failMoneyMax, failKarmaDelta };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      return interaction.editReply({ content: '✅ Karma mis à jour.' });
+      try {
+        await interaction.deferReply({ ephemeral: true });
+        const key = interaction.customId.split(':')[1];
+        const eco = await getEconomyConfig(interaction.guild.id);
+        const c = (eco.actions?.config || {})[key] || {};
+        const karma = String((interaction.fields.getTextInputValue('karma')||'none').trim());
+        const karmaDelta = Number((interaction.fields.getTextInputValue('karmaDelta')||'0').trim());
+        const failMoneyMin = Number((interaction.fields.getTextInputValue('failMoneyMin')||'0').trim());
+        const failMoneyMax = Number((interaction.fields.getTextInputValue('failMoneyMax')||'0').trim());
+        const failKarmaDelta = Number((interaction.fields.getTextInputValue('failKarmaDelta')||'0').trim());
+        if (!['charm','perversion','none'].includes(karma)) return interaction.editReply({ content: 'Type karma invalide.' });
+        if (!eco.actions) eco.actions = {};
+        if (!eco.actions.config) eco.actions.config = {};
+        eco.actions.config[key] = { ...(c||{}), karma, karmaDelta, failMoneyMin, failMoneyMax, failKarmaDelta };
+        await updateEconomyConfig(interaction.guild.id, eco);
+        return interaction.editReply({ content: '✅ Karma mis à jour.' });
+      } catch (error) {
+        console.error('[Karma] Modal submission failed:', error.message);
+        return interaction.editReply({ content: '❌ Erreur lors de la sauvegarde des réglages karma.' }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_action_partner_modal:')) {
       await interaction.deferReply({ ephemeral: true });
@@ -3208,7 +3230,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const type = interaction.customId.split(':')[1] || 'shop';
       if (!client._ecoKarmaSel) client._ecoKarmaSel = new Map();
       client._ecoKarmaSel.set(`${interaction.guild.id}:${type}`, interaction.values);
-      try { await interaction.deferUpdate(); } catch (_) {}
+      try { 
+        await interaction.deferUpdate(); 
+      } catch (error) { 
+        console.error('[Karma] Failed to defer update for karma rules selection:', error.message);
+        // Try to reply with error if defer failed
+        try {
+          await interaction.reply({ content: '❌ Erreur lors de la sélection des règles karma.', ephemeral: true });
+        } catch (_) {}
+      }
     }
     if (interaction.isButton() && interaction.customId === 'eco_karma_delete') {
       const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
@@ -3240,7 +3270,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.money||0)))
         );
-        try { return await interaction.showModal(modal); } catch (_) { return; }
+        try { 
+          return await interaction.showModal(modal); 
+        } catch (error) { 
+          console.error('[Karma] Failed to show karma grant edit modal:', error.message);
+          return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire d\'édition grant karma.', ephemeral: true }).catch(() => {});
+        }
       } else {
         const modal = new ModalBuilder().setCustomId(`eco_karma_edit_perc:${type}:${idx}`).setTitle('Modifier règle (%)');
         modal.addComponents(
@@ -3248,7 +3283,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.percent||0)))
         );
-        try { return await interaction.showModal(modal); } catch (_) { return; }
+        try { 
+          return await interaction.showModal(modal); 
+        } catch (error) { 
+          console.error('[Karma] Failed to show karma percentage edit modal:', error.message);
+          return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire d\'édition règle karma.', ephemeral: true }).catch(() => {});
+        }
       }
     }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('eco_karma_edit_grant:')) {
@@ -3297,7 +3337,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>=50, perversion>=100)').setStyle(TextInputStyle.Short).setRequired(true)),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (ex: -10 pour -10%)').setStyle(TextInputStyle.Short).setRequired(true))
       );
-      try { return await interaction.showModal(modal); } catch (_) { return; }
+      try { 
+        return await interaction.showModal(modal); 
+      } catch (error) { 
+        console.error('[Karma] Failed to show karma shop add modal:', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire d\'ajout de règle boutique karma.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId === 'eco_karma_add_shop') {
       await interaction.deferReply({ ephemeral: true });
