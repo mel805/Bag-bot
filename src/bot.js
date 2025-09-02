@@ -968,6 +968,7 @@ function buildTopSectionRow() {
       { label: 'AutoKick', value: 'autokick', description: "Configurer l'auto-kick" },
       { label: 'Levels', value: 'levels', description: 'Configurer XP & niveaux' },
       { label: 'Économie', value: 'economy', description: "Configurer l'économie" },
+      { label: 'Tickets', value: 'tickets', description: 'Configurer les tickets' },
       { label: 'Booster', value: 'booster', description: 'Récompenses boosters de serveur' },
       { label: 'Action/Vérité', value: 'truthdare', description: 'Configurer le jeu' },
       { label: 'Confessions', value: 'confess', description: 'Configurer les confessions anonymes' },
@@ -2344,6 +2345,33 @@ async function buildConfessRows(guild, mode = 'sfw') {
   return rows;
 }
 
+async function buildTicketsRows(guild) {
+  const { getTicketsConfig } = require('./storage/jsonStore');
+  const t = await getTicketsConfig(guild.id);
+  const categorySelect = new StringSelectMenuBuilder()
+    .setCustomId('tickets_cat')
+    .setPlaceholder('Catégories de tickets…')
+    .setMinValues(1)
+    .setMaxValues(Math.min(25, Math.max(1, (t.categories || []).length || 1)));
+  const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.description?.slice(0, 90) || undefined }));
+  if (catOpts.length) categorySelect.addOptions(...catOpts);
+  else categorySelect.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
+
+  const catAddBtn = new ButtonBuilder().setCustomId('tickets_add_cat').setLabel('Ajouter catégorie').setStyle(ButtonStyle.Secondary);
+  const catRemBtn = new ButtonBuilder().setCustomId('tickets_remove_cat').setLabel('Retirer catégorie').setStyle(ButtonStyle.Danger);
+  const panelBtn = new ButtonBuilder().setCustomId('tickets_post_panel').setLabel('Publier panneau').setStyle(ButtonStyle.Primary);
+
+  const categoryRow = new ActionRowBuilder().addComponents(categorySelect);
+  const controlRow = new ActionRowBuilder().addComponents(catAddBtn, catRemBtn, panelBtn);
+
+  const channelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_category').setPlaceholder('Catégorie Discord pour les tickets…').addChannelTypes(ChannelType.GuildCategory).setMinValues(1).setMaxValues(1);
+  const panelChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_panel_channel').setPlaceholder('Salon pour publier le panneau…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
+  const channelsRow = new ActionRowBuilder().addComponents(channelSelect);
+  const panelChannelRow = new ActionRowBuilder().addComponents(panelChannelSelect);
+
+  return [categoryRow, controlRow, channelsRow, panelChannelRow];
+}
+
 function actionKeyToLabel(key) {
   const map = {
     work: 'travailler',
@@ -3142,6 +3170,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
             content: '❌ Erreur lors du chargement de la configuration économie. Cache vidé, réessayez.' 
           });
         }
+      } else if (section === 'tickets') {
+        const rows = await buildTicketsRows(interaction.guild);
+        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'truthdare') {
         const rows = await buildTruthDareRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
@@ -3173,6 +3204,158 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else {
         await interaction.update({ embeds: [embed], components: [buildBackRow()] });
       }
+      return;
+    }
+
+    // Tickets config handlers
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_category') {
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      const catId = interaction.values[0];
+      await updateTicketsConfig(interaction.guild.id, { categoryId: catId });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_panel_channel') {
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      const chId = interaction.values[0];
+      await updateTicketsConfig(interaction.guild.id, { panelChannelId: chId });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_add_cat') {
+      const modal = new ModalBuilder().setCustomId('tickets_add_cat_modal').setTitle('Nouvelle catégorie');
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('key').setLabel('Clé (unique)').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('label').setLabel('Nom visible').setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Emoji (optionnel)').setStyle(TextInputStyle.Short).setRequired(false)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description').setStyle(TextInputStyle.Paragraph).setRequired(false))
+      );
+      try { await interaction.showModal(modal); } catch (_) {}
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_remove_cat') {
+      const { getTicketsConfig, removeTicketCategory } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      if (!Array.isArray(t.categories) || !t.categories.length) return interaction.reply({ content: 'Aucune catégorie à retirer.', ephemeral: true });
+      const ids = t.categories.map(c => c.key);
+      // Remove the last selected in UI if available; otherwise remove last
+      const key = ids[ids.length - 1];
+      await removeTicketCategory(interaction.guild.id, key);
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_post_panel') {
+      await interaction.deferReply({ ephemeral: true });
+      const { getTicketsConfig, updateTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const panelChannel = interaction.guild.channels.cache.get(t.panelChannelId) || await interaction.guild.channels.fetch(t.panelChannelId).catch(()=>null);
+      if (!panelChannel || !panelChannel.isTextBased?.()) {
+        return interaction.editReply({ content: 'Configurez d\'abord le salon du panneau.' });
+      }
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle(t.panelTitle || '🎫 Ouvrir un ticket')
+        .setDescription(t.panelText || 'Choisissez une catégorie pour créer un ticket. Un membre du staff vous assistera.')
+        .setThumbnail(THEME_IMAGE)
+        .setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp(new Date());
+      const select = new StringSelectMenuBuilder().setCustomId('ticket_open').setPlaceholder('Sélectionnez une catégorie…').setMinValues(1).setMaxValues(1);
+      const opts = (t.categories || []).slice(0, 25).map(c => ({ label: c.label, value: c.key, description: c.description?.slice(0, 90) || undefined, emoji: c.emoji || undefined }));
+      if (!opts.length) return interaction.editReply({ content: 'Ajoutez au moins une catégorie de ticket.' });
+      select.addOptions(...opts);
+      const row = new ActionRowBuilder().addComponents(select);
+      const msg = await panelChannel.send({ embeds: [embed], components: [row] }).catch(()=>null);
+      if (!msg) return interaction.editReply({ content: 'Impossible d\'envoyer le panneau.' });
+      await updateTicketsConfig(interaction.guild.id, { panelMessageId: msg.id });
+      return interaction.editReply({ content: '✅ Panneau publié.' });
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'tickets_add_cat_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      const key = (interaction.fields.getTextInputValue('key')||'').trim().slice(0, 50);
+      const label = (interaction.fields.getTextInputValue('label')||'').trim().slice(0, 50);
+      const emoji = (interaction.fields.getTextInputValue('emoji')||'').trim().slice(0, 10);
+      const desc = (interaction.fields.getTextInputValue('desc')||'').trim().slice(0, 200);
+      if (!key || !label) return interaction.editReply({ content: 'Clé et nom requis.' });
+      const { addTicketCategory } = require('./storage/jsonStore');
+      await addTicketCategory(interaction.guild.id, { key, label, emoji, description: desc });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      try { await interaction.editReply({ content: '✅ Catégorie ajoutée.' }); } catch (_) {}
+      try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
+      return;
+    }
+
+    // Ticket open via panel
+    if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_open') {
+      await interaction.deferReply({ ephemeral: true });
+      const { getTicketsConfig, addTicketRecord } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const catKey = interaction.values[0];
+      const cat = (t.categories || []).find(c => c.key === catKey);
+      if (!cat) return interaction.editReply({ content: 'Catégorie invalide.' });
+      const parent = t.categoryId ? (interaction.guild.channels.cache.get(t.categoryId) || await interaction.guild.channels.fetch(t.categoryId).catch(()=>null)) : null;
+      const channelName = `ticket-${String(t.counter || 1)}`;
+      const ch = await interaction.guild.channels.create({ name: channelName, parent: parent?.id, type: ChannelType.GuildText, topic: `Ticket ${channelName} • ${interaction.user.tag} • ${cat.label}` }).catch(()=>null);
+      if (!ch) return interaction.editReply({ content: 'Impossible de créer le ticket.' });
+      await ch.permissionOverwrites?.create?.(interaction.user.id, { ViewChannel: true, SendMessages: true }).catch(()=>{});
+      try {
+        const staffIds = await getGuildStaffRoleIds(interaction.guild.id);
+        for (const rid of staffIds) {
+          await ch.permissionOverwrites?.create?.(rid, { ViewChannel: true, SendMessages: true }).catch(()=>{});
+        }
+      } catch (_) {}
+      await addTicketRecord(interaction.guild.id, ch.id, interaction.user.id, catKey);
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_PRIMARY)
+        .setTitle(`${cat.emoji ? cat.emoji + ' ' : ''}Ticket • ${cat.label}`)
+        .setDescription(`${cat.description || 'Expliquez votre demande ci-dessous.'}`)
+        .addFields(
+          { name: 'Auteur', value: `${interaction.user}`, inline: true },
+          { name: 'Catégorie', value: `${cat.label}`, inline: true }
+        )
+        .setThumbnail(interaction.user.displayAvatarURL?.() || THEME_IMAGE)
+        .setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON })
+        .setTimestamp(new Date());
+      const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('S\'approprier').setStyle(ButtonStyle.Success);
+      const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('Fermer').setStyle(ButtonStyle.Danger);
+      const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
+      await ch.send({ content: `${interaction.user} merci d'expliquer votre demande.`, embeds: [embed], components: [row] }).catch(()=>{});
+      await interaction.editReply({ content: `✅ Ticket créé: ${ch}` });
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'ticket_claim') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { setTicketClaim, getTicketsConfig } = require('./storage/jsonStore');
+      const rec = await setTicketClaim(interaction.guild.id, interaction.channel.id, interaction.user.id);
+      if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const t = await getTicketsConfig(interaction.guild.id);
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('Ticket pris en charge').setDescription(`${interaction.user} prend en charge ce ticket.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
+      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === 'ticket_close') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { closeTicketRecord, getTicketsConfig } = require('./storage/jsonStore');
+      const rec = await closeTicketRecord(interaction.guild.id, interaction.channel.id);
+      if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const t = await getTicketsConfig(interaction.guild.id);
+      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Ticket fermé').setDescription(`Fermé par ${interaction.user}.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
+      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
+      // Optionally lock channel
+      try { await interaction.channel.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
       return;
     }
 
