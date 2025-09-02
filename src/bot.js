@@ -1925,57 +1925,6 @@ async function buildBoosterRows(guild) {
   return [row1, row2, row3, row4];
 }
 
-// Helper: determine if member is a server booster
-function isServerBooster(member) {
-  try {
-    return Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
-  } catch (_) {
-    return false;
-  }
-}
-
-// Reconcile booster roles for a single member
-async function reconcileBoosterRolesForMember(guild, member) {
-  try {
-    const eco = await getEconomyConfig(guild.id);
-    const booster = eco.booster || {};
-    const roleIds = Array.isArray(booster.roles) ? booster.roles : [];
-    if (!roleIds.length) return;
-    const boosting = isServerBooster(member);
-    if (boosting) {
-      for (const rid of roleIds) {
-        try {
-          if (!member.roles.cache.has(rid)) await member.roles.add(rid).catch(()=>{});
-        } catch (_) {}
-      }
-    } else {
-      for (const rid of roleIds) {
-        try {
-          if (member.roles.cache.has(rid)) await member.roles.remove(rid).catch(()=>{});
-        } catch (_) {}
-      }
-    }
-  } catch (e) {
-    try { console.warn('[BoosterRoles] reconcile member failed:', e?.message || e); } catch (_) {}
-  }
-}
-
-// Reconcile booster roles for all members in a guild
-async function reconcileBoosterRolesForGuild(guild) {
-  try {
-    const eco = await getEconomyConfig(guild.id);
-    const booster = eco.booster || {};
-    const roleIds = Array.isArray(booster.roles) ? booster.roles : [];
-    if (!roleIds.length) return;
-    const members = await guild.members.fetch().catch(() => null);
-    if (!members) return;
-    for (const [, mem] of members) {
-      await reconcileBoosterRolesForMember(guild, mem);
-    }
-  } catch (e) {
-    try { console.warn('[BoosterRoles] reconcile guild failed:', guild?.id, e?.message || e); } catch (_) {}
-  }
-}
 
 // Initialize and validate economy cache maps
 function initializeEconomyCaches() {
@@ -2561,14 +2510,6 @@ client.once(Events.ClientReady, (readyClient) => {
   setInterval(() => {
     validateKarmaCache();
   }, 30 * 60 * 1000);
-  // Periodic reconcile of booster roles (every 15 minutes)
-  setInterval(async () => {
-    try {
-      for (const [gid, guild] of client.guilds.cache) {
-        await reconcileBoosterRolesForGuild(guild);
-      }
-    } catch (_) {}
-  }, 15 * 60 * 1000);
   
   startYtProxyServer();
   if (shouldEnableLocalLavalink()) {
@@ -3662,8 +3603,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, { booster: b });
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildBoosterRows(interaction.guild);
-      // reconcile for current member as immediate effect
-      try { const mem = await interaction.guild.members.fetch(interaction.user.id); await reconcileBoosterRolesForMember(interaction.guild, mem); } catch (_) {}
       return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId === 'booster_roles_remove') {
@@ -7437,17 +7376,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   } catch (_) {}
 });
 
-client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-  try {
-    const wasBoosting = isServerBooster(oldMember);
-    const isBoosting = isServerBooster(newMember);
-    if (wasBoosting !== isBoosting) {
-      await reconcileBoosterRolesForMember(newMember.guild, newMember);
-    }
-  } catch (e) {
-    try { console.warn('GuildMemberUpdate error:', e?.message || e); } catch (_) {}
-  }
-});
+// Note: automatic booster role assignment removed per request
 
 // Système de récompenses vocales périodiques
 setInterval(async () => {
@@ -8073,8 +8002,4 @@ client.on(Events.GuildMemberAdd, async (member) => {
     await addPendingJoiner(member.guild.id, member.id, Date.now());
   } catch (_) {}
 });
-client.on(Events.GuildMemberAdd, async (member) => {
-  try {
-    await reconcileBoosterRolesForMember(member.guild, member);
-  } catch (_) {}
-});
+// Note: no automatic booster role assignment on join
