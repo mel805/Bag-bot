@@ -2348,29 +2348,21 @@ async function buildConfessRows(guild, mode = 'sfw') {
 async function buildTicketsRows(guild) {
   const { getTicketsConfig } = require('./storage/jsonStore');
   const t = await getTicketsConfig(guild.id);
-  const categorySelect = new StringSelectMenuBuilder()
-    .setCustomId('tickets_cat')
-    .setPlaceholder('Catégories de tickets…')
-    .setMinValues(1)
-    .setMaxValues(Math.min(25, Math.max(1, (t.categories || []).length || 1)));
-  const catOpts = (t.categories || []).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key, description: c.description?.slice(0, 90) || undefined }));
-  if (catOpts.length) categorySelect.addOptions(...catOpts);
-  else categorySelect.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
-
   const catAddBtn = new ButtonBuilder().setCustomId('tickets_add_cat').setLabel('Ajouter catégorie').setStyle(ButtonStyle.Secondary);
   const catRemBtn = new ButtonBuilder().setCustomId('tickets_remove_cat').setLabel('Retirer catégorie').setStyle(ButtonStyle.Danger);
   const panelBtn = new ButtonBuilder().setCustomId('tickets_post_panel').setLabel('Publier panneau').setStyle(ButtonStyle.Primary);
   const pingStaffToggle = new ButtonBuilder().setCustomId('tickets_toggle_ping_staff').setLabel(t.pingStaffOnOpen ? 'Ping staff: ON' : 'Ping staff: OFF').setStyle(t.pingStaffOnOpen ? ButtonStyle.Success : ButtonStyle.Secondary);
 
-  const categoryRow = new ActionRowBuilder().addComponents(categorySelect);
   const controlRow = new ActionRowBuilder().addComponents(catAddBtn, catRemBtn, panelBtn, pingStaffToggle);
 
   const channelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_category').setPlaceholder('Catégorie Discord pour les tickets…').addChannelTypes(ChannelType.GuildCategory).setMinValues(1).setMaxValues(1);
   const panelChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_panel_channel').setPlaceholder('Salon pour publier le panneau…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
+  const transcriptChannelSelect = new ChannelSelectMenuBuilder().setCustomId('tickets_set_transcript_channel').setPlaceholder('Salon de transcription…').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
   const channelsRow = new ActionRowBuilder().addComponents(channelSelect);
   const panelChannelRow = new ActionRowBuilder().addComponents(panelChannelSelect);
-
-  return [categoryRow, controlRow, channelsRow, panelChannelRow];
+  const transcriptRow = new ActionRowBuilder().addComponents(transcriptChannelSelect);
+  
+  return [controlRow, channelsRow, panelChannelRow, transcriptRow];
 }
 
 function actionKeyToLabel(key) {
@@ -2753,6 +2745,26 @@ client.once(Events.ClientReady, (readyClient) => {
       for (const [channelId, rec] of entries) {
         const ch = m.guild.channels.cache.get(channelId) || await m.guild.channels.fetch(channelId).catch(() => null);
         if (!ch || !ch.isTextBased?.()) continue;
+        // Send transcript to transcript channel before closing
+        try {
+          const transcriptChannel = t.transcriptChannelId ? (m.guild.channels.cache.get(t.transcriptChannelId) || await m.guild.channels.fetch(t.transcriptChannelId).catch(()=>null)) : null;
+          if (transcriptChannel && transcriptChannel.isTextBased?.()) {
+            const msgs = await ch.messages.fetch({ limit: 100 }).catch(()=>null);
+            const sorted = msgs ? Array.from(msgs.values()).sort((a,b) => a.createdTimestamp - b.createdTimestamp) : [];
+            const lines = [];
+            for (const msg of sorted) {
+              const when = new Date(msg.createdTimestamp).toISOString();
+              const author = msg.author ? `${msg.author.tag}` : 'Unknown';
+              const content = (msg.cleanContent || '').replace(/\n/g, ' ');
+              lines.push(`[${when}] ${author}: ${content}`);
+            }
+            const head = `Transcription du ticket <#${ch.id}>\nAuteur: <@${rec.userId}>\nFermé: Départ serveur\nCatégorie: ${rec.categoryKey || '—'}\nOuvert: ${new Date(rec.createdAt||Date.now()).toLocaleString()}\nFermé: ${new Date().toLocaleString()}\n`;
+            const text = head + '\n' + (lines.join('\n') || '(aucun message)');
+            const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transcript-${ch.id}.txt` });
+            const tEmbed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Transcription de ticket').setDescription(`Ticket: <#${ch.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON });
+            await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+          }
+        } catch (_) {}
         const embed = new EmbedBuilder()
           .setColor(THEME_COLOR_PRIMARY)
           .setTitle('Ticket fermé')
@@ -3246,6 +3258,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildTicketsRows(interaction.guild);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
     }
+    if (interaction.isChannelSelectMenu() && interaction.customId === 'tickets_set_transcript_channel') {
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      const chId = interaction.values[0];
+      await updateTicketsConfig(interaction.guild.id, { transcriptChannelId: chId });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild);
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
     if (interaction.isButton() && interaction.customId === 'tickets_add_cat') {
       const modal = new ModalBuilder().setCustomId('tickets_add_cat_modal').setTitle('Nouvelle catégorie');
       modal.addComponents(
@@ -3391,6 +3411,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
       try { await interaction.deferUpdate(); } catch (_) {}
       const t = await getTicketsConfig(interaction.guild.id);
+      // Build transcript and send to configured channel
+      try {
+        const transcriptChannel = t.transcriptChannelId ? (interaction.guild.channels.cache.get(t.transcriptChannelId) || await interaction.guild.channels.fetch(t.transcriptChannelId).catch(()=>null)) : null;
+        if (transcriptChannel && transcriptChannel.isTextBased?.()) {
+          const msgs = await interaction.channel.messages.fetch({ limit: 100 }).catch(()=>null);
+          const sorted = msgs ? Array.from(msgs.values()).sort((a,b) => a.createdTimestamp - b.createdTimestamp) : [];
+          const lines = [];
+          for (const msg of sorted) {
+            const when = new Date(msg.createdTimestamp).toISOString();
+            const author = msg.author ? `${msg.author.tag}` : 'Unknown';
+            const content = (msg.cleanContent || '').replace(/\n/g, ' ');
+            lines.push(`[${when}] ${author}: ${content}`);
+          }
+          const head = `Transcription du ticket <#${interaction.channel.id}>\nAuteur: <@${rec.userId}>\nFermé par: ${interaction.user}\nCatégorie: ${rec.categoryKey || '—'}\nOuvert: ${new Date(rec.createdAt||Date.now()).toLocaleString()}\nFermé: ${new Date().toLocaleString()}\n`;
+          const text = head + '\n' + (lines.join('\n') || '(aucun message)');
+          const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+          const tEmbed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Transcription de ticket').setDescription(`Ticket: <#${interaction.channel.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON });
+          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+        }
+      } catch (_) {}
       const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Ticket fermé').setDescription(`Fermé par ${interaction.user}.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_FOOTER_ICON }).setTimestamp(new Date());
       await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
       // Optionally lock channel
