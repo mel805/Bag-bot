@@ -4846,7 +4846,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
-      const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Boutique BAG').setDescription('Sélectionnez un article à acheter.').setThumbnail(THEME_IMAGE).setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON });
+      const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user);
       const rows = await buildBoutiqueRows(interaction.guild);
       return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
     }
@@ -7142,6 +7142,146 @@ async function buildTdDeleteComponents(guild, mode = 'sfw', offset = 0) {
     limit,
     total,
   };
+}
+
+// Calculate karma modifier percentage for shop prices
+function calculateKarmaShopModifier(karmaModifiers, userCharm, userPerversion) {
+  if (!Array.isArray(karmaModifiers)) return 0;
+  
+  return karmaModifiers.reduce((acc, rule) => {
+    try {
+      const expr = String(rule.condition || '')
+        .toLowerCase()
+        .replace(/charm/g, String(userCharm))
+        .replace(/perversion/g, String(userPerversion));
+      
+      // Security check - only allow safe mathematical expressions
+      if (!/^[0-9+\-*/%<>=!&|().\s]+$/.test(expr)) return acc;
+      
+      // eslint-disable-next-line no-eval
+      const conditionMet = !!eval(expr);
+      return conditionMet ? acc + Number(rule.percent || 0) : acc;
+    } catch (_) {
+      return acc;
+    }
+  }, 0);
+}
+
+// Build detailed boutique embed showing base prices and karma-modified prices
+async function buildBoutiqueEmbed(guild, user) {
+  const eco = await getEconomyConfig(guild.id);
+  const userEco = await getEconomyUser(guild.id, user.id);
+  const userCharm = userEco.charm || 0;
+  const userPerversion = userEco.perversion || 0;
+  const currency = eco.currency?.name || 'BAG$';
+  
+  // Check if user is a booster
+  let isBooster = false;
+  let boosterMult = 1;
+  try {
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    isBooster = Boolean(member?.premiumSince || member?.premiumSinceTimestamp);
+    const b = eco.booster || {};
+    if (b.enabled && isBooster && Number(b.shopPriceMult) > 0) {
+      boosterMult = Number(b.shopPriceMult);
+    }
+  } catch (_) {}
+  
+  // Calculate karma modifier percentage
+  const karmaPercent = calculateKarmaShopModifier(eco.karmaModifiers?.shop, userCharm, userPerversion);
+  const karmaFactor = Math.max(0, 1 + karmaPercent / 100);
+  
+  const embed = new EmbedBuilder()
+    .setColor(THEME_COLOR_PRIMARY)
+    .setTitle('🛍️ Boutique BAG')
+    .setThumbnail(THEME_IMAGE)
+    .setFooter({ text: 'Boy and Girls (BAG)', iconURL: THEME_FOOTER_ICON });
+  
+  // User info
+  let description = `💰 **Votre solde :** ${userEco.amount || 0} ${currency}\n`;
+  description += `✨ **Charme :** ${userCharm} | 😈 **Perversion :** ${userPerversion}\n`;
+  
+  if (isBooster && boosterMult !== 1) {
+    description += `🚀 **Booster :** x${boosterMult} sur tous les prix\n`;
+  }
+  if (karmaPercent !== 0) {
+    const sign = karmaPercent > 0 ? '+' : '';
+    description += `🎯 **Modification karma :** ${sign}${karmaPercent}% sur tous les prix\n`;
+  }
+  description += '\n**Articles disponibles :**';
+  
+  embed.setDescription(description);
+  
+  const fields = [];
+  
+  // Helper function to calculate final price with all modifiers
+  const calculateFinalPrice = (basePrice) => {
+    let price = basePrice;
+    // Apply booster multiplier first
+    if (isBooster && boosterMult !== 1) {
+      price = Math.floor(price * boosterMult);
+    }
+    // Then apply karma modifier
+    price = Math.max(0, Math.floor(price * karmaFactor));
+    return price;
+  };
+  
+  // Helper function to format price display
+  const formatPrice = (basePrice) => {
+    const finalPrice = calculateFinalPrice(basePrice);
+    if (finalPrice === basePrice) {
+      return `**${finalPrice}** ${currency}`;
+    } else {
+      return `~~${basePrice}~~ **${finalPrice}** ${currency}`;
+    }
+  };
+  
+  // Objets
+  if (eco.shop?.items?.length) {
+    let itemsText = '';
+    for (const item of eco.shop.items) {
+      const basePrice = item.price || 0;
+      itemsText += `• ${item.name || item.id} - ${formatPrice(basePrice)}\n`;
+    }
+    if (itemsText) fields.push({ name: '🎁 Objets', value: itemsText, inline: false });
+  }
+  
+  // Rôles
+  if (eco.shop?.roles?.length) {
+    let rolesText = '';
+    for (const role of eco.shop.roles) {
+      const roleName = guild.roles.cache.get(role.roleId)?.name || role.name || role.roleId;
+      const duration = role.durationDays ? ` (${role.durationDays}j)` : ' (permanent)';
+      const basePrice = role.price || 0;
+      rolesText += `• ${roleName}${duration} - ${formatPrice(basePrice)}\n`;
+    }
+    if (rolesText) fields.push({ name: '🎭 Rôles', value: rolesText, inline: false });
+  }
+  
+  // Suites privées
+  if (eco.suites) {
+    const prices = eco.suites.prices || { day: 0, week: 0, month: 0 };
+    const durations = [
+      { key: 'day', name: 'Suite privée (1 jour)', emoji: '🏠' },
+      { key: 'week', name: 'Suite privée (7 jours)', emoji: '🏡' },
+      { key: 'month', name: 'Suite privée (30 jours)', emoji: '🏰' }
+    ];
+    
+    let suitesText = '';
+    for (const dur of durations) {
+      const basePrice = Number(prices[dur.key] || 0);
+      suitesText += `${dur.emoji} ${dur.name} - ${formatPrice(basePrice)}\n`;
+    }
+    if (suitesText) fields.push({ name: `${eco.suites.emoji || '💞'} Suites Privées`, value: suitesText, inline: false });
+  }
+  
+  if (fields.length === 0) {
+    embed.setDescription(description + '\n*Aucun article disponible pour le moment.*');
+  } else {
+    embed.addFields(...fields);
+  }
+  
+  return embed;
 }
 
 async function buildBoutiqueRows(guild) {
