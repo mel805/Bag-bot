@@ -3511,10 +3511,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!rec) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
       try { await interaction.deferUpdate(); } catch (_) {}
       const t = await getTicketsConfig(interaction.guild.id);
-      // Build transcript and send to configured channel
+      // Build transcript and send to configured channel; fallback to logs if unset
       try {
         const transcriptChannel = t.transcriptChannelId ? (interaction.guild.channels.cache.get(t.transcriptChannelId) || await interaction.guild.channels.fetch(t.transcriptChannelId).catch(()=>null)) : null;
-        if (transcriptChannel && transcriptChannel.isTextBased?.()) {
+        let sentTranscript = false;
+        async function buildTranscriptPayload() {
           const msgs = await interaction.channel.messages.fetch({ limit: 100 }).catch(()=>null);
           const sorted = msgs ? Array.from(msgs.values()).sort((a,b) => a.createdTimestamp - b.createdTimestamp) : [];
           const lines = [];
@@ -3530,13 +3531,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const color = (t.transcript?.style === 'premium') ? THEME_COLOR_ACCENT : THEME_COLOR_PRIMARY;
           const title = (t.transcript?.style === 'premium') ? '💎 Transcription Premium' : (t.transcript?.style === 'pro' ? '🧾 Transcription Pro' : 'Transcription');
           const tEmbed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(`Ticket: <#${interaction.channel.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON });
-          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+          return { tEmbed, file };
+        }
+        if (transcriptChannel && transcriptChannel.isTextBased?.()) {
+          const payload = await buildTranscriptPayload();
+          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+          sentTranscript = true;
+        }
+        if (!sentTranscript) {
+          try {
+            const { getLogsConfig } = require('./storage/jsonStore');
+            const logs = await getLogsConfig(interaction.guild.id);
+            const fallbackId = (logs.channels && (logs.channels.messages || logs.channels.backup || logs.channels.moderation)) || logs.channelId || '';
+            if (fallbackId) {
+              const fb = interaction.guild.channels.cache.get(fallbackId) || await interaction.guild.channels.fetch(fallbackId).catch(()=>null);
+              if (fb && fb.isTextBased?.()) {
+                const payload = await buildTranscriptPayload();
+                await fb.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+                sentTranscript = true;
+              }
+            }
+          } catch (_) {}
         }
       } catch (_) {}
       const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Ticket fermé').setDescription(`Fermé par ${interaction.user}.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON }).setTimestamp(new Date());
       await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
       // Optionally lock channel
       try { await interaction.channel.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
+      try { setTimeout(() => { try { interaction.channel?.delete?.('Ticket fermé'); } catch (_) {} }, 5000); } catch (_) {}
       return;
     }
 
