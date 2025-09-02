@@ -2374,7 +2374,10 @@ async function buildTicketsRows(guild) {
   if (catOpts.length) catSelect.addOptions(...catOpts); else catSelect.addOptions({ label: 'Aucune catégorie', value: 'none' }).setDisabled(true);
   const catRow = new ActionRowBuilder().addComponents(catSelect);
   
-  return [controlRow, channelsRow, panelChannelRow, transcriptRow, transcriptStyleRow, catRow];
+  // Discord limite les messages à 5 rangées de composants.
+  // Comme une rangée de navigation est ajoutée ailleurs (buildBackRow()),
+  // nous renvoyons au maximum 4 rangées ici pour éviter l'échec d'interaction.
+  return [controlRow, channelsRow, panelChannelRow, catRow];
 }
 
 function actionKeyToLabel(key) {
