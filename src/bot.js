@@ -2388,7 +2388,7 @@ async function buildTicketsRows(guild, submenu) {
       current === 'categories' ? 'Sous-menu: Catégories' :
       current === 'naming' ? 'Sous-menu: Nommage' :
       current === 'transcript' ? 'Sous-menu: Transcript' :
-      'Sous-menu: Rôles d’accès'
+      current === 'certified' ? 'Sous-menu: Rôle certifié' : 'Sous-menu: Rôles d’accès'
     )
     .setMinValues(1)
     .setMaxValues(1)
@@ -2399,6 +2399,7 @@ async function buildTicketsRows(guild, submenu) {
       { label: 'Rôles d’accès', value: 'access', description: 'Rôles ayant accès', default: current === 'access' },
       { label: 'Transcript', value: 'transcript', description: 'Type et salon de transcription', default: current === 'transcript' },
       { label: 'Nommage', value: 'naming', description: 'Format du nom des tickets', default: current === 'naming' },
+      { label: 'Rôle certifié', value: 'certified', description: 'Rôle attribué par bouton', default: current === 'certified' },
     );
   const menuRow = new ActionRowBuilder().addComponents(ticketsMenu);
 
@@ -2482,6 +2483,22 @@ async function buildTicketsRows(guild, submenu) {
     const showPatternBtn = new ButtonBuilder().setCustomId('tickets_pattern_display').setLabel(`Actuel: ${pattern}`).setStyle(ButtonStyle.Secondary).setDisabled(true);
     rows.push(new ActionRowBuilder().addComponents(modeSel));
     rows.push(new ActionRowBuilder().addComponents(editPatternBtn, showPatternBtn));
+    return rows;
+  }
+
+  if (current === 'certified') {
+    const roleSel = new RoleSelectMenuBuilder()
+      .setCustomId('tickets_set_certified_role')
+      .setPlaceholder(t.certifiedRoleId ? `Rôle actuel: <@&${t.certifiedRoleId}>` : 'Choisir le rôle certifié…')
+      .setMinValues(1)
+      .setMaxValues(1);
+    const clearBtn = new ButtonBuilder()
+      .setCustomId('tickets_clear_certified_role')
+      .setLabel('Retirer le rôle certifié')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(!t.certifiedRoleId);
+    rows.push(new ActionRowBuilder().addComponents(roleSel));
+    rows.push(new ActionRowBuilder().addComponents(clearBtn));
     return rows;
   }
 
@@ -3468,6 +3485,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const pingRoles = new RoleSelectMenuBuilder().setCustomId(`tickets_cat_ping_roles:${key}`).setPlaceholder('Rôles staff à ping…').setMinValues(0).setMaxValues(25);
       return interaction.update({ embeds: [embed], components: [buildBackRow(), new ActionRowBuilder().addComponents(pingRoles)] });
     }
+    if (interaction.isRoleSelectMenu() && interaction.customId === 'tickets_set_certified_role') {
+      const roleId = interaction.values[0];
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      await updateTicketsConfig(interaction.guild.id, { certifiedRoleId: roleId });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'certified');
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
+    if (interaction.isButton() && interaction.customId === 'tickets_clear_certified_role') {
+      const { updateTicketsConfig } = require('./storage/jsonStore');
+      await updateTicketsConfig(interaction.guild.id, { certifiedRoleId: '' });
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'certified');
+      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+    }
     if (interaction.isStringSelectMenu() && interaction.customId === 'tickets_pick_cat_access') {
       const key = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
@@ -3493,7 +3525,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const t = await getTicketsConfig(interaction.guild.id);
       const categories = (t.categories || []).map(c => c.key === key ? { ...c, staffPingRoleIds: interaction.values } : c);
       await updateTicketsConfig(interaction.guild.id, { categories });
-      return interaction.deferUpdate();
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'ping');
+      try { await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] }); }
+      catch (_) { try { await interaction.deferUpdate(); } catch (_) {} }
+      try { await interaction.followUp({ content: '✅ Rôles ping mis à jour.', ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isRoleSelectMenu() && interaction.customId.startsWith('tickets_cat_view_roles:')) {
       const key = interaction.customId.split(':')[1];
@@ -3501,7 +3538,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const t = await getTicketsConfig(interaction.guild.id);
       const categories = (t.categories || []).map(c => c.key === key ? { ...c, extraViewerRoleIds: interaction.values } : c);
       await updateTicketsConfig(interaction.guild.id, { categories });
-      return interaction.deferUpdate();
+      const embed = await buildConfigEmbed(interaction.guild);
+      const rows = await buildTicketsRows(interaction.guild, 'access');
+      try { await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] }); }
+      catch (_) { try { await interaction.deferUpdate(); } catch (_) {} }
+      try { await interaction.followUp({ content: '✅ Rôles d’accès mis à jour.', ephemeral: true }); } catch (_) {}
+      return;
     }
     if (interaction.isButton() && interaction.customId === 'tickets_add_cat') {
       const modal = new ModalBuilder().setCustomId('tickets_add_cat_modal').setTitle('Nouvelle catégorie');
@@ -3742,8 +3784,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const __banner = maybeAttachTicketBanner(embed);
       const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('S\'approprier').setStyle(ButtonStyle.Success);
       const transferBtn = new ButtonBuilder().setCustomId('ticket_transfer').setLabel('Transférer').setStyle(ButtonStyle.Secondary);
+      const certifyBtn = new ButtonBuilder().setCustomId('ticket_certify').setLabel('Certifier').setStyle(ButtonStyle.Primary);
       const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('Fermer').setStyle(ButtonStyle.Danger);
-      const row = new ActionRowBuilder().addComponents(claimBtn, transferBtn, closeBtn);
+      const row = new ActionRowBuilder().addComponents(claimBtn, transferBtn, certifyBtn, closeBtn);
       // Mention the user and optionally ping staff roles
       let content = `${interaction.user} merci d'expliquer votre demande.`;
       if (t.pingStaffOnOpen) {
@@ -3847,6 +3890,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // Optionally lock channel
       try { await interaction.channel.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
       try { setTimeout(() => { try { interaction.channel?.delete?.('Ticket fermé'); } catch (_) {} }, 5000); } catch (_) {}
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === 'ticket_certify') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member) return;
+      const isStaff = await isStaffMember(interaction.guild, member);
+      if (!isStaff) return interaction.reply({ content: 'Réservé au staff.', ephemeral: true });
+      const { getTicketsConfig } = require('./storage/jsonStore');
+      const t = await getTicketsConfig(interaction.guild.id);
+      const roleId = t.certifiedRoleId;
+      if (!roleId) return interaction.reply({ content: 'Aucun rôle certifié configuré. Configurez-le via /config → Tickets → Rôle certifié.', ephemeral: true });
+      const rec = (t.records || {})[String(interaction.channel.id)];
+      if (!rec || !rec.userId) return interaction.reply({ content: 'Ce salon n\'est pas un ticket.', ephemeral: true });
+      const targetMember = await interaction.guild.members.fetch(rec.userId).catch(()=>null);
+      if (!targetMember) return interaction.reply({ content: 'Auteur du ticket introuvable.', ephemeral: true });
+      const role = interaction.guild.roles.cache.get(roleId) || await interaction.guild.roles.fetch(roleId).catch(()=>null);
+      if (!role) return interaction.reply({ content: 'Rôle certifié introuvable sur ce serveur. Reconfigurez-le.', ephemeral: true });
+      if (targetMember.roles.cache.has(role.id)) return interaction.reply({ content: 'Ce membre est déjà certifié.', ephemeral: true });
+      try {
+        await targetMember.roles.add(role.id, `Certification via ticket ${interaction.channel.id} par ${interaction.user.tag}`);
+      } catch (err) {
+        return interaction.reply({ content: `Impossible d'attribuer le rôle (permissions manquantes ?).`, ephemeral: true });
+      }
+      try { await interaction.deferUpdate(); } catch (_) {}
+      const embed = new EmbedBuilder()
+        .setColor(THEME_COLOR_ACCENT)
+        .setTitle('Membre certifié')
+        .setDescription(`${targetMember} a reçu le rôle ${role} par ${interaction.user}.`)
+        .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
+        .setTimestamp(new Date());
+      const __banner = maybeAttachTicketBanner(embed);
+      await interaction.channel.send({ embeds: [embed], files: __banner ? [__banner] : [] }).catch(()=>{});
       return;
     }
 
