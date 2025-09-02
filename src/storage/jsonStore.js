@@ -920,6 +920,10 @@ function ensureTicketsShape(g) {
   if (typeof t.transcriptChannelId !== 'string') t.transcriptChannelId = '';
   if (!t.transcript || typeof t.transcript !== 'object') t.transcript = { style: 'pro' };
   if (!['pro','premium','classic'].includes(t.transcript.style)) t.transcript.style = 'pro';
+  // Ticket naming configuration
+  if (!t.naming || typeof t.naming !== 'object') t.naming = { mode: 'ticket_num', customPattern: '' };
+  if (!['ticket_num','member_num','category_num','custom','numeric','date_num'].includes(t.naming.mode)) t.naming.mode = 'ticket_num';
+  if (typeof t.naming.customPattern !== 'string') t.naming.customPattern = '';
 }
 
 async function getTicketsConfig(guildId) {
