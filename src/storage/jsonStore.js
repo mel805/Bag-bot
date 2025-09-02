@@ -918,6 +918,8 @@ function ensureTicketsShape(g) {
   if (typeof t.logChannelId !== 'string') t.logChannelId = '';
   if (typeof t.pingStaffOnOpen !== 'boolean') t.pingStaffOnOpen = false;
   if (typeof t.transcriptChannelId !== 'string') t.transcriptChannelId = '';
+  if (!t.transcript || typeof t.transcript !== 'object') t.transcript = { style: 'pro' };
+  if (!['pro','premium','classic'].includes(t.transcript.style)) t.transcript.style = 'pro';
 }
 
 async function getTicketsConfig(guildId) {
