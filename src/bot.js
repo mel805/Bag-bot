@@ -188,6 +188,36 @@ const CERTIFIED_LOGO_URL = process.env.CERTIFIED_LOGO_URL || LOGO_PATH;
 const CERTIFIED_ROSEGOLD = String(process.env.CERTIFIED_ROSEGOLD || 'false').toLowerCase() === 'true';
 const LEVEL_CARD_LOGO_URL = process.env.LEVEL_CARD_LOGO_URL || LOGO_PATH;
 
+// Ticket banner helper (bag2)
+function findTicketBannerPath() {
+  try {
+    const fs = require('fs');
+    const possible = ['./bag2.png', './Bag2.png', './BAG2.png'];
+    for (const p of possible) {
+      if (fs.existsSync(p)) {
+        try { console.log('[Tickets] Bannière trouvée:', p); } catch (_) {}
+        return p;
+      }
+    }
+  } catch (_) {}
+  try { console.warn('[Tickets] Aucune bannière bag2.png trouvée'); } catch (_) {}
+  return null;
+}
+const TICKET_BANNER_PATH = findTicketBannerPath();
+function maybeAttachTicketBanner(embed) {
+  if (!TICKET_BANNER_PATH) return null;
+  try {
+    const fs = require('fs');
+    const buffer = fs.readFileSync(TICKET_BANNER_PATH);
+    if (embed && typeof embed.setImage === 'function') {
+      embed.setImage('attachment://ticket-banner.png');
+    }
+    return new AttachmentBuilder(buffer, { name: 'ticket-banner.png' });
+  } catch (_) {
+    return null;
+  }
+}
+
 if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
   process.exit(2);
@@ -2877,7 +2907,9 @@ client.once(Events.ClientReady, (readyClient) => {
             const color = (t.transcript?.style === 'premium') ? THEME_COLOR_ACCENT : THEME_COLOR_PRIMARY;
             const title = (t.transcript?.style === 'premium') ? '💎 Transcription Premium' : (t.transcript?.style === 'pro' ? '🧾 Transcription Pro' : 'Transcription');
             const tEmbed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(`Ticket: <#${ch.id}> — Auteur: <@${rec.userId}>`).setTimestamp(new Date()).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON });
-            await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files: [file, fileHtml], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+            const __bannerT = maybeAttachTicketBanner(tEmbed);
+            const files = __bannerT ? [file, fileHtml, __bannerT] : [file, fileHtml];
+            await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [tEmbed], files, allowedMentions: { users: [rec.userId] } }).catch(()=>{});
           }
         } catch (_) {}
         const embed = new EmbedBuilder()
@@ -2886,7 +2918,10 @@ client.once(Events.ClientReady, (readyClient) => {
           .setDescription(`L'auteur du ticket a quitté le serveur. Ticket fermé automatiquement.`)
           .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
           .setTimestamp(new Date());
-        try { await ch.send({ embeds: [embed] }); } catch (_) {}
+        try {
+          const __banner = maybeAttachTicketBanner(embed);
+          await ch.send({ embeds: [embed], files: __banner ? [__banner] : [] });
+        } catch (_) {}
         try { await closeTicketRecord(m.guild.id, channelId); } catch (_) {}
         try { await ch.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
       }
@@ -3568,7 +3603,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!opts.length) return interaction.editReply({ content: 'Ajoutez au moins une catégorie de ticket.' });
       select.addOptions(...opts);
       const row = new ActionRowBuilder().addComponents(select);
-      const msg = await panelChannel.send({ embeds: [embed], components: [row] }).catch(()=>null);
+      const __banner = maybeAttachTicketBanner(embed);
+      const msg = await panelChannel.send({ embeds: [embed], components: [row], files: __banner ? [__banner] : [] }).catch(()=>null);
       if (!msg) return interaction.editReply({ content: 'Impossible d\'envoyer le panneau.' });
       await updateTicketsConfig(interaction.guild.id, { panelMessageId: msg.id });
       return interaction.editReply({ content: '✅ Panneau publié.' });
@@ -3600,13 +3636,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const msg = ch ? (await ch.messages.fetch(t.panelMessageId).catch(()=>null)) : null;
           if (msg) {
             const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle(title).setDescription(text).setThumbnail(THEME_IMAGE).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON }).setTimestamp(new Date());
+            const __banner = maybeAttachTicketBanner(embed);
             const { getTicketsConfig } = require('./storage/jsonStore');
             const cfg = await getTicketsConfig(interaction.guild.id);
             const select = new StringSelectMenuBuilder().setCustomId('ticket_open').setPlaceholder('Sélectionnez une catégorie…').setMinValues(1).setMaxValues(1);
             const opts = (cfg.categories || []).slice(0, 25).map(c => ({ label: c.label, value: c.key, description: c.description?.slice(0, 90) || undefined, emoji: c.emoji || undefined }));
             if (opts.length) select.addOptions(...opts);
             const row = new ActionRowBuilder().addComponents(select);
-            await msg.edit({ embeds: [embed], components: [row] }).catch(()=>{});
+            await msg.edit({ embeds: [embed], components: [row], files: __banner ? [__banner] : [] }).catch(()=>{});
           }
         }
       } catch (_) {}
@@ -3702,6 +3739,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setThumbnail(interaction.user.displayAvatarURL?.() || THEME_IMAGE)
         .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
         .setTimestamp(new Date());
+      const __banner = maybeAttachTicketBanner(embed);
       const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('S\'approprier').setStyle(ButtonStyle.Success);
       const transferBtn = new ButtonBuilder().setCustomId('ticket_transfer').setLabel('Transférer').setStyle(ButtonStyle.Secondary);
       const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('Fermer').setStyle(ButtonStyle.Danger);
@@ -3714,7 +3752,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           if (Array.isArray(pings) && pings.length) content += `\n${pings.map(id => `<@&${id}>`).join(' ')}`;
         } catch (_) {}
       }
-      await ch.send({ content, embeds: [embed], components: [row], allowedMentions: { users: [interaction.user.id], roles: t.pingStaffOnOpen ? undefined : [] } }).catch(()=>{});
+      await ch.send({ content, embeds: [embed], components: [row], files: __banner ? [__banner] : [], allowedMentions: { users: [interaction.user.id], roles: t.pingStaffOnOpen ? undefined : [] } }).catch(()=>{});
       await interaction.editReply({ content: `✅ Ticket créé: ${ch}` });
       return;
     }
@@ -3730,7 +3768,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.deferUpdate(); } catch (_) {}
       const t = await getTicketsConfig(interaction.guild.id);
       const embed = new EmbedBuilder().setColor(THEME_COLOR_ACCENT).setTitle('Ticket pris en charge').setDescription(`${interaction.user} prend en charge ce ticket.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON }).setTimestamp(new Date());
-      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
+      const __banner = maybeAttachTicketBanner(embed);
+      await interaction.channel.send({ embeds: [embed], files: __banner ? [__banner] : [] }).catch(()=>{});
       return;
     }
     if (interaction.isButton() && interaction.customId === 'ticket_close') {
@@ -3779,7 +3818,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         if (transcriptChannel && transcriptChannel.isTextBased?.()) {
           const payload = await buildTranscriptPayload();
-          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file, payload.fileHtml], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+          const __bannerT = maybeAttachTicketBanner(payload.tEmbed);
+          const files = __bannerT ? [payload.file, payload.fileHtml, __bannerT] : [payload.file, payload.fileHtml];
+          await transcriptChannel.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files, allowedMentions: { users: [rec.userId] } }).catch(()=>{});
           sentTranscript = true;
         }
         if (!sentTranscript) {
@@ -3791,7 +3832,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
               const fb = interaction.guild.channels.cache.get(fallbackId) || await interaction.guild.channels.fetch(fallbackId).catch(()=>null);
               if (fb && fb.isTextBased?.()) {
                 const payload = await buildTranscriptPayload();
-                await fb.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files: [payload.file, payload.fileHtml], allowedMentions: { users: [rec.userId] } }).catch(()=>{});
+                const __bannerT = maybeAttachTicketBanner(payload.tEmbed);
+                const files = __bannerT ? [payload.file, payload.fileHtml, __bannerT] : [payload.file, payload.fileHtml];
+                await fb.send({ content: `<@${rec.userId}>`, embeds: [payload.tEmbed], files, allowedMentions: { users: [rec.userId] } }).catch(()=>{});
                 sentTranscript = true;
               }
             }
@@ -3799,7 +3842,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       } catch (_) {}
       const embed = new EmbedBuilder().setColor(THEME_COLOR_PRIMARY).setTitle('Ticket fermé').setDescription(`Fermé par ${interaction.user}.`).setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON }).setTimestamp(new Date());
-      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
+      const __banner = maybeAttachTicketBanner(embed);
+      await interaction.channel.send({ embeds: [embed], files: __banner ? [__banner] : [] }).catch(()=>{});
       // Optionally lock channel
       try { await interaction.channel.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
       try { setTimeout(() => { try { interaction.channel?.delete?.('Ticket fermé'); } catch (_) {} }, 5000); } catch (_) {}
@@ -3839,7 +3883,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setDescription(`Transféré à ${targetMember} par ${interaction.user}.`)
         .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
         .setTimestamp(new Date());
-      await interaction.channel.send({ embeds: [embed] }).catch(()=>{});
+      const __banner = maybeAttachTicketBanner(embed);
+      await interaction.channel.send({ embeds: [embed], files: __banner ? [__banner] : [] }).catch(()=>{});
       return;
     }
 
