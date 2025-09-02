@@ -975,7 +975,16 @@ function buildTopSectionRow() {
       { label: 'Comptage', value: 'counting', description: 'Configurer le salon de comptage' },
       { label: 'Logs', value: 'logs', description: "Configurer les journaux d'activité" },
     );
-  return new ActionRowBuilder().addComponents(select);
+  
+  // Add diagnostic button for troubleshooting
+  const diagBtn = new ButtonBuilder()
+    .setCustomId('config_economy_diagnostic')
+    .setLabel('🔧 Diagnostic Économie')
+    .setStyle(ButtonStyle.Secondary);
+    
+  const row1 = new ActionRowBuilder().addComponents(select);
+  const row2 = new ActionRowBuilder().addComponents(diagBtn);
+  return [row1, row2];
 }
 
 function buildBackRow() {
@@ -1855,20 +1864,42 @@ function buildEconomyMenuSelect(selectedPage) {
 }
 
 async function buildEconomyMenuRows(guild, page) {
-  const p = page || 'settings';
-  if (p === 'karma') {
-    const rows = await buildEconomyKarmaRows(guild);
-    return [buildEconomyMenuSelect(p), ...rows];
+  try {
+    // Validate guild parameter
+    if (!guild || !guild.id) {
+      throw new Error('Invalid guild parameter in buildEconomyMenuRows');
+    }
+    
+    const p = page || 'settings';
+    
+    // Initialize caches
+    initializeEconomyCaches();
+    
+    if (p === 'karma') {
+      const rows = await buildEconomyKarmaRows(guild);
+      return [buildEconomyMenuSelect(p), ...rows];
+    }
+    if (p === 'actions') {
+      const sel = client._ecoActionCurrent.get(guild.id) || null;
+      const rows = await buildEconomyActionDetailRows(guild, sel);
+      return [buildEconomyMenuSelect(p), ...rows];
+    }
+    // default: settings
+    const rows = await buildEconomySettingsRows(guild);
+    return [buildEconomyMenuSelect('settings'), ...rows];
+  } catch (error) {
+    console.error('[Economy] Failed to build menu rows:', error.message);
+    console.error('[Economy] Stack trace:', error.stack);
+    
+    // Return fallback menu with error indication
+    const errorRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_back_home')
+        .setLabel('❌ Erreur - Retour')
+        .setStyle(ButtonStyle.Danger)
+    );
+    return [buildEconomyMenuSelect('settings'), errorRow];
   }
-  if (p === 'actions') {
-    if (!client._ecoActionCurrent) client._ecoActionCurrent = new Map();
-    const sel = client._ecoActionCurrent.get(guild.id) || null;
-    const rows = await buildEconomyActionDetailRows(guild, sel);
-    return [buildEconomyMenuSelect(p), ...rows];
-  }
-  // default: settings
-  const rows = await buildEconomySettingsRows(guild);
-  return [buildEconomyMenuSelect('settings'), ...rows];
 }
 
 async function buildBoosterRows(guild) {
@@ -1884,58 +1915,189 @@ async function buildBoosterRows(guild) {
   return [row1, row2];
 }
 
+// Initialize and validate economy cache maps
+function initializeEconomyCaches() {
+  if (!client._ecoKarmaType) client._ecoKarmaType = new Map();
+  if (!client._ecoKarmaSel) client._ecoKarmaSel = new Map();
+  if (!client._ecoActionCurrent) client._ecoActionCurrent = new Map();
+}
+
+// Clear karma cache for a specific guild
+function clearKarmaCache(guildId) {
+  try {
+    if (client._ecoKarmaType) client._ecoKarmaType.delete(guildId);
+    if (client._ecoKarmaSel) {
+      const keys = Array.from(client._ecoKarmaSel.keys()).filter(k => k.startsWith(`${guildId}:`));
+      keys.forEach(k => client._ecoKarmaSel.delete(k));
+    }
+  } catch (error) {
+    console.error('[Karma] Failed to clear cache:', error.message);
+  }
+}
+
+// Validate and sanitize karma cache state
+function validateKarmaCache() {
+  try {
+    // Clean up orphaned cache entries periodically
+    if (client._ecoKarmaSel && client._ecoKarmaSel.size > 100) {
+      console.log('[Karma] Cleaning up large karma selection cache');
+      client._ecoKarmaSel.clear();
+    }
+    
+    if (client._ecoKarmaType && client._ecoKarmaType.size > 100) {
+      console.log('[Karma] Cleaning up large karma type cache');
+      client._ecoKarmaType.clear();
+    }
+    
+    if (client._ecoActionCurrent && client._ecoActionCurrent.size > 100) {
+      console.log('[Karma] Cleaning up large action current cache');
+      client._ecoActionCurrent.clear();
+    }
+  } catch (error) {
+    console.error('[Karma] Failed to validate cache:', error.message);
+  }
+}
+
+// Diagnostic function for economy/karma issues
+async function diagnoseEconomyKarmaIssues(guildId) {
+  try {
+    console.log(`[Karma] Running diagnostic for guild ${guildId}`);
+    
+    // Check economy config structure
+    const eco = await getEconomyConfig(guildId);
+    const issues = [];
+    
+    if (!eco.karmaModifiers) {
+      issues.push('Missing karmaModifiers structure');
+    } else {
+      if (!Array.isArray(eco.karmaModifiers.shop)) issues.push('Invalid shop karma modifiers');
+      if (!Array.isArray(eco.karmaModifiers.actions)) issues.push('Invalid actions karma modifiers');
+      if (!Array.isArray(eco.karmaModifiers.grants)) issues.push('Invalid grants karma modifiers');
+    }
+    
+    if (!eco.actions || typeof eco.actions !== 'object') {
+      issues.push('Missing actions structure');
+    } else {
+      if (!eco.actions.config || typeof eco.actions.config !== 'object') {
+        issues.push('Missing actions config');
+      }
+    }
+    
+    // Check cache state
+    const cacheInfo = {
+      karmaType: client._ecoKarmaType?.size || 0,
+      karmaSel: client._ecoKarmaSel?.size || 0,
+      actionCurrent: client._ecoActionCurrent?.size || 0
+    };
+    
+    console.log(`[Karma] Diagnostic results for ${guildId}:`, {
+      issues,
+      cacheInfo,
+      karmaModifiersCount: {
+        shop: eco.karmaModifiers?.shop?.length || 0,
+        actions: eco.karmaModifiers?.actions?.length || 0,
+        grants: eco.karmaModifiers?.grants?.length || 0
+      }
+    });
+    
+    return { issues, cacheInfo };
+  } catch (error) {
+    console.error(`[Karma] Diagnostic failed for guild ${guildId}:`, error.message);
+    return { issues: ['Diagnostic failed'], error: error.message };
+  }
+}
+
 // Build rows to manage karma-based discounts/penalties
 async function buildEconomyKarmaRows(guild) {
   try {
+    // Validate guild parameter
+    if (!guild || !guild.id) {
+      throw new Error('Guild parameter is invalid');
+    }
+
     const eco = await getEconomyConfig(guild.id);
-    // Selected type
+    
+    // Initialize cache maps if they don't exist
+    initializeEconomyCaches();
+    
+    // Selected type with fallback validation
     const type = client._ecoKarmaType?.get?.(guild.id) || 'shop';
-  const typeSelect = new StringSelectMenuBuilder()
-    .setCustomId('eco_karma_type')
-    .setPlaceholder('Type de règles…')
-    .addOptions(
-      { label: `Boutique (${eco.karmaModifiers?.shop?.length||0})`, value: 'shop', default: type === 'shop' },
-      { label: `Actions (${eco.karmaModifiers?.actions?.length||0})`, value: 'actions', default: type === 'actions' },
-      { label: `Grants (${eco.karmaModifiers?.grants?.length||0})`, value: 'grants', default: type === 'grants' },
-    );
-  const rowType = new ActionRowBuilder().addComponents(typeSelect);
-  const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
-  const options = list.length ? list.map((r, idx) => {
-    const baseName = r.name ? `${r.name}: ` : '';
-    const label = type === 'grants' ? `${baseName}if ${r.condition} -> money ${r.money}` : `${baseName}if ${r.condition} -> ${r.percent}%`;
-    return { label: label.slice(0, 100), value: String(idx) };
-  }) : [{ label: 'Aucune règle', value: 'none' }];
-  const rulesSelect = new StringSelectMenuBuilder()
-    .setCustomId(`eco_karma_rules:${type}`)
-    .setPlaceholder('Sélectionner des règles à supprimer…')
-    .setMinValues(0)
-    .setMaxValues(Math.min(25, Math.max(1, options.length)))
-    .addOptions(...options);
-  if (options.length === 1 && options[0].value === 'none') rulesSelect.setDisabled(true);
-  const rowRules = new ActionRowBuilder().addComponents(rulesSelect);
-  // Boutons d'ajout de règles
-  const addShop = new ButtonBuilder().setCustomId('eco_karma_add_shop').setLabel('+ Boutique').setStyle(ButtonStyle.Primary);
-  const addAct = new ButtonBuilder().setCustomId('eco_karma_add_action').setLabel('+ Actions').setStyle(ButtonStyle.Primary);
-  const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('+ Grant').setStyle(ButtonStyle.Secondary);
-  const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer').setStyle(ButtonStyle.Danger);
-  const editBtn = new ButtonBuilder().setCustomId('eco_karma_edit').setLabel('Modifier').setStyle(ButtonStyle.Secondary);
-  const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, editBtn, delBtn);
-  
-  // Reset hebdomadaire - menu déroulant pour économiser l'espace
-  const resetEnabled = eco.karmaReset?.enabled || false;
-  const resetSelect = new StringSelectMenuBuilder()
-    .setCustomId('eco_karma_reset_menu')
-    .setPlaceholder(`Reset hebdo: ${resetEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`)
-    .addOptions(
-      { label: resetEnabled ? 'Désactiver reset hebdo' : 'Activer reset hebdo', value: 'toggle' },
-      { label: 'Reset maintenant', value: 'now', description: 'Remet tous les karma à 0' }
-    );
-  const rowReset = new ActionRowBuilder().addComponents(resetSelect);
-  
-  return [rowType, rowRules, rowActions, rowReset];
+    if (!['shop', 'actions', 'grants'].includes(type)) {
+      client._ecoKarmaType.set(guild.id, 'shop');
+    }
+    
+    // Ensure karmaModifiers structure exists
+    if (!eco.karmaModifiers || typeof eco.karmaModifiers !== 'object') {
+      eco.karmaModifiers = { shop: [], actions: [], grants: [] };
+      await updateEconomyConfig(guild.id, eco);
+    }
+    
+    const typeSelect = new StringSelectMenuBuilder()
+      .setCustomId('eco_karma_type')
+      .setPlaceholder('Type de règles…')
+      .addOptions(
+        { label: `Boutique (${eco.karmaModifiers?.shop?.length||0})`, value: 'shop', default: type === 'shop' },
+        { label: `Actions (${eco.karmaModifiers?.actions?.length||0})`, value: 'actions', default: type === 'actions' },
+        { label: `Grants (${eco.karmaModifiers?.grants?.length||0})`, value: 'grants', default: type === 'grants' },
+      );
+    const rowType = new ActionRowBuilder().addComponents(typeSelect);
+    
+    const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+    const options = list.length ? list.map((r, idx) => {
+      try {
+        const baseName = r.name ? `${r.name}: ` : '';
+        const condition = String(r.condition || '').slice(0, 50);
+        const label = type === 'grants' 
+          ? `${baseName}if ${condition} -> money ${r.money}` 
+          : `${baseName}if ${condition} -> ${r.percent}%`;
+        return { label: label.slice(0, 100), value: String(idx) };
+      } catch (err) {
+        console.error('[Karma] Error processing rule:', err.message);
+        return { label: `Règle ${idx} (erreur)`, value: String(idx) };
+      }
+    }) : [{ label: 'Aucune règle', value: 'none' }];
+    
+    const rulesSelect = new StringSelectMenuBuilder()
+      .setCustomId(`eco_karma_rules:${type}`)
+      .setPlaceholder('Sélectionner des règles à supprimer…')
+      .setMinValues(0)
+      .setMaxValues(Math.min(25, Math.max(1, options.length)))
+      .addOptions(...options);
+    
+    if (options.length === 1 && options[0].value === 'none') {
+      rulesSelect.setDisabled(true);
+    }
+    
+    const rowRules = new ActionRowBuilder().addComponents(rulesSelect);
+    
+    // Boutons d'ajout de règles
+    const addShop = new ButtonBuilder().setCustomId('eco_karma_add_shop').setLabel('+ Boutique').setStyle(ButtonStyle.Primary);
+    const addAct = new ButtonBuilder().setCustomId('eco_karma_add_action').setLabel('+ Actions').setStyle(ButtonStyle.Primary);
+    const addGrant = new ButtonBuilder().setCustomId('eco_karma_add_grant').setLabel('+ Grant').setStyle(ButtonStyle.Secondary);
+    const delBtn = new ButtonBuilder().setCustomId('eco_karma_delete').setLabel('Supprimer').setStyle(ButtonStyle.Danger);
+    const editBtn = new ButtonBuilder().setCustomId('eco_karma_edit').setLabel('Modifier').setStyle(ButtonStyle.Secondary);
+    const rowActions = new ActionRowBuilder().addComponents(addShop, addAct, addGrant, editBtn, delBtn);
+    
+    // Reset hebdomadaire - menu déroulant pour économiser l'espace
+    const resetEnabled = eco.karmaReset?.enabled || false;
+    const resetSelect = new StringSelectMenuBuilder()
+      .setCustomId('eco_karma_reset_menu')
+      .setPlaceholder(`Reset hebdo: ${resetEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`)
+      .addOptions(
+        { label: resetEnabled ? 'Désactiver reset hebdo' : 'Activer reset hebdo', value: 'toggle' },
+        { label: 'Reset maintenant', value: 'now', description: 'Remet tous les karma à 0' }
+      );
+    const rowReset = new ActionRowBuilder().addComponents(resetSelect);
+    
+    return [rowType, rowRules, rowActions, rowReset];
   } catch (error) {
     console.error('[Karma] Failed to build karma rows:', error.message);
-    // Return basic error row
+    console.error('[Karma] Stack trace:', error.stack);
+    
+    // Clear potentially corrupted cache state
+    clearKarmaCache(guild.id);
+    
+    // Return basic error row with retry functionality
     const errorRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('karma_error_retry')
@@ -2328,6 +2490,16 @@ client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   // Boot persistance dès le départ et journaliser le mode choisi
   ensureStorageExists().then(()=>console.log('[bot] Storage initialized')).catch((e)=>console.warn('[bot] Storage init error:', e?.message||e));
+  
+  // Initialize economy caches to prevent interaction failures
+  initializeEconomyCaches();
+  console.log('[bot] Economy caches initialized');
+  
+  // Set up periodic cache validation (every 30 minutes)
+  setInterval(() => {
+    validateKarmaCache();
+  }, 30 * 60 * 1000);
+  
   startYtProxyServer();
   if (shouldEnableLocalLavalink()) {
     console.log('[Music] ENABLE_LOCAL_LAVALINK=true -> starting local Lavalink + proxy');
@@ -2776,8 +2948,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '⛔ Cette commande est réservée à l\'équipe de modération.', ephemeral: true });
       }
       const embed = await buildConfigEmbed(interaction.guild);
-      const row = buildTopSectionRow();
-      await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+      const rows = buildTopSectionRow();
+      await interaction.reply({ embeds: [embed], components: [...rows], ephemeral: true });
       return;
     }
 
@@ -2938,8 +3110,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const rows = await buildLevelsGeneralRows(interaction.guild);
         await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'economy') {
-        const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
-        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        try {
+          const rows = await buildEconomyMenuRows(interaction.guild, 'settings');
+          await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        } catch (error) {
+          console.error('Error building economy configuration:', error);
+          // Clear economy caches in case of corruption
+          clearKarmaCache(interaction.guild.id);
+          await interaction.update({ 
+            embeds: [embed], 
+            components: [buildBackRow()], 
+            content: '❌ Erreur lors du chargement de la configuration économie. Cache vidé, réessayez.' 
+          });
+        }
       } else if (section === 'truthdare') {
         const rows = await buildTruthDareRows(interaction.guild, 'sfw');
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
@@ -2975,18 +3158,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'economy_menu') {
-      const page = interaction.values[0];
-      const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
-      let rows;
-      if (page === 'suites') {
-        rows = [buildEconomyMenuSelect(page), ...(await buildSuitesRows(interaction.guild))];
-      } else if (page === 'shop') {
-        rows = [buildEconomyMenuSelect(page), ...(await buildShopRows(interaction.guild))];
-      } else {
-        rows = await buildEconomyMenuRows(interaction.guild, page);
+      try {
+        const page = interaction.values[0];
+        
+        // Validate page value
+        if (!['settings', 'actions', 'karma', 'suites', 'shop'].includes(page)) {
+          return interaction.reply({ content: '❌ Page d\'économie invalide.', ephemeral: true });
+        }
+        
+        const embed = await buildConfigEmbed(interaction.guild);
+        const topRows = buildTopSectionRow();
+        let rows;
+        
+        if (page === 'suites') {
+          rows = [buildEconomyMenuSelect(page), ...(await buildSuitesRows(interaction.guild))];
+        } else if (page === 'shop') {
+          rows = [buildEconomyMenuSelect(page), ...(await buildShopRows(interaction.guild))];
+        } else {
+          rows = await buildEconomyMenuRows(interaction.guild, page);
+        }
+        
+        return interaction.update({ embeds: [embed], components: [...topRows, ...rows] });
+      } catch (error) {
+        console.error('[Economy] Menu navigation failed:', error.message);
+        console.error('[Economy] Menu stack trace:', error.stack);
+        
+        // Clear caches and provide fallback
+        clearKarmaCache(interaction.guild.id);
+        
+        try {
+          const embed = await buildConfigEmbed(interaction.guild);
+          const backRow = buildBackRow();
+          return interaction.update({ 
+            embeds: [embed], 
+            components: [backRow],
+            content: '❌ Erreur lors de la navigation dans les menus économie. Cache vidé, retournez au menu principal.' 
+          });
+        } catch (fallbackError) {
+          console.error('[Economy] Fallback failed:', fallbackError.message);
+          return interaction.reply({ content: '❌ Erreur critique dans la configuration économie.', ephemeral: true }).catch(() => {});
+        }
       }
-      return interaction.update({ embeds: [embed], components: [top, ...rows] });
     }
     // Boutique config handlers
     if (interaction.isButton() && interaction.customId === 'shop_add_role') {
@@ -3153,22 +3365,49 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit() && interaction.customId.startsWith('economy_action_karma_modal:')) {
       try {
         await interaction.deferReply({ ephemeral: true });
+        
         const key = interaction.customId.split(':')[1];
+        if (!key) {
+          return interaction.editReply({ content: '❌ Clé d\'action manquante.' });
+        }
+        
         const eco = await getEconomyConfig(interaction.guild.id);
         const c = (eco.actions?.config || {})[key] || {};
-        const karma = String((interaction.fields.getTextInputValue('karma')||'none').trim());
+        
+        const karma = String((interaction.fields.getTextInputValue('karma')||'none').trim()).toLowerCase();
         const karmaDelta = Number((interaction.fields.getTextInputValue('karmaDelta')||'0').trim());
         const failMoneyMin = Number((interaction.fields.getTextInputValue('failMoneyMin')||'0').trim());
         const failMoneyMax = Number((interaction.fields.getTextInputValue('failMoneyMax')||'0').trim());
         const failKarmaDelta = Number((interaction.fields.getTextInputValue('failKarmaDelta')||'0').trim());
-        if (!['charm','perversion','none'].includes(karma)) return interaction.editReply({ content: 'Type karma invalide.' });
+        
+        // Validate karma type
+        if (!['charm','perversion','none'].includes(karma)) {
+          return interaction.editReply({ content: '❌ Type karma invalide. Utilisez: charm, perversion ou none.' });
+        }
+        
+        // Validate numeric values
+        if (isNaN(karmaDelta) || isNaN(failMoneyMin) || isNaN(failMoneyMax) || isNaN(failKarmaDelta)) {
+          return interaction.editReply({ content: '❌ Valeurs numériques invalides.' });
+        }
+        
+        // Ensure structure exists
         if (!eco.actions) eco.actions = {};
         if (!eco.actions.config) eco.actions.config = {};
-        eco.actions.config[key] = { ...(c||{}), karma, karmaDelta, failMoneyMin, failMoneyMax, failKarmaDelta };
+        
+        eco.actions.config[key] = { 
+          ...(c||{}), 
+          karma, 
+          karmaDelta: Math.max(0, karmaDelta), 
+          failMoneyMin: Math.max(0, failMoneyMin), 
+          failMoneyMax: Math.max(0, failMoneyMax), 
+          failKarmaDelta: Math.max(0, failKarmaDelta) 
+        };
+        
         await updateEconomyConfig(interaction.guild.id, eco);
-        return interaction.editReply({ content: '✅ Karma mis à jour.' });
+        return interaction.editReply({ content: `✅ Karma mis à jour pour l'action "${key}".` });
       } catch (error) {
         console.error('[Karma] Modal submission failed:', error.message);
+        console.error('[Karma] Modal stack trace:', error.stack);
         return interaction.editReply({ content: '❌ Erreur lors de la sauvegarde des réglages karma.' }).catch(() => {});
       }
     }
@@ -3196,28 +3435,123 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isButton() && interaction.customId === 'config_back_home') {
       const embed = await buildConfigEmbed(interaction.guild);
-      const row = buildTopSectionRow();
-      return interaction.update({ embeds: [embed], components: [row] });
+      const rows = buildTopSectionRow();
+      return interaction.update({ embeds: [embed], components: [...rows] });
+    }
+    
+    // Economy diagnostic button
+    if (interaction.isButton() && interaction.customId === 'config_economy_diagnostic') {
+      try {
+        await interaction.deferReply({ ephemeral: true });
+        
+        const diagnostic = await diagnoseEconomyKarmaIssues(interaction.guild.id);
+        
+        let diagnosticText = '🔧 **Diagnostic Économie/Karma**\n\n';
+        
+        if (diagnostic.issues.length === 0) {
+          diagnosticText += '✅ Aucun problème détecté dans la structure économie/karma.\n\n';
+        } else {
+          diagnosticText += '❌ **Problèmes détectés:**\n';
+          diagnostic.issues.forEach(issue => {
+            diagnosticText += `• ${issue}\n`;
+          });
+          diagnosticText += '\n';
+        }
+        
+        diagnosticText += '📊 **État des caches:**\n';
+        diagnosticText += `• Types karma: ${diagnostic.cacheInfo.karmaType} entrées\n`;
+        diagnosticText += `• Sélections karma: ${diagnostic.cacheInfo.karmaSel} entrées\n`;
+        diagnosticText += `• Actions courantes: ${diagnostic.cacheInfo.actionCurrent} entrées\n\n`;
+        
+        diagnosticText += '🔄 **Actions de réparation effectuées:**\n';
+        diagnosticText += '• Validation et nettoyage des caches\n';
+        diagnosticText += '• Vérification de la structure des données\n';
+        diagnosticText += '• Initialisation des structures manquantes\n\n';
+        
+        diagnosticText += '💡 **Recommandations:**\n';
+        if (diagnostic.issues.length > 0) {
+          diagnosticText += '• Redémarrez le bot si les problèmes persistent\n';
+          diagnosticText += '• Vérifiez les logs pour plus de détails\n';
+        } else {
+          diagnosticText += '• Le système semble fonctionnel\n';
+          diagnosticText += '• Si vous rencontrez encore des problèmes, contactez le support\n';
+        }
+        
+        // Clear caches as part of diagnostic
+        clearKarmaCache(interaction.guild.id);
+        initializeEconomyCaches();
+        
+        return interaction.editReply({ content: diagnosticText });
+      } catch (error) {
+        console.error('[Diagnostic] Failed:', error.message);
+        return interaction.editReply({ content: '❌ Erreur lors du diagnostic. Consultez les logs.' }).catch(() => {});
+      }
     }
     // Karma error retry handler
     if (interaction.isButton() && interaction.customId === 'karma_error_retry') {
       try {
+        // Clear all karma-related cache for this guild
+        clearKarmaCache(interaction.guild.id);
+        
+        // Validate guild and interaction
+        if (!interaction.guild || !interaction.guild.id) {
+          throw new Error('Invalid guild in interaction');
+        }
+        
+        // Run diagnostic to identify issues
+        await diagnoseEconomyKarmaIssues(interaction.guild.id);
+        
         const embed = await buildConfigEmbed(interaction.guild);
         const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
         return interaction.update({ embeds: [embed], components: [...rows] });
       } catch (error) {
         console.error('[Karma] Retry failed:', error.message);
-        return interaction.reply({ content: '❌ Impossible de charger la configuration karma. Contactez un administrateur.', ephemeral: true }).catch(() => {});
+        console.error('[Karma] Retry stack trace:', error.stack);
+        
+        // Try to provide a fallback interface
+        try {
+          const embed = await buildConfigEmbed(interaction.guild);
+          const backRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('config_back_home')
+              .setLabel('← Retour config principale')
+              .setStyle(ButtonStyle.Secondary)
+          );
+          return interaction.update({ 
+            embeds: [embed], 
+            components: [backRow],
+            content: '❌ Erreur persistante avec la configuration karma. Retournez au menu principal et réessayez.'
+          });
+        } catch (fallbackError) {
+          console.error('[Karma] Fallback failed:', fallbackError.message);
+          return interaction.reply({ content: '❌ Impossible de charger la configuration karma. Contactez un administrateur.', ephemeral: true }).catch(() => {});
+        }
       }
     }
     // Karma type switch
     if (interaction.isStringSelectMenu() && interaction.customId === 'eco_karma_type') {
-      const type = interaction.values[0];
-      if (!client._ecoKarmaType) client._ecoKarmaType = new Map();
-      client._ecoKarmaType.set(interaction.guild.id, type);
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      try {
+        const type = interaction.values[0];
+        
+        // Validate type
+        if (!['shop', 'actions', 'grants'].includes(type)) {
+          return interaction.reply({ content: '❌ Type de karma invalide.', ephemeral: true });
+        }
+        
+        initializeEconomyCaches();
+        client._ecoKarmaType.set(interaction.guild.id, type);
+        
+        // Clear previous selections for this guild when switching types
+        clearKarmaCache(interaction.guild.id);
+        client._ecoKarmaType.set(interaction.guild.id, type); // Reset the type after clearing
+        
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+        return interaction.update({ embeds: [embed], components: [...rows] });
+      } catch (error) {
+        console.error('[Karma] Type switch failed:', error.message);
+        return interaction.reply({ content: '❌ Erreur lors du changement de type karma.', ephemeral: true }).catch(() => {});
+      }
     }
     if (interaction.isButton() && interaction.customId === 'booster_toggle') {
       const eco = await getEconomyConfig(interaction.guild.id);
@@ -3249,99 +3583,243 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     // Karma delete selected
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('eco_karma_rules:')) {
-      // store selection in memory until delete click
-      const type = interaction.customId.split(':')[1] || 'shop';
-      if (!client._ecoKarmaSel) client._ecoKarmaSel = new Map();
-      client._ecoKarmaSel.set(`${interaction.guild.id}:${type}`, interaction.values);
-      try { 
+      try {
+        // Validate interaction state
+        if (!interaction.guild || !interaction.guild.id) {
+          throw new Error('Invalid guild in karma rules interaction');
+        }
+        
+        if (!interaction.values || !Array.isArray(interaction.values)) {
+          throw new Error('Invalid values in karma rules interaction');
+        }
+        
+        // store selection in memory until delete click
+        const type = interaction.customId.split(':')[1] || 'shop';
+        
+        // Validate type
+        if (!['shop', 'actions', 'grants'].includes(type)) {
+          return interaction.reply({ content: '❌ Type de règle karma invalide.', ephemeral: true });
+        }
+        
+        // Filter out 'none' values and validate indices
+        const validValues = interaction.values.filter(v => v !== 'none' && !isNaN(Number(v)));
+        
+        if (!client._ecoKarmaSel) client._ecoKarmaSel = new Map();
+        client._ecoKarmaSel.set(`${interaction.guild.id}:${type}`, validValues);
+        
         await interaction.deferUpdate(); 
       } catch (error) { 
-        console.error('[Karma] Failed to defer update for karma rules selection:', error.message);
+        console.error('[Karma] Failed to process karma rules selection:', error.message);
+        console.error('[Karma] Selection stack trace:', error.stack);
+        
         // Try to reply with error if defer failed
         try {
-          await interaction.reply({ content: '❌ Erreur lors de la sélection des règles karma.', ephemeral: true });
-        } catch (_) {}
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: '❌ Erreur lors de la sélection des règles karma.', ephemeral: true });
+          } else {
+            await interaction.followUp({ content: '❌ Erreur lors de la sélection des règles karma.', ephemeral: true });
+          }
+        } catch (replyError) {
+          console.error('[Karma] Failed to send error message:', replyError.message);
+        }
       }
     }
     if (interaction.isButton() && interaction.customId === 'eco_karma_delete') {
-      const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
-      const key = `${interaction.guild.id}:${type}`;
-      const sel = client._ecoKarmaSel?.get?.(key) || [];
-      const eco = await getEconomyConfig(interaction.guild.id);
-      let list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
-      const idxs = new Set(sel.map(v => Number(v)));
-      list = list.filter((_, i) => !idxs.has(i));
-      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: list };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      const embed = await buildConfigEmbed(interaction.guild);
-      const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
-      return interaction.update({ embeds: [embed], components: [...rows] });
+      try {
+        await interaction.deferReply({ ephemeral: true });
+        
+        const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
+        const key = `${interaction.guild.id}:${type}`;
+        const sel = client._ecoKarmaSel?.get?.(key) || [];
+        
+        if (!sel.length) {
+          return interaction.editReply({ content: '❌ Aucune règle sélectionnée pour suppression.' });
+        }
+        
+        const eco = await getEconomyConfig(interaction.guild.id);
+        
+        // Ensure karmaModifiers structure exists
+        if (!eco.karmaModifiers || typeof eco.karmaModifiers !== 'object') {
+          eco.karmaModifiers = { shop: [], actions: [], grants: [] };
+        }
+        
+        let list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+        const idxs = new Set(sel.map(v => Number(v)).filter(n => !isNaN(n)));
+        
+        const originalLength = list.length;
+        list = list.filter((_, i) => !idxs.has(i));
+        const deletedCount = originalLength - list.length;
+        
+        eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: list };
+        await updateEconomyConfig(interaction.guild.id, eco);
+        
+        // Clear selection after successful deletion
+        client._ecoKarmaSel?.delete?.(key);
+        
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+        
+        await interaction.editReply({ content: `✅ ${deletedCount} règle(s) supprimée(s).` });
+        return interaction.followUp({ embeds: [embed], components: [...rows], ephemeral: true });
+      } catch (error) {
+        console.error('[Karma] Delete failed:', error.message);
+        return interaction.editReply({ content: '❌ Erreur lors de la suppression des règles karma.' }).catch(() => {});
+      }
     }
     if (interaction.isButton() && interaction.customId === 'eco_karma_edit') {
-      const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
-      const sel = client._ecoKarmaSel?.get?.(`${interaction.guild.id}:${type}`) || [];
-      if (!sel.length) return interaction.reply({ content: 'Sélectionnez d\'abord une règle.', ephemeral: true });
-      const idx = Number(sel[0]);
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
-      const rule = list[idx];
-      if (!rule) return interaction.reply({ content: 'Règle introuvable.', ephemeral: true });
-      if (type === 'grants') {
-        const modal = new ModalBuilder().setCustomId(`eco_karma_edit_grant:${idx}`).setTitle('Modifier grant');
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setValue(String(rule.name||''))),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.money||0)))
-        );
-        try { 
-          return await interaction.showModal(modal); 
-        } catch (error) { 
-          console.error('[Karma] Failed to show karma grant edit modal:', error.message);
-          return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire d\'édition grant karma.', ephemeral: true }).catch(() => {});
+      try {
+        const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
+        const sel = client._ecoKarmaSel?.get?.(`${interaction.guild.id}:${type}`) || [];
+        
+        if (!sel.length) {
+          return interaction.reply({ content: 'Sélectionnez d\'abord une règle à modifier.', ephemeral: true });
         }
-      } else {
-        const modal = new ModalBuilder().setCustomId(`eco_karma_edit_perc:${type}:${idx}`).setTitle('Modifier règle (%)');
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setValue(String(rule.name||''))),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.percent||0)))
-        );
-        try { 
-          return await interaction.showModal(modal); 
-        } catch (error) { 
-          console.error('[Karma] Failed to show karma percentage edit modal:', error.message);
-          return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire d\'édition règle karma.', ephemeral: true }).catch(() => {});
+        
+        const idx = Number(sel[0]);
+        if (isNaN(idx)) {
+          return interaction.reply({ content: '❌ Index de règle invalide.', ephemeral: true });
         }
+        
+        const eco = await getEconomyConfig(interaction.guild.id);
+        
+        // Ensure karmaModifiers structure exists
+        if (!eco.karmaModifiers || typeof eco.karmaModifiers !== 'object') {
+          eco.karmaModifiers = { shop: [], actions: [], grants: [] };
+        }
+        
+        const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+        const rule = list[idx];
+        
+        if (!rule) {
+          return interaction.reply({ content: '❌ Règle introuvable. La liste a peut-être été modifiée.', ephemeral: true });
+        }
+        
+        if (type === 'grants') {
+          const modal = new ModalBuilder().setCustomId(`eco_karma_edit_grant:${idx}`).setTitle('Modifier grant');
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setValue(String(rule.name||''))),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>10)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('money').setLabel('Montant (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.money||0)))
+          );
+          try { 
+            return await interaction.showModal(modal); 
+          } catch (error) { 
+            console.error('[Karma] Failed to show karma grant edit modal:', error.message);
+            return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire d\'édition grant karma.', ephemeral: true }).catch(() => {});
+          }
+        } else {
+          const modal = new ModalBuilder().setCustomId(`eco_karma_edit_perc:${type}:${idx}`).setTitle('Modifier règle (%)');
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Nom de la règle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setValue(String(rule.name||''))),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('condition').setLabel('Condition (ex: charm>10)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.condition||''))),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('percent').setLabel('Pourcentage (+/-)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(rule.percent||0)))
+          );
+          try { 
+            return await interaction.showModal(modal); 
+          } catch (error) { 
+            console.error('[Karma] Failed to show karma percentage edit modal:', error.message);
+            return interaction.reply({ content: '❌ Erreur lors de l\'ouverture du formulaire d\'édition règle karma.', ephemeral: true }).catch(() => {});
+          }
+        }
+      } catch (error) {
+        console.error('[Karma] Edit button failed:', error.message);
+        return interaction.reply({ content: '❌ Erreur lors de l\'édition des règles karma.', ephemeral: true }).catch(() => {});
       }
     }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('eco_karma_edit_grant:')) {
-      await interaction.deferReply({ ephemeral: true });
-      const idx = Number(interaction.customId.split(':')[1]);
-      const name = (interaction.fields.getTextInputValue('name')||'').trim();
-      const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
-      const money = Number((interaction.fields.getTextInputValue('money')||'0').trim());
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const list = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
-      if (!list[idx]) return interaction.editReply({ content: 'Règle introuvable.' });
-      list[idx] = { name: name || null, condition, money };
-      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), grants: list };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      return interaction.editReply({ content: '✅ Grant modifié.' });
+      try {
+        await interaction.deferReply({ ephemeral: true });
+        
+        const idx = Number(interaction.customId.split(':')[1]);
+        if (isNaN(idx)) {
+          return interaction.editReply({ content: '❌ Index de règle invalide.' });
+        }
+        
+        const name = (interaction.fields.getTextInputValue('name')||'').trim();
+        const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
+        const money = Number((interaction.fields.getTextInputValue('money')||'0').trim());
+        
+        // Validate inputs
+        if (!condition) {
+          return interaction.editReply({ content: '❌ La condition est requise.' });
+        }
+        
+        if (isNaN(money)) {
+          return interaction.editReply({ content: '❌ Montant invalide.' });
+        }
+        
+        const eco = await getEconomyConfig(interaction.guild.id);
+        
+        // Ensure structure exists
+        if (!eco.karmaModifiers || typeof eco.karmaModifiers !== 'object') {
+          eco.karmaModifiers = { shop: [], actions: [], grants: [] };
+        }
+        
+        const list = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
+        
+        if (idx < 0 || idx >= list.length || !list[idx]) {
+          return interaction.editReply({ content: '❌ Règle introuvable. La liste a peut-être été modifiée.' });
+        }
+        
+        list[idx] = { name: name || null, condition, money };
+        eco.karmaModifiers = { ...(eco.karmaModifiers||{}), grants: list };
+        await updateEconomyConfig(interaction.guild.id, eco);
+        return interaction.editReply({ content: '✅ Grant modifié avec succès.' });
+      } catch (error) {
+        console.error('[Karma] Grant edit submission failed:', error.message);
+        return interaction.editReply({ content: '❌ Erreur lors de la modification du grant.' }).catch(() => {});
+      }
     }
     if (interaction.isModalSubmit() && interaction.customId.startsWith('eco_karma_edit_perc:')) {
-      await interaction.deferReply({ ephemeral: true });
-      const [, type, idxStr] = interaction.customId.split(':');
-      const idx = Number(idxStr);
-      const name = (interaction.fields.getTextInputValue('name')||'').trim();
-      const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
-      const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
-      const eco = await getEconomyConfig(interaction.guild.id);
-      const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
-      if (!list[idx]) return interaction.editReply({ content: 'Règle introuvable.' });
-      list[idx] = { name: name || null, condition, percent };
-      eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: list };
-      await updateEconomyConfig(interaction.guild.id, eco);
-      return interaction.editReply({ content: '✅ Règle modifiée.' });
+      try {
+        await interaction.deferReply({ ephemeral: true });
+        
+        const [, type, idxStr] = interaction.customId.split(':');
+        const idx = Number(idxStr);
+        
+        // Validate inputs
+        if (!type || !['shop', 'actions'].includes(type)) {
+          return interaction.editReply({ content: '❌ Type de règle invalide.' });
+        }
+        
+        if (isNaN(idx)) {
+          return interaction.editReply({ content: '❌ Index de règle invalide.' });
+        }
+        
+        const name = (interaction.fields.getTextInputValue('name')||'').trim();
+        const condition = (interaction.fields.getTextInputValue('condition')||'').trim();
+        const percent = Number((interaction.fields.getTextInputValue('percent')||'0').trim());
+        
+        // Validate inputs
+        if (!condition) {
+          return interaction.editReply({ content: '❌ La condition est requise.' });
+        }
+        
+        if (isNaN(percent)) {
+          return interaction.editReply({ content: '❌ Pourcentage invalide.' });
+        }
+        
+        const eco = await getEconomyConfig(interaction.guild.id);
+        
+        // Ensure structure exists
+        if (!eco.karmaModifiers || typeof eco.karmaModifiers !== 'object') {
+          eco.karmaModifiers = { shop: [], actions: [], grants: [] };
+        }
+        
+        const list = Array.isArray(eco.karmaModifiers?.[type]) ? eco.karmaModifiers[type] : [];
+        
+        if (idx < 0 || idx >= list.length || !list[idx]) {
+          return interaction.editReply({ content: '❌ Règle introuvable. La liste a peut-être été modifiée.' });
+        }
+        
+        list[idx] = { name: name || null, condition, percent };
+        eco.karmaModifiers = { ...(eco.karmaModifiers||{}), [type]: list };
+        await updateEconomyConfig(interaction.guild.id, eco);
+        return interaction.editReply({ content: '✅ Règle modifiée avec succès.' });
+      } catch (error) {
+        console.error('[Karma] Percentage edit submission failed:', error.message);
+        return interaction.editReply({ content: '❌ Erreur lors de la modification de la règle.' }).catch(() => {});
+      }
     }
     if (interaction.isButton() && interaction.customId === 'eco_karma_clear') {
       const type = (client._ecoKarmaType?.get?.(interaction.guild.id)) || 'shop';
@@ -3765,16 +4243,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId === 'config_staff_action') {
       const action = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
+      const topRows = buildTopSectionRow();
       const staffAction = buildStaffActionRow();
       if (action === 'add') {
         const addRows = buildStaffAddRows();
-        await interaction.update({ embeds: [embed], components: [top, staffAction, ...addRows] });
+        await interaction.update({ embeds: [embed], components: [...topRows, staffAction, ...addRows] });
       } else if (action === 'remove') {
         const removeRows = await buildStaffRemoveRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, staffAction, ...removeRows] });
+        await interaction.update({ embeds: [embed], components: [...topRows, staffAction, ...removeRows] });
       } else {
-        await interaction.update({ embeds: [embed], components: [top, staffAction] });
+        await interaction.update({ embeds: [embed], components: [...topRows, staffAction] });
       }
       return;
     }
@@ -3785,9 +4263,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const next = Array.from(new Set([...current, ...interaction.values]));
       await setGuildStaffRoleIds(interaction.guild.id, next);
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
+      const topRows = buildTopSectionRow();
       const staffAction = buildStaffActionRow();
-      await interaction.update({ embeds: [embed], components: [top, staffAction] });
+      await interaction.update({ embeds: [embed], components: [...topRows, staffAction] });
       return;
     }
 
@@ -3797,9 +4275,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const next = current.filter((id) => !selected.has(id));
       await setGuildStaffRoleIds(interaction.guild.id, next);
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
+      const topRows = buildTopSectionRow();
       const staffAction = buildStaffActionRow();
-      await interaction.update({ embeds: [embed], components: [top, staffAction] });
+      await interaction.update({ embeds: [embed], components: [...topRows, staffAction] });
       return;
     }
 
@@ -3807,9 +4285,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const selected = interaction.values[0];
       await updateAutoKickConfig(interaction.guild.id, { roleId: selected });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
+      const topRows = buildTopSectionRow();
       const akRows = await buildAutokickRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+      await interaction.update({ embeds: [embed], components: [...topRows, ...akRows] });
       return;
     }
 
@@ -3849,9 +4327,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enable = interaction.customId === 'autokick_enable';
       await updateAutoKickConfig(interaction.guild.id, { enabled: enable });
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
+      const topRows = buildTopSectionRow();
       const akRows = await buildAutokickRows(interaction.guild);
-      await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+      await interaction.update({ embeds: [embed], components: [...topRows, ...akRows] });
       return;
     }
 
@@ -3865,9 +4343,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateAutoKickConfig(interaction.guild.id, { delayMs });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
-      const top = buildTopSectionRow();
+      const topRows = buildTopSectionRow();
       const akRows = await buildAutokickRows(interaction.guild);
-      try { await interaction.editReply({ embeds: [embed], components: [top, ...akRows] }); } catch (_) {}
+      try { await interaction.editReply({ embeds: [embed], components: [...topRows, ...akRows] }); } catch (_) {}
       return;
     }
     // AutoThread config handlers
