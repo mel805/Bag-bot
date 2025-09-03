@@ -3138,14 +3138,45 @@ client.once(Events.ClientReady, (readyClient) => {
       for (const [uid, info] of Object.entries(active)) {
         if (!info || typeof info.expiresAt !== 'number') continue;
         if (now >= info.expiresAt) {
-          // delete channels
-          for (const cid of [info.textId, info.voiceId]) {
-            if (!cid) continue;
-            const ch = guild.channels.cache.get(cid) || await guild.channels.fetch(cid).catch(()=>null);
-            if (ch) await ch.delete().catch(()=>{});
+          let textDeleted = true;
+          let voiceDeleted = true;
+          // delete text channel
+          try {
+            const tcid = info.textId;
+            if (tcid) {
+              const tch = guild.channels.cache.get(tcid) || await guild.channels.fetch(tcid).catch(()=>null);
+              if (tch) {
+                await tch.delete().catch((e)=>{ try { console.warn('[Suites] Échec suppression texte', { uid, tcid, error: e?.message }); } catch(_){}; });
+                const still = guild.channels.cache.get(tcid) || await guild.channels.fetch(tcid).catch(()=>null);
+                textDeleted = !still;
+              }
+            }
+          } catch (e) {
+            try { console.warn('[Suites] Erreur suppression texte', { uid, error: e?.message }); } catch(_){}
           }
-          delete active[uid];
-          modified = true;
+          // delete voice channel
+          try {
+            const vcid = info.voiceId;
+            if (vcid) {
+              const vch = guild.channels.cache.get(vcid) || await guild.channels.fetch(vcid).catch(()=>null);
+              if (vch) {
+                await vch.delete().catch((e)=>{ try { console.warn('[Suites] Échec suppression vocal', { uid, vcid, error: e?.message }); } catch(_){}; });
+                const still = guild.channels.cache.get(vcid) || await guild.channels.fetch(vcid).catch(()=>null);
+                voiceDeleted = !still;
+              }
+            }
+          } catch (e) {
+            try { console.warn('[Suites] Erreur suppression vocal', { uid, error: e?.message }); } catch(_){}
+          }
+          // Remove entry only if both channels are gone or undefined
+          const canRemove = (info.textId ? textDeleted : true) && (info.voiceId ? voiceDeleted : true);
+          if (canRemove) {
+            try { console.log('[Suites] Entrée supprimée (canaux supprimés ou introuvables)', { uid, textId: info.textId||null, voiceId: info.voiceId||null }); } catch(_){}
+            delete active[uid];
+            modified = true;
+          } else {
+            try { console.warn('[Suites] Entrée conservée: suppression incomplète', { uid, textDeleted, voiceDeleted }); } catch(_){}
+          }
         }
       }
       if (modified) {
