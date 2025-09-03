@@ -1379,6 +1379,23 @@ async function deleteTdPrompts(guildId, ids, mode = 'sfw') {
   return td[mode].prompts;
 }
 
+async function editTdPrompt(guildId, id, newText, mode = 'sfw') {
+  const cfg = await readConfig();
+  if (!cfg.guilds[guildId]) return null;
+  ensureTruthDareShape(cfg.guilds[guildId]);
+  const td = cfg.guilds[guildId].truthdare;
+  const pid = Number(id);
+  if (!Number.isFinite(pid)) return null;
+  const list = Array.isArray(td[mode]?.prompts) ? td[mode].prompts : [];
+  const idx = list.findIndex(p => Number(p.id) === pid);
+  if (idx === -1) return null;
+  const text = String(newText || '').trim();
+  if (!text) return null;
+  list[idx].text = text;
+  await writeConfig(cfg);
+  return list[idx];
+}
+
 // Ensure economy shape on getGuildConfig and getEconomyConfig
 
 const paths = {
@@ -1421,6 +1438,7 @@ module.exports = {
   removeTdChannels,
   addTdPrompts,
   deleteTdPrompts,
+  editTdPrompt,
   // Geo
   getGeoConfig,
   setUserLocation,
