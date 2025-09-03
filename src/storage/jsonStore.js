@@ -616,6 +616,12 @@ function ensureEconomyShape(g) {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
   }
   if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
+  // Ensure per-action zones container exists (for randomized {zone} placeholders)
+  if (!e.actions.zones || typeof e.actions.zones !== 'object') e.actions.zones = {};
+  const zonedNsfwDefaults = ['fuck','undress','shower','wet','bed','punish','hairpull','cheat'];
+  for (const key of zonedNsfwDefaults) {
+    if (!e.actions.zones[key] || !Array.isArray(e.actions.zones[key])) e.actions.zones[key] = [];
+  }
   
   // Ensure karmaModifiers structure exists and is valid
   if (!e.karmaModifiers || typeof e.karmaModifiers !== 'object') {

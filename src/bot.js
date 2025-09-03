@@ -765,6 +765,13 @@ async function handleEconomyAction(interaction, actionKey) {
   // Personnalisation légère via placeholder {zone}
   let zoneOpt = null;
   try { zoneOpt = interaction.options.getString('zone', false); } catch (_) { zoneOpt = null; }
+  // If zone not provided, and this action has configured zones, pick a random one
+  try {
+    if (!zoneOpt && eco.actions && eco.actions.zones && Array.isArray(eco.actions.zones[actionKey]) && eco.actions.zones[actionKey].length) {
+      const arr = eco.actions.zones[actionKey];
+      zoneOpt = arr[Math.floor(Math.random()*arr.length)];
+    }
+  } catch (_) {}
   if (zoneOpt && typeof msgText === 'string') {
     msgText = msgText.replaceAll('{zone}', String(zoneOpt));
   }
@@ -921,7 +928,7 @@ async function handleEconomyAction(interaction, actionKey) {
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
   const currency = eco.currency?.name || 'BAG$';
   let desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
-  if (zoneOpt && ['tickle','caress'].includes(actionKey)) {
+  if (zoneOpt && ['tickle','caress','fuck','undress','shower','wet','bed','punish','hairpull','cheat'].includes(actionKey)) {
     desc += `\nZone: ${zoneOpt}`;
   }
   // Partner rewards (cible/complice)
