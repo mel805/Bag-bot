@@ -67,6 +67,26 @@ const commands = [
   new SlashCommandBuilder().setName('sodo').setDescription('Sodomie consentie (RP adulte) 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('tirercheveux').setDescription('Tirer les cheveux (NSFW, consensuel)').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder()
+    .setName('caresser')
+    .setDescription('Caresser (NSFW)')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>o
+      .setName('zone')
+      .setDescription('Zone à caresser (optionnel)')
+      .setRequired(false)
+      .addChoices(
+        { name: 'Sein', value: 'sein' },
+        { name: 'Fesses', value: 'fesses' },
+        { name: 'Corps', value: 'corps' },
+        { name: 'Jambes', value: 'jambes' },
+        { name: 'Bite', value: 'bite' },
+        { name: 'Pied', value: 'pied' },
+        { name: 'Nuque', value: 'nuque' },
+        { name: 'Épaule', value: 'épaule' }
+      )
+    )
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('lécher')
     .setDescription('Lécher pour gagner de la perversion')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
