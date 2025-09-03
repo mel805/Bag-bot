@@ -921,11 +921,11 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   // Special storyline for tromper (NSFW): actor surprises target with a random third member
   if (actionKey === 'tromper') {
-    const partner = interaction.options.getUser('cible', true);
+    const partner = interaction.options.getUser('cible', false);
     let third = null;
     try {
       const all = await interaction.guild.members.fetch();
-      const candidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && m.user.id !== partner.id);
+      const candidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && (!partner || m.user.id !== partner.id));
       if (candidates.size > 0) {
         const arr = Array.from(candidates.values());
         third = arr[Math.floor(Math.random() * arr.length)].user;
@@ -933,15 +933,21 @@ async function handleEconomyAction(interaction, actionKey) {
     } catch (_) {}
     if (!third) {
       if (success) {
-        const texts = [
+        const texts = partner ? [
           `Tu prends ${partner} au piège: tout te profite…`,
           `Situation ambiguë avec ${partner}, mais tu en ressors gagnant(e).`,
+        ] : [
+          'Tu prends la main: tout te profite…',
+          'Situation ambiguë, mais tu en ressors gagnant(e).',
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       } else {
-        const texts = [
+        const texts = partner ? [
           `Le plan échoue: ${partner} te surprend et te fait payer la note.`,
           `Pris(e) en faute par ${partner}, tout s’effondre pour toi.`,
+        ] : [
+          'Le plan échoue: tu es pris(e) et tu payes la note.',
+          'Pris(e) en faute, tout s’effondre pour toi.',
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       }
@@ -961,17 +967,25 @@ async function handleEconomyAction(interaction, actionKey) {
       await setEconomyUser(interaction.guild.id, third.id, thirdUser);
       // Messages
       if (success) {
-        const texts = [
+        const texts = partner ? [
           `Tu surprends ${partner} avec ${third}… et c’est ${third} qui trinque.`,
+          `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
+          `Scène chaude: tu retournes la situation sur ${third}.`
+        ] : [
+          `Tu surprends ${third} en mauvaise posture… et c’est ${third} qui trinque.`,
           `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
           `Scène chaude: tu retournes la situation sur ${third}.`
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       } else {
-        const texts = [
+        const texts = partner ? [
           `Tu es surpris(e) avec ${third} par ${partner}… ça tourne mal pour vous deux.`,
           `${partner} vous coince, toi et ${third}: pertes et remords.`,
           `Exposé(e) au grand jour: ${partner} règle ses comptes.`,
+        ] : [
+          `Tu es surpris(e) avec ${third}… ça tourne mal pour vous deux.`,
+          `On vous coince, toi et ${third}: pertes et remords.`,
+          `Exposé(e) au grand jour: les comptes sont réglés.`,
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       }
