@@ -762,11 +762,11 @@ async function handleEconomyAction(interaction, actionKey) {
   let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
-  // Personnalisation légère via placeholder {zone}
+  // Personnalisation {zone}: tirage aléatoire simple si présent dans le message
   let zoneOpt = null;
-  try { zoneOpt = interaction.options.getString('zone', false); } catch (_) { zoneOpt = null; }
-  // No global zones container: zones are integrated per-action via messages using {zone}
-  if (zoneOpt && typeof msgText === 'string') {
+  if (typeof msgText === 'string' && msgText.includes('{zone}')) {
+    const zonesPool = ['cou', 'hanche', 'cuisses', 'dos', 'lèvres', 'oreille', 'nuque', 'ventre'];
+    zoneOpt = zonesPool[Math.floor(Math.random()*zonesPool.length)];
     msgText = msgText.replaceAll('{zone}', String(zoneOpt));
   }
   // Special cases
