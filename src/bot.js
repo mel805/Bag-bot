@@ -6723,7 +6723,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
             if (backups.length === 0) {
               return interaction.editReply({ content: '📭 Aucune sauvegarde GitHub trouvée.' });
             }
-            const list = backups.map((b, i) => `${i+1}. \`${b.sha.substring(0,7)}\` - ${new Date(b.date).toLocaleString('fr-FR')}\n   ${b.message}`).join('\n\n');
+            const list = backups.map((b, i) => {
+              const when = new Date(b.date).toLocaleString('fr-FR');
+              const short = b.sha.substring(0,7);
+              return `${i+1}. ${when} — ref: \`${short}\`\n${b.message}\n   ➡️ Restaurer: \`/github-backup force-restore ref:${b.sha}\``;
+            }).join('\n\n');
             return interaction.editReply({ content: `📋 **Dernières sauvegardes GitHub:**\n\n${list}` });
 
           case 'force-backup':
