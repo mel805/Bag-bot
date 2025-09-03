@@ -5,10 +5,12 @@ services:
     autoDeploy: true
     plan: free
     buildCommand: npm ci
-    startCommand: npm run render-start
+    startCommand: npm run render-start-safe
     envVars:
       - key: DISCORD_TOKEN
         sync: false
+      - key: DATA_DIR
+        value: "/var/data"
       - key: CLIENT_ID
         sync: false
       - key: GUILD_ID
@@ -27,6 +29,12 @@ services:
         fromDatabase:
           name: bag-bot-db
           property: connectionString
+    volumes:
+      - name: bag-bot-data
+        mountPath: /var/data
 databases:
   - name: bag-bot-db
     plan: free
+volumes:
+  - name: bag-bot-data
+    sizeGB: 1
