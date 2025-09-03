@@ -616,12 +616,6 @@ function ensureEconomyShape(g) {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
   }
   if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
-  // Ensure per-action zones container exists (for randomized {zone} placeholders)
-  if (!e.actions.zones || typeof e.actions.zones !== 'object') e.actions.zones = {};
-  const zonedNsfwDefaults = ['fuck','undress','shower','wet','bed','punish','hairpull','cheat'];
-  for (const key of zonedNsfwDefaults) {
-    if (!e.actions.zones[key] || !Array.isArray(e.actions.zones[key])) e.actions.zones[key] = [];
-  }
   
   // Ensure karmaModifiers structure exists and is valid
   if (!e.karmaModifiers || typeof e.karmaModifiers !== 'object') {
@@ -801,19 +795,19 @@ function ensureEconomyShape(g) {
     },
     // Hot & Fun
     shower: {
-      success: ['Douche chaude… ou froide surprise 😏🚿', 'Ça chauffe sous la douche !'],
+      success: ['Douche chaude sur {zone}… 😏🚿', 'Ça chauffe sous la douche sur {zone} !'],
       fail: ['L’eau est glacée… brrr !', 'Oups, la serviette a glissé…']
     },
     wet: {
-      success: ['Ambiance humide garantie 💧', 'Ça devient glissant…'],
+      success: ['Ambiance humide sur {zone} 💧', 'Ça devient glissant sur {zone}…'],
       fail: ['Rien à signaler… trop sec.']
     },
     bed: {
-      success: ['Invitation au lit acceptée 😏', 'Le lit vous tend les bras.'],
+      success: ['Invitation au lit, {zone} au chaud 😏', 'Le lit vous tend les bras, surtout {zone}.'],
       fail: ['Pas d’humeur pour se coucher.']
     },
     undress: {
-      success: ['Déshabillage progressif engagé…', 'Tout en douceur.'],
+      success: ['Déshabillage progressif, focus {zone}…', 'Tout en douceur autour de {zone}.'],
       fail: ['Boutons récalcitrants…']
     },
     // Domination / Soumission
@@ -834,7 +828,7 @@ function ensureEconomyShape(g) {
       fail: ['Ordre ignoré…']
     },
     punish: {
-      success: ['Punition appliquée 😈', 'Leçon mémorable.'],
+      success: ['Punition appliquée sur {zone} 😈', 'Leçon mémorable sur {zone}.'],
       fail: ['Grâce accordée.']
     },
     // Séduction & RP doux
@@ -881,11 +875,11 @@ function ensureEconomyShape(g) {
       fail: ['Malaise, mieux vaut arrêter.', 'Moment inadapté.']
     },
     hairpull: {
-      success: ['Jeu approuvé (RP).', 'Tension maîtrisée.'],
+      success: ['Jeu approuvé (RP) — {zone}.', 'Tension maîtrisée sur {zone}.'],
       fail: ['Refus immédiat.', 'Limite posée clairement.']
     },
     cheat: {
-      success: ['La rumeur enfle…', 'Scénario RP lancé.'],
+      success: ['La rumeur enfle autour de {zone}…', 'Scénario RP lancé (focus {zone}).'],
       fail: ['Rien à signaler, rumeur démentie.', 'Le plan tombe à l’eau.']
     }
   };

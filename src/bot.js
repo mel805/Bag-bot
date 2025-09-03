@@ -765,13 +765,7 @@ async function handleEconomyAction(interaction, actionKey) {
   // Personnalisation légère via placeholder {zone}
   let zoneOpt = null;
   try { zoneOpt = interaction.options.getString('zone', false); } catch (_) { zoneOpt = null; }
-  // If zone not provided, and this action has configured zones, pick a random one
-  try {
-    if (!zoneOpt && eco.actions && eco.actions.zones && Array.isArray(eco.actions.zones[actionKey]) && eco.actions.zones[actionKey].length) {
-      const arr = eco.actions.zones[actionKey];
-      zoneOpt = arr[Math.floor(Math.random()*arr.length)];
-    }
-  } catch (_) {}
+  // No global zones container: zones are integrated per-action via messages using {zone}
   if (zoneOpt && typeof msgText === 'string') {
     msgText = msgText.replaceAll('{zone}', String(zoneOpt));
   }
