@@ -992,15 +992,7 @@ async function handleEconomyAction(interaction, actionKey) {
   let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
-  // Allow a user-provided custom message for certain commands
-  try {
-    if (actionKey === 'orgasme') {
-      const custom = interaction.options.getString('message', false);
-      if (custom && typeof custom === 'string' && custom.trim().length) {
-        msgText = custom.trim();
-      }
-    }
-  } catch (_) {}
+  // Custom user message override removed for 'orgasme' — keep only random messages
   if (actionKey === 'lick') {
     const zones = ['seins','chatte','cul','oreille','ventre'];
     const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };

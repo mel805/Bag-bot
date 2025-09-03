@@ -72,7 +72,6 @@ const commands = [
     .setName('orgasme')
     .setDescription('Donner un orgasme (NSFW, consensuel) 😈')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
-    .addStringOption(o=>o.setName('message').setDescription('Message personnalisé (optionnel)').setRequired(false))
     .toJSON(),
   new SlashCommandBuilder()
     .setName('caresser')
