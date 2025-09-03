@@ -123,8 +123,76 @@ async function resolveGifUrl(url, opts) {
         }
       }
     }
+    // Generic: try to resolve any page URL by scraping OpenGraph og:image as a last resort
+    if (!isLikelyDirectImageUrl(normalized)) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, Math.max(1000, Math.min(timeoutMs, 3000)));
+      let html = '';
+      try {
+        const r = await fetch(normalized, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+        if (r && r.ok) html = await r.text();
+      } catch (_) {}
+      clearTimeout(t);
+      if (html) {
+        const mImg = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+        if (mImg && mImg[1]) {
+          const cand = mImg[1];
+          if (isLikelyDirectImageUrl(cand)) return cand;
+        }
+      }
+    }
   } catch (_) {}
   return normalized;
+}
+// Try to detect if a URL points to an image by checking Content-Type via HEAD
+async function urlContentTypeIsImage(url, timeoutMs = 2000) {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, timeoutMs);
+    const r = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+    clearTimeout(t);
+    const ct = String(r.headers.get('content-type') || '');
+    return /^image\//i.test(ct);
+  } catch (_) { return false; }
+}
+// Attempt to download image bytes and return an Attachment for Discord embeds
+async function tryCreateImageAttachmentFromUrl(url, opts) {
+  const options = opts || {};
+  const timeoutMs = Number(options.timeoutMs || 3000);
+  const maxBytes = Number(options.maxBytes || 7500000); // ~7.5MB safe default
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, timeoutMs);
+    const head = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'image/*' } }).catch(()=>null);
+    clearTimeout(t);
+    const contentType = String(head?.headers?.get?.('content-type') || '');
+    const isImage = /^image\//i.test(contentType);
+    if (!isImage) return null;
+    const lenHeader = head?.headers?.get?.('content-length');
+    if (lenHeader && Number(lenHeader) > maxBytes) return null;
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => { try { ctrl2.abort(); } catch (_) {} }, timeoutMs);
+    const r = await fetch(url, { method: 'GET', redirect: 'follow', signal: ctrl2.signal, headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'image/*' } });
+    clearTimeout(t2);
+    if (!r.ok) return null;
+    const ct = String(r.headers.get('content-type') || contentType || '');
+    if (!/^image\//i.test(ct)) return null;
+    const ab = await r.arrayBuffer();
+    const size = ab.byteLength || 0;
+    if (size <= 0 || size > maxBytes) return null;
+    const ext = (() => {
+      if (/gif/i.test(ct)) return 'gif';
+      if (/png/i.test(ct)) return 'png';
+      if (/jpe?g/i.test(ct)) return 'jpg';
+      if (/webp/i.test(ct)) return 'webp';
+      return 'img';
+    })();
+    const fileName = `action-media.${ext}`;
+    const buffer = Buffer.from(ab);
+    return { attachment: new AttachmentBuilder(buffer, { name: fileName }), filename: fileName };
+  } catch (_) {
+    return null;
+  }
 }
 // Geocoding via LocationIQ and distance computations for /map, /proche, /localisation
 async function geocodeCityToCoordinates(cityQuery) {
@@ -824,6 +892,20 @@ async function handleEconomyAction(interaction, actionKey) {
       if (resolved) imageUrl = resolved;
     } catch (_) {}
   }
+  // Decide how to render the image: embed if definitely image, else post link in message content
+  let imageIsDirect = false;
+  let imageLinkForContent = null;
+  let imageAttachment = null; // { attachment, filename }
+  if (imageUrl) {
+    try {
+      imageIsDirect = isLikelyDirectImageUrl(imageUrl) || await urlContentTypeIsImage(imageUrl, 2000);
+    } catch (_) { imageIsDirect = isLikelyDirectImageUrl(imageUrl); }
+    if (!imageIsDirect) {
+      // Try to create an attachment fallback for better reliability across providers
+      imageAttachment = await tryCreateImageAttachmentFromUrl(imageUrl, { timeoutMs: 3500, maxBytes: 7500000 }).catch(()=>null);
+      if (!imageAttachment) imageLinkForContent = String(imageUrl);
+    }
+  }
   let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
@@ -1037,8 +1119,8 @@ async function handleEconomyAction(interaction, actionKey) {
       { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
     ];
     const embed = buildEcoEmbed({ title: 'Don effectué', description: desc, fields });
-    if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
-    else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
+    if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
+    else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
     // XP awards (actor + partner)
     try {
       const baseXp = success ? xpOnSuccess : xpOnFail; // give is always success, but keep consistent
@@ -1047,7 +1129,10 @@ async function handleEconomyAction(interaction, actionKey) {
         await awardXp(cible.id, Math.round(baseXp * partnerXpShare));
       }
     } catch (_) {}
-    return interaction.reply({ content: String(cible), embeds: [embed] });
+    const parts = [String(cible)];
+    if (imageLinkForContent) parts.push(imageLinkForContent);
+    const content = parts.filter(Boolean).join('\n') || undefined;
+    return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
   }
   if (actionKey === 'steal') {
     const cible = interaction.options.getUser('membre', true);
@@ -1075,13 +1160,18 @@ async function handleEconomyAction(interaction, actionKey) {
         { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
       ];
       const embed = buildEcoEmbed({ title: 'Vol réussi', description: desc, fields });
-      if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
-      else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
+      if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
+      else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
       // XP awards (actor + partner if applicable — not used for steal)
       try {
         await awardXp(interaction.user.id, xpOnSuccess);
       } catch (_) {}
-      return interaction.reply({ content: String(cible), embeds: [embed], ephemeral: true });
+      {
+        const parts = [String(cible)];
+        if (imageLinkForContent) parts.push(imageLinkForContent);
+        const content = parts.filter(Boolean).join('\n') || undefined;
+        return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
+      }
     } else {
       const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
       u.amount = Math.max(0, (u.amount||0) - lost);
@@ -1103,12 +1193,17 @@ async function handleEconomyAction(interaction, actionKey) {
         { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
       ];
       const embed = buildEcoEmbed({ title: 'Vol raté', description: desc, fields });
-      if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
-      else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
+      if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
+      else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
       try {
         await awardXp(interaction.user.id, xpOnFail);
       } catch (_) {}
-      return interaction.reply({ content: String(cible), embeds: [embed] });
+      {
+        const parts = [String(cible)];
+        if (imageLinkForContent) parts.push(imageLinkForContent);
+        const content = parts.filter(Boolean).join('\n') || undefined;
+        return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+      }
     }
   }
   // Generic flow
@@ -1175,9 +1270,12 @@ async function handleEconomyAction(interaction, actionKey) {
     { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
   ];
   const embed = buildEcoEmbed({ title, description: desc, fields });
-  if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
-  else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
-  return interaction.reply({ content: initialPartner ? String(initialPartner) : undefined, embeds: [embed] });
+  if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
+  else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
+  const parts = [initialPartner ? String(initialPartner) : undefined];
+  if (imageLinkForContent) parts.push(imageLinkForContent);
+  const content = parts.filter(Boolean).join('\n') || undefined;
+  return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
 }
 
 async function sendLog(guild, categoryKey, embed) {
