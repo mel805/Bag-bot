@@ -4878,14 +4878,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (action.startsWith('day:')) {
         const day = Number(action.split(':')[1]);
         if (!Number.isFinite(day) || day < 0 || day > 6) {
-          return interaction.reply({ content: 'Jour invalide.', ephemeral: true });
+          return interaction.reply({ content: '❌ Jour invalide. Veuillez choisir un jour via le sélecteur.', ephemeral: true });
         }
         const eco = await getEconomyConfig(interaction.guild.id);
+        const previous = typeof eco.karmaReset?.day === 'number' ? eco.karmaReset.day : null;
         eco.karmaReset = { ...(eco.karmaReset||{}), day };
         await updateEconomyConfig(interaction.guild.id, eco);
         const embed = await buildConfigEmbed(interaction.guild);
         const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
-        return interaction.update({ embeds: [embed], components: [...rows] });
+        await interaction.update({ embeds: [embed], components: [...rows] });
+        try {
+          const dayLabels = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+          const msg = previous === day
+            ? `ℹ️ Jour de reset déjà défini: ${dayLabels[day]} (UTC 00:00).`
+            : `✅ Jour de reset défini sur ${dayLabels[day]} (UTC 00:00).`;
+          await interaction.followUp({ content: msg, ephemeral: true });
+        } catch (_) {}
+        return;
       }
     }
 
