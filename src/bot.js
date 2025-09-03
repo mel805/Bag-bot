@@ -3175,9 +3175,10 @@ client.once(Events.ClientReady, (readyClient) => {
       if (!Array.isArray(nodes) || nodes.length === 0) {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
         nodes = [
-          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 }
+          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 },
+          { identifier: 'oops-443', host: 'lavalink.oops.wtf', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 }
         ];
-        console.log('[Music] Using default public node: ajieblogs.eu.org:443');
+        console.log('[Music] Using default public nodes: ajieblogs:443, oops:443');
       }
       // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
       if (shouldEnableLocalLavalink()) {

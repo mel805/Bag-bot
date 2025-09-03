@@ -19,6 +19,8 @@
 
 #### Option 1: Nœuds Publics (par défaut)
 Le bot utilise automatiquement des serveurs publics si aucune configuration n'est fournie.
+Il tentera d'abord de charger le fichier `lavalink-nodes.stable.json` à la racine du projet (ex: `/workspace/lavalink-nodes.stable.json`).
+À défaut, il utilise des nœuds publics stables intégrés (TLS 443) : `lava-v3.ajieblogs.eu.org:443`, `lavalink.oops.wtf:443`.
 
 #### Option 2: Nœuds Personnalisés
 Définir la variable d'environnement `LAVALINK_NODES` :
