@@ -610,7 +610,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -642,11 +642,13 @@ function ensureEconomyShape(g) {
   
   // Ensure karmaReset structure exists
   if (!e.karmaReset || typeof e.karmaReset !== 'object') {
-    e.karmaReset = { enabled: false };
+    e.karmaReset = { enabled: false, day: 1 };
   }
   if (typeof e.karmaReset.enabled !== 'boolean') e.karmaReset.enabled = false;
+  if (typeof e.karmaReset.day !== 'number' || e.karmaReset.day < 0 || e.karmaReset.day > 6) e.karmaReset.day = 1; // 0=Dimanche .. 6=Samedi (UTC)
   
   const defaults = {
+    daily: { moneyMin: 150, moneyMax: 300, karma: 'none', karmaDelta: 0, cooldown: 86400, successRate: 1.0, failMoneyMin: 0, failMoneyMax: 0, failKarmaDelta: 0, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     work: { moneyMin: 40, moneyMax: 90, karma: 'charm', karmaDelta: 1, cooldown: 600, successRate: 0.9, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     fish: { moneyMin: 20, moneyMax: 60, karma: 'charm', karmaDelta: 1, cooldown: 300, successRate: 0.65, failMoneyMin: 5, failMoneyMax: 15, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     give: { moneyMin: 0, moneyMax: 0, karma: 'charm', karmaDelta: 1, cooldown: 0, successRate: 1.0, failMoneyMin: 0, failMoneyMax: 0, failKarmaDelta: 0, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
@@ -680,6 +682,7 @@ function ensureEconomyShape(g) {
   };
   // Add XP parameters defaults for actions (success/fail) + partner XP share
   const xpDefaults = {
+    daily: { xpDelta: 5, failXpDelta: 0, partnerXpShare: 0.0 },
     work: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 0.0 },
     fish: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 0.0 },
     give: { xpDelta: 5, failXpDelta: 0, partnerXpShare: 0.0 },
@@ -732,6 +735,10 @@ function ensureEconomyShape(g) {
   // Ensure per-action messages shape (personalized success/fail messages)
   if (!e.actions.messages || typeof e.actions.messages !== 'object') e.actions.messages = {};
   const msgDefaults = {
+    daily: {
+      success: ['Bonus quotidien reçu !', 'Récompense du jour collectée. À demain !'],
+      fail: []
+    },
     work: {
       success: ['Beau boulot, votre chef est ravi !', 'Paie reçue, continuez comme ça !'],
       fail: ['Journée compliquée… vous aurez plus de chance demain.', 'Retard et paperasse… pas de prime aujourd’hui.']
