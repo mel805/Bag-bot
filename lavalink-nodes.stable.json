@@ -5,8 +5,8 @@
     "port": 443,
     "password": "youshallnotpass",
     "secure": true,
-    "retryAmount": 2,
-    "retryDelay": 7000
+    "retryAmount": 3,
+    "retryDelay": 10000
   },
   {
     "identifier": "oops-443",
@@ -14,19 +14,7 @@
     "port": 443,
     "password": "youshallnotpass",
     "secure": true,
-    "retryAmount": 2,
-    "retryDelay": 7000
-  }
-]
-[
-  {
-    "identifier": "ajieblogs-443",
-    "host": "lava-v3.ajieblogs.eu.org",
-    "port": 443,
-    "password": "youshallnotpass",
-    "secure": true,
-    "retryAmount": 2,
-    "retryDelay": 7000,
-    "note": "Public node (community)"
+    "retryAmount": 3,
+    "retryDelay": 10000
   }
 ]

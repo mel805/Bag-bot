@@ -3171,12 +3171,12 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       }
-      // Final fallback: a couple of public nodes (TLS 443 preferred)
+      // Final fallback: a few public nodes (TLS 443 preferred)
       if (!Array.isArray(nodes) || nodes.length === 0) {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
         nodes = [
-          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 },
-          { identifier: 'oops-443', host: 'lavalink.oops.wtf', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 }
+          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 3, retryDelay: 10000 },
+          { identifier: 'oops-443', host: 'lavalink.oops.wtf', port: 443, password: pw, secure: true, retryAmount: 3, retryDelay: 10000 }
         ];
         console.log('[Music] Using default public nodes: ajieblogs:443, oops:443');
       }
