@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -864,6 +864,38 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     }
   }
+  if (actionKey === 'branler') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu branles ${partner} avec un rythme assuré.` : `Tu te fais plaisir avec assurance…`,
+        partner ? `Ta main s’active sur ${partner}, le souffle s’accélère.` : `Mouvements réguliers, la tension monte.`,
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        'Tu ralentis… ce n’est pas le bon moment.',
+        'On préfère attendre, consentement et confort d’abord.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'doigter') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tes doigts explorent ${partner} avec douceur et précision.` : `Tes doigts explorent, réactions immédiates…`,
+        partner ? `Tu doigtes ${partner} avec tact, le corps répond.` : `Exploration délicate, la chaleur monte.`,
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        'Tu t’arrêtes: il/elle n’est pas à l’aise.',
+        'Pas le bon timing, vous en discutez d’abord.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
   if (actionKey === 'hairpull') {
     const partner = interaction.options.getUser('cible', false);
     if (success) {
@@ -1020,7 +1052,7 @@ async function handleEconomyAction(interaction, actionKey) {
     const baseXp = success ? xpOnSuccess : xpOnFail;
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
-    if (['kiss','flirt','seduce','fuck','sodo','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+    if (['kiss','flirt','seduce','fuck','sodo','branler','doigter','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
       partnerUser = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
@@ -1038,7 +1070,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','sodo','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+      if (['kiss','flirt','seduce','fuck','sodo','branler','doigter','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
@@ -2724,6 +2756,8 @@ function actionKeyToLabel(key) {
     seduce: 'séduire',
     fuck: 'fuck',
     sodo: 'sodo',
+    branler: 'branler',
+    doigter: 'doigter',
     hairpull: 'tirer cheveux',
     caress: 'caresser',
     lick: 'lécher',
@@ -2795,7 +2829,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6542,6 +6576,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'sodo') {
       return handleEconomyAction(interaction, 'sodo');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'branler') {
+      return handleEconomyAction(interaction, 'branler');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'doigter') {
+      return handleEconomyAction(interaction, 'doigter');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'tirercheveux') {
       return handleEconomyAction(interaction, 'hairpull');
