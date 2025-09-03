@@ -652,8 +652,12 @@ function startYtProxyServer() {
 // Local Lavalink + WS proxy (optional)
 let localLavalinkStarted = false;
 let localLavalinkProxyStarted = false;
+let localLavalinkV3Started = false;
 function shouldEnableLocalLavalink() {
   return String(process.env.ENABLE_LOCAL_LAVALINK || 'false').toLowerCase() === 'true';
+}
+function shouldEnableLocalLavalinkV3() {
+  return String(process.env.ENABLE_LOCAL_LAVALINK_V3 || 'false').toLowerCase() === 'true';
 }
 function startLocalLavalink() {
   if (localLavalinkStarted) return;
@@ -670,11 +674,26 @@ function startLocalLavalink() {
     try { console.error('[LocalLL] spawn error:', e?.message || e); } catch (_) {}
   }
 }
+function startLocalLavalinkV3() {
+  if (localLavalinkV3Started) return;
+  try {
+    const { spawn } = require('node:child_process');
+    const cwd = '/workspace/lavalink-v3';
+    const child = spawn('java', ['-jar', 'Lavalink.jar'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', (d) => { try { const t = d.toString('utf8'); if (/Lavalink is ready to accept connections\./.test(t)) console.log('[LocalLL-v3]', t.trim()); } catch (_) {} });
+    child.stderr.on('data', (d) => { try { console.warn('[LocalLL-v3-err]', d.toString('utf8').trim()); } catch (_) {} });
+    child.on('error', (e) => { try { console.error('[LocalLL-v3] failed to start:', e?.message || e); } catch (_) {} });
+    localLavalinkV3Started = true;
+    console.log('[LocalLL-v3] Starting Lavalink.jar on 127.0.0.1:2340');
+  } catch (e) {
+    try { console.error('[LocalLL-v3] spawn error:', e?.message || e); } catch (_) {}
+  }
+}
 function startLocalLavalinkProxy() {
   if (localLavalinkProxyStarted) return;
   try {
     const { spawn } = require('node:child_process');
-    const env = { ...process.env, LAVALINK_HOST: '127.0.0.1', LAVALINK_PORT: '2333', LAVALINK_PROXY_HOST: '127.0.0.1', LAVALINK_PROXY_PORT: '2334' };
+    const env = { ...process.env, LAVALINK_HOST: '127.0.0.1', LAVALINK_PORT: '2333', LAVALINK_PROXY_HOST: '127.0.0.1', LAVALINK_PROXY_PORT: '2334', LAVALINK_SECURE: String(process.env.LAVALINK_SECURE || 'false') };
     const child = spawn(process.execPath, ['/workspace/lavalink/ws-proxy.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', (d) => { try { console.log(d.toString('utf8').trim()); } catch (_) {} });
     child.stderr.on('data', (d) => { try { console.warn('[LL-Proxy-err]', d.toString('utf8').trim()); } catch (_) {} });
@@ -3133,6 +3152,13 @@ client.once(Events.ClientReady, (readyClient) => {
   } else {
     console.log('[Music] Using remote/public Lavalink nodes (local disabled)');
   }
+  // Start local Lavalink v3 if explicitly enabled
+  if (shouldEnableLocalLavalinkV3()) {
+    console.log('[Music] Local Lavalink v3 enabled -> starting local v3 server');
+    startLocalLavalinkV3();
+  } else {
+    console.log('[Music] Using remote/public Lavalink v3 nodes (local v3 disabled)');
+  }
   // Init Erela.js (if available) with multiple fallback nodes
   try {
     if (ErelaManager && process.env.ENABLE_MUSIC !== 'false') {
@@ -3183,6 +3209,10 @@ client.once(Events.ClientReady, (readyClient) => {
       // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
       if (shouldEnableLocalLavalink()) {
         nodes.push({ identifier: 'local-fallback', host: '127.0.0.1', port: 2334, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false, retryAmount: 5, retryDelay: 30000 });
+      }
+      // If local lavalink v3 enabled, add it as another fallback (port 2340)
+      if (shouldEnableLocalLavalinkV3()) {
+        nodes.push({ identifier: 'local-v3', host: '127.0.0.1', port: 2340, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false, retryAmount: 5, retryDelay: 30000 });
       }
       // Deduplicate nodes by host:port
       const seen = new Set();

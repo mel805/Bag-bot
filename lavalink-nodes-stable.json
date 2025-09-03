@@ -11,6 +11,17 @@
     "note": "Local Lavalink via ws-proxy (v3->v4)"
   },
   {
+    "identifier": "local-v3-nonssl",
+    "host": "127.0.0.1",
+    "port": 2340,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 5,
+    "retryDelay": 30000,
+    "priority": 2,
+    "note": "Local Lavalink v3"
+  },
+  {
     "identifier": "ajieblogs-443",
     "host": "lava-v3.ajieblogs.eu.org",
     "port": 443,
@@ -18,7 +29,7 @@
     "secure": true,
     "retryAmount": 3,
     "retryDelay": 10000,
-    "priority": 2,
+    "priority": 3,
     "note": "Public node"
   },
   {
@@ -29,7 +40,7 @@
     "secure": true,
     "retryAmount": 3,
     "retryDelay": 10000,
-    "priority": 3,
+    "priority": 4,
     "note": "Public node"
   }
 ]
