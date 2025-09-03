@@ -824,7 +824,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -910,6 +910,70 @@ async function handleEconomyAction(interaction, actionKey) {
       const resolved = await resolveGifUrl(String(imageUrl), { timeoutMs: 2500 });
       if (resolved) imageUrl = resolved;
     } catch (_) {}
+  }
+  // Special storyline for tromper (NSFW): actor surprises target with a random third member
+  if (actionKey === 'tromper') {
+    const partner = interaction.options.getUser('cible', true);
+    let third = null;
+    try {
+      const all = await interaction.guild.members.fetch();
+      const candidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && m.user.id !== partner.id);
+      if (candidates.size > 0) {
+        const arr = Array.from(candidates.values());
+        third = arr[Math.floor(Math.random() * arr.length)].user;
+      }
+    } catch (_) {}
+    if (!third) {
+      if (success) {
+        const texts = [
+          `Tu prends ${partner} au piège: tout te profite…`,
+          `Situation ambiguë avec ${partner}, mais tu en ressors gagnant(e).`,
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      } else {
+        const texts = [
+          `Le plan échoue: ${partner} te surprend et te fait payer la note.`,
+          `Pris(e) en faute par ${partner}, tout s’effondre pour toi.`,
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      }
+    } else {
+      // Apply special penalties to the third member
+      const thirdUser = await getEconomyUser(interaction.guild.id, third.id);
+      const loseMin = Math.max(1, Number(conf.failMoneyMin||5));
+      const loseMax = Math.max(loseMin, Number(conf.failMoneyMax||10));
+      const thirdMoneyDelta = -randInt(loseMin, loseMax);
+      let thirdCharmDelta = 0;
+      let thirdPervDelta = 0;
+      if (conf.karma === 'perversion') thirdPervDelta = Number(conf.failKarmaDelta||1);
+      else if (conf.karma === 'charm') thirdCharmDelta = -Number(conf.failKarmaDelta||1);
+      thirdUser.amount = Math.max(0, (thirdUser.amount||0) + thirdMoneyDelta);
+      if (thirdCharmDelta) thirdUser.charm = (thirdUser.charm||0) + thirdCharmDelta;
+      if (thirdPervDelta) thirdUser.perversion = (thirdUser.perversion||0) + thirdPervDelta;
+      await setEconomyUser(interaction.guild.id, third.id, thirdUser);
+      // Messages
+      if (success) {
+        const texts = [
+          `Tu surprends ${partner} avec ${third}… et c’est ${third} qui trinque.`,
+          `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
+          `Scène chaude: tu retournes la situation sur ${third}.`
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      } else {
+        const texts = [
+          `Tu es surpris(e) avec ${third} par ${partner}… ça tourne mal pour vous deux.`,
+          `${partner} vous coince, toi et ${third}: pertes et remords.`,
+          `Exposé(e) au grand jour: ${partner} règle ses comptes.`,
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      }
+      // Attach a transient field for later embed
+      const currency = eco.currency?.name || 'BAG$';
+      const thirdFieldVal = `${third} → ${thirdMoneyDelta}${currency ? ' ' + currency : ''}`
+        + (thirdCharmDelta ? `, Charme ${thirdCharmDelta>=0?'+':''}${thirdCharmDelta}` : '')
+        + (thirdPervDelta ? `, Perversion ${thirdPervDelta>=0?'+':''}${thirdPervDelta}` : '');
+      global.__eco_tromper_third = { name: 'Sanction du tiers', value: thirdFieldVal, inline: false };
+    }
   }
   // Decide how to render the image: embed if definitely image, else post link in message content
   let imageIsDirect = false;
@@ -1313,6 +1377,7 @@ async function handleEconomyAction(interaction, actionKey) {
     { name: 'Solde argent', value: String(u.amount), inline: true },
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
     ...(partnerField ? [partnerField] : []),
+    ...(global.__eco_tromper_third ? [global.__eco_tromper_third] : []),
     { name: 'Solde charme', value: String(u.charm||0), inline: true },
     { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
   ];
@@ -1322,6 +1387,7 @@ async function handleEconomyAction(interaction, actionKey) {
   const parts = [initialPartner ? String(initialPartner) : undefined];
   if (imageLinkForContent) parts.push(imageLinkForContent);
   const content = parts.filter(Boolean).join('\n') || undefined;
+  try { delete global.__eco_tromper_third; } catch (_) {}
   return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
 }
 
@@ -3001,7 +3067,8 @@ function actionKeyToLabel(key) {
     sleep: 'dormir',
     // Délires / Jeux
     oops: 'oups',
-    caught: 'surpris'
+    caught: 'surpris',
+    tromper: 'tromper'
   };
   return map[key] || key;
 }
@@ -3044,7 +3111,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6887,6 +6954,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'caught') {
       return handleEconomyAction(interaction, 'caught');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'tromper') {
+      return handleEconomyAction(interaction, 'tromper');
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
