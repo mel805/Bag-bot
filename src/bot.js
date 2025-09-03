@@ -6764,7 +6764,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             if (!github.isConfigured()) {
               return interaction.editReply({ content: '❌ GitHub non configuré' });
             }
-            const restoreResult = await github.restore();
+            const ref = interaction.options.getString('ref', false) || null;
+            const restoreResult = await github.restore(ref);
             if (restoreResult.success) {
               const { writeConfig } = require('./storage/jsonStore');
               await writeConfig(restoreResult.data);
@@ -6777,8 +6778,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
               };
               await sendDetailedRestoreLog(interaction.guild, forceRestoreResult, 'force-github', interaction.user);
               
+              const refInfo = ref ? `\n🔖 Ref: \`${ref}\`` : '';
               return interaction.editReply({ 
-                content: `✅ **Restauration GitHub forcée**\n⏰ Depuis: ${new Date(restoreResult.metadata.timestamp).toLocaleString('fr-FR')}` 
+                content: `✅ **Restauration GitHub forcée**\n⏰ Depuis: ${new Date(restoreResult.metadata.timestamp).toLocaleString('fr-FR')}${refInfo}` 
               });
             } else {
               // Log d'échec
