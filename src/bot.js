@@ -4872,8 +4872,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return interaction.editReply({ content: 'Aucun utilisateur avec du karma à remettre à zéro.' });
         }
       } else if (action.startsWith('day:')) {
-        const day = Number(action.split(':')[1]);
-        if (!Number.isFinite(day) || day < 0 || day > 6) {
+        const raw = action.split(':')[1];
+        const day = Number.parseInt(raw, 10);
+        if (!Number.isInteger(day) || day < 0 || day > 6) {
           return interaction.reply({ content: 'Jour invalide.', ephemeral: true });
         }
         const eco = await getEconomyConfig(interaction.guild.id);
@@ -5207,6 +5208,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isRoleSelectMenu() && interaction.customId === 'autokick_required_role') {
       const selected = interaction.values[0];
+      // Validation: empêcher la sélection de @everyone qui invaliderait l'auto-kick
+      try {
+        const everyoneId = interaction.guild.roles.everyone?.id || interaction.guild.id;
+        if (String(selected) === String(everyoneId)) {
+          return interaction.reply({ content: "Rôle invalide: @everyone ne peut pas être utilisé comme rôle requis.", ephemeral: true });
+        }
+      } catch (_) {}
       await updateAutoKickConfig(interaction.guild.id, { roleId: selected });
       const embed = await buildConfigEmbed(interaction.guild);
       const topRows = buildTopSectionRow();
@@ -5240,15 +5248,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         await updateAutoKickConfig(interaction.guild.id, { delayMs });
         const embed = await buildConfigEmbed(interaction.guild);
-        const top = buildTopSectionRow();
+        const topRows = buildTopSectionRow();
         const akRows = await buildAutokickRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+        await interaction.update({ embeds: [embed], components: [...topRows, ...akRows] });
         return;
       }
     }
 
     if (interaction.isButton() && (interaction.customId === 'autokick_enable' || interaction.customId === 'autokick_disable')) {
       const enable = interaction.customId === 'autokick_enable';
+      if (enable) {
+        // Validation avant activation
+        const akCfg = await getAutoKickConfig(interaction.guild.id);
+        const issues = [];
+        if (!akCfg.roleId) issues.push('sélectionner un rôle requis');
+        if (!akCfg.delayMs || akCfg.delayMs <= 0) issues.push('définir un délai valide');
+        try {
+          const me = interaction.guild.members.me;
+          if (!me?.permissions?.has(PermissionsBitField.Flags.KickMembers)) {
+            issues.push("accorder la permission 'Expulser des membres' au bot");
+          }
+        } catch (_) {}
+        if (issues.length) {
+          return interaction.reply({ content: `Impossible d'activer l'AutoKick: veuillez ${issues.join('; ')}.`, ephemeral: true });
+        }
+      }
       await updateAutoKickConfig(interaction.guild.id, { enabled: enable });
       const embed = await buildConfigEmbed(interaction.guild);
       const topRows = buildTopSectionRow();
@@ -5258,14 +5282,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'autokick_delay_custom_modal') {
-      const text = interaction.fields.getTextInputValue('minutes');
+      const text = (interaction.fields.getTextInputValue('minutes')||'').trim();
+      if (!/^\d+$/.test(text)) {
+        return interaction.reply({ content: 'Veuillez entrer un nombre entier de minutes (> 0).', ephemeral: true });
+      }
       const minutes = Number(text);
-      if (!Number.isFinite(minutes) || minutes <= 0) {
-        return interaction.reply({ content: 'Veuillez entrer un nombre de minutes valide (> 0).', ephemeral: true });
+      // Limiter à 7 jours max (10080 minutes) pour éviter des valeurs extrêmes
+      if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 10080) {
+        return interaction.reply({ content: 'Veuillez entrer une durée comprise entre 1 et 10080 minutes (7 jours).', ephemeral: true });
       }
       const delayMs = Math.round(minutes * 60 * 1000);
       await updateAutoKickConfig(interaction.guild.id, { delayMs });
-      try { await interaction.deferUpdate(); } catch (_) {}
+      // Pour un modal, on répond proprement (deferReply + editReply)
+      try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const topRows = buildTopSectionRow();
       const akRows = await buildAutokickRows(interaction.guild);
