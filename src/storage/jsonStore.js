@@ -586,7 +586,7 @@ function ensureEconomyShape(g) {
   if (!e.settings || typeof e.settings !== 'object') e.settings = {};
   if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
   if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
-  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, lick: 120, suck: 120, branler: 120, doigter: 120, tickle: 60, revive: 180, comfort: 90, massage: 120, dance: 120, crime: 1800, shower: 120, wet: 90, bed: 180, undress: 120, collar: 120, leash: 120, kneel: 60, order: 60, punish: 300, rose: 60, wine: 180, pillowfight: 120, sleep: 300, oops: 30, caught: 60 };
+  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, sodo: 600, orgasme: 600, lick: 120, suck: 120, branler: 120, doigter: 120, tickle: 60, revive: 180, comfort: 90, massage: 120, dance: 120, crime: 1800, shower: 120, wet: 90, bed: 180, undress: 120, collar: 120, leash: 120, kneel: 60, order: 60, punish: 300, rose: 60, wine: 180, pillowfight: 120, sleep: 300, oops: 30, caught: 60 };
   
   // Récompenses pour messages et vocal
   if (!e.rewards || typeof e.rewards !== 'object') e.rewards = {};
@@ -610,7 +610,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -665,6 +665,7 @@ function ensureEconomyShape(g) {
     seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 3, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 5, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     sodo: { moneyMin: 22, moneyMax: 55, karma: 'perversion', karmaDelta: 6, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 22, failKarmaDelta: 5, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    orgasme: { moneyMin: 24, moneyMax: 60, karma: 'perversion', karmaDelta: 6, cooldown: 600, successRate: 0.8, failMoneyMin: 10, failMoneyMax: 22, failKarmaDelta: 5, partnerMoneyShare: 1.5, partnerKarmaShare: 1.5 },
     hairpull: { moneyMin: 10, moneyMax: 25, karma: 'perversion', karmaDelta: 3, cooldown: 90, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 6, failKarmaDelta: 2, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
     caress: { moneyMin: 8, moneyMax: 20, karma: 'perversion', karmaDelta: 2, cooldown: 90, successRate: 0.9, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
     massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
@@ -709,6 +710,7 @@ function ensureEconomyShape(g) {
     seduce: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
     fuck: { xpDelta: 20, failXpDelta: 5, partnerXpShare: 1.0 },
     sodo: { xpDelta: 22, failXpDelta: 6, partnerXpShare: 1.0 },
+    orgasme: { xpDelta: 24, failXpDelta: 6, partnerXpShare: 1.0 },
     hairpull: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
     caress: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
     massage: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
@@ -822,6 +824,10 @@ function ensureEconomyShape(g) {
     sodo: {
       success: ['Tu le/la prends par derrière avec intensité 🔥', 'Vous vous abandonnez à une sodomie passionnée 😈', 'Rythme assuré, consentement total et plaisir partagé.'],
       fail: ['Vous tentez… mais ce n’est pas le bon moment.', 'Sans préparation, impossible d’y arriver correctement.', 'On arrête: confort avant tout.']
+    },
+    orgasme: {
+      success: ['Tu le/la guides jusqu’à l’extase, souffle coupé…', 'Plaisir partagé, frissons et regards complices.', 'Climax atteint, sourire aux lèvres.'],
+      fail: ['Le moment n’y est pas, vous préférez ralentir.', 'On communique et on remet ça plus tard.']
     },
     massage: {
       success: ['Relaxation totale, mains de fée !', 'Vous avez détendu toutes les tensions.'],
