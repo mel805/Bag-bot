@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','lick','tickle','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -778,6 +778,26 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = [
         `Tu tentes de lécher ${p} ${z}, mais on te repousse gentiment.`,
         `Tu vises ${p} ${z}… raté, ambiance gênante.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'tickle') {
+    const zones = ['côtes','pieds','nuque','ventre','aisselles'];
+    const poss = { côtes: 'ses', pieds: 'ses', nuque: 'sa', ventre: 'son', aisselles: 'ses' };
+    const z = zones[randInt(0, zones.length - 1)];
+    const p = poss[z] || 'ses';
+    if (success) {
+      const texts = [
+        `Tu chatouilles ${p} ${z} jusqu’au fou rire.`,
+        `Une avalanche de chatouilles sur ${p} ${z} !`,
+        `Tu l’attrapes et chatouilles ${p} ${z} 😂`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu tentes de chatouiller ${p} ${z}, mais ça ne prend pas.`,
+        `Pas sensible ici… ${p} ${z} ne réagissent pas.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -2591,6 +2611,7 @@ function actionKeyToLabel(key) {
     seduce: 'séduire',
     fuck: 'fuck',
     lick: 'lécher',
+    tickle: 'chatouiller',
     massage: 'masser',
     dance: 'danser',
     crime: 'crime',
@@ -2655,7 +2676,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','lick','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','lick','tickle','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6330,6 +6351,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'lécher' || interaction.commandName === 'lecher')) {
       return handleEconomyAction(interaction, 'lick');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'chatouiller') {
+      return handleEconomyAction(interaction, 'tickle');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'masser') {
       return handleEconomyAction(interaction, 'massage');

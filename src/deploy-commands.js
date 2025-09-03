@@ -66,6 +66,7 @@ const commands = [
   new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('lécher').setDescription('Lécher pour gagner de la perversion').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('lecher').setDescription('Lécher (alias sans accent)').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('chatouiller').setDescription('Chatouiller pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('masser').setDescription('Masser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('danser').setDescription('Danser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Danser avec (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('boutique').setDescription('Ouvrir la boutique du serveur').toJSON(),
