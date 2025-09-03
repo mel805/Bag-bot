@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','lick','tickle','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','lick','tickle','revive','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -798,6 +798,23 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = [
         `Tu tentes de chatouiller ${p} ${z}, mais ça ne prend pas.`,
         `Pas sensible ici… ${p} ${z} ne réagissent pas.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'revive') {
+    const techniques = ['bouche-à-bouche','massage cardiaque','position latérale de sécurité','défibrillateur (imaginaire)','vérification des voies aériennes'];
+    const t = techniques[randInt(0, techniques.length - 1)];
+    if (success) {
+      const texts = [
+        `Tu appliques ${t} avec sang-froid. Il/elle reprend des signes de vie.`,
+        `Intervention rapide: ${t}. Le pouls revient.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu tentes ${t}, mais rien pour l’instant.`,
+        `Stressé·e, ${t} manque d’efficacité. Continue tes efforts.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -2612,6 +2629,7 @@ function actionKeyToLabel(key) {
     fuck: 'fuck',
     lick: 'lécher',
     tickle: 'chatouiller',
+    revive: 'réanimer',
     massage: 'masser',
     dance: 'danser',
     crime: 'crime',
@@ -2676,7 +2694,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','lick','tickle','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','lick','tickle','revive','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6354,6 +6372,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'chatouiller') {
       return handleEconomyAction(interaction, 'tickle');
+    }
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'réanimer' || interaction.commandName === 'reanimer')) {
+      return handleEconomyAction(interaction, 'revive');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'masser') {
       return handleEconomyAction(interaction, 'massage');
