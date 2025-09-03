@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -759,9 +759,102 @@ async function handleEconomyAction(interaction, actionKey) {
     else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
     imageUrl = Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined;
   }
-  const msgText = success
+  let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
+  if (actionKey === 'lick') {
+    const zones = ['seins','chatte','cul','oreille','ventre'];
+    const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };
+    const z = zones[randInt(0, zones.length - 1)];
+    const p = poss[z] || 'sa';
+    if (success) {
+      const texts = [
+        `Tu lèches ${p} ${z} avec gourmandise.`,
+        `Un coup de langue taquin sur ${p} ${z}…`,
+        `Tu te penches et lèches ${p} ${z} 😈`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu tentes de lécher ${p} ${z}, mais on te repousse gentiment.`,
+        `Tu vises ${p} ${z}… raté, ambiance gênante.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'suck') {
+    const zones = ['bite','téton','oreille'];
+    const poss = { bite: 'sa', 'téton': 'son', 'oreille': 'son' };
+    const z = zones[randInt(0, zones.length - 1)];
+    const p = poss[z] || 'son';
+    if (success) {
+      const texts = [
+        `Tu suces ${p} ${z} lentement…`,
+        `Tes lèvres se referment sur ${p} ${z} avec envie.`,
+        `Tu t’appliques sur ${p} ${z}, c’est brûlant.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu t’approches de ${p} ${z}, mais il/elle te retient.`,
+        `Tu tentes sur ${p} ${z}… l’ambiance n’y est pas.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'tickle') {
+    const zones = ['côtes','pieds','nuque','ventre','aisselles'];
+    const poss = { côtes: 'ses', pieds: 'ses', nuque: 'sa', ventre: 'son', aisselles: 'ses' };
+    const z = zones[randInt(0, zones.length - 1)];
+    const p = poss[z] || 'ses';
+    if (success) {
+      const texts = [
+        `Tu chatouilles ${p} ${z} jusqu’au fou rire.`,
+        `Une avalanche de chatouilles sur ${p} ${z} !`,
+        `Tu l’attrapes et chatouilles ${p} ${z} 😂`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu tentes de chatouiller ${p} ${z}, mais ça ne prend pas.`,
+        `Pas sensible ici… ${p} ${z} ne réagissent pas.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'revive') {
+    const techniques = ['bouche-à-bouche','massage cardiaque','position latérale de sécurité','défibrillateur (imaginaire)','vérification des voies aériennes'];
+    const t = techniques[randInt(0, techniques.length - 1)];
+    if (success) {
+      const texts = [
+        `Tu appliques ${t} avec sang-froid. Il/elle reprend des signes de vie.`,
+        `Intervention rapide: ${t}. Le pouls revient.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu tentes ${t}, mais rien pour l’instant.`,
+        `Stressé·e, ${t} manque d’efficacité. Continue tes efforts.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'comfort') {
+    if (success) {
+      const texts = [
+        'Tu offres un câlin apaisant, tout en douceur.',
+        'Tu glisses quelques mots rassurants et serres la main.',
+        'Tu poses une couverture sur ses épaules et souris tendrement.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        'Tu hésites… les mots ne sortent pas.',
+        'Tu tentes un geste, mais le moment ne s’y prête pas.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
   // Special cases
   if (actionKey === 'give') {
     const cible = interaction.options.getUser('membre', true);
@@ -867,7 +960,7 @@ async function handleEconomyAction(interaction, actionKey) {
     const baseXp = success ? xpOnSuccess : xpOnFail;
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
-    if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+    if (['kiss','flirt','seduce','fuck','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
       partnerUser = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
@@ -885,7 +978,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+      if (['kiss','flirt','seduce','fuck','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
@@ -2570,6 +2663,11 @@ function actionKeyToLabel(key) {
     flirt: 'flirter',
     seduce: 'séduire',
     fuck: 'fuck',
+    lick: 'lécher',
+    suck: 'sucer',
+    tickle: 'chatouiller',
+    revive: 'réanimer',
+    comfort: 'réconforter',
     massage: 'masser',
     dance: 'danser',
     crime: 'crime',
@@ -2634,7 +2732,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6306,6 +6404,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'fuck') {
       return handleEconomyAction(interaction, 'fuck');
+    }
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'lécher' || interaction.commandName === 'lecher')) {
+      return handleEconomyAction(interaction, 'lick');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'sucer') {
+      return handleEconomyAction(interaction, 'suck');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'chatouiller') {
+      return handleEconomyAction(interaction, 'tickle');
+    }
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'réanimer' || interaction.commandName === 'reanimer')) {
+      return handleEconomyAction(interaction, 'revive');
+    }
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'réconforter' || interaction.commandName === 'reconforter')) {
+      return handleEconomyAction(interaction, 'comfort');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'masser') {
       return handleEconomyAction(interaction, 'massage');

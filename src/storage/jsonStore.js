@@ -586,7 +586,7 @@ function ensureEconomyShape(g) {
   if (!e.settings || typeof e.settings !== 'object') e.settings = {};
   if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
   if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
-  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, massage: 120, dance: 120, crime: 1800, shower: 120, wet: 90, bed: 180, undress: 120, collar: 120, leash: 120, kneel: 60, order: 60, punish: 300, rose: 60, wine: 180, pillowfight: 120, sleep: 300, oops: 30, caught: 60 };
+  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, lick: 120, suck: 120, tickle: 60, revive: 180, comfort: 90, massage: 120, dance: 120, crime: 1800, shower: 120, wet: 90, bed: 180, undress: 120, collar: 120, leash: 120, kneel: 60, order: 60, punish: 300, rose: 60, wine: 180, pillowfight: 120, sleep: 300, oops: 30, caught: 60 };
   
   // Récompenses pour messages et vocal
   if (!e.rewards || typeof e.rewards !== 'object') e.rewards = {};
@@ -610,7 +610,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -654,6 +654,11 @@ function ensureEconomyShape(g) {
     give: { moneyMin: 0, moneyMax: 0, karma: 'charm', karmaDelta: 1, cooldown: 0, successRate: 1.0, failMoneyMin: 0, failMoneyMax: 0, failKarmaDelta: 0, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     steal: { moneyMin: 10, moneyMax: 30, karma: 'perversion', karmaDelta: 2, cooldown: 1800, successRate: 0.5, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 2, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    lick: { moneyMin: 8, moneyMax: 20, karma: 'perversion', karmaDelta: 3, cooldown: 120, successRate: 0.85, failMoneyMin: 3, failMoneyMax: 10, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    suck: { moneyMin: 12, moneyMax: 28, karma: 'perversion', karmaDelta: 4, cooldown: 120, successRate: 0.85, failMoneyMin: 4, failMoneyMax: 12, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    tickle: { moneyMin: 4, moneyMax: 12, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.9, failMoneyMin: 1, failMoneyMax: 3, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.0 },
+    revive: { moneyMin: 6, moneyMax: 18, karma: 'charm', karmaDelta: 3, cooldown: 180, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 6, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.0 },
+    comfort: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 3, cooldown: 90, successRate: 0.9, failMoneyMin: 1, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.2, partnerKarmaShare: 1.0 },
     flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 3, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 5, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
@@ -688,6 +693,11 @@ function ensureEconomyShape(g) {
     give: { xpDelta: 5, failXpDelta: 0, partnerXpShare: 0.0 },
     steal: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 0.0 },
     kiss: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    lick: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    suck: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
+    tickle: { xpDelta: 6, failXpDelta: 1, partnerXpShare: 1.0 },
+    revive: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    comfort: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
     flirt: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
     seduce: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
     fuck: { xpDelta: 20, failXpDelta: 5, partnerXpShare: 1.0 },
@@ -751,6 +761,10 @@ function ensureEconomyShape(g) {
       success: ['Un baiser qui fait fondre les cœurs…', 'Doux moment, tout le monde est conquis.'],
       fail: ['Moment gênant… ce n’était pas réciproque.', 'Oups, malentendu.']
     },
+    lick: {
+      success: ['Un coup de langue bien placé…', 'Tu fais monter la température.'],
+      fail: ['Tu tentes… mais on te repousse gentiment.', 'Ambiance un peu gênante cette fois.']
+    },
     flirt: {
       success: ['Votre clin d’œil a fait mouche ✨', 'Votre charme opère irrésistiblement.'],
       fail: ['On vous a mis un râteau…', 'Pas réceptif aujourd’hui.']
@@ -758,6 +772,22 @@ function ensureEconomyShape(g) {
     seduce: {
       success: ['Séduction réussie, quelle prestance !', 'Vous avez fait chavirer des cœurs.'],
       fail: ['Raté… la magie n’a pas pris.', 'Trop direct, ça n’a pas marché.']
+    },
+    suck: {
+      success: ['Tu prends ton temps… le regard devient fiévreux.', 'Tu alternes douceur et intensité, c’est torride.'],
+      fail: ['Tu tentes, mais on te repousse gentiment.', 'Mauvais timing, ça refroidit l’ambiance.']
+    },
+    revive: {
+      success: ['Bouche-à-bouche efficace, le souffle revient !', 'Massage cardiaque précis, il/elle ouvre les yeux.'],
+      fail: ['Tu paniques, les gestes ne sont pas coordonnés…', 'Rien pour le moment, continue les compressions.']
+    },
+    comfort: {
+      success: ['Tu le/la prends délicatement dans tes bras.', 'Mots doux murmurés, les épaules se relâchent.', 'Un câlin chaleureux réchauffe son cœur.'],
+      fail: ['Tu cherches les mots… silence maladroit.', 'Tu t’approches, mais il/elle préfère rester seul(e) pour l’instant.']
+    },
+    tickle: {
+      success: ['Des rires éclatent, mission chatouilles réussie !', 'Tu déclenches une crise de fou rire.'],
+      fail: ['Pas d’humeur à rire…', 'Tu t’y prends mal, ça ne chatouille pas.']
     },
     fuck: {
       success: ['Nuit torride 😈', 'Explosion de passion…'],
