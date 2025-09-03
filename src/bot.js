@@ -2930,10 +2930,10 @@ client.once(Events.ClientReady, (readyClient) => {
   }, 30 * 60 * 1000);
   
   startYtProxyServer();
-  if (shouldEnableLocalLavalink()) {
-    console.log('[Music] ENABLE_LOCAL_LAVALINK=true -> starting local Lavalink + proxy');
-    startLocalLavalinkStack();
-  }
+  // Force local Lavalink
+  if (!shouldEnableLocalLavalink()) process.env.ENABLE_LOCAL_LAVALINK = 'true';
+  console.log('[Music] Local Lavalink forced -> starting local Lavalink + proxy');
+  startLocalLavalinkStack();
   // Init Erela.js (if available) with multiple fallback nodes
   try {
     if (ErelaManager && process.env.ENABLE_MUSIC !== 'false') {
@@ -2948,65 +2948,19 @@ client.once(Events.ClientReady, (readyClient) => {
         }
       } catch (e) { console.error('Invalid LAVALINK_NODES env:', e?.message || e); }
       
-      // Add local Lavalink if enabled
-      if (!nodes.length && shouldEnableLocalLavalink()) {
-        nodes = [{ 
-          identifier: 'local-lavalink',
-          host: '127.0.0.1', 
-          port: 2334, 
-          password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), 
-          secure: false,
-          retryAmount: 5,
-          retryDelay: 30000
-        }];
-        console.log('[Music] Using local Lavalink proxy node at 127.0.0.1:2334');
-      }
+      // Always use only the local Lavalink node (N/ams)
+      nodes = [{ 
+        identifier: 'N/ams',
+        host: '127.0.0.1', 
+        port: 2334, 
+        password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), 
+        secure: false,
+        retryAmount: 5,
+        retryDelay: 30000
+      }];
+      console.log('[Music] Using single local Lavalink node (N/ams) at 127.0.0.1:2334');
       
-      // Add public fallback nodes if no nodes configured
-      if (!nodes.length) {
-        nodes = [
-          // Priorité 1: Nœud local si disponible
-          {
-            identifier: 'local-lavalink',
-            host: '127.0.0.1',
-            port: 2334,
-            password: process.env.LAVALINK_PASSWORD || 'youshallnotpass',
-            secure: false,
-            retryAmount: 2,
-            retryDelay: 5000
-          },
-          // Priorité 2: Serveurs publics stables avec timeouts réduits
-          {
-            identifier: 'lavalink-public-1',
-            host: 'lava-v3.ajieblogs.eu.org',
-            port: 443,
-            password: 'https://dsc.gg/ajidevserver',
-            secure: true,
-            retryAmount: 2,
-            retryDelay: 10000
-          },
-          {
-            identifier: 'lavalink-public-2',
-            host: 'lavalink.oops.wtf',
-            port: 443,
-            password: 'www.freelavalink.ga',
-            secure: true,
-            retryAmount: 2,
-            retryDelay: 10000
-          },
-          // Priorité 3: Serveur de secours basique
-          {
-            identifier: 'lavalink-fallback',
-            host: 'lava.link',
-            port: 80,
-            password: 'youshallnotpass',
-            secure: false,
-            retryAmount: 1,
-            retryDelay: 15000
-          }
-        ];
-        console.log('[Music] No LAVALINK_NODES provided. Using updated fallback nodes with priority order.');
-      }
+      // Remove all public fallbacks; we only keep the local node
       
       const manager = new ErelaManager({
         nodes,
@@ -3088,7 +3042,7 @@ client.once(Events.ClientReady, (readyClient) => {
             console.warn(`[Music] ⚠️  No nodes connected (0/${totalNodes}). Attempting smart reconnection...`);
             
             // Try to connect nodes in priority order (local first, then public)
-            const priorityOrder = ['local-lavalink', 'lavalink-public-1', 'lavalink-public-2', 'lavalink-fallback'];
+            const priorityOrder = ['N/ams'];
             
             for (const priority of priorityOrder) {
               const node = allNodes.find(n => n.options.identifier === priority);
