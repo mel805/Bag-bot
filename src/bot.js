@@ -3097,10 +3097,13 @@ client.once(Events.ClientReady, (readyClient) => {
   }, 30 * 60 * 1000);
   
   startYtProxyServer();
-  // Force local Lavalink
-  if (!shouldEnableLocalLavalink()) process.env.ENABLE_LOCAL_LAVALINK = 'true';
-  console.log('[Music] Local Lavalink forced -> starting local Lavalink + proxy');
-  startLocalLavalinkStack();
+  // Start local Lavalink stack only if explicitly enabled
+  if (shouldEnableLocalLavalink()) {
+    console.log('[Music] Local Lavalink enabled -> starting local Lavalink + proxy');
+    startLocalLavalinkStack();
+  } else {
+    console.log('[Music] Using remote/public Lavalink nodes (local disabled)');
+  }
   // Init Erela.js (if available) with multiple fallback nodes
   try {
     if (ErelaManager && process.env.ENABLE_MUSIC !== 'false') {
@@ -3114,21 +3117,50 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       } catch (e) { console.error('Invalid LAVALINK_NODES env:', e?.message || e); }
-      
-      // Always use only the local Lavalink node (N/ams)
-      nodes = [{ 
-        identifier: 'N/ams',
-        host: '127.0.0.1', 
-        port: 2334, 
-        password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), 
-        secure: false,
-        retryAmount: 5,
-        retryDelay: 30000
-      }];
-      console.log('[Music] Using single local Lavalink node (N/ams) at 127.0.0.1:2334');
-      
-      // Remove all public fallbacks; we only keep the local node
-      
+      // If not provided via env, try to load from files
+      if (!Array.isArray(nodes) || nodes.length === 0) {
+        const fs = require('fs');
+        const candidates = [
+          '/workspace/lavalink-nodes.stable.json',
+          '/workspace/lavalink-nodes-stable.json',
+          'lavalink-nodes.stable.json',
+          'lavalink-nodes-stable.json'
+        ];
+        for (const p of candidates) {
+          try {
+            if (fs.existsSync(p)) {
+              const txt = fs.readFileSync(p, 'utf8');
+              const arr = JSON.parse(txt);
+              if (Array.isArray(arr) && arr.length) {
+                nodes = arr;
+                console.log('[Music] Using nodes from file:', p);
+                break;
+              }
+            }
+          } catch (e) {
+            console.warn('[Music] Failed to read nodes file', p, e?.message || e);
+          }
+        }
+      }
+      // Final fallback: a default public node
+      if (!Array.isArray(nodes) || nodes.length === 0) {
+        nodes = [{ identifier: 'lava.link', host: 'lava.link', port: 80, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false, retryAmount: 3, retryDelay: 15000 }];
+        console.log('[Music] Using default public node lava.link:80');
+      }
+      // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
+      if (shouldEnableLocalLavalink()) {
+        nodes.push({ identifier: 'local-fallback', host: '127.0.0.1', port: 2334, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false, retryAmount: 5, retryDelay: 30000 });
+      }
+      // Deduplicate nodes by host:port
+      const seen = new Set();
+      nodes = nodes.filter(n => {
+        const key = `${n.host}:${n.port}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      try { console.log('[Music] Nodes configured:', nodes.map(n => `${n.identifier||n.host}:${n.port}${n.secure?' (tls)':''}`).join(', ')); } catch (_) {}
+
       const manager = new ErelaManager({
         nodes,
         send: (id, payload) => {
