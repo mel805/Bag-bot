@@ -64,14 +64,98 @@ const commands = [
   new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('séduire').setDescription('Séduire pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
-  new SlashCommandBuilder().setName('lécher').setDescription('Lécher pour gagner de la perversion').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
-  new SlashCommandBuilder().setName('lecher').setDescription('Lécher (alias sans accent)').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
-  new SlashCommandBuilder().setName('chatouiller').setDescription('Chatouiller pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('sodo').setDescription('Sodomie consentie (RP adulte) 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('tirercheveux').setDescription('Tirer les cheveux (NSFW, consensuel)').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder()
+    .setName('caresser')
+    .setDescription('Caresser (NSFW)')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>o
+      .setName('zone')
+      .setDescription('Zone à caresser (optionnel)')
+      .setRequired(false)
+      .addChoices(
+        { name: 'Sein', value: 'sein' },
+        { name: 'Fesses', value: 'fesses' },
+        { name: 'Corps', value: 'corps' },
+        { name: 'Jambes', value: 'jambes' },
+        { name: 'Bite', value: 'bite' },
+        { name: 'Pied', value: 'pied' },
+        { name: 'Nuque', value: 'nuque' },
+        { name: 'Épaule', value: 'épaule' }
+      )
+    )
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('lécher')
+    .setDescription('Lécher pour gagner de la perversion')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>o
+      .setName('zone')
+      .setDescription('Zone à cibler (optionnel)')
+      .setRequired(false)
+      .addChoices(
+        { name: 'Seins', value: 'seins' },
+        { name: 'Chatte', value: 'chatte' },
+        { name: 'Cul', value: 'cul' },
+        { name: 'Oreille', value: 'oreille' },
+        { name: 'Ventre', value: 'ventre' }
+      )
+    )
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('lecher')
+    .setDescription('Lécher (alias sans accent)')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>o
+      .setName('zone')
+      .setDescription('Zone à cibler (optionnel)')
+      .setRequired(false)
+      .addChoices(
+        { name: 'Seins', value: 'seins' },
+        { name: 'Chatte', value: 'chatte' },
+        { name: 'Cul', value: 'cul' },
+        { name: 'Oreille', value: 'oreille' },
+        { name: 'Ventre', value: 'ventre' }
+      )
+    )
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('chatouiller')
+    .setDescription('Chatouiller pour gagner du charme')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>o
+      .setName('zone')
+      .setDescription('Zone à cibler (optionnel)')
+      .setRequired(false)
+      .addChoices(
+        { name: 'Côtes', value: 'côtes' },
+        { name: 'Pieds', value: 'pieds' },
+        { name: 'Nuque', value: 'nuque' },
+        { name: 'Ventre', value: 'ventre' },
+        { name: 'Aisselles', value: 'aisselles' }
+      )
+    )
+    .toJSON(),
   new SlashCommandBuilder().setName('réanimer').setDescription('Réanimer un membre (RP secourisme) 🩺').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('reanimer').setDescription('Réanimer (alias sans accent) 🩺').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('réconforter').setDescription('Réconforter avec douceur 🤍').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('reconforter').setDescription('Réconforter (alias sans accent) 🤍').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
-  new SlashCommandBuilder().setName('sucer').setDescription('Sucer (RP adulte) 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder()
+    .setName('sucer')
+    .setDescription('Sucer (RP adulte) 😈')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>o
+      .setName('zone')
+      .setDescription('Zone à cibler (optionnel)')
+      .setRequired(false)
+      .addChoices(
+        { name: 'Bite', value: 'bite' },
+        { name: 'Téton', value: 'téton' },
+        { name: 'Oreille', value: 'oreille' }
+      )
+    )
+    .toJSON(),
   new SlashCommandBuilder().setName('masser').setDescription('Masser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('danser').setDescription('Danser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Danser avec (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('boutique').setDescription('Ouvrir la boutique du serveur').toJSON(),

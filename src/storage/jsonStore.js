@@ -610,7 +610,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -662,6 +662,9 @@ function ensureEconomyShape(g) {
     flirt: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     seduce: { moneyMin: 10, moneyMax: 20, karma: 'charm', karmaDelta: 3, cooldown: 120, successRate: 0.7, failMoneyMin: 5, failMoneyMax: 10, failKarmaDelta: 3, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     fuck: { moneyMin: 20, moneyMax: 50, karma: 'perversion', karmaDelta: 5, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 20, failKarmaDelta: 5, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    sodo: { moneyMin: 22, moneyMax: 55, karma: 'perversion', karmaDelta: 6, cooldown: 600, successRate: 0.7, failMoneyMin: 10, failMoneyMax: 22, failKarmaDelta: 5, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    hairpull: { moneyMin: 10, moneyMax: 25, karma: 'perversion', karmaDelta: 3, cooldown: 90, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 6, failKarmaDelta: 2, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    caress: { moneyMin: 8, moneyMax: 20, karma: 'perversion', karmaDelta: 2, cooldown: 90, successRate: 0.9, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
     massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.5, partnerKarmaShare: 1.5 },
     crime: { moneyMin: 30, moneyMax: 80, karma: 'perversion', karmaDelta: 4, cooldown: 1800, successRate: 0.6, failMoneyMin: 15, failMoneyMax: 30, failKarmaDelta: 4, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
@@ -701,6 +704,9 @@ function ensureEconomyShape(g) {
     flirt: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
     seduce: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
     fuck: { xpDelta: 20, failXpDelta: 5, partnerXpShare: 1.0 },
+    sodo: { xpDelta: 22, failXpDelta: 6, partnerXpShare: 1.0 },
+    hairpull: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
+    caress: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
     massage: { xpDelta: 8, failXpDelta: 2, partnerXpShare: 1.0 },
     dance: { xpDelta: 6, failXpDelta: 2, partnerXpShare: 1.0 },
     crime: { xpDelta: 15, failXpDelta: 5, partnerXpShare: 1.0 },
@@ -745,6 +751,14 @@ function ensureEconomyShape(g) {
   // Ensure per-action messages shape (personalized success/fail messages)
   if (!e.actions.messages || typeof e.actions.messages !== 'object') e.actions.messages = {};
   const msgDefaults = {
+    hairpull: {
+      success: ['Tu tires ses cheveux avec fermeté, regard brûlant 😈', 'Main dans la chevelure, tu guides avec assurance.', 'Prise maîtrisée, consentement affiché: ça le/la rend fou/folle.'],
+      fail: ['Tu hésites, le geste n’est pas clair.', 'Pas d’accord là-dessus, vous préférez éviter.', 'Mauvais timing, on en discute d’abord.']
+    },
+    caress: {
+      success: ['Tes mains glissent lentement, la température monte…', 'Des caresses expertes, frisson garanti.', 'Douceur et intention: irrésistible.'],
+      fail: ['Tu tentes une caresse, mais il/elle préfère attendre.', 'Le moment n’y est pas, vous ralentissez.']
+    },
     daily: {
       success: ['Bonus quotidien reçu !', 'Récompense du jour collectée. À demain !'],
       fail: []
@@ -792,6 +806,10 @@ function ensureEconomyShape(g) {
     fuck: {
       success: ['Nuit torride 😈', 'Explosion de passion…'],
       fail: ['Mauvais timing…', 'Ça ne l’a pas fait cette fois.']
+    },
+    sodo: {
+      success: ['Tu le/la prends par derrière avec intensité 🔥', 'Vous vous abandonnez à une sodomie passionnée 😈', 'Rythme assuré, consentement total et plaisir partagé.'],
+      fail: ['Vous tentez… mais ce n’est pas le bon moment.', 'Sans préparation, impossible d’y arriver correctement.', 'On arrête: confort avant tout.']
     },
     massage: {
       success: ['Relaxation totale, mains de fée !', 'Vous avez détendu toutes les tensions.'],

@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -765,7 +765,8 @@ async function handleEconomyAction(interaction, actionKey) {
   if (actionKey === 'lick') {
     const zones = ['seins','chatte','cul','oreille','ventre'];
     const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };
-    const z = zones[randInt(0, zones.length - 1)];
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
     const p = poss[z] || 'sa';
     if (success) {
       const texts = [
@@ -785,7 +786,8 @@ async function handleEconomyAction(interaction, actionKey) {
   if (actionKey === 'suck') {
     const zones = ['bite','téton','oreille'];
     const poss = { bite: 'sa', 'téton': 'son', 'oreille': 'son' };
-    const z = zones[randInt(0, zones.length - 1)];
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
     const p = poss[z] || 'son';
     if (success) {
       const texts = [
@@ -802,10 +804,32 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     }
   }
+  if (actionKey === 'caress') {
+    const zones = ['sein','fesses','corps','jambes','bite','pied','nuque','épaule'];
+    const poss = { sein: 'son', fesses: 'ses', corps: 'son', jambes: 'ses', bite: 'sa', pied: 'son', nuque: 'sa', 'épaule': 'son' };
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
+    const p = poss[z] || 'son';
+    if (success) {
+      const texts = [
+        `Tes mains caressent ${p} ${z} avec une douceur électrique…`,
+        `Tu caresses ${p} ${z}, les frissons apparaissent.`,
+        `Des caresses lentes sur ${p} ${z} font monter le désir.`,
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu tentes de caresser ${p} ${z}, mais il/elle préfère attendre.`,
+        `Sur ${p} ${z}, ce n’est pas le bon moment.`,
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
   if (actionKey === 'tickle') {
     const zones = ['côtes','pieds','nuque','ventre','aisselles'];
     const poss = { côtes: 'ses', pieds: 'ses', nuque: 'sa', ventre: 'son', aisselles: 'ses' };
-    const z = zones[randInt(0, zones.length - 1)];
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
     const p = poss[z] || 'ses';
     if (success) {
       const texts = [
@@ -818,6 +842,42 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = [
         `Tu tentes de chatouiller ${p} ${z}, mais ça ne prend pas.`,
         `Pas sensible ici… ${p} ${z} ne réagissent pas.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'sodo') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu pénètres ${partner} par derrière avec intensité et douceur.` : `Tu t'abandonnes à une sodomie torride, consentie et maîtrisée.`,
+        partner ? `Vous profitez d’une sodomie passionnée avec ${partner} 😈` : `Sodomie consentie, rythmée et ardente.`,
+        `Préparation, lubrifiant, communication: tout est parfait, plaisir partagé.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        'Pas le bon moment: on privilégie le confort et la sécurité.',
+        'Sans préparation adéquate, vous préférez reporter.',
+        'On arrête: consentement et confort avant tout.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'hairpull') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu glisses ta main dans les cheveux de ${partner} et tires avec fermeté.` : `Tu agrippes les cheveux et tires, le regard s’embrase.`,
+        partner ? `Prise assurée dans la chevelure de ${partner}, le contrôle te va bien.` : `Prise dans la chevelure, tu guides avec assurance.`,
+        `Geste maîtrisé, consentement clair: excitation immédiate.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        'Tu hésites… le geste manque de clarté.',
+        'Pas d’accord là-dessus, vous évitez pour l’instant.',
+        'Mauvais moment: discussion et consentement avant tout.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -960,7 +1020,7 @@ async function handleEconomyAction(interaction, actionKey) {
     const baseXp = success ? xpOnSuccess : xpOnFail;
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
-    if (['kiss','flirt','seduce','fuck','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+    if (['kiss','flirt','seduce','fuck','sodo','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
       partnerUser = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
@@ -978,7 +1038,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+      if (['kiss','flirt','seduce','fuck','sodo','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
@@ -2663,6 +2723,9 @@ function actionKeyToLabel(key) {
     flirt: 'flirter',
     seduce: 'séduire',
     fuck: 'fuck',
+    sodo: 'sodo',
+    hairpull: 'tirer cheveux',
+    caress: 'caresser',
     lick: 'lécher',
     suck: 'sucer',
     tickle: 'chatouiller',
@@ -2732,7 +2795,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -3135,14 +3198,45 @@ client.once(Events.ClientReady, (readyClient) => {
       for (const [uid, info] of Object.entries(active)) {
         if (!info || typeof info.expiresAt !== 'number') continue;
         if (now >= info.expiresAt) {
-          // delete channels
-          for (const cid of [info.textId, info.voiceId]) {
-            if (!cid) continue;
-            const ch = guild.channels.cache.get(cid) || await guild.channels.fetch(cid).catch(()=>null);
-            if (ch) await ch.delete().catch(()=>{});
+          let textDeleted = true;
+          let voiceDeleted = true;
+          // delete text channel
+          try {
+            const tcid = info.textId;
+            if (tcid) {
+              const tch = guild.channels.cache.get(tcid) || await guild.channels.fetch(tcid).catch(()=>null);
+              if (tch) {
+                await tch.delete().catch((e)=>{ try { console.warn('[Suites] Échec suppression texte', { uid, tcid, error: e?.message }); } catch(_){}; });
+                const still = guild.channels.cache.get(tcid) || await guild.channels.fetch(tcid).catch(()=>null);
+                textDeleted = !still;
+              }
+            }
+          } catch (e) {
+            try { console.warn('[Suites] Erreur suppression texte', { uid, error: e?.message }); } catch(_){}
           }
-          delete active[uid];
-          modified = true;
+          // delete voice channel
+          try {
+            const vcid = info.voiceId;
+            if (vcid) {
+              const vch = guild.channels.cache.get(vcid) || await guild.channels.fetch(vcid).catch(()=>null);
+              if (vch) {
+                await vch.delete().catch((e)=>{ try { console.warn('[Suites] Échec suppression vocal', { uid, vcid, error: e?.message }); } catch(_){}; });
+                const still = guild.channels.cache.get(vcid) || await guild.channels.fetch(vcid).catch(()=>null);
+                voiceDeleted = !still;
+              }
+            }
+          } catch (e) {
+            try { console.warn('[Suites] Erreur suppression vocal', { uid, error: e?.message }); } catch(_){}
+          }
+          // Remove entry only if both channels are gone or undefined
+          const canRemove = (info.textId ? textDeleted : true) && (info.voiceId ? voiceDeleted : true);
+          if (canRemove) {
+            try { console.log('[Suites] Entrée supprimée (canaux supprimés ou introuvables)', { uid, textId: info.textId||null, voiceId: info.voiceId||null }); } catch(_){}
+            delete active[uid];
+            modified = true;
+          } else {
+            try { console.warn('[Suites] Entrée conservée: suppression incomplète', { uid, textDeleted, voiceDeleted }); } catch(_){}
+          }
         }
       }
       if (modified) {
@@ -6404,6 +6498,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'fuck') {
       return handleEconomyAction(interaction, 'fuck');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'sodo') {
+      return handleEconomyAction(interaction, 'sodo');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'tirercheveux') {
+      return handleEconomyAction(interaction, 'hairpull');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'caresser') {
+      return handleEconomyAction(interaction, 'caress');
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'lécher' || interaction.commandName === 'lecher')) {
       return handleEconomyAction(interaction, 'lick');
