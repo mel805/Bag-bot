@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','hairpull','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -839,6 +839,24 @@ async function handleEconomyAction(interaction, actionKey) {
         'Pas le bon moment: on privilégie le confort et la sécurité.',
         'Sans préparation adéquate, vous préférez reporter.',
         'On arrête: consentement et confort avant tout.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'hairpull') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu glisses ta main dans les cheveux de ${partner} et tires avec fermeté.` : `Tu agrippes les cheveux et tires, le regard s’embrase.`,
+        partner ? `Prise assurée dans la chevelure de ${partner}, le contrôle te va bien.` : `Prise dans la chevelure, tu guides avec assurance.`,
+        `Geste maîtrisé, consentement clair: excitation immédiate.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        'Tu hésites… le geste manque de clarté.',
+        'Pas d’accord là-dessus, vous évitez pour l’instant.',
+        'Mauvais moment: discussion et consentement avant tout.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -2685,6 +2703,7 @@ function actionKeyToLabel(key) {
     seduce: 'séduire',
     fuck: 'fuck',
     sodo: 'sodo',
+    hairpull: 'tirer cheveux',
     lick: 'lécher',
     suck: 'sucer',
     tickle: 'chatouiller',
@@ -2754,7 +2773,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','hairpull','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6460,6 +6479,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'sodo') {
       return handleEconomyAction(interaction, 'sodo');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'tirercheveux') {
+      return handleEconomyAction(interaction, 'hairpull');
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'lécher' || interaction.commandName === 'lecher')) {
       return handleEconomyAction(interaction, 'lick');
