@@ -69,6 +69,12 @@ const commands = [
   new SlashCommandBuilder().setName('doigter').setDescription('Doigter (RP adulte) 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('tirercheveux').setDescription('Tirer les cheveux (NSFW, consensuel)').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder()
+    .setName('orgasme')
+    .setDescription('Donner un orgasme (NSFW, consensuel) 😈')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>o.setName('message').setDescription('Message personnalisé (optionnel)').setRequired(false))
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('caresser')
     .setDescription('Caresser (NSFW)')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))

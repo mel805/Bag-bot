@@ -805,7 +805,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -909,6 +909,15 @@ async function handleEconomyAction(interaction, actionKey) {
   let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
+  // Allow a user-provided custom message for certain commands
+  try {
+    if (actionKey === 'orgasme') {
+      const custom = interaction.options.getString('message', false);
+      if (custom && typeof custom === 'string' && custom.trim().length) {
+        msgText = custom.trim();
+      }
+    }
+  } catch (_) {}
   if (actionKey === 'lick') {
     const zones = ['seins','chatte','cul','oreille','ventre'];
     const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };
@@ -1009,6 +1018,25 @@ async function handleEconomyAction(interaction, actionKey) {
         'On arrête: consentement et confort avant tout.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'orgasme') {
+    const partner = interaction.options.getUser('cible', false);
+    if (!msgText) {
+      if (success) {
+        const texts = [
+          partner ? `Tu guides ${partner} jusqu’à l’extase, souffle coupé…` : `Tu atteins l’extase, corps en feu…`,
+          partner ? `Plaisir partagé avec ${partner}, frissons complices.` : `Climax intense, le cœur s’emballe.`,
+          `Respirs courts, regard qui brille: c’est l’explosion.`
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      } else {
+        const texts = [
+          'Le moment n’y est pas, vous ralentissez.',
+          'On communique, on remet ça plus tard.'
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      }
     }
   }
   if (actionKey === 'branler') {
@@ -2923,6 +2951,7 @@ function actionKeyToLabel(key) {
     seduce: 'séduire',
     fuck: 'fuck',
     sodo: 'sodo',
+    orgasme: 'donner orgasme',
     branler: 'branler',
     doigter: 'doigter',
     hairpull: 'tirer cheveux',
@@ -2996,7 +3025,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6739,6 +6768,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'sodo') {
       return handleEconomyAction(interaction, 'sodo');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'orgasme') {
+      return handleEconomyAction(interaction, 'orgasme');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'branler') {
       return handleEconomyAction(interaction, 'branler');
