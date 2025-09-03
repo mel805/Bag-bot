@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tickle','comfort','caress','hairpull','cheat','revive'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -759,9 +759,15 @@ async function handleEconomyAction(interaction, actionKey) {
     else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
     imageUrl = Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined;
   }
-  const msgText = success
+  let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
+  // Personnalisation légère via placeholder {zone}
+  let zoneOpt = null;
+  try { zoneOpt = interaction.options.getString('zone', false); } catch (_) { zoneOpt = null; }
+  if (zoneOpt && typeof msgText === 'string') {
+    msgText = msgText.replaceAll('{zone}', String(zoneOpt));
+  }
   // Special cases
   if (actionKey === 'give') {
     const cible = interaction.options.getUser('membre', true);
@@ -858,6 +864,41 @@ async function handleEconomyAction(interaction, actionKey) {
       return interaction.reply({ content: String(cible), embeds: [embed] });
     }
   }
+  // Special case: cheat (tromper) — pick a random third member as "avec qui"
+  if (actionKey === 'cheat') {
+    // Base economy/karma adjustments already computed above
+    u.amount = Math.max(0, (u.amount||0) + moneyDelta);
+    setCd(actionKey, cdToSet);
+    await setEconomyUser(interaction.guild.id, interaction.user.id, u);
+    try {
+      const baseXp = success ? xpOnSuccess : xpOnFail;
+      await awardXp(interaction.user.id, baseXp);
+    } catch (_) {}
+
+    const eco2 = await getEconomyConfig(interaction.guild.id);
+    const currency = eco2.currency?.name || 'BAG$';
+    const guildMembers = await interaction.guild.members.fetch();
+    const members = guildMembers
+      .filter(m => !m.user.bot && m.user.id !== interaction.user.id)
+      .map(m => m.user);
+    const cible = interaction.options.getUser('cible', true);
+    const pool = members.filter(u2 => u2.id !== cible.id);
+    const other = pool.length ? pool[Math.floor(Math.random()*pool.length)] : null;
+    const nice = actionKeyToLabel(actionKey);
+    const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
+    const descBase = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+    const extra = other ? `\nScénario: ${interaction.user} a trompé ${cible} avec ${other}.` : '';
+    const fields = [
+      { name: 'Argent', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true },
+      { name: 'Solde argent', value: String(u.amount), inline: true },
+      ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
+      { name: 'Solde charme', value: String(u.charm||0), inline: true },
+      { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+    ];
+    const embed = buildEcoEmbed({ title, description: descBase + extra, fields });
+    if (imageUrl) embed.setImage(imageUrl);
+    return interaction.reply({ content: String(cible), embeds: [embed] });
+  }
   // Generic flow
   u.amount = Math.max(0, (u.amount||0) + moneyDelta);
   setCd(actionKey, cdToSet);
@@ -867,7 +908,7 @@ async function handleEconomyAction(interaction, actionKey) {
     const baseXp = success ? xpOnSuccess : xpOnFail;
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
-    if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+    if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tickle','revive','comfort','caress','hairpull','cheat'].includes(actionKey)) {
       partnerUser = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
@@ -879,13 +920,16 @@ async function handleEconomyAction(interaction, actionKey) {
   const nice = actionKeyToLabel(actionKey);
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
   const currency = eco.currency?.name || 'BAG$';
-  const desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  let desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  if (zoneOpt && ['tickle','caress'].includes(actionKey)) {
+    desc += `\nZone: ${zoneOpt}`;
+  }
   // Partner rewards (cible/complice)
   let partnerField = null;
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+      if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tickle','revive','comfort','caress','hairpull','cheat'].includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
@@ -2591,7 +2635,14 @@ function actionKeyToLabel(key) {
     sleep: 'dormir',
     // Délires / Jeux
     oops: 'oups',
-    caught: 'surpris'
+    caught: 'surpris',
+    // Nouvelles actions (SFW / RP)
+    tickle: 'chatouiller',
+    revive: 'réanimer',
+    comfort: 'réconforter',
+    caress: 'caresser',
+    hairpull: 'tirer cheveux',
+    cheat: 'tromper'
   };
   return map[key] || key;
 }
@@ -2634,7 +2685,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tickle','revive','comfort','caress','hairpull','cheat'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6182,7 +6233,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const eco = await getEconomyConfig(interaction.guild.id);
       const cds = { ...(eco.settings?.cooldowns || {}) };
-      for (const f of ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance']) {
+      for (const f of ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tickle','revive','comfort','caress','hairpull','cheat','daily']) {
         const v = interaction.fields.getTextInputValue(f);
         if (v !== null && v !== undefined && v !== '') cds[f] = Math.max(0, Number(v) || 0);
       }
@@ -6357,6 +6408,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'sleep') {
       return handleEconomyAction(interaction, 'sleep');
+    }
+    // Nouvelles actions (SFW / RP)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'chatouiller') {
+      return handleEconomyAction(interaction, 'tickle');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'reanimer') {
+      return handleEconomyAction(interaction, 'revive');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'reconforter') {
+      return handleEconomyAction(interaction, 'comfort');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'caresser') {
+      return handleEconomyAction(interaction, 'caress');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'tirercheveux') {
+      return handleEconomyAction(interaction, 'hairpull');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'tromper') {
+      return handleEconomyAction(interaction, 'cheat');
     }
     // Délires / Jeux
     if (interaction.isChatInputCommand() && interaction.commandName === 'oops') {
