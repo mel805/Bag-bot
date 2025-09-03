@@ -664,10 +664,27 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 
 async function handleEconomyAction(interaction, actionKey) {
   const eco = await getEconomyConfig(interaction.guild.id);
+  // Disallow bot users executing actions
+  if (interaction.user?.bot) {
+    return interaction.reply({ content: '⛔ Les bots ne peuvent pas utiliser cette action.', ephemeral: true });
+  }
   // Check enabled
   const enabled = Array.isArray(eco.actions?.enabled) ? eco.actions.enabled : [];
   if (enabled.length && !enabled.includes(actionKey)) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
+  }
+  // Resolve optional/required partner for actions that target a user
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  let initialPartner = null;
+  try {
+    if (actionsWithTarget.includes(actionKey)) {
+      initialPartner = interaction.options.getUser('cible', false);
+    } else if (actionKey === 'crime') {
+      initialPartner = interaction.options.getUser('complice', false);
+    }
+  } catch (_) {}
+  if (initialPartner && initialPartner.bot) {
+    return interaction.reply({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
   }
   const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
   const now = Date.now();
@@ -698,6 +715,8 @@ async function handleEconomyAction(interaction, actionKey) {
   const partnerXpShare = Math.max(0, Number(conf.partnerXpShare || 0));
   const awardXp = async (userId, baseXp) => {
     try {
+      // Skip XP for bots if ever called with a bot ID
+      try { const m = await interaction.guild.members.fetch(userId).catch(()=>null); if (m?.user?.bot) return; } catch (_) {}
       const levels = await getLevelsConfig(interaction.guild.id);
       if (!levels?.enabled) return;
       const add = Math.max(0, Math.round(baseXp));
@@ -742,6 +761,7 @@ async function handleEconomyAction(interaction, actionKey) {
   // Special cases
   if (actionKey === 'give') {
     const cible = interaction.options.getUser('membre', true);
+    if (cible?.bot) return interaction.reply({ content: '⛔ Vous ne pouvez pas donner à un bot.', ephemeral: true });
     const montant = interaction.options.getInteger('montant', true);
     if ((u.amount||0) < montant) return interaction.reply({ content: `Solde insuffisant.`, ephemeral: true });
     u.amount = (u.amount||0) - montant;
@@ -772,10 +792,11 @@ async function handleEconomyAction(interaction, actionKey) {
         await awardXp(cible.id, Math.round(baseXp * partnerXpShare));
       }
     } catch (_) {}
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ content: String(cible), embeds: [embed] });
   }
   if (actionKey === 'steal') {
     const cible = interaction.options.getUser('membre', true);
+    if (cible?.bot) return interaction.reply({ content: '⛔ Vous ne pouvez pas voler un bot.', ephemeral: true });
     const tu = await getEconomyUser(interaction.guild.id, cible.id);
     if (success) {
       const canSteal = Math.max(0, Math.min(Number(conf.moneyMax||0), tu.amount||0));
@@ -804,7 +825,7 @@ async function handleEconomyAction(interaction, actionKey) {
       try {
         await awardXp(interaction.user.id, xpOnSuccess);
       } catch (_) {}
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ content: String(cible), embeds: [embed], ephemeral: true });
     } else {
       const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
       u.amount = Math.max(0, (u.amount||0) - lost);
@@ -830,7 +851,7 @@ async function handleEconomyAction(interaction, actionKey) {
       try {
         await awardXp(interaction.user.id, xpOnFail);
       } catch (_) {}
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({ content: String(cible), embeds: [embed] });
     }
   }
   // Generic flow
@@ -842,12 +863,12 @@ async function handleEconomyAction(interaction, actionKey) {
     const baseXp = success ? xpOnSuccess : xpOnFail;
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
-    if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep'].includes(actionKey)) {
+    if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
       partnerUser = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
     }
-    if (partnerUser && partnerUser.id !== interaction.user.id && partnerXpShare > 0) {
+    if (partnerUser && !partnerUser.bot && partnerUser.id !== interaction.user.id && partnerXpShare > 0) {
       await awardXp(partnerUser.id, Math.round(baseXp * partnerXpShare));
     }
   } catch (_) {}
@@ -860,12 +881,12 @@ async function handleEconomyAction(interaction, actionKey) {
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep'].includes(actionKey)) {
+      if (['kiss','flirt','seduce','fuck','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
       }
-      if (partnerUser && partnerUser.id !== interaction.user.id) {
+      if (partnerUser && !partnerUser.bot && partnerUser.id !== interaction.user.id) {
         const pMoneyShare = Number(conf.partnerMoneyShare || 0);
         const pKarmaShare = Number(conf.partnerKarmaShare || 0);
         const partnerMoneyGain = Math.max(0, Math.round(Math.max(0, moneyDelta) * (isFinite(pMoneyShare) ? pMoneyShare : 0)));
@@ -898,7 +919,7 @@ async function handleEconomyAction(interaction, actionKey) {
   ];
   const embed = buildEcoEmbed({ title, description: desc, fields });
   if (imageUrl) embed.setImage(imageUrl);
-  return interaction.reply({ embeds: [embed] });
+  return interaction.reply({ content: initialPartner ? String(initialPartner) : undefined, embeds: [embed] });
 }
 
 async function sendLog(guild, categoryKey, embed) {
@@ -5595,6 +5616,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!hasManageGuild) return interaction.reply({ content: '⛔ Permission requise.', ephemeral: true });
       const action = interaction.options.getString('action', true);
       const target = interaction.options.getUser('membre', true);
+      if (target?.bot) return interaction.reply({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
       const targetMember = interaction.guild.members.cache.get(target.id);
       try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
       let levels;
@@ -5709,6 +5731,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const type = interaction.options.getString('type', true); // 'charm' | 'perversion'
       const action = interaction.options.getString('action', true); // add | remove | set
       const member = interaction.options.getUser('membre', true);
+      if (member?.bot) return interaction.reply({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
       const value = Math.max(0, Math.abs(interaction.options.getInteger('valeur', true)));
       const eco = await getEconomyConfig(interaction.guild.id);
       const u = await getEconomyUser(interaction.guild.id, member.id);
@@ -5735,6 +5758,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const hasAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
         if (!hasAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
         const member = interaction.options.getUser('membre', true);
+        if (member?.bot) return interaction.reply({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
         const montant = Math.max(1, Math.abs(interaction.options.getInteger('montant', true)));
         try {
           await interaction.deferReply({ ephemeral: true });
@@ -5758,6 +5782,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const hasAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator) || interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator);
       if (!hasAdmin) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
       const member = interaction.options.getUser('membre', true);
+      if (member?.bot) return interaction.reply({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
       const montant = Math.max(1, Math.abs(interaction.options.getInteger('montant', true)));
       try { await interaction.deferReply({ ephemeral: true }); } catch (_) {}
       const eco = await getEconomyConfig(interaction.guild.id);
@@ -7989,7 +8014,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
       }
     } catch (_) {}
-    if (message.author.bot) return;
+    if (message.author?.bot) return; // exclude bots from XP and economy rewards
     // AutoThread runtime: if message is in a configured channel, create a thread if none exists
     try {
       const at = await getAutoThreadConfig(message.guild.id);
@@ -8155,6 +8180,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const guild = newState.guild || oldState.guild;
     if (!guild) return;
     const userId = newState.id || oldState.id;
+    try { const m = await guild.members.fetch(userId).catch(()=>null); if (m?.user?.bot) return; } catch (_) {}
     const levels = await getLevelsConfig(guild.id);
     if (!levels?.enabled) return;
     const stats = await getUserStats(guild.id, userId);
@@ -8246,6 +8272,8 @@ setInterval(async () => {
           if (channel.type === ChannelType.GuildVoice && channel.members.size > 0) {
             for (const [userId, member] of channel.members) {
               if (member.user.bot) continue;
+              // Skip if member is a bot or self-bot-like
+              if (member?.user?.bot) continue;
               
               try {
                 const userEco = await getEconomyUser(guildId, userId);
