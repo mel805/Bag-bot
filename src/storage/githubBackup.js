@@ -229,15 +229,17 @@ class GitHubBackup {
 
   /**
    * Restaure les données depuis GitHub
+   * @param {string|null} refOrSha Optionnel: SHA du commit, tag ou nom de branche à utiliser comme référence
    */
-  async restore() {
+  async restore(refOrSha = null) {
     if (!this.isConfigured()) {
       throw new Error('GitHub non configuré pour la restauration');
     }
 
     try {
-      // Obtenir le fichier de backup depuis GitHub
-      const file = await this.githubRequest(`contents/${this.backupPath}?ref=${this.branch}`);
+      // Obtenir le fichier de backup depuis GitHub à la référence demandée (commit/branche/tag)
+      const ref = refOrSha || this.branch;
+      const file = await this.githubRequest(`contents/${this.backupPath}?ref=${encodeURIComponent(ref)}`);
       
       if (!file.content) {
         throw new Error('Aucune donnée de sauvegarde trouvée');
@@ -252,7 +254,7 @@ class GitHubBackup {
         throw new Error('Structure de sauvegarde invalide');
       }
 
-      console.log(`[GitHub] Restauration depuis: ${backupData.metadata.timestamp}`);
+      console.log(`[GitHub] Restauration depuis: ${backupData.metadata.timestamp}${refOrSha ? ` (ref ${String(refOrSha).slice(0,7)})` : ''}`);
       
       return {
         success: true,

@@ -102,7 +102,9 @@ async function main() {
     
     if (github.isConfigured()) {
       console.log('[render-restore] ✅ Configuration GitHub OK - Tentative de restauration...');
-      const result = await github.restore();
+      const ref = process.env.GITHUB_RESTORE_REF || null;
+      if (ref) console.log(`[render-restore] Utilisation de la référence de restauration: ${ref}`);
+      const result = await github.restore(ref);
       
       if (result.success && result.data) {
         // Écrire les données GitHub dans le fichier local

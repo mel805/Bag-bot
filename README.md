@@ -64,7 +64,16 @@ Sauvegarde/Restaurations manuelles
 Commandes dédiées
 - `/backup` (Admin): force un snapshot local + GitHub, renvoie le JSON en pièce jointe. Logs détaillés envoyés dans le canal configuré.
 - `/restore` (Admin): restaure depuis GitHub (priorité), puis PostgreSQL, puis fichiers locaux. Logs détaillés de la source utilisée.
-- `/github-backup` (Admin): gestion avancée des sauvegardes GitHub (test, list, force-backup, force-restore).
+- `/github-backup` (Admin): gestion avancée des sauvegardes GitHub (test, list, force-backup, force-restore [optionnel: ref]).
+
+Restauration ciblée:
+- Vous pouvez préciser un commit SHA, tag, ou nom de branche via l'option `ref`:
+  - Exemple: `/github-backup action:force-restore ref:8b12c3d` (restaure à partir du commit donné)
+  - Exemple: `/github-backup action:force-restore ref:v1.2.3` (tag)
+  - Exemple: `/github-backup action:force-restore ref:backup-data` (branche)
+
+Redéploiement Render:
+- Définissez la variable d'environnement `GITHUB_RESTORE_REF` pour forcer une restauration depuis une référence précise au démarrage (sinon la branche `backup-data` est utilisée par défaut).
 
 ### Enregistrement automatique des commandes (Render)
 - À chaque déploiement Render, le démarrage exécute `node src/deploy-commands.js` via `npm run render-start`.

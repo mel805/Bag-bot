@@ -149,6 +149,11 @@ const commands = [
         { name: 'force-restore', value: 'force-restore' }
       )
     )
+    .addStringOption(o => o
+      .setName('ref')
+      .setDescription('SHA / tag / branche à utiliser pour restaurer (optionnel)')
+      .setRequired(false)
+    )
     .toJSON(),
   // Hot & Fun — catégorie
   new SlashCommandBuilder().setName('shower').setDescription('Gif douche chaude ou douche froide surprise 🚿').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
