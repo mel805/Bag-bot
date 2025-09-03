@@ -3616,7 +3616,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
       } else if (section === 'truthdare') {
         const rows = await buildTruthDareRows(interaction.guild, 'sfw');
-        await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+        await interaction.update({ embeds: [embed], components: [...rows] });
       } else if (section === 'confess') {
         try {
           const rows = await buildConfessRows(interaction.guild, 'sfw');
@@ -5278,14 +5278,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const mode = interaction.values[0];
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isChannelSelectMenu() && interaction.customId.startsWith('td_channels_add:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
       await addTdChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_channels_remove:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
@@ -5293,7 +5293,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await removeTdChannels(interaction.guild.id, interaction.values, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_add_action:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
@@ -5324,7 +5324,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await addTdPrompts(interaction.guild.id, type, textsRaw, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
-      return interaction.reply({ content: '✅ Ajouté.', ephemeral: true }).then(async ()=>{ try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows] }); } catch (_) {} });
+      return interaction.reply({ content: '✅ Ajouté.', ephemeral: true }).then(async ()=>{ try { await interaction.followUp({ embeds: [embed], components: [...rows] }); } catch (_) {} });
     }
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete_all:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
@@ -5333,7 +5333,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await deleteTdPrompts(interaction.guild.id, ids, mode);
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
-      return interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] });
+      return interaction.update({ embeds: [embed], components: [...rows] });
     }
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete:')) {
       const mode = interaction.customId.split(':')[1] || 'sfw';
@@ -5348,7 +5348,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
       try { await interaction.update({ content: '✅ Supprimé.', components: [] }); } catch (_) {}
-      try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
+      try { await interaction.followUp({ embeds: [embed], components: [...rows], ephemeral: true }); } catch (_) {}
       return;
     }
     if (interaction.isButton() && interaction.customId.startsWith('td_prompts_delete_page:')) {
