@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events, AttachmentBuilder } = require('discord.js');
 let ErelaManager;
 try { ({ Manager: ErelaManager } = require('erela.js')); } catch (_) { ErelaManager = null; }
-const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig, getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
+const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, editTdPrompt, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig, getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 let ytDlp;
 try { ytDlp = require('yt-dlp-exec'); } catch (_) { ytDlp = null; }
@@ -5359,6 +5359,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { return await interaction.update({ content: 'Sélectionnez les prompts à supprimer • ' + pageText, components: rows }); } catch (_) { return; }
     }
 
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_edit:')) {
+      const mode = interaction.customId.split(':')[1] || 'sfw';
+      const { rows, pageText } = await buildTdEditComponents(interaction.guild, mode, 0);
+      try { return await interaction.reply({ content: 'Choisissez un prompt à modifier • ' + pageText, components: rows, ephemeral: true }); } catch (_) { return; }
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('td_prompts_edit_page:')) {
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
+      const offset = Number(parts[2]) || 0;
+      const { rows, pageText } = await buildTdEditComponents(interaction.guild, mode, offset);
+      try { return await interaction.update({ content: 'Choisissez un prompt à modifier • ' + pageText, components: rows }); } catch (_) { return; }
+    }
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('td_prompts_edit_select:')) {
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
+      const offset = Number(parts[2]) || 0;
+      if (interaction.values.includes('none')) return interaction.deferUpdate();
+      const id = interaction.values[0];
+      const modal = new ModalBuilder().setCustomId('td_prompts_edit_modal:' + mode + ':' + id + ':' + offset).setTitle('Modifier le prompt #' + id);
+      const input = new TextInputBuilder().setCustomId('text').setLabel('Texte du prompt').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(2000);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      try { await interaction.showModal(modal); } catch (_) { try { await interaction.reply({ content: '❌ Erreur ouverture du formulaire.', ephemeral: true }); } catch (_) {} }
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('td_prompts_edit_modal:')) {
+      const parts = interaction.customId.split(':');
+      const mode = parts[1] || 'sfw';
+      const id = parts[2];
+      const offset = Number(parts[3]) || 0;
+      const text = String(interaction.fields.getTextInputValue('text') || '').trim();
+      if (!text) return interaction.reply({ content: 'Texte vide.', ephemeral: true });
+      const updated = await editTdPrompt(interaction.guild.id, id, text, mode);
+      if (!updated) return interaction.reply({ content: '❌ Prompt introuvable.', ephemeral: true });
+      const { rows, pageText } = await buildTdEditComponents(interaction.guild, mode, offset);
+      try { await interaction.reply({ content: '✅ Modifié. ' + 'Choisissez un prompt à modifier • ' + pageText, components: rows, ephemeral: true }); } catch (_) {}
+      return;
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith('levels_page:')) {
       const page = interaction.customId.split(':')[1];
       const embed = await buildConfigEmbed(interaction.guild);
@@ -8822,11 +8860,12 @@ async function buildTruthDareRows(guild, mode = 'sfw') {
   const addTruthBtn = new ButtonBuilder().setCustomId('td_prompts_add_verite:' + mode).setLabel('Ajouter VERITE').setStyle(ButtonStyle.Success);
   const promptsDelBtn = new ButtonBuilder().setCustomId('td_prompts_delete:' + mode).setLabel('Supprimer prompt').setStyle(ButtonStyle.Danger);
   const promptsDelAllBtn = new ButtonBuilder().setCustomId('td_prompts_delete_all:' + mode).setLabel('Tout supprimer').setStyle(ButtonStyle.Danger);
+  const promptsEditBtn = new ButtonBuilder().setCustomId('td_prompts_edit:' + mode).setLabel('Modifier prompt').setStyle(ButtonStyle.Secondary);
   return [
     new ActionRowBuilder().addComponents(modeSelect),
     new ActionRowBuilder().addComponents(channelAdd),
     new ActionRowBuilder().addComponents(channelRemove),
-    new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn, promptsDelAllBtn),
+    new ActionRowBuilder().addComponents(addActionBtn, addTruthBtn, promptsDelBtn, promptsDelAllBtn, promptsEditBtn),
   ];
 }
 
@@ -8861,6 +8900,42 @@ async function buildTdDeleteComponents(guild, mode = 'sfw', offset = 0) {
   const hasNext = off + limit < total;
   const prevBtn = new ButtonBuilder().setCustomId(`td_prompts_delete_page:${mode}:${Math.max(0, off - limit)}`).setLabel('⟨ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(!hasPrev);
   const nextBtn = new ButtonBuilder().setCustomId(`td_prompts_delete_page:${mode}:${off + limit}`).setLabel('Suivant ⟩').setStyle(ButtonStyle.Primary).setDisabled(!hasNext);
+
+  return {
+    rows: [
+      new ActionRowBuilder().addComponents(select),
+      new ActionRowBuilder().addComponents(prevBtn, nextBtn),
+    ],
+    pageText,
+    offset: off,
+    limit,
+    total,
+  };
+}
+
+async function buildTdEditComponents(guild, mode = 'sfw', offset = 0) {
+  const td = await getTruthDareConfig(guild.id);
+  const list = (td?.[mode]?.prompts || []).slice();
+  const limit = 25;
+  const total = list.length;
+  const off = clampOffset(total, Number(offset) || 0, limit);
+  const view = list.slice(off, off + limit);
+  const from = total === 0 ? 0 : off + 1;
+  const to = Math.min(total, off + view.length);
+  const pageText = `Prompts ${from}-${to} sur ${total}`;
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('td_prompts_edit_select:' + mode + ':' + off)
+    .setPlaceholder(total ? ('Choisir un prompt à modifier • ' + pageText) : 'Aucun prompt')
+    .setMinValues(1)
+    .setMaxValues(1);
+  if (view.length) select.addOptions(...view.map(p => ({ label: `#${p.id} ${String(p.text||'').slice(0,80)}`, value: String(p.id) })));
+  else select.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
+
+  const hasPrev = off > 0;
+  const hasNext = off + limit < total;
+  const prevBtn = new ButtonBuilder().setCustomId(`td_prompts_edit_page:${mode}:${Math.max(0, off - limit)}`).setLabel('⟨ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(!hasPrev);
+  const nextBtn = new ButtonBuilder().setCustomId(`td_prompts_edit_page:${mode}:${off + limit}`).setLabel('Suivant ⟩').setStyle(ButtonStyle.Primary).setDisabled(!hasNext);
 
   return {
     rows: [
