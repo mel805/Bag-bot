@@ -1052,7 +1052,7 @@ async function handleEconomyAction(interaction, actionKey) {
     const baseXp = success ? xpOnSuccess : xpOnFail;
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
-    if (['kiss','flirt','seduce','fuck','sodo','branler','doigter','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+    if (actionsWithTarget.includes(actionKey)) {
       partnerUser = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
@@ -1070,7 +1070,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','sodo','branler','doigter','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+      if (actionsWithTarget.includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
