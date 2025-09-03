@@ -72,7 +72,6 @@ const commands = [
     .setName('orgasme')
     .setDescription('Donner un orgasme (NSFW, consensuel) 😈')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
-    .addStringOption(o=>o.setName('message').setDescription('Message personnalisé (optionnel)').setRequired(false))
     .toJSON(),
   new SlashCommandBuilder()
     .setName('caresser')
@@ -275,6 +274,8 @@ const commands = [
   // Délires coquins / Jeux
   new SlashCommandBuilder().setName('oops').setDescription('Gif "oups j’ai glissé" (maladresse sexy)').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('caught').setDescription('Surpris en flagrant délit 👀').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  // NSFW récit: tromper
+  new SlashCommandBuilder().setName('tromper').setDescription('🔞 Tromper — scénario NSFW avec tiers (pertes/gains)').addUserOption(o=>o.setName('cible').setDescription('Membre (victime)').setRequired(true)).toJSON(),
   new SlashCommandBuilder()
     .setName('map')
     .setDescription('Définir ou voir votre localisation (ville)')

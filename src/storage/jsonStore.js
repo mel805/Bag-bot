@@ -586,7 +586,7 @@ function ensureEconomyShape(g) {
   if (!e.settings || typeof e.settings !== 'object') e.settings = {};
   if (typeof e.settings.baseWorkReward !== 'number') e.settings.baseWorkReward = 50;
   if (typeof e.settings.baseFishReward !== 'number') e.settings.baseFishReward = 30;
-  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, sodo: 600, orgasme: 600, lick: 120, suck: 120, branler: 120, doigter: 120, tickle: 60, revive: 180, comfort: 90, massage: 120, dance: 120, crime: 1800, shower: 120, wet: 90, bed: 180, undress: 120, collar: 120, leash: 120, kneel: 60, order: 60, punish: 300, rose: 60, wine: 180, pillowfight: 120, sleep: 300, oops: 30, caught: 60 };
+  if (!e.settings.cooldowns || typeof e.settings.cooldowns !== 'object') e.settings.cooldowns = { work: 600, fish: 300, give: 0, steal: 1800, kiss: 60, flirt: 60, seduce: 120, fuck: 600, sodo: 600, orgasme: 600, lick: 120, suck: 120, branler: 120, doigter: 120, tickle: 60, revive: 180, comfort: 90, massage: 120, dance: 120, crime: 1800, shower: 120, wet: 90, bed: 180, undress: 120, collar: 120, leash: 120, kneel: 60, order: 60, punish: 300, rose: 60, wine: 180, pillowfight: 120, sleep: 300, oops: 30, caught: 60, tromper: 300 };
   
   // Récompenses pour messages et vocal
   if (!e.rewards || typeof e.rewards !== 'object') e.rewards = {};
@@ -610,7 +610,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','daily'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','daily'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -690,6 +690,7 @@ function ensureEconomyShape(g) {
     // Délires coquins / Jeux
     oops: { moneyMin: 3, moneyMax: 8, karma: 'perversion', karmaDelta: 1, cooldown: 30, successRate: 0.95, failMoneyMin: 1, failMoneyMax: 2, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     caught: { moneyMin: 3, moneyMax: 12, karma: 'perversion', karmaDelta: 1, cooldown: 60, successRate: 0.9, failMoneyMin: 1, failMoneyMax: 3, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
+    tromper: { moneyMin: 15, moneyMax: 40, karma: 'perversion', karmaDelta: 3, cooldown: 300, successRate: 0.6, failMoneyMin: 10, failMoneyMax: 25, failKarmaDelta: 3, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
   };
   // Add XP parameters defaults for actions (success/fail) + partner XP share
   const xpDefaults = {
@@ -731,6 +732,7 @@ function ensureEconomyShape(g) {
     sleep: { xpDelta: 6, failXpDelta: 1, partnerXpShare: 1.0 },
     oops: { xpDelta: 4, failXpDelta: 1, partnerXpShare: 0.0 },
     caught: { xpDelta: 5, failXpDelta: 1, partnerXpShare: 0.0 },
+    tromper: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 0.0 },
   };
   for (const [k, d] of Object.entries(defaults)) {
     if (!e.actions.config[k] || typeof e.actions.config[k] !== 'object') e.actions.config[k] = { ...d };
@@ -908,6 +910,18 @@ function ensureEconomyShape(g) {
     caught: {
       success: ['Surpris en flagrant délit 👀', 'Pris sur le fait !'],
       fail: ['Personne ne vous a vu.']
+    },
+    tromper: {
+      success: [
+        'Tu surprends la cible en train de te tromper… tu renverses la situation. 😈',
+        'Pris en flagrant délit avec un(e) autre… et pourtant, c’est toi qui gagnes la partie.',
+        'Découverte chaude: un(e) troisième s’en mêle, mais tu reprends l’avantage.'
+      ],
+      fail: [
+        'Tout s’écroule: tu es pris(e) sur le fait…',
+        'Ça tourne mal: la cible vous surprend, la honte et la perte retombent sur toi.',
+        'Le plan foire: exposé(e) au grand jour, tu perds gros.'
+      ]
     }
   };
   for (const [k, def] of Object.entries(msgDefaults)) {

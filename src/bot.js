@@ -652,8 +652,12 @@ function startYtProxyServer() {
 // Local Lavalink + WS proxy (optional)
 let localLavalinkStarted = false;
 let localLavalinkProxyStarted = false;
+let localLavalinkV3Started = false;
 function shouldEnableLocalLavalink() {
   return String(process.env.ENABLE_LOCAL_LAVALINK || 'false').toLowerCase() === 'true';
+}
+function shouldEnableLocalLavalinkV3() {
+  return String(process.env.ENABLE_LOCAL_LAVALINK_V3 || 'false').toLowerCase() === 'true';
 }
 function startLocalLavalink() {
   if (localLavalinkStarted) return;
@@ -670,11 +674,26 @@ function startLocalLavalink() {
     try { console.error('[LocalLL] spawn error:', e?.message || e); } catch (_) {}
   }
 }
+function startLocalLavalinkV3() {
+  if (localLavalinkV3Started) return;
+  try {
+    const { spawn } = require('node:child_process');
+    const cwd = '/workspace/lavalink-v3';
+    const child = spawn('java', ['-jar', 'Lavalink.jar'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', (d) => { try { const t = d.toString('utf8'); if (/Lavalink is ready to accept connections\./.test(t)) console.log('[LocalLL-v3]', t.trim()); } catch (_) {} });
+    child.stderr.on('data', (d) => { try { console.warn('[LocalLL-v3-err]', d.toString('utf8').trim()); } catch (_) {} });
+    child.on('error', (e) => { try { console.error('[LocalLL-v3] failed to start:', e?.message || e); } catch (_) {} });
+    localLavalinkV3Started = true;
+    console.log('[LocalLL-v3] Starting Lavalink.jar on 127.0.0.1:2340');
+  } catch (e) {
+    try { console.error('[LocalLL-v3] spawn error:', e?.message || e); } catch (_) {}
+  }
+}
 function startLocalLavalinkProxy() {
   if (localLavalinkProxyStarted) return;
   try {
     const { spawn } = require('node:child_process');
-    const env = { ...process.env, LAVALINK_HOST: '127.0.0.1', LAVALINK_PORT: '2333', LAVALINK_PROXY_HOST: '127.0.0.1', LAVALINK_PROXY_PORT: '2334' };
+    const env = { ...process.env, LAVALINK_HOST: '127.0.0.1', LAVALINK_PORT: '2333', LAVALINK_PROXY_HOST: '127.0.0.1', LAVALINK_PROXY_PORT: '2334', LAVALINK_SECURE: String(process.env.LAVALINK_SECURE || 'false') };
     const child = spawn(process.execPath, ['/workspace/lavalink/ws-proxy.js'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', (d) => { try { console.log(d.toString('utf8').trim()); } catch (_) {} });
     child.stderr.on('data', (d) => { try { console.warn('[LL-Proxy-err]', d.toString('utf8').trim()); } catch (_) {} });
@@ -805,7 +824,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -892,6 +911,70 @@ async function handleEconomyAction(interaction, actionKey) {
       if (resolved) imageUrl = resolved;
     } catch (_) {}
   }
+  // Special storyline for tromper (NSFW): actor surprises target with a random third member
+  if (actionKey === 'tromper') {
+    const partner = interaction.options.getUser('cible', true);
+    let third = null;
+    try {
+      const all = await interaction.guild.members.fetch();
+      const candidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && m.user.id !== partner.id);
+      if (candidates.size > 0) {
+        const arr = Array.from(candidates.values());
+        third = arr[Math.floor(Math.random() * arr.length)].user;
+      }
+    } catch (_) {}
+    if (!third) {
+      if (success) {
+        const texts = [
+          `Tu prends ${partner} au piège: tout te profite…`,
+          `Situation ambiguë avec ${partner}, mais tu en ressors gagnant(e).`,
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      } else {
+        const texts = [
+          `Le plan échoue: ${partner} te surprend et te fait payer la note.`,
+          `Pris(e) en faute par ${partner}, tout s’effondre pour toi.`,
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      }
+    } else {
+      // Apply special penalties to the third member
+      const thirdUser = await getEconomyUser(interaction.guild.id, third.id);
+      const loseMin = Math.max(1, Number(conf.failMoneyMin||5));
+      const loseMax = Math.max(loseMin, Number(conf.failMoneyMax||10));
+      const thirdMoneyDelta = -randInt(loseMin, loseMax);
+      let thirdCharmDelta = 0;
+      let thirdPervDelta = 0;
+      if (conf.karma === 'perversion') thirdPervDelta = Number(conf.failKarmaDelta||1);
+      else if (conf.karma === 'charm') thirdCharmDelta = -Number(conf.failKarmaDelta||1);
+      thirdUser.amount = Math.max(0, (thirdUser.amount||0) + thirdMoneyDelta);
+      if (thirdCharmDelta) thirdUser.charm = (thirdUser.charm||0) + thirdCharmDelta;
+      if (thirdPervDelta) thirdUser.perversion = (thirdUser.perversion||0) + thirdPervDelta;
+      await setEconomyUser(interaction.guild.id, third.id, thirdUser);
+      // Messages
+      if (success) {
+        const texts = [
+          `Tu surprends ${partner} avec ${third}… et c’est ${third} qui trinque.`,
+          `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
+          `Scène chaude: tu retournes la situation sur ${third}.`
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      } else {
+        const texts = [
+          `Tu es surpris(e) avec ${third} par ${partner}… ça tourne mal pour vous deux.`,
+          `${partner} vous coince, toi et ${third}: pertes et remords.`,
+          `Exposé(e) au grand jour: ${partner} règle ses comptes.`,
+        ];
+        msgText = texts[randInt(0, texts.length - 1)];
+      }
+      // Attach a transient field for later embed
+      const currency = eco.currency?.name || 'BAG$';
+      const thirdFieldVal = `${third} → ${thirdMoneyDelta}${currency ? ' ' + currency : ''}`
+        + (thirdCharmDelta ? `, Charme ${thirdCharmDelta>=0?'+':''}${thirdCharmDelta}` : '')
+        + (thirdPervDelta ? `, Perversion ${thirdPervDelta>=0?'+':''}${thirdPervDelta}` : '');
+      global.__eco_tromper_third = { name: 'Sanction du tiers', value: thirdFieldVal, inline: false };
+    }
+  }
   // Decide how to render the image: embed if definitely image, else post link in message content
   let imageIsDirect = false;
   let imageLinkForContent = null;
@@ -909,15 +992,7 @@ async function handleEconomyAction(interaction, actionKey) {
   let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
-  // Allow a user-provided custom message for certain commands
-  try {
-    if (actionKey === 'orgasme') {
-      const custom = interaction.options.getString('message', false);
-      if (custom && typeof custom === 'string' && custom.trim().length) {
-        msgText = custom.trim();
-      }
-    }
-  } catch (_) {}
+  // Custom user message override removed for 'orgasme' — keep only random messages
   if (actionKey === 'lick') {
     const zones = ['seins','chatte','cul','oreille','ventre'];
     const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };
@@ -1294,6 +1369,7 @@ async function handleEconomyAction(interaction, actionKey) {
     { name: 'Solde argent', value: String(u.amount), inline: true },
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
     ...(partnerField ? [partnerField] : []),
+    ...(global.__eco_tromper_third ? [global.__eco_tromper_third] : []),
     { name: 'Solde charme', value: String(u.charm||0), inline: true },
     { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
   ];
@@ -1303,6 +1379,7 @@ async function handleEconomyAction(interaction, actionKey) {
   const parts = [initialPartner ? String(initialPartner) : undefined];
   if (imageLinkForContent) parts.push(imageLinkForContent);
   const content = parts.filter(Boolean).join('\n') || undefined;
+  try { delete global.__eco_tromper_third; } catch (_) {}
   return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
 }
 
@@ -2982,7 +3059,8 @@ function actionKeyToLabel(key) {
     sleep: 'dormir',
     // Délires / Jeux
     oops: 'oups',
-    caught: 'surpris'
+    caught: 'surpris',
+    tromper: 'tromper'
   };
   return map[key] || key;
 }
@@ -3025,7 +3103,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -3133,6 +3211,13 @@ client.once(Events.ClientReady, (readyClient) => {
   } else {
     console.log('[Music] Using remote/public Lavalink nodes (local disabled)');
   }
+  // Start local Lavalink v3 if explicitly enabled
+  if (shouldEnableLocalLavalinkV3()) {
+    console.log('[Music] Local Lavalink v3 enabled -> starting local v3 server');
+    startLocalLavalinkV3();
+  } else {
+    console.log('[Music] Using remote/public Lavalink v3 nodes (local v3 disabled)');
+  }
   // Init Erela.js (if available) with multiple fallback nodes
   try {
     if (ErelaManager && process.env.ENABLE_MUSIC !== 'false') {
@@ -3171,18 +3256,22 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       }
-      // Final fallback: a couple of public nodes (TLS 443 preferred)
+      // Final fallback: a few public nodes (TLS 443 preferred)
       if (!Array.isArray(nodes) || nodes.length === 0) {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
         nodes = [
-          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 },
-          { identifier: 'oops-443', host: 'lavalink.oops.wtf', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 }
+          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 3, retryDelay: 10000 },
+          { identifier: 'oops-443', host: 'lavalink.oops.wtf', port: 443, password: pw, secure: true, retryAmount: 3, retryDelay: 10000 }
         ];
         console.log('[Music] Using default public nodes: ajieblogs:443, oops:443');
       }
       // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
       if (shouldEnableLocalLavalink()) {
         nodes.push({ identifier: 'local-fallback', host: '127.0.0.1', port: 2334, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false, retryAmount: 5, retryDelay: 30000 });
+      }
+      // If local lavalink v3 enabled, add it as another fallback (port 2340)
+      if (shouldEnableLocalLavalinkV3()) {
+        nodes.push({ identifier: 'local-v3', host: '127.0.0.1', port: 2340, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false, retryAmount: 5, retryDelay: 30000 });
       }
       // Deduplicate nodes by host:port
       const seen = new Set();
@@ -6857,6 +6946,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'caught') {
       return handleEconomyAction(interaction, 'caught');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'tromper') {
+      return handleEconomyAction(interaction, 'tromper');
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
