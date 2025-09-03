@@ -64,6 +64,7 @@ const commands = [
   new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('séduire').setDescription('Séduire pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  new SlashCommandBuilder().setName('sodo').setDescription('Sodomie consentie (RP adulte) 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder()
     .setName('lécher')
     .setDescription('Lécher pour gagner de la perversion')

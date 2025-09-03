@@ -678,7 +678,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   let initialPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
@@ -825,6 +825,24 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     }
   }
+  if (actionKey === 'sodo') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu pénètres ${partner} par derrière avec intensité et douceur.` : `Tu t'abandonnes à une sodomie torride, consentie et maîtrisée.`,
+        partner ? `Vous profitez d’une sodomie passionnée avec ${partner} 😈` : `Sodomie consentie, rythmée et ardente.`,
+        `Préparation, lubrifiant, communication: tout est parfait, plaisir partagé.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        'Pas le bon moment: on privilégie le confort et la sécurité.',
+        'Sans préparation adéquate, vous préférez reporter.',
+        'On arrête: consentement et confort avant tout.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
   if (actionKey === 'revive') {
     const techniques = ['bouche-à-bouche','massage cardiaque','position latérale de sécurité','défibrillateur (imaginaire)','vérification des voies aériennes'];
     const t = techniques[randInt(0, techniques.length - 1)];
@@ -963,7 +981,7 @@ async function handleEconomyAction(interaction, actionKey) {
     const baseXp = success ? xpOnSuccess : xpOnFail;
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
-    if (['kiss','flirt','seduce','fuck','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+    if (['kiss','flirt','seduce','fuck','sodo','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
       partnerUser = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
@@ -981,7 +999,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (success) {
     try {
       let partnerUser = null;
-      if (['kiss','flirt','seduce','fuck','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
+      if (['kiss','flirt','seduce','fuck','sodo','lick','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'].includes(actionKey)) {
         partnerUser = interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
@@ -2666,6 +2684,7 @@ function actionKeyToLabel(key) {
     flirt: 'flirter',
     seduce: 'séduire',
     fuck: 'fuck',
+    sodo: 'sodo',
     lick: 'lécher',
     suck: 'sucer',
     tickle: 'chatouiller',
@@ -2735,7 +2754,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -6438,6 +6457,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'fuck') {
       return handleEconomyAction(interaction, 'fuck');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'sodo') {
+      return handleEconomyAction(interaction, 'sodo');
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'lécher' || interaction.commandName === 'lecher')) {
       return handleEconomyAction(interaction, 'lick');
