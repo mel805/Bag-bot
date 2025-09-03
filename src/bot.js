@@ -842,6 +842,14 @@ async function handleEconomyAction(interaction, actionKey) {
   const baseCd = Number(conf.cooldown || (eco.settings?.cooldowns?.[actionKey] || 0));
   let cdLeft = Math.max(0, (u.cooldowns?.[actionKey] || 0) - now);
   if (cdLeft > 0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.`, ephemeral: true });
+  // For heavier actions like 'tromper', defer reply to avoid 3s timeout
+  let hasDeferred = false;
+  try {
+    if (actionKey === 'tromper' && !interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+      hasDeferred = true;
+    }
+  } catch (_) {}
   // Booster cooldown multiplier
   let cdToSet = baseCd;
   try {
@@ -1380,6 +1388,9 @@ async function handleEconomyAction(interaction, actionKey) {
   if (imageLinkForContent) parts.push(imageLinkForContent);
   const content = parts.filter(Boolean).join('\n') || undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
+  if (hasDeferred) {
+    return interaction.editReply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+  }
   return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
 }
 
@@ -3256,6 +3267,18 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       }
+      // If local lavalink is not enabled, filter out localhost nodes from file/env config
+      try {
+        const localEnabled = shouldEnableLocalLavalink() || shouldEnableLocalLavalinkV3();
+        if (!localEnabled && Array.isArray(nodes) && nodes.length > 0) {
+          const before = nodes.length;
+          nodes = nodes.filter(n => {
+            const host = String(n?.host || '').toLowerCase();
+            return host !== '127.0.0.1' && host !== 'localhost' && host !== '::1';
+          });
+          if (before !== nodes.length) console.log('[Music] Filtered out local Lavalink nodes because local Lavalink is disabled');
+        }
+      } catch (_) {}
       // Final fallback: a few public nodes (TLS 443 preferred)
       if (!Array.isArray(nodes) || nodes.length === 0) {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
