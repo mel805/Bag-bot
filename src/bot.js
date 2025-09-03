@@ -579,6 +579,9 @@ const DELAY_OPTIONS = [
   { label: '7 jours', ms: 7 * 24 * 60 * 60 * 1000 },
 ];
 
+const MIN_DELAY_MS = Math.min(...DELAY_OPTIONS.map(d => d.ms));
+const MAX_DELAY_MS = Math.max(...DELAY_OPTIONS.map(d => d.ms));
+
 function formatDuration(ms) {
   const sec = Math.round(ms / 1000);
   if (sec < 3600) return `${Math.round(sec / 60)} min`;
@@ -1091,7 +1094,8 @@ async function buildAutokickRows(guild) {
       ...DELAY_OPTIONS.map((o) => ({ label: o.label, value: String(o.ms) })),
       { label: 'Personnalisé (minutes)…', value: 'custom' },
     );
-  const enableBtn = new ButtonBuilder().setCustomId('autokick_enable').setLabel('Activer AutoKick').setStyle(ButtonStyle.Success).setDisabled(ak.enabled);
+  const canEnable = Boolean(ak?.roleId) && Number.isFinite(ak?.delayMs) && ak.delayMs >= MIN_DELAY_MS && ak.delayMs <= MAX_DELAY_MS;
+  const enableBtn = new ButtonBuilder().setCustomId('autokick_enable').setLabel('Activer AutoKick').setStyle(ButtonStyle.Success).setDisabled(ak.enabled || !canEnable);
   const disableBtn = new ButtonBuilder().setCustomId('autokick_disable').setLabel('Désactiver AutoKick').setStyle(ButtonStyle.Danger).setDisabled(!ak.enabled);
   return [
     new ActionRowBuilder().addComponents(requiredRoleSelect),
@@ -5207,6 +5211,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isRoleSelectMenu() && interaction.customId === 'autokick_required_role') {
       const selected = interaction.values[0];
+      const role = interaction.guild.roles.cache.get(selected) || await interaction.guild.roles.fetch(selected).catch(() => null);
+      if (!role) {
+        return interaction.reply({ content: '❌ Rôle invalide ou introuvable.', ephemeral: true });
+      }
+      if (selected === interaction.guild.id) {
+        return interaction.reply({ content: '❌ Le rôle @everyone ne peut pas être utilisé pour l’AutoKick.', ephemeral: true });
+      }
       await updateAutoKickConfig(interaction.guild.id, { roleId: selected });
       const embed = await buildConfigEmbed(interaction.guild);
       const topRows = buildTopSectionRow();
@@ -5235,20 +5246,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       } else {
         const delayMs = Number(value);
-        if (!Number.isFinite(delayMs) || delayMs <= 0) {
-          return interaction.reply({ content: 'Valeur de délai invalide.', ephemeral: true });
+        const allowed = DELAY_OPTIONS.some(o => String(o.ms) === value);
+        if (!Number.isFinite(delayMs) || !allowed) {
+          return interaction.reply({ content: '❌ Valeur de délai invalide.', ephemeral: true });
         }
         await updateAutoKickConfig(interaction.guild.id, { delayMs });
         const embed = await buildConfigEmbed(interaction.guild);
-        const top = buildTopSectionRow();
+        const topRows = buildTopSectionRow();
         const akRows = await buildAutokickRows(interaction.guild);
-        await interaction.update({ embeds: [embed], components: [top, ...akRows] });
+        await interaction.update({ embeds: [embed], components: [...topRows, ...akRows] });
         return;
       }
     }
 
     if (interaction.isButton() && (interaction.customId === 'autokick_enable' || interaction.customId === 'autokick_disable')) {
       const enable = interaction.customId === 'autokick_enable';
+      if (enable) {
+        const ak = await getAutoKickConfig(interaction.guild.id);
+        const roleId = String(ak?.roleId || '');
+        const role = roleId ? (interaction.guild.roles.cache.get(roleId) || await interaction.guild.roles.fetch(roleId).catch(() => null)) : null;
+        const validDelay = Number.isFinite(ak?.delayMs) && ak.delayMs >= MIN_DELAY_MS && ak.delayMs <= MAX_DELAY_MS;
+        if (!role || role.id === interaction.guild.id || !validDelay) {
+          return interaction.reply({ content: '❌ Configuration incomplète: choisissez un rôle valide (≠ @everyone) et un délai entre ' + formatDuration(MIN_DELAY_MS) + ' et ' + formatDuration(MAX_DELAY_MS) + '.', ephemeral: true });
+        }
+      }
       await updateAutoKickConfig(interaction.guild.id, { enabled: enable });
       const embed = await buildConfigEmbed(interaction.guild);
       const topRows = buildTopSectionRow();
@@ -5261,9 +5282,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const text = interaction.fields.getTextInputValue('minutes');
       const minutes = Number(text);
       if (!Number.isFinite(minutes) || minutes <= 0) {
-        return interaction.reply({ content: 'Veuillez entrer un nombre de minutes valide (> 0).', ephemeral: true });
+        return interaction.reply({ content: '❌ Veuillez entrer un nombre de minutes valide (> 0).', ephemeral: true });
       }
       const delayMs = Math.round(minutes * 60 * 1000);
+      if (delayMs < MIN_DELAY_MS || delayMs > MAX_DELAY_MS) {
+        return interaction.reply({ content: '❌ Le délai doit être compris entre ' + formatDuration(MIN_DELAY_MS) + ' et ' + formatDuration(MAX_DELAY_MS) + '.', ephemeral: true });
+      }
       await updateAutoKickConfig(interaction.guild.id, { delayMs });
       try { await interaction.deferUpdate(); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
