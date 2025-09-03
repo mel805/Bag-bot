@@ -1,32 +1,12 @@
 [
   {
-    "identifier": "lava-link",
-    "host": "lava.link",
-    "port": 80,
+    "identifier": "ajieblogs-443",
+    "host": "lava-v3.ajieblogs.eu.org",
+    "port": 443,
     "password": "youshallnotpass",
-    "secure": false,
-    "retryAmount": 3,
-    "retryDelay": 15000,
-    "note": "Public node"
-  },
-  {
-    "identifier": "eu-lava",
-    "host": "lavalink.eu.vyld.dev",
-    "port": 2333,
-    "password": "youshallnotpass",
-    "secure": false,
-    "retryAmount": 3,
-    "retryDelay": 15000,
-    "note": "Public EU node (community)"
-  },
-  {
-    "identifier": "kratos",
-    "host": "kratos.lavalinklist.com",
-    "port": 2333,
-    "password": "youshallnotpass",
-    "secure": false,
-    "retryAmount": 3,
-    "retryDelay": 15000,
+    "secure": true,
+    "retryAmount": 2,
+    "retryDelay": 7000,
     "note": "Public node (community)"
   }
 ]

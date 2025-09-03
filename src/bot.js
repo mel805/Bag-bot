@@ -3142,10 +3142,13 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       }
-      // Final fallback: a default public node
+      // Final fallback: a couple of public nodes (TLS 443 preferred)
       if (!Array.isArray(nodes) || nodes.length === 0) {
-        nodes = [{ identifier: 'lava.link', host: 'lava.link', port: 80, password: String(process.env.LAVALINK_PASSWORD || 'youshallnotpass'), secure: false, retryAmount: 3, retryDelay: 15000 }];
-        console.log('[Music] Using default public node lava.link:80');
+        const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
+        nodes = [
+          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 2, retryDelay: 7000 }
+        ];
+        console.log('[Music] Using default public node: ajieblogs.eu.org:443');
       }
       // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
       if (shouldEnableLocalLavalink()) {

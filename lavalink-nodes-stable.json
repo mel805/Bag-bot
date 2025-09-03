@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "N/ams",
+    "identifier": "local-proxy",
     "host": "127.0.0.1",
     "port": 2334,
     "password": "youshallnotpass",
@@ -8,6 +8,17 @@
     "retryAmount": 5,
     "retryDelay": 30000,
     "priority": 1,
-    "note": "Node local unique (Amsterdam) via proxy WS"
+    "note": "Local Lavalink via ws-proxy (v3->v4)"
+  },
+  {
+    "identifier": "ajieblogs-443",
+    "host": "lava-v3.ajieblogs.eu.org",
+    "port": 443,
+    "password": "youshallnotpass",
+    "secure": true,
+    "retryAmount": 2,
+    "retryDelay": 7000,
+    "priority": 2,
+    "note": "Public node"
   }
 ]
