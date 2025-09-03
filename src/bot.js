@@ -5378,7 +5378,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.values.includes('none')) return interaction.deferUpdate();
       const id = interaction.values[0];
       const modal = new ModalBuilder().setCustomId('td_prompts_edit_modal:' + mode + ':' + id + ':' + offset).setTitle('Modifier le prompt #' + id);
+      const td = await getTruthDareConfig(interaction.guild.id);
+      const existing = (td?.[mode]?.prompts || []).find(p => String(p.id) === String(id));
       const input = new TextInputBuilder().setCustomId('text').setLabel('Texte du prompt').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(2000);
+      if (existing && existing.text) input.setValue(String(existing.text).slice(0, 2000));
       modal.addComponents(new ActionRowBuilder().addComponents(input));
       try { await interaction.showModal(modal); } catch (_) { try { await interaction.reply({ content: '❌ Erreur ouverture du formulaire.', ephemeral: true }); } catch (_) {} }
       return;
