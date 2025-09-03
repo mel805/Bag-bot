@@ -826,6 +826,7 @@ async function handleEconomyAction(interaction, actionKey) {
   // Resolve optional/required partner for actions that target a user
   const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   let initialPartner = null;
+  let tromperResolvedPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
       initialPartner = interaction.options.getUser('cible', false);
@@ -921,16 +922,27 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   // Special storyline for tromper (NSFW): actor surprises target with a random third member
   if (actionKey === 'tromper') {
-    const partner = interaction.options.getUser('cible', false);
+    let partner = initialPartner;
     let third = null;
     try {
       const all = await interaction.guild.members.fetch();
-      const candidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && (!partner || m.user.id !== partner.id));
-      if (candidates.size > 0) {
-        const arr = Array.from(candidates.values());
-        third = arr[Math.floor(Math.random() * arr.length)].user;
+      // If no partner provided, pick a random valid member
+      if (!partner) {
+        const partnerCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+        if (partnerCandidates.size > 0) {
+          const arrP = Array.from(partnerCandidates.values());
+          partner = arrP[Math.floor(Math.random() * arrP.length)].user;
+        }
+      }
+      // Pick third, excluding actor and partner if present
+      const thirdCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && (!partner || m.user.id !== partner.id));
+      if (thirdCandidates.size > 0) {
+        const arrT = Array.from(thirdCandidates.values());
+        third = arrT[Math.floor(Math.random() * arrT.length)].user;
       }
     } catch (_) {}
+    // Persist chosen partner for later use (mention + rewards/xp)
+    if (partner) { initialPartner = partner; tromperResolvedPartner = partner; }
     if (!third) {
       if (success) {
         const texts = partner ? [
@@ -1341,7 +1353,7 @@ async function handleEconomyAction(interaction, actionKey) {
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
     if (actionsWithTarget.includes(actionKey)) {
-      partnerUser = interaction.options.getUser('cible', false);
+      partnerUser = actionKey === 'tromper' ? (tromperResolvedPartner || interaction.options.getUser('cible', false)) : interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
     }
@@ -1359,7 +1371,7 @@ async function handleEconomyAction(interaction, actionKey) {
     try {
       let partnerUser = null;
       if (actionsWithTarget.includes(actionKey)) {
-        partnerUser = interaction.options.getUser('cible', false);
+        partnerUser = actionKey === 'tromper' ? (tromperResolvedPartner || interaction.options.getUser('cible', false)) : interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
       }
