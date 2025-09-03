@@ -765,7 +765,8 @@ async function handleEconomyAction(interaction, actionKey) {
   if (actionKey === 'lick') {
     const zones = ['seins','chatte','cul','oreille','ventre'];
     const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };
-    const z = zones[randInt(0, zones.length - 1)];
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
     const p = poss[z] || 'sa';
     if (success) {
       const texts = [
@@ -785,7 +786,8 @@ async function handleEconomyAction(interaction, actionKey) {
   if (actionKey === 'suck') {
     const zones = ['bite','téton','oreille'];
     const poss = { bite: 'sa', 'téton': 'son', 'oreille': 'son' };
-    const z = zones[randInt(0, zones.length - 1)];
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
     const p = poss[z] || 'son';
     if (success) {
       const texts = [
@@ -805,7 +807,8 @@ async function handleEconomyAction(interaction, actionKey) {
   if (actionKey === 'tickle') {
     const zones = ['côtes','pieds','nuque','ventre','aisselles'];
     const poss = { côtes: 'ses', pieds: 'ses', nuque: 'sa', ventre: 'son', aisselles: 'ses' };
-    const z = zones[randInt(0, zones.length - 1)];
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
     const p = poss[z] || 'ses';
     if (success) {
       const texts = [
