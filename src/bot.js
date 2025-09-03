@@ -67,6 +67,65 @@ async function getCachedImage(url) {
     return null;
   }
 }
+// GIF URL helpers: normalize and resolve direct media links for better embed rendering
+function isLikelyDirectImageUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = String(u.hostname || '').toLowerCase();
+    const pathname = String(u.pathname || '');
+    if (/\.(gif|png|jpg|jpeg|webp)(?:\?|#|$)/i.test(pathname)) return true;
+    if (host.includes('media.giphy.com') || host.includes('i.giphy.com')) return true;
+    if (/^media\d*\.tenor\.com$/i.test(host)) return true;
+    return false;
+  } catch (_) { return false; }
+}
+function normalizeGifUrlBasic(url) {
+  try {
+    const u = new URL(url);
+    const host = String(u.hostname || '').toLowerCase();
+    const path = String(u.pathname || '');
+    // Convert giphy page URLs to direct media URLs
+    if (host.includes('giphy.com') && (/\/gifs?\//i.test(path))) {
+      const parts = path.split('/');
+      const last = parts[parts.length - 1] || '';
+      const id = (last.includes('-') ? last.split('-').pop() : last).replace(/[^A-Za-z0-9]/g, '');
+      if (id) return `https://media.giphy.com/media/${id}/giphy.gif`;
+    }
+    return url;
+  } catch (_) { return url; }
+}
+async function resolveGifUrl(url, opts) {
+  const options = opts || {};
+  const timeoutMs = Number(options.timeoutMs || 2500);
+  const normalized = normalizeGifUrlBasic(url);
+  if (isLikelyDirectImageUrl(normalized)) return normalized;
+  try {
+    const u = new URL(normalized);
+    const host = String(u.hostname || '').toLowerCase();
+    // Try to resolve Tenor page URLs to a direct media
+    if (host.includes('tenor.com') && !/^media\d*\.tenor\.com$/i.test(host)) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, timeoutMs);
+      let html = '';
+      try {
+        const r = await fetch(normalized, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+        if (r && r.ok) html = await r.text();
+      } catch (_) {}
+      clearTimeout(t);
+      if (html) {
+        // Prefer og:image
+        const mImg = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+        if (mImg && mImg[1] && isLikelyDirectImageUrl(mImg[1])) return mImg[1];
+        const mVid = html.match(/<meta[^>]+property=["']og:video["'][^>]+content=["']([^"']+)["']/i);
+        if (mVid && mVid[1]) {
+          const cand = mVid[1];
+          if (isLikelyDirectImageUrl(cand)) return cand;
+        }
+      }
+    }
+  } catch (_) {}
+  return normalized;
+}
 // Geocoding via LocationIQ and distance computations for /map, /proche, /localisation
 async function geocodeCityToCoordinates(cityQuery) {
   const token = process.env.LOCATIONIQ_TOKEN || '';
@@ -759,6 +818,12 @@ async function handleEconomyAction(interaction, actionKey) {
     else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
     imageUrl = Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined;
   }
+  if (imageUrl) {
+    try {
+      const resolved = await resolveGifUrl(String(imageUrl), { timeoutMs: 2500 });
+      if (resolved) imageUrl = resolved;
+    } catch (_) {}
+  }
   let msgText = success
     ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
     : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
@@ -972,7 +1037,8 @@ async function handleEconomyAction(interaction, actionKey) {
       { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
     ];
     const embed = buildEcoEmbed({ title: 'Don effectué', description: desc, fields });
-    if (imageUrl) embed.setImage(imageUrl);
+    if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
+    else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
     // XP awards (actor + partner)
     try {
       const baseXp = success ? xpOnSuccess : xpOnFail; // give is always success, but keep consistent
@@ -1009,7 +1075,8 @@ async function handleEconomyAction(interaction, actionKey) {
         { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
       ];
       const embed = buildEcoEmbed({ title: 'Vol réussi', description: desc, fields });
-      if (imageUrl) embed.setImage(imageUrl);
+      if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
+      else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
       // XP awards (actor + partner if applicable — not used for steal)
       try {
         await awardXp(interaction.user.id, xpOnSuccess);
@@ -1036,7 +1103,8 @@ async function handleEconomyAction(interaction, actionKey) {
         { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
       ];
       const embed = buildEcoEmbed({ title: 'Vol raté', description: desc, fields });
-      if (imageUrl) embed.setImage(imageUrl);
+      if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
+      else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
       try {
         await awardXp(interaction.user.id, xpOnFail);
       } catch (_) {}
@@ -1107,7 +1175,8 @@ async function handleEconomyAction(interaction, actionKey) {
     { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
   ];
   const embed = buildEcoEmbed({ title, description: desc, fields });
-  if (imageUrl) embed.setImage(imageUrl);
+  if (imageUrl && isLikelyDirectImageUrl(imageUrl)) embed.setImage(imageUrl);
+  else if (imageUrl) embed.setDescription(`${desc}\n\nLien: ${imageUrl}`);
   return interaction.reply({ content: initialPartner ? String(initialPartner) : undefined, embeds: [embed] });
 }
 
@@ -6359,7 +6428,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const kind = parts[1];
       const key = parts[2];
       const text = interaction.fields.getTextInputValue('urls') || '';
-      const urls = text.split('\n').map(s => s.trim()).filter(u => /^https?:\/\//i.test(u));
+      const rawUrls = text.split('\n').map(s => s.trim()).filter(u => /^https?:\/\//i.test(u));
+      // Normalize and try to resolve to direct media URLs for better Discord embedding
+      let urls = rawUrls.map(u => normalizeGifUrlBasic(u));
+      try {
+        urls = await Promise.all(urls.map(async (u) => {
+          try { return await resolveGifUrl(u, { timeoutMs: 2000 }); } catch (_) { return u; }
+        }));
+      } catch (_) {}
       const eco = await getEconomyConfig(interaction.guild.id);
       const gifs = { ...(eco.actions?.gifs || {}) };
       const entry = gifs[key] || { success: [], fail: [] };
