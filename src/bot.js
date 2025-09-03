@@ -826,6 +826,7 @@ async function handleEconomyAction(interaction, actionKey) {
   // Resolve optional/required partner for actions that target a user
   const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   let initialPartner = null;
+  let tromperResolvedPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
       initialPartner = interaction.options.getUser('cible', false);
@@ -842,6 +843,14 @@ async function handleEconomyAction(interaction, actionKey) {
   const baseCd = Number(conf.cooldown || (eco.settings?.cooldowns?.[actionKey] || 0));
   let cdLeft = Math.max(0, (u.cooldowns?.[actionKey] || 0) - now);
   if (cdLeft > 0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.`, ephemeral: true });
+  // For heavier actions like 'tromper', defer reply to avoid 3s timeout
+  let hasDeferred = false;
+  try {
+    if (actionKey === 'tromper' && !interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+      hasDeferred = true;
+    }
+  } catch (_) {}
   // Booster cooldown multiplier
   let cdToSet = baseCd;
   try {
@@ -913,27 +922,44 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   // Special storyline for tromper (NSFW): actor surprises target with a random third member
   if (actionKey === 'tromper') {
-    const partner = interaction.options.getUser('cible', true);
+    let partner = initialPartner;
     let third = null;
     try {
       const all = await interaction.guild.members.fetch();
-      const candidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && m.user.id !== partner.id);
-      if (candidates.size > 0) {
-        const arr = Array.from(candidates.values());
-        third = arr[Math.floor(Math.random() * arr.length)].user;
+      // If no partner provided, pick a random valid member
+      if (!partner) {
+        const partnerCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+        if (partnerCandidates.size > 0) {
+          const arrP = Array.from(partnerCandidates.values());
+          partner = arrP[Math.floor(Math.random() * arrP.length)].user;
+        }
+      }
+      // Pick third, excluding actor and partner if present
+      const thirdCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && (!partner || m.user.id !== partner.id));
+      if (thirdCandidates.size > 0) {
+        const arrT = Array.from(thirdCandidates.values());
+        third = arrT[Math.floor(Math.random() * arrT.length)].user;
       }
     } catch (_) {}
+    // Persist chosen partner for later use (mention + rewards/xp)
+    if (partner) { initialPartner = partner; tromperResolvedPartner = partner; }
     if (!third) {
       if (success) {
-        const texts = [
+        const texts = partner ? [
           `Tu prends ${partner} au piège: tout te profite…`,
           `Situation ambiguë avec ${partner}, mais tu en ressors gagnant(e).`,
+        ] : [
+          'Tu prends la main: tout te profite…',
+          'Situation ambiguë, mais tu en ressors gagnant(e).',
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       } else {
-        const texts = [
+        const texts = partner ? [
           `Le plan échoue: ${partner} te surprend et te fait payer la note.`,
           `Pris(e) en faute par ${partner}, tout s’effondre pour toi.`,
+        ] : [
+          'Le plan échoue: tu es pris(e) et tu payes la note.',
+          'Pris(e) en faute, tout s’effondre pour toi.',
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       }
@@ -953,17 +979,25 @@ async function handleEconomyAction(interaction, actionKey) {
       await setEconomyUser(interaction.guild.id, third.id, thirdUser);
       // Messages
       if (success) {
-        const texts = [
+        const texts = partner ? [
           `Tu surprends ${partner} avec ${third}… et c’est ${third} qui trinque.`,
+          `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
+          `Scène chaude: tu retournes la situation sur ${third}.`
+        ] : [
+          `Tu surprends ${third} en mauvaise posture… et c’est ${third} qui trinque.`,
           `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
           `Scène chaude: tu retournes la situation sur ${third}.`
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       } else {
-        const texts = [
+        const texts = partner ? [
           `Tu es surpris(e) avec ${third} par ${partner}… ça tourne mal pour vous deux.`,
           `${partner} vous coince, toi et ${third}: pertes et remords.`,
           `Exposé(e) au grand jour: ${partner} règle ses comptes.`,
+        ] : [
+          `Tu es surpris(e) avec ${third}… ça tourne mal pour vous deux.`,
+          `On vous coince, toi et ${third}: pertes et remords.`,
+          `Exposé(e) au grand jour: les comptes sont réglés.`,
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       }
@@ -1319,7 +1353,7 @@ async function handleEconomyAction(interaction, actionKey) {
     await awardXp(interaction.user.id, baseXp);
     let partnerUser = null;
     if (actionsWithTarget.includes(actionKey)) {
-      partnerUser = interaction.options.getUser('cible', false);
+      partnerUser = actionKey === 'tromper' ? (tromperResolvedPartner || interaction.options.getUser('cible', false)) : interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       partnerUser = interaction.options.getUser('complice', false);
     }
@@ -1337,7 +1371,7 @@ async function handleEconomyAction(interaction, actionKey) {
     try {
       let partnerUser = null;
       if (actionsWithTarget.includes(actionKey)) {
-        partnerUser = interaction.options.getUser('cible', false);
+        partnerUser = actionKey === 'tromper' ? (tromperResolvedPartner || interaction.options.getUser('cible', false)) : interaction.options.getUser('cible', false);
       } else if (actionKey === 'crime') {
         partnerUser = interaction.options.getUser('complice', false);
       }
@@ -1380,6 +1414,9 @@ async function handleEconomyAction(interaction, actionKey) {
   if (imageLinkForContent) parts.push(imageLinkForContent);
   const content = parts.filter(Boolean).join('\n') || undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
+  if (hasDeferred) {
+    return interaction.editReply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+  }
   return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
 }
 
@@ -3256,6 +3293,18 @@ client.once(Events.ClientReady, (readyClient) => {
           }
         }
       }
+      // If local lavalink is not enabled, filter out localhost nodes from file/env config
+      try {
+        const localEnabled = shouldEnableLocalLavalink() || shouldEnableLocalLavalinkV3();
+        if (!localEnabled && Array.isArray(nodes) && nodes.length > 0) {
+          const before = nodes.length;
+          nodes = nodes.filter(n => {
+            const host = String(n?.host || '').toLowerCase();
+            return host !== '127.0.0.1' && host !== 'localhost' && host !== '::1';
+          });
+          if (before !== nodes.length) console.log('[Music] Filtered out local Lavalink nodes because local Lavalink is disabled');
+        }
+      } catch (_) {}
       // Final fallback: a few public nodes (TLS 443 preferred)
       if (!Array.isArray(nodes) || nodes.length === 0) {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
