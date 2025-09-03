@@ -574,6 +574,7 @@ const DELAY_OPTIONS = [
   { label: '1 heure', ms: 60 * 60 * 1000 },
   { label: '6 heures', ms: 6 * 60 * 60 * 1000 },
   { label: '24 heures', ms: 24 * 60 * 60 * 1000 },
+  { label: '2 jours', ms: 2 * 24 * 60 * 60 * 1000 },
   { label: '3 jours', ms: 3 * 24 * 60 * 60 * 1000 },
   { label: '7 jours', ms: 7 * 24 * 60 * 60 * 1000 },
 ];
@@ -2142,12 +2143,21 @@ async function buildEconomyKarmaRows(guild) {
     
     // Reset hebdomadaire - menu déroulant pour économiser l'espace
     const resetEnabled = eco.karmaReset?.enabled || false;
+    const resetDay = (typeof eco.karmaReset?.day === 'number' && eco.karmaReset.day >= 0 && eco.karmaReset.day <= 6) ? eco.karmaReset.day : 1;
+    const dayLabels = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
     const resetSelect = new StringSelectMenuBuilder()
       .setCustomId('eco_karma_reset_menu')
-      .setPlaceholder(`Reset hebdo: ${resetEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`)
+      .setPlaceholder(`Reset hebdo: ${resetEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'} • Jour: ${dayLabels[resetDay]}`)
       .addOptions(
         { label: resetEnabled ? 'Désactiver reset hebdo' : 'Activer reset hebdo', value: 'toggle' },
-        { label: 'Reset maintenant', value: 'now', description: 'Remet tous les karma à 0' }
+        { label: 'Reset maintenant', value: 'now', description: 'Remet tous les karma à 0' },
+        { label: 'Choisir jour: Dimanche', value: 'day:0' },
+        { label: 'Choisir jour: Lundi', value: 'day:1' },
+        { label: 'Choisir jour: Mardi', value: 'day:2' },
+        { label: 'Choisir jour: Mercredi', value: 'day:3' },
+        { label: 'Choisir jour: Jeudi', value: 'day:4' },
+        { label: 'Choisir jour: Vendredi', value: 'day:5' },
+        { label: 'Choisir jour: Samedi', value: 'day:6' }
       );
     const rowReset = new ActionRowBuilder().addComponents(resetSelect);
     
@@ -2547,6 +2557,7 @@ async function buildTicketsRows(guild, submenu) {
 
 function actionKeyToLabel(key) {
   const map = {
+    daily: 'quotidien',
     work: 'travailler',
     fish: 'pêcher',
     give: 'donner',
@@ -2619,7 +2630,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -3153,7 +3164,7 @@ client.once(Events.ClientReady, (readyClient) => {
     }
   }, 30 * 60 * 1000);
 
-  // Weekly karma reset every Monday at 00:00 UTC
+  // Weekly karma reset at configured day (UTC) at 00:00
   setInterval(async () => {
     try {
       const now = new Date();
@@ -3161,8 +3172,8 @@ client.once(Events.ClientReady, (readyClient) => {
       const hour = now.getUTCHours();
       const minute = now.getUTCMinutes();
       
-      // Check if it's Monday (1) at 00:00 UTC (with 1-minute tolerance)
-      if (dayOfWeek === 1 && hour === 0 && minute === 0) {
+      // Execute once per minute exactly at 00:00 UTC; per guild day configured
+      if (hour === 0 && minute === 0) {
         console.log('[Karma Reset] Starting weekly karma reset...');
         
         for (const [guildId, guild] of client.guilds.cache) {
@@ -3171,6 +3182,8 @@ client.once(Events.ClientReady, (readyClient) => {
             
             // Check if weekly reset is enabled for this guild
             if (!eco.karmaReset?.enabled) continue;
+            const resetDay = (typeof eco.karmaReset.day === 'number' && eco.karmaReset.day >= 0 && eco.karmaReset.day <= 6) ? eco.karmaReset.day : 1;
+            if (dayOfWeek !== resetDay) continue;
             
             // Get all users in this guild's economy
             const balances = eco.balances || {};
@@ -4858,6 +4871,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         } else {
           return interaction.editReply({ content: 'Aucun utilisateur avec du karma à remettre à zéro.' });
         }
+      } else if (action.startsWith('day:')) {
+        const day = Number(action.split(':')[1]);
+        if (!Number.isFinite(day) || day < 0 || day > 6) {
+          return interaction.reply({ content: 'Jour invalide.', ephemeral: true });
+        }
+        const eco = await getEconomyConfig(interaction.guild.id);
+        eco.karmaReset = { ...(eco.karmaReset||{}), day };
+        await updateEconomyConfig(interaction.guild.id, eco);
+        const embed = await buildConfigEmbed(interaction.guild);
+        const rows = await buildEconomyMenuRows(interaction.guild, 'karma');
+        return interaction.update({ embeds: [embed], components: [...rows] });
       }
     }
 
@@ -6223,6 +6247,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     
 
     // Economy standalone commands (aliases)
+    if (interaction.isChatInputCommand() && interaction.commandName === 'daily') {
+      return handleEconomyAction(interaction, 'daily');
+    }
     if (interaction.isChatInputCommand() && interaction.commandName === 'travailler') {
       return handleEconomyAction(interaction, 'work');
     }

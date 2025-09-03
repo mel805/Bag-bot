@@ -55,6 +55,7 @@ const commands = [
     .toJSON(),
   new SlashCommandBuilder().setName('solde').setDescription('Voir un solde').addUserOption(o=>o.setName('membre').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('travailler').setDescription('Gagner de l\'argent en travaillant').toJSON(),
+  new SlashCommandBuilder().setName('daily').setDescription('Réclamer votre récompense quotidienne').toJSON(),
   new SlashCommandBuilder().setName('pêcher').setDescription('Pêcher pour gagner de l\'argent').toJSON(),
   new SlashCommandBuilder().setName('donner').setDescription('Donner de l\'argent à un membre').addUserOption(o=>o.setName('membre').setDescription('Membre').setRequired(true)).addIntegerOption(o=>o.setName('montant').setDescription('Montant').setRequired(true).setMinValue(1)).toJSON(),
   
