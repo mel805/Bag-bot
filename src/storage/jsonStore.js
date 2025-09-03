@@ -18,8 +18,12 @@ async function getPg() {
   return pgPool;
 }
 
-const DATA_DIR = process.env.DATA_DIR ? String(process.env.DATA_DIR) : path.join(process.cwd(), 'data');
-const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
+let DATA_DIR = process.env.DATA_DIR ? String(process.env.DATA_DIR) : path.join(process.cwd(), 'data');
+let CONFIG_PATH = path.join(DATA_DIR, 'config.json');
+function setDataDir(dir) {
+  DATA_DIR = String(dir);
+  CONFIG_PATH = path.join(DATA_DIR, 'config.json');
+}
 
 async function ensureStorageExists() {
   if (USE_PG) {
@@ -49,7 +53,29 @@ async function ensureStorageExists() {
       // fall back to FS below
     }
   }
-  await fsp.mkdir(DATA_DIR, { recursive: true });
+  // Resolve a writable data directory with robust fallbacks (Render, local, tmp)
+  {
+    const candidates = [
+      DATA_DIR,
+      '/opt/render/project/src/data',
+      path.join(process.cwd(), 'data'),
+      '/tmp/bag-data'
+    ];
+    let resolved = false;
+    for (const dir of candidates) {
+      try {
+        await fsp.mkdir(dir, { recursive: true });
+        await fsp.access(dir, fs.constants.W_OK);
+        setDataDir(dir);
+        resolved = true;
+        break;
+      } catch (_) { /* try next candidate */ }
+    }
+    if (!resolved) {
+      // Last resort: attempt /tmp
+      try { await fsp.mkdir('/tmp/bag-data', { recursive: true }); setDataDir('/tmp/bag-data'); } catch (_) {}
+    }
+  }
   try {
     await fsp.access(CONFIG_PATH, fs.constants.F_OK);
   } catch (_) {
@@ -1300,6 +1326,11 @@ async function deleteTdPrompts(guildId, ids, mode = 'sfw') {
 
 // Ensure economy shape on getGuildConfig and getEconomyConfig
 
+const paths = {
+  get DATA_DIR() { return DATA_DIR; },
+  get CONFIG_PATH() { return CONFIG_PATH; }
+};
+
 module.exports = {
   ensureStorageExists,
   readConfig,
@@ -1361,7 +1392,7 @@ module.exports = {
   addWarn,
   backupNow,
   restoreLatest,
-  paths: { DATA_DIR, CONFIG_PATH },
+  paths,
 };
 
 // Moderation: warnings storage
