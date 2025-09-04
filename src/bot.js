@@ -849,6 +849,7 @@ async function handleEconomyAction(interaction, actionKey) {
     if (actionKey === 'tromper' && !interaction.deferred && !interaction.replied) {
       await interaction.deferReply();
       hasDeferred = true;
+      console.log('[Tromper] Reply deferred to prevent timeout');
     }
   } catch (_) {}
   // Booster cooldown multiplier
@@ -925,14 +926,34 @@ async function handleEconomyAction(interaction, actionKey) {
     console.log('[Tromper] Starting tromper action for user:', interaction.user.id);
     let partner = initialPartner;
     let third = null;
+    
     try {
-      console.log('[Tromper] Fetching guild members...');
-      const all = await interaction.guild.members.fetch();
-      console.log('[Tromper] Fetched', all.size, 'members');
+      console.log('[Tromper] Getting available members from cache...');
+      
+      // Use cached members first for better performance
+      let availableMembers = interaction.guild.members.cache.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+      console.log('[Tromper] Cached members available:', availableMembers.size);
+      
+      // If we have very few cached members, try to fetch more (but with a limit to avoid timeouts)
+      if (availableMembers.size < 5) {
+        console.log('[Tromper] Few cached members, attempting limited fetch...');
+        try {
+          // Fetch with a reasonable limit to avoid timeouts
+          const fetched = await interaction.guild.members.fetch({ limit: 50, force: false });
+          const fetchedHumans = fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+          console.log('[Tromper] Fetched additional members:', fetchedHumans.size);
+          
+          // Merge with cached members
+          availableMembers = availableMembers.concat(fetchedHumans);
+          console.log('[Tromper] Total available members:', availableMembers.size);
+        } catch (fetchError) {
+          console.warn('[Tromper] Limited fetch failed, using cache only:', fetchError.message);
+        }
+      }
       
       // If no partner provided, pick a random valid member
       if (!partner) {
-        const partnerCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+        const partnerCandidates = availableMembers;
         console.log('[Tromper] Partner candidates:', partnerCandidates.size);
         if (partnerCandidates.size > 0) {
           const arrP = Array.from(partnerCandidates.values());
@@ -946,8 +967,7 @@ async function handleEconomyAction(interaction, actionKey) {
       }
       
       // Pick third, excluding actor and partner if present
-      // Only try to find a third member if there are at least 3 members total (actor + partner + third)
-      const thirdCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && (!partner || m.user.id !== partner.id));
+      const thirdCandidates = availableMembers.filter(m => !partner || m.user.id !== partner.id);
       console.log('[Tromper] Third member candidates:', thirdCandidates.size);
       if (thirdCandidates.size > 0) {
         const arrT = Array.from(thirdCandidates.values());
@@ -957,10 +977,10 @@ async function handleEconomyAction(interaction, actionKey) {
         console.log('[Tromper] No third member available, will use simplified scenario');
       }
     } catch (e) {
-      console.error('[Tromper] Error fetching members:', e?.message || e);
+      console.error('[Tromper] Error in member selection logic:', e?.message || e);
       console.error('[Tromper] Stack trace:', e?.stack);
-      // Continue with simplified scenario if member fetching fails
-      console.log('[Tromper] Continuing with simplified scenario due to fetch error');
+      // Continue with simplified scenario if member selection fails
+      console.log('[Tromper] Continuing with simplified scenario due to error');
     }
     // Persist chosen partner for later use (mention + rewards/xp)
     if (partner) { 
