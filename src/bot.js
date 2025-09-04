@@ -824,7 +824,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   let initialPartner = null;
   let tromperResolvedPartner = null;
   try {
@@ -1089,86 +1089,6 @@ async function handleEconomyAction(interaction, actionKey) {
       global.__eco_tromper_third = { name: 'Sanction du tiers', value: thirdFieldVal, inline: false };
     }
     console.log('[Tromper] Tromper logic completed successfully');
-  }
-  if (actionKey === 'orgie') {
-    console.log('[Orgie] Starting orgie action logic');
-    const partner = interaction.options.getUser('cible', false);
-    let selectedMembers = [];
-    
-    try {
-      // Get available members (excluding bots and the actor)
-      const availableMembers = interaction.guild.members.cache.filter(member => 
-        !member.user.bot && member.user.id !== interaction.user.id
-      );
-      
-      console.log('[Orgie] Available members:', availableMembers.size);
-      
-      if (availableMembers.size > 0) {
-        // Select random number of members between 3 and 7 (or available members if less)
-        const maxMembers = Math.min(7, availableMembers.size);
-        const minMembers = Math.min(3, availableMembers.size);
-        const numMembers = randInt(minMembers, maxMembers);
-        
-        console.log('[Orgie] Selecting', numMembers, 'members');
-        
-        // Convert to array and shuffle
-        const memberArray = Array.from(availableMembers.values());
-        for (let i = memberArray.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [memberArray[i], memberArray[j]] = [memberArray[j], memberArray[i]];
-        }
-        
-        // Select the first numMembers
-        selectedMembers = memberArray.slice(0, numMembers).map(m => m.user);
-        console.log('[Orgie] Selected members:', selectedMembers.map(m => m.id));
-      }
-    } catch (e) {
-      console.error('[Orgie] Error in member selection logic:', e?.message || e);
-      console.error('[Orgie] Stack trace:', e?.stack);
-    }
-    
-    // Generate messages based on success/failure and number of participants
-    if (success) {
-      if (selectedMembers.length >= 3) {
-        const memberMentions = selectedMembers.map(m => m.toString()).join(', ');
-        const texts = [
-          partner ? `Tu organises une orgie torride avec ${partner} et ${memberMentions}… Tout le monde y trouve son compte !` : `Tu organises une orgie sauvage avec ${memberMentions}… L'ambiance est au rendez-vous !`,
-          partner ? `Orgie consentie et passionnée avec ${partner}, ${memberMentions}… Plaisir partagé à tous les niveaux !` : `Orgie consentie avec ${memberMentions}… Chacun y va de sa contribution !`,
-          partner ? `Scène chaude orchestrée avec ${partner} et ${memberMentions}… L'extase collective est au rendez-vous !` : `Scène chaude orchestrée avec ${memberMentions}… L'extase collective est au rendez-vous !`,
-          `Orgie bien organisée, consentement de tous, plaisir partagé… Tout le monde en redemande !`
-        ];
-        msgText = texts[randInt(0, texts.length - 1)];
-      } else if (selectedMembers.length > 0) {
-        const memberMentions = selectedMembers.map(m => m.toString()).join(', ');
-        const texts = [
-          partner ? `Tu organises une petite orgie intime avec ${partner} et ${memberMentions}… Ambiance chaleureuse !` : `Tu organises une petite orgie intime avec ${memberMentions}… Ambiance chaleureuse !`,
-          partner ? `Orgie consentie et douce avec ${partner}, ${memberMentions}… Plaisir partagé !` : `Orgie consentie et douce avec ${memberMentions}… Plaisir partagé !`
-        ];
-        msgText = texts[randInt(0, texts.length - 1)];
-      } else {
-        const texts = [
-          partner ? `Tu organises une orgie avec ${partner}… Mais personne d'autre ne se joint à vous.` : `Tu tentes d'organiser une orgie… Mais personne ne se joint à toi.`,
-          partner ? `Orgie prévue avec ${partner}… Mais l'ambiance n'est pas au rendez-vous.` : `Orgie prévue… Mais l'ambiance n'est pas au rendez-vous.`
-        ];
-        msgText = texts[randInt(0, texts.length - 1)];
-      }
-    } else {
-      const texts = [
-        'Tu tentes d\'organiser une orgie… Mais personne n\'est intéressé.',
-        'Orgie prévue… Mais le consentement n\'est pas au rendez-vous.',
-        'Tu proposes une orgie… Mais l\'ambiance n\'y est pas.',
-        'Orgie annulée… Tout le monde préfère reporter à plus tard.'
-      ];
-      msgText = texts[randInt(0, texts.length - 1)];
-    }
-    
-    // Store selected members for later use in embed
-    if (selectedMembers.length > 0) {
-      const memberList = selectedMembers.map(m => m.toString()).join(', ');
-      global.__eco_orgie_members = { name: 'Participants', value: memberList, inline: false };
-    }
-    
-    console.log('[Orgie] Orgie logic completed successfully');
   }
   // Decide how to render the image: embed if definitely image, else post link in message content
   let imageIsDirect = false;
@@ -1993,7 +1913,6 @@ async function handleEconomyAction(interaction, actionKey) {
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
     ...(partnerField ? [partnerField] : []),
     ...(global.__eco_tromper_third ? [global.__eco_tromper_third] : []),
-    ...(global.__eco_orgie_members ? [global.__eco_orgie_members] : []),
     { name: 'Solde charme', value: String(u.charm||0), inline: true },
     { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
   ];
@@ -2004,7 +1923,6 @@ async function handleEconomyAction(interaction, actionKey) {
   if (imageLinkForContent) parts.push(imageLinkForContent);
   const content = parts.filter(Boolean).join('\n') || undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
-  try { delete global.__eco_orgie_members; } catch (_) {}
   if (hasDeferred) {
     return interaction.editReply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
   }
@@ -3657,7 +3575,6 @@ function actionKeyToLabel(key) {
     fuck: 'fuck',
     sodo: 'sodo',
     orgasme: 'donner orgasme',
-    orgie: 'orgie',
     branler: 'branler',
     doigter: 'doigter',
     hairpull: 'tirer cheveux',
@@ -3732,7 +3649,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','orgie','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -7373,7 +7290,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const eco = await getEconomyConfig(interaction.guild.id);
       const cds = { ...(eco.settings?.cooldowns || {}) };
-      for (const f of ['work','fish','give','steal','kiss','flirt','seduce','fuck','orgie','massage','dance']) {
+      for (const f of ['work','fish','give','steal','kiss','flirt','seduce','fuck','massage','dance']) {
         const v = interaction.fields.getTextInputValue(f);
         if (v !== null && v !== undefined && v !== '') cds[f] = Math.max(0, Number(v) || 0);
       }
@@ -7497,9 +7414,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'fuck') {
       return handleEconomyAction(interaction, 'fuck');
-    }
-    if (interaction.isChatInputCommand() && interaction.commandName === 'orgie') {
-      return handleEconomyAction(interaction, 'orgie');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'sodo') {
       return handleEconomyAction(interaction, 'sodo');
