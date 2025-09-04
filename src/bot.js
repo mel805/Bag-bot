@@ -1103,9 +1103,12 @@ async function handleEconomyAction(interaction, actionKey) {
       if (!imageAttachment) imageLinkForContent = String(imageUrl);
     }
   }
-  let msgText = success
-    ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
-    : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
+  // Only set msgText from config if it hasn't been set by special action logic (like tromper)
+  if (!msgText) {
+    msgText = success
+      ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
+      : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
+  }
   // Custom user message override removed for 'orgasme' — keep only random messages
   if (actionKey === 'lick') {
     const zones = ['seins','chatte','cul','oreille','ventre'];
