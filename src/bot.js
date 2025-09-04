@@ -896,7 +896,7 @@ async function handleEconomyAction(interaction, actionKey) {
     } catch (error) {
       console.error('[Tromper] Failed to defer reply:', error.message);
       // Fallback: try to reply immediately
-      return interaction.reply({ 
+      return respondAndUntrack({ 
         content: '⏳ Action en cours... Veuillez patienter.', 
         ephemeral: true 
       });
@@ -917,7 +917,7 @@ async function handleEconomyAction(interaction, actionKey) {
       // Fallback: try to reply immediately with a status message
       try {
         if (!interaction.replied) {
-          return interaction.reply({ 
+          return respondAndUntrack({ 
             content: '⏳ Action en cours... Veuillez patienter.', 
             ephemeral: true 
           });
@@ -2017,44 +2017,28 @@ async function handleEconomyAction(interaction, actionKey) {
   
   // Final safety check to ensure interaction is always responded to
   try {
-    if (hasDeferred) {
-      if (!interaction.replied) {
-        return interaction.editReply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
-      } else {
-        console.warn(`[Economy] Interaction already replied for ${actionKey}, cannot editReply`);
-        return interaction.followUp({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
-      }
-    } else {
-      if (!interaction.replied && !interaction.deferred) {
-        return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
-      } else {
-        console.warn(`[Economy] Interaction already handled for ${actionKey}, using followUp`);
-        return interaction.followUp({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
-      }
-    }
+    return await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
   } catch (error) {
     console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
     // Last resort: try followUp if possible
     try {
       if (!interaction.replied) {
-        return interaction.followUp({ 
+        return await respondAndUntrack({ 
           content: `⚠️ Action ${actionKey} terminée mais erreur d'affichage.`, 
           ephemeral: true 
-        });
+        }, true);
       }
     } catch (_) {
       console.error(`[Economy] Complete failure to respond to ${actionKey} interaction`);
+    } finally {
+      try { untrackInteraction(interaction); } catch (_) {}
     }
-  } finally {
-    // Always untrack the interaction when we're done
-    untrackInteraction(interaction);
   }
   } catch (mainError) {
     console.error(`[Economy] Critical error in handleEconomyAction for ${actionKey}:`, mainError);
-    untrackInteraction(interaction);
     try {
       if (!interaction.replied && !interaction.deferred) {
-        return interaction.reply({ 
+        return respondAndUntrack({ 
           content: `❌ Erreur lors de l'exécution de l'action ${actionKey}.`, 
           ephemeral: true 
         });
