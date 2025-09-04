@@ -933,8 +933,7 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   if (imageUrl) {
     try {
-      const resolved = await resolveGifUrl(String(imageUrl), { timeoutMs: 2500 });
-      if (resolved) imageUrl = resolved;
+      imageUrl = normalizeGifUrlBasic(String(imageUrl));
     } catch (_) {}
   }
   // Special storyline for tromper (NSFW): actor surprises target with a random third member
@@ -1086,13 +1085,9 @@ async function handleEconomyAction(interaction, actionKey) {
   let imageLinkForContent = null;
   let imageAttachment = null; // { attachment, filename }
   if (imageUrl) {
-    try {
-      imageIsDirect = isLikelyDirectImageUrl(imageUrl) || await urlContentTypeIsImage(imageUrl, 2000);
-    } catch (_) { imageIsDirect = isLikelyDirectImageUrl(imageUrl); }
+    try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
     if (!imageIsDirect) {
-      // Try to create an attachment fallback for better reliability across providers
-      imageAttachment = await tryCreateImageAttachmentFromUrl(imageUrl, { timeoutMs: 3500, maxBytes: 7500000 }).catch(()=>null);
-      if (!imageAttachment) imageLinkForContent = String(imageUrl);
+      imageLinkForContent = String(imageUrl);
     }
   }
   // Only set msgText from config if it hasn't been set by special action logic (like tromper)
