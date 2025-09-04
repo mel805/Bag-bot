@@ -1412,7 +1412,7 @@ async function handleEconomyAction(interaction, actionKey) {
     } else {
       const texts = [
         'Tu hésites… les mots ne sortent pas.',
-        'Tu tentes un geste, mais le moment ne s'y prête pas.'
+        'Tu tentes un geste, mais le moment ne s\'y prête pas.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
