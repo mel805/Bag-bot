@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events, AttachmentBuilder } = require('discord.js');
 let ErelaManager;
 try { ({ Manager: ErelaManager } = require('erela.js')); } catch (_) { ErelaManager = null; }
@@ -349,7 +350,6 @@ if (!token || !guildId) {
   console.error('Missing DISCORD_TOKEN or GUILD_ID in environment');
   process.exit(2);
 }
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -648,7 +648,6 @@ function startYtProxyServer() {
     ytProxyStarted = true;
   } catch (_) { /* ignore */ }
 }
-
 // Local Lavalink + WS proxy (optional)
 let localLavalinkStarted = false;
 let localLavalinkProxyStarted = false;
@@ -983,23 +982,15 @@ async function handleEconomyAction(interaction, actionKey) {
         }
       }
       
-      // If no partner provided, pick a random valid member
+      // If no partner provided, DO NOT pick a random member (require explicit target)
       if (!partner) {
-        const partnerCandidates = availableMembers;
-        console.log('[Tromper] Partner candidates:', partnerCandidates.size);
-        if (partnerCandidates.size > 0) {
-          const arrP = Array.from(partnerCandidates.values());
-          partner = arrP[Math.floor(Math.random() * arrP.length)].user;
-          console.log('[Tromper] Selected partner:', partner.id);
-        } else {
-          console.log('[Tromper] No partner candidates available');
-        }
+        console.log('[Tromper] No explicit partner provided; skipping auto-selection');
       } else {
         console.log('[Tromper] Using provided partner:', partner.id);
       }
       
       // Pick third, excluding actor and partner if present
-      const thirdCandidates = availableMembers.filter(m => !partner || m.user.id !== partner.id);
+      const thirdCandidates = availableMembers.filter(m => partner && m.user.id !== partner.id);
       console.log('[Tromper] Third member candidates:', thirdCandidates.size);
       if (thirdCandidates.size > 0) {
         const arrT = Array.from(thirdCandidates.values());
@@ -1033,10 +1024,10 @@ async function handleEconomyAction(interaction, actionKey) {
       } else {
         const texts = partner ? [
           `Le plan échoue: ${partner} te surprend et te fait payer la note.`,
-          `Pris(e) en faute par ${partner}, tout s’effondre pour toi.`,
+          `Pris(e) en faute par ${partner}, tout s\'effondre pour toi.`,
         ] : [
           'Le plan échoue: tu es pris(e) et tu payes la note.',
-          'Pris(e) en faute, tout s’effondre pour toi.',
+          'Pris(e) en faute, tout s\'effondre pour toi.',
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       }
@@ -1060,11 +1051,11 @@ async function handleEconomyAction(interaction, actionKey) {
       // Messages
       if (success) {
         const texts = partner ? [
-          `Tu surprends ${partner} avec ${third}… et c’est ${third} qui trinque.`,
+          `Tu surprends ${partner} avec ${third}… et c'est ${third} qui trinque.`,
           `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
           `Scène chaude: tu retournes la situation sur ${third}.`
         ] : [
-          `Tu surprends ${third} en mauvaise posture… et c’est ${third} qui trinque.`,
+          `Tu surprends ${third} en mauvaise posture… et c'est ${third} qui trinque.`,
           `Pris en flagrant délit: ${third} paye pour avoir brisé la confiance.`,
           `Scène chaude: tu retournes la situation sur ${third}.`
         ];
@@ -1244,13 +1235,13 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = [
         `Tu suces ${p} ${z} lentement…`,
         `Tes lèvres se referment sur ${p} ${z} avec envie.`,
-        `Tu t’appliques sur ${p} ${z}, c’est brûlant.`
+        `Tu t'appliques sur ${p} ${z}, c'est brûlant.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     } else {
       const texts = [
-        `Tu t’approches de ${p} ${z}, mais il/elle te retient.`,
-        `Tu tentes sur ${p} ${z}… l’ambiance n’y est pas.`
+        `Tu t'approches de ${p} ${z}, mais il/elle te retient.`,
+        `Tu tentes sur ${p} ${z}… l'ambiance n'y est pas.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -1271,7 +1262,7 @@ async function handleEconomyAction(interaction, actionKey) {
     } else {
       const texts = [
         `Tu tentes de caresser ${p} ${z}, mais il/elle préfère attendre.`,
-        `Sur ${p} ${z}, ce n’est pas le bon moment.`,
+        `Sur ${p} ${z}, ce n'est pas le bon moment.`,
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -1284,9 +1275,9 @@ async function handleEconomyAction(interaction, actionKey) {
     const p = poss[z] || 'ses';
     if (success) {
       const texts = [
-        `Tu chatouilles ${p} ${z} jusqu’au fou rire.`,
+        `Tu chatouilles ${p} ${z} jusqu'au fou rire.`,
         `Une avalanche de chatouilles sur ${p} ${z} !`,
-        `Tu l’attrapes et chatouilles ${p} ${z} 😂`
+        `Tu l'attrapes et chatouilles ${p} ${z} 😂`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     } else {
@@ -1302,7 +1293,7 @@ async function handleEconomyAction(interaction, actionKey) {
     if (success) {
       const texts = [
         partner ? `Tu pénètres ${partner} par derrière avec intensité et douceur.` : `Tu t'abandonnes à une sodomie torride, consentie et maîtrisée.`,
-        partner ? `Vous profitez d’une sodomie passionnée avec ${partner} 😈` : `Sodomie consentie, rythmée et ardente.`,
+        partner ? `Vous profitez d'une sodomie passionnée avec ${partner} 😈` : `Sodomie consentie, rythmée et ardente.`,
         `Préparation, lubrifiant, communication: tout est parfait, plaisir partagé.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
@@ -1320,14 +1311,14 @@ async function handleEconomyAction(interaction, actionKey) {
     if (!msgText) {
       if (success) {
         const texts = [
-          partner ? `Tu guides ${partner} jusqu’à l’extase, souffle coupé…` : `Tu atteins l’extase, corps en feu…`,
-          partner ? `Plaisir partagé avec ${partner}, frissons complices.` : `Climax intense, le cœur s’emballe.`,
-          `Respirs courts, regard qui brille: c’est l’explosion.`
+          partner ? `Tu guides ${partner} jusqu'à l'extase, souffle coupé…` : `Tu atteins l'extase, corps en feu…`,
+          partner ? `Plaisir partagé avec ${partner}, frissons complices.` : `Climax intense, le cœur s'emballe.`,
+          `Respirs courts, regard qui brille: c'est l'explosion.`
         ];
         msgText = texts[randInt(0, texts.length - 1)];
       } else {
         const texts = [
-          'Le moment n’y est pas, vous ralentissez.',
+          'Le moment n\'est pas le bon, vous ralentissez.',
           'On communique, on remet ça plus tard.'
         ];
         msgText = texts[randInt(0, texts.length - 1)];
@@ -1339,13 +1330,13 @@ async function handleEconomyAction(interaction, actionKey) {
     if (success) {
       const texts = [
         partner ? `Tu branles ${partner} avec un rythme assuré.` : `Tu te fais plaisir avec assurance…`,
-        partner ? `Ta main s’active sur ${partner}, le souffle s’accélère.` : `Mouvements réguliers, la tension monte.`,
+        partner ? `Ta main s'active sur ${partner}, le souffle s'accélère.` : `Mouvements réguliers, la tension monte.`,
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     } else {
       const texts = [
-        'Tu ralentis… ce n’est pas le bon moment.',
-        'On préfère attendre, consentement et confort d’abord.'
+        'Tu ralentis… ce n\'est pas le bon moment.',
+        'On préfère attendre, consentement et confort d\'abord.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -1360,8 +1351,8 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     } else {
       const texts = [
-        'Tu t’arrêtes: il/elle n’est pas à l’aise.',
-        'Pas le bon timing, vous en discutez d’abord.'
+        'Tu t\'arrêtes: il/elle n\'est pas à l\'aise.',
+        'Pas le bon timing, vous en discutez d\'abord.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -1370,7 +1361,7 @@ async function handleEconomyAction(interaction, actionKey) {
     const partner = interaction.options.getUser('cible', false);
     if (success) {
       const texts = [
-        partner ? `Tu glisses ta main dans les cheveux de ${partner} et tires avec fermeté.` : `Tu agrippes les cheveux et tires, le regard s’embrase.`,
+        partner ? `Tu glisses ta main dans les cheveux de ${partner} et tires avec fermeté.` : `Tu agrippes les cheveux et tires, le regard s'embrase.`,
         partner ? `Prise assurée dans la chevelure de ${partner}, le contrôle te va bien.` : `Prise dans la chevelure, tu guides avec assurance.`,
         `Geste maîtrisé, consentement clair: excitation immédiate.`
       ];
@@ -1378,7 +1369,7 @@ async function handleEconomyAction(interaction, actionKey) {
     } else {
       const texts = [
         'Tu hésites… le geste manque de clarté.',
-        'Pas d’accord là-dessus, vous évitez pour l’instant.',
+        'Pas d\'accord là-dessus, vous évitez pour l\'instant.',
         'Mauvais moment: discussion et consentement avant tout.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
@@ -1395,8 +1386,8 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     } else {
       const texts = [
-        `Tu tentes ${t}, mais rien pour l’instant.`,
-        `Stressé·e, ${t} manque d’efficacité. Continue tes efforts.`
+        `Tu tentes ${t}, mais rien pour l'instant.`,
+        `Stressé·e, ${t} manque d'efficacité. Continue tes efforts.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -1412,7 +1403,7 @@ async function handleEconomyAction(interaction, actionKey) {
     } else {
       const texts = [
         'Tu hésites… les mots ne sortent pas.',
-        'Tu tentes un geste, mais le moment ne s'y prête pas.'
+        'Tu tentes un geste, mais le moment ne s\'y prête pas.'
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -1947,7 +1938,6 @@ function xpRequiredForNext(level, curve) {
   const required = Math.round(curve.base * Math.pow(curve.factor, Math.max(0, level)));
   return Math.max(1, required);
 }
-
 function totalXpAtLevel(level, curve) {
   const base = Number(curve?.base) || 100;
   const factor = Number(curve?.factor) || 1.2;
@@ -2046,7 +2036,6 @@ function buildTopSectionRow() {
   const row2 = new ActionRowBuilder().addComponents(diagBtn);
   return [row1, row2];
 }
-
 function buildBackRow() {
   const back = new ButtonBuilder()
     .setCustomId('config_back_home')
@@ -2172,9 +2161,9 @@ async function buildLevelsRewardsRows(guild) {
     .setMinValues(1)
     .setMaxValues(1);
   const options = Object.entries(levels.rewards || {})
-    .map(([lvl, rid]) => {
+    .map(([lvlStr, rid]) => {
       const role = guild.roles.cache.get(rid);
-      return { label: `Niveau ${lvl} → ${role ? role.name : rid}`, value: String(lvl) };
+      return { label: `Niveau ${lvlStr} → ${role ? role.name : rid}`, value: String(lvlStr) };
     });
   const removeSelect = new StringSelectMenuBuilder()
     .setCustomId('levels_reward_remove')
@@ -2727,7 +2716,6 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
     });
   }
 }
-
 function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   console.log('[Announce] Tentative d\'annonce de rôle récompense:', { guildId: guild.id, roleId, enabled: levels.announce?.roleAward?.enabled, channelId: levels.announce?.roleAward?.channelId });
   const ann = levels.announce?.roleAward || {};
@@ -3076,7 +3064,6 @@ async function diagnoseEconomyKarmaIssues(guildId) {
     return { issues: ['Diagnostic failed'], error: error.message };
   }
 }
-
 // Build rows to manage karma-based discounts/penalties
 async function buildEconomyKarmaRows(guild) {
   try {
@@ -3411,7 +3398,6 @@ async function buildConfessRows(guild, mode = 'sfw') {
   
   return rows;
 }
-
 async function buildTicketsRows(guild, submenu) {
   const { getTicketsConfig } = require('./storage/jsonStore');
   const t = await getTicketsConfig(guild.id);
@@ -3426,15 +3412,15 @@ async function buildTicketsRows(guild, submenu) {
       current === 'categories' ? 'Sous-menu: Catégories' :
       current === 'naming' ? 'Sous-menu: Nommage' :
       current === 'transcript' ? 'Sous-menu: Transcript' :
-      current === 'certified' ? 'Sous-menu: Rôle certifié' : 'Sous-menu: Rôles d’accès'
+      current === 'certified' ? 'Sous-menu: Rôle certifié' : 'Sous-menu: Rôles d\'accès'
     )
     .setMinValues(1)
     .setMaxValues(1)
     .addOptions(
       { label: 'Panel', value: 'panel', description: 'Panneau et salons', default: current === 'panel' },
-      { label: 'Rôles à ping', value: 'ping', description: 'Rôles ping à l’ouverture', default: current === 'ping' },
+      { label: 'Rôles à ping', value: 'ping', description: 'Rôles ping à l\'ouverture', default: current === 'ping' },
       { label: 'Catégories', value: 'categories', description: 'Gérer les catégories', default: current === 'categories' },
-      { label: 'Rôles d’accès', value: 'access', description: 'Rôles ayant accès', default: current === 'access' },
+      { label: 'Rôles d\'accès', value: 'access', description: 'Rôles ayant accès', default: current === 'access' },
       { label: 'Transcript', value: 'transcript', description: 'Type et salon de transcription', default: current === 'transcript' },
       { label: 'Nommage', value: 'naming', description: 'Format du nom des tickets', default: current === 'naming' },
       { label: 'Rôle certifié', value: 'certified', description: 'Rôle attribué par bouton', default: current === 'certified' },
@@ -3553,7 +3539,7 @@ async function buildTicketsRows(guild, submenu) {
   // access
   const catSelectAccess = new StringSelectMenuBuilder()
     .setCustomId('tickets_pick_cat_access')
-    .setPlaceholder('Choisir une catégorie à configurer (rôles d’accès)…')
+    .setPlaceholder('Choisir une catégorie à configurer (rôles d\'accès)…')
     .setMinValues(1)
     .setMaxValues(1);
   const catOpts = (t.categories || []).slice(0, 25).map(c => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, value: c.key }));
@@ -3728,7 +3714,6 @@ client.on('error', (error) => {
 client.on('warn', (info) => {
   console.warn('Client warn:', info);
 });
-
 client.login(process.env.DISCORD_TOKEN).then(() => {
   console.log('Login succeeded');
 }).catch((err) => {
@@ -4051,7 +4036,6 @@ client.once(Events.ClientReady, (readyClient) => {
     const embed = buildModEmbed(`${cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
-  
   // Note: Le message de bienvenue des suites privées est maintenant envoyé directement
   // lors de la création dans la logique d'achat pour éviter les problèmes de timing
   // Suites cleanup every 5 minutes
@@ -4383,7 +4367,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: 'Erreur proximité.', ephemeral: true });
       }
     }
-
     // Localisation: admin overview or per-member location
     if (interaction.isChatInputCommand() && interaction.commandName === 'localisation') {
       try {
@@ -4658,7 +4641,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const rows = await buildTicketsRows(interaction.guild, 'access');
       try { await interaction.update({ embeds: [embed], components: [buildBackRow(), ...rows] }); }
       catch (_) { try { await interaction.deferUpdate(); } catch (_) {} }
-      try { await interaction.followUp({ content: '✅ Rôles d’accès mis à jour.', ephemeral: true }); } catch (_) {}
+      try { await interaction.followUp({ content: '✅ Rôles d\'accès mis à jour.', ephemeral: true }); } catch (_) {}
       return;
     }
     if (interaction.isButton() && interaction.customId === 'tickets_add_cat') {
@@ -4724,7 +4707,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.showModal(modal); } catch (_) {}
       return;
     }
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('tickets_edit_cat_modal:')) {
+    if (interaction.isModalSubmit() && interaction.customId === 'tickets_edit_cat_modal') {
       await interaction.deferReply({ ephemeral: true });
       const key = interaction.customId.split(':')[1];
       const label = (interaction.fields.getTextInputValue('label')||'').trim().slice(0, 50);
@@ -6326,7 +6309,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '❌ Rôle invalide ou introuvable.', ephemeral: true });
       }
       if (selected === interaction.guild.id) {
-        return interaction.reply({ content: '❌ Le rôle @everyone ne peut pas être utilisé pour l’AutoKick.', ephemeral: true });
+        return interaction.reply({ content: '❌ Le rôle @everyone ne peut pas être utilisé pour l\'AutoKick.', ephemeral: true });
       }
       await updateAutoKickConfig(interaction.guild.id, { roleId: selected });
       const embed = await buildConfigEmbed(interaction.guild);
@@ -6387,7 +6370,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({ embeds: [embed], components: [...topRows, ...akRows] });
       return;
     }
-
     if (interaction.isModalSubmit() && interaction.customId === 'autokick_delay_custom_modal') {
       const text = interaction.fields.getTextInputValue('minutes');
       const minutes = Number(text);
@@ -6738,9 +6720,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.showModal(modal);
       return;
     }
-
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('levels_reward_add_modal:')) {
-      const roleId = interaction.customId.split(':')[1];
+    if (interaction.isModalSubmit() && interaction.customId === 'levels_reward_add_modal') {
+      const roleId = interaction.fields.getTextInputValue('roleId');
       const lvl = Number(interaction.fields.getTextInputValue('level'));
       if (!Number.isFinite(lvl) || lvl < 1) return interaction.reply({ content: 'Niveau invalide (>=1).', ephemeral: true });
       const cfg = await getLevelsConfig(interaction.guild.id);
@@ -6768,7 +6749,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({ embeds: [embed], components: [...rows] });
       return;
     }
-
     if (interaction.isChatInputCommand() && interaction.commandName === 'adminxp') {
       const hasManageGuild = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) || interaction.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
       if (!hasManageGuild) return interaction.reply({ content: '⛔ Permission requise.', ephemeral: true });
@@ -7087,7 +7067,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateLevelsConfig(interaction.guild.id, { cards: { ...(cfg.cards || {}), femaleRoleIds: interaction.values } });
       return interaction.deferUpdate();
     }
-
     if (interaction.isRoleSelectMenu() && interaction.customId === 'levels_cards_certified_roles') {
       const cfg = await getLevelsConfig(interaction.guild.id);
       await updateLevelsConfig(interaction.guild.id, { cards: { ...(cfg.cards || {}), certifiedRoleIds: interaction.values } });
@@ -7770,7 +7749,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .setTimestamp();
 
           await interaction.editReply({ embeds: [embed], components: [] });
-
         } else if (targetType === 'role') {
           // Modification d'un rôle existant
           const role = interaction.guild.roles.cache.get(targetId);
@@ -8036,7 +8014,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: `❌ Erreur: ${e.message}`, ephemeral: true });
       }
     }
-
     // Lecteur manuel supprimé: UI s'ouvrira automatiquement au /play
     // Basic /play (join + search + play)
     if (interaction.isChatInputCommand() && interaction.commandName === 'play') {
@@ -8114,48 +8091,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             res = await searchWithTimeout(attempt, interaction.user, 15000);
             if (res && Array.isArray(res.tracks) && res.tracks.length) break;
           } catch (_) { /* continue */ }
-        }
-        if (!res || !res.tracks?.length) {
-          // Last-chance: YouTube Music URL normalization already tried; also try extracting v parameter if provided
-          try {
-            if (isUrl) {
-              const u2 = new URL(normalized);
-              const vid = u2.searchParams.get('v');
-              if (vid && /^[A-Za-z0-9_-]{8,}$/.test(vid)) {
-                const direct = await searchWithTimeout(`https://www.youtube.com/watch?v=${vid}`, interaction.user, 12000).catch(()=>null);
-                if (direct && direct.tracks?.length) res = direct;
-                // Piped fallback to audio stream URL
-                if ((!res || !res.tracks?.length) && typeof fetch === 'function') {
-                  try {
-                    const aurl = await getPipedAudioUrl(vid);
-                    if (aurl) {
-                      const httpRes = await client.music.search(aurl, interaction.user).catch(()=>null);
-                      if (httpRes && httpRes.tracks?.length) res = httpRes;
-                    }
-                  } catch (_) {}
-                }
-
-                // Local yt-dlp fallback
-                if (!res || !res.tracks?.length) {
-                  const proxied = `http://127.0.0.1:8765/yt/${vid}`;
-                  const httpRes2 = await client.music.search(proxied, interaction.user).catch(()=>null);
-                  if (httpRes2 && httpRes2.tracks?.length) res = httpRes2;
-                }
-              }
-            }
-          } catch (_) {}
-          // Fallback: yt-dlp to get direct audio URL if youtube fails
-          if ((!res || !res.tracks?.length) && ytDlp && isUrl && /youtube\.com|youtu\.be/.test(normalized)) {
-            try {
-              const info = await ytDlp(normalized, { dumpSingleJson: true, noCheckCertificates: true, noWarnings: true, preferFreeFormats: true, addHeader: [ 'referer: https://www.youtube.com' ] });
-              const candidates = Array.isArray(info?.formats) ? info.formats.filter(f => f.acodec && f.acodec !== 'none' && !f.vcodec && (!f.tbr || f.tbr <= 192)).sort((a,b)=> (a.tbr||0)-(b.tbr||0)) : [];
-              const url = (candidates[0]?.url) || info?.url;
-              if (url) {
-                const httpRes = await client.music.search(url, interaction.user).catch(()=>null);
-                if (httpRes && httpRes.tracks?.length) res = httpRes;
-              }
-            } catch (_) {}
-          }
         }
         if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat. Essayez un lien YouTube complet (www.youtube.com).');
         let player = client.music.players.get(interaction.guild.id);
@@ -8448,7 +8383,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // /testaudio removed
-
     // Music status command
     if (interaction.isChatInputCommand() && interaction.commandName === 'music-status') {
       try {
@@ -8626,7 +8560,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       return interaction.reply({ content: '✅ Confession envoyée.', ephemeral: true });
     }
-
     if (interaction.isStringSelectMenu() && interaction.customId === 'boutique_select') {
       const eco = await getEconomyConfig(interaction.guild.id);
       const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
@@ -8787,7 +8720,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       return interaction.reply({ content: 'Choix invalide.', ephemeral: true });
     }
-
     // Gestion des interactions pour les suites privées
     if (interaction.isButton() && interaction.customId.startsWith('suite_invite_')) {
       const ownerId = interaction.customId.split('_')[2];
@@ -9128,18 +9060,18 @@ const ACTION_GIFS = {
       'https://media.giphy.com/media/3o6Zt2bYkS6vCuxoXu/giphy.gif'
     ],
     fail: [
-      'https://media.giphy.com/media/3o6gE8f3ZxZzQ0imeI/giphy.gif',
+      'https://media.giphy.com/media/3o6Zt8j0Yk6y3o5cQg/giphy.gif',
       'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif'
-    ]
   },
   fuck: {
     success: [
       'https://media.giphy.com/media/3o6ZsY3qZKqRR3YK9m/giphy.gif',
-      'https://media.giphy.com/media/3o7btYIYbW0nJwF0dK/giphy.gif'
+      'https://media.giphy.com/media/3oEduW2X6y83L1ZyBG/giphy.gif',
+      'https://media.giphy.com/media/3o6Zt8j0Yk6y3o5cQg/giphy.gif'
     ],
     fail: [
       'https://media.giphy.com/media/3oEduW2X6y83L1ZyBG/giphy.gif',
-      'https://media.giphy.com/media/3o6Zt8j0Yk6y3o5cQg/giphy.gif'
+      'https://media.giphy.com/media/3o6Zt8zb1hQv5nYVxe/giphy.gif'
     ]
   },
   massage: {
@@ -9180,7 +9112,6 @@ const ACTION_GIFS = {
 
   } catch (_) {}
 });
-
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild) return;
@@ -9456,7 +9387,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     }
   } catch (_) {}
 });
-
 // Note: automatic booster role assignment removed per request
 
 // Système de récompenses vocales périodiques
@@ -9802,7 +9732,6 @@ async function buildTdDeleteComponents(guild, mode = 'sfw', offset = 0) {
     total,
   };
 }
-
 async function buildTdEditComponents(guild, mode = 'sfw', offset = 0) {
   const td = await getTruthDareConfig(guild.id);
   const list = (td?.[mode]?.prompts || []).slice();
