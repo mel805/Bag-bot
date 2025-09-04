@@ -297,6 +297,34 @@ require('dotenv').config();
 
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
+
+// Interaction monitoring for debugging stuck interactions
+const pendingInteractions = new Map();
+
+function trackInteraction(interaction, actionType = 'unknown') {
+  const key = `${interaction.id}-${interaction.user.id}`;
+  pendingInteractions.set(key, {
+    id: interaction.id,
+    userId: interaction.user.id,
+    actionType,
+    timestamp: Date.now(),
+    deferred: interaction.deferred,
+    replied: interaction.replied
+  });
+  
+  // Auto-cleanup after 30 seconds
+  setTimeout(() => {
+    if (pendingInteractions.has(key)) {
+      console.warn(`[Monitor] Interaction ${actionType} from ${interaction.user.tag || interaction.user.id} timed out after 30s`);
+      pendingInteractions.delete(key);
+    }
+  }, 30000);
+}
+
+function untrackInteraction(interaction) {
+  const key = `${interaction.id}-${interaction.user.id}`;
+  pendingInteractions.delete(key);
+}
 // Fonction pour trouver le fichier logo (avec ou sans majuscule)
 function findLogoPath() {
   const fs = require('fs');
@@ -812,11 +840,16 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 }
 
 async function handleEconomyAction(interaction, actionKey) {
-  const eco = await getEconomyConfig(interaction.guild.id);
-  // Disallow bot users executing actions
-  if (interaction.user?.bot) {
-    return interaction.reply({ content: '⛔ Les bots ne peuvent pas utiliser cette action.', ephemeral: true });
-  }
+  // Track this interaction for monitoring
+  trackInteraction(interaction, `economy-${actionKey}`);
+  
+  try {
+    const eco = await getEconomyConfig(interaction.guild.id);
+    // Disallow bot users executing actions
+    if (interaction.user?.bot) {
+      untrackInteraction(interaction);
+      return interaction.reply({ content: '⛔ Les bots ne peuvent pas utiliser cette action.', ephemeral: true });
+    }
   // Check enabled
   const enabled = Array.isArray(eco.actions?.enabled) ? eco.actions.enabled : [];
   if (enabled.length && !enabled.includes(actionKey)) {
@@ -856,13 +889,27 @@ async function handleEconomyAction(interaction, actionKey) {
     }
   }
   // Also defer early for common economy actions which can hit storage and GIF lookups
-  if (!hasDeferred && (actionKey === 'work' || actionKey === 'fish' || actionKey === 'daily')) {
+  // Extended list of actions that commonly cause timeouts
+  const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'branler', 'doigter'];
+  if (!hasDeferred && heavyActions.includes(actionKey)) {
     try {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply();
         hasDeferred = true;
+        console.log(`[Economy] Reply deferred for heavy action: ${actionKey}`);
       }
-    } catch (_) {}
+    } catch (error) {
+      console.error(`[Economy] Failed to defer reply for ${actionKey}:`, error.message);
+      // Fallback: try to reply immediately with a status message
+      try {
+        if (!interaction.replied) {
+          return interaction.reply({ 
+            content: '⏳ Action en cours... Veuillez patienter.', 
+            ephemeral: true 
+          });
+        }
+      } catch (_) {}
+    }
   }
   
   const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
@@ -1108,7 +1155,7 @@ async function handleEconomyAction(interaction, actionKey) {
         hasDeferred = true;
       }
     } catch (_) {}
-    // Attempt to resolve to a direct media URL
+    // Attempt to resolve to a direct media URL with better error handling
     try {
       const resolved = await resolveGifUrl(imageUrl, { timeoutMs: 2000 });
       if (resolved) {
@@ -1116,7 +1163,9 @@ async function handleEconomyAction(interaction, actionKey) {
         try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
         imageLinkForContent = imageIsDirect ? null : String(imageUrl);
       }
-    } catch (_) {}
+    } catch (error) {
+      console.warn(`[Economy] Failed to resolve GIF URL ${imageUrl}:`, error.message);
+    }
     // As a final fallback, try to fetch and attach the image bytes
     if (!imageIsDirect) {
       try {
@@ -1125,7 +1174,11 @@ async function handleEconomyAction(interaction, actionKey) {
           imageAttachment = att;
           imageLinkForContent = null;
         }
-      } catch (_) {}
+      } catch (error) {
+        console.warn(`[Economy] Failed to create image attachment from ${imageUrl}:`, error.message);
+        // If all image processing fails, continue without image but log it
+        imageLinkForContent = String(imageUrl);
+      }
     }
   }
   // Only set msgText from config if it hasn't been set by special action logic (like tromper)
@@ -1947,10 +2000,55 @@ async function handleEconomyAction(interaction, actionKey) {
   if (imageLinkForContent) parts.push(imageLinkForContent);
   const content = parts.filter(Boolean).join('\n') || undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
-  if (hasDeferred) {
-    return interaction.editReply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+  
+  // Final safety check to ensure interaction is always responded to
+  try {
+    if (hasDeferred) {
+      if (!interaction.replied) {
+        return interaction.editReply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+      } else {
+        console.warn(`[Economy] Interaction already replied for ${actionKey}, cannot editReply`);
+        return interaction.followUp({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
+      }
+    } else {
+      if (!interaction.replied && !interaction.deferred) {
+        return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+      } else {
+        console.warn(`[Economy] Interaction already handled for ${actionKey}, using followUp`);
+        return interaction.followUp({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
+      }
+    }
+  } catch (error) {
+    console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
+    // Last resort: try followUp if possible
+    try {
+      if (!interaction.replied) {
+        return interaction.followUp({ 
+          content: `⚠️ Action ${actionKey} terminée mais erreur d'affichage.`, 
+          ephemeral: true 
+        });
+      }
+    } catch (_) {
+      console.error(`[Economy] Complete failure to respond to ${actionKey} interaction`);
+    }
+  } finally {
+    // Always untrack the interaction when we're done
+    untrackInteraction(interaction);
   }
-  return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+  } catch (mainError) {
+    console.error(`[Economy] Critical error in handleEconomyAction for ${actionKey}:`, mainError);
+    untrackInteraction(interaction);
+    try {
+      if (!interaction.replied && !interaction.deferred) {
+        return interaction.reply({ 
+          content: `❌ Erreur lors de l'exécution de l'action ${actionKey}.`, 
+          ephemeral: true 
+        });
+      }
+    } catch (_) {
+      console.error(`[Economy] Could not even send error message for ${actionKey}`);
+    }
+  }
 }
 
 async function sendLog(guild, categoryKey, embed) {
@@ -4212,6 +4310,28 @@ client.once(Events.ClientReady, (readyClient) => {
       }
     } catch (_) {}
   }, 60 * 1000);
+
+  // Monitor stuck interactions every 5 minutes
+  setInterval(() => {
+    try {
+      const now = Date.now();
+      const stuck = Array.from(pendingInteractions.values()).filter(p => now - p.timestamp > 15000); // 15+ seconds old
+      
+      if (stuck.length > 0) {
+        console.warn(`[Monitor] Found ${stuck.length} potentially stuck interactions:`);
+        stuck.forEach(p => {
+          console.warn(`  - ${p.actionType} from user ${p.userId} (${Math.round((now - p.timestamp)/1000)}s ago)`);
+        });
+      }
+      
+      // Also log current stats
+      if (pendingInteractions.size > 0) {
+        console.log(`[Monitor] Currently tracking ${pendingInteractions.size} pending interactions`);
+      }
+    } catch (error) {
+      console.error('[Monitor] Error checking stuck interactions:', error);
+    }
+  }, 5 * 60 * 1000);
 
   // Backup heartbeat: persist current state and log every 30 minutes
   setInterval(async () => {
@@ -8073,10 +8193,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
             : '⚠️ Aucun serveur audio configuré. Contactez un administrateur.';
           return interaction.editReply(statusMsg);
         }
-        // Timeout + multi-source fallback
+        // Timeout + multi-source fallback with better error handling
         const searchWithTimeout = (q, user, ms = 15000) => {
-          const t = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
-          return Promise.race([client.music.search(q, user), t]);
+          const timeoutPromise = new Promise((_, rej) => 
+            setTimeout(() => rej(new Error('Recherche musicale expirée')), ms)
+          );
+          return Promise.race([client.music.search(q, user), timeoutPromise]);
         };
         const isUrl = /^https?:\/\//i.test(query);
         let normalized = query;
@@ -8123,9 +8245,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
           try {
             res = await searchWithTimeout(attempt, interaction.user, 15000);
             if (res && Array.isArray(res.tracks) && res.tracks.length) break;
-          } catch (_) { /* continue */ }
+          } catch (error) { 
+            console.log(`[Music] Search attempt failed for ${JSON.stringify(attempt)}:`, error.message);
+          }
         }
-        if (!res || !res.tracks?.length) return interaction.editReply('Aucun résultat. Essayez un lien YouTube complet (www.youtube.com).');
+        if (!res || !res.tracks?.length) {
+          return interaction.editReply({
+            content: '❌ Impossible de trouver cette musique. Vérifiez le lien ou essayez un autre terme de recherche.\n*Astuce: Utilisez un lien YouTube complet (www.youtube.com)*',
+            ephemeral: true
+          });
+        }
         let player = client.music.players.get(interaction.guild.id);
         if (!player) {
           try { console.log('[Music]/play creating player vc=', interaction.member.voice.channel.id, 'tc=', interaction.channel.id); } catch (_) {}
