@@ -610,7 +610,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','daily'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','daily'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -691,6 +691,7 @@ function ensureEconomyShape(g) {
     oops: { moneyMin: 3, moneyMax: 8, karma: 'perversion', karmaDelta: 1, cooldown: 30, successRate: 0.95, failMoneyMin: 1, failMoneyMax: 2, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     caught: { moneyMin: 3, moneyMax: 12, karma: 'perversion', karmaDelta: 1, cooldown: 60, successRate: 0.9, failMoneyMin: 1, failMoneyMax: 3, failKarmaDelta: 1, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
     tromper: { moneyMin: 15, moneyMax: 40, karma: 'perversion', karmaDelta: 3, cooldown: 300, successRate: 0.6, failMoneyMin: 10, failMoneyMax: 25, failKarmaDelta: 3, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
+    orgie: { moneyMin: 30, moneyMax: 100, karma: 'perversion', karmaDelta: 6, cooldown: 900, successRate: 0.65, failMoneyMin: 15, failMoneyMax: 35, failKarmaDelta: 4, partnerMoneyShare: 0.0, partnerKarmaShare: 0.0 },
   };
   // Add XP parameters defaults for actions (success/fail) + partner XP share
   const xpDefaults = {
@@ -733,6 +734,7 @@ function ensureEconomyShape(g) {
     oops: { xpDelta: 4, failXpDelta: 1, partnerXpShare: 0.0 },
     caught: { xpDelta: 5, failXpDelta: 1, partnerXpShare: 0.0 },
     tromper: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 0.0 },
+    orgie: { xpDelta: 24, failXpDelta: 6, partnerXpShare: 0.0 },
   };
   for (const [k, d] of Object.entries(defaults)) {
     if (!e.actions.config[k] || typeof e.actions.config[k] !== 'object') e.actions.config[k] = { ...d };
@@ -921,6 +923,16 @@ function ensureEconomyShape(g) {
         'Tout s’écroule: tu es pris(e) sur le fait…',
         'Ça tourne mal: la cible vous surprend, la honte et la perte retombent sur toi.',
         'Le plan foire: exposé(e) au grand jour, tu perds gros.'
+      ]
+    },
+    orgie: {
+      success: [
+        'Orgie réussie: tout le monde repart comblé.',
+        'Exultation collective, c’était intense et consentie.',
+      ],
+      fail: [
+        'Orgie avortée: ambiance cassée, on remballe.',
+        'Ça ne prend pas cette fois, chacun rentre frustré.',
       ]
     }
   };

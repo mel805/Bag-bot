@@ -870,7 +870,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return respondAndUntrack({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
   let initialPartner = null;
   let tromperResolvedPartner = null;
   try {
@@ -886,15 +886,15 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   // For heavier actions like 'tromper', defer reply IMMEDIATELY to avoid 3s timeout
   let hasDeferred = false;
-  if (actionKey === 'tromper') {
+  if (actionKey === 'tromper' || actionKey === 'orgie') {
     try {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply();
         hasDeferred = true;
-        console.log('[Tromper] Reply deferred immediately to prevent timeout');
+        console.log(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Reply deferred immediately to prevent timeout`);
       }
     } catch (error) {
-      console.error('[Tromper] Failed to defer reply:', error.message);
+      console.error(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Failed to defer reply:`, error.message);
       // Fallback: try to reply immediately
       return respondAndUntrack({ 
         content: '⏳ Action en cours... Veuillez patienter.', 
@@ -1006,7 +1006,7 @@ async function handleEconomyAction(interaction, actionKey) {
       imageUrl = normalizeGifUrlBasic(String(imageUrl));
     } catch (_) {}
   }
-  // Special storyline for tromper (NSFW): actor surprises target with a random third member
+  // Special storyline for tromper (NSFW) and orgie (NSFW group)
   if (actionKey === 'tromper') {
     console.log('[Tromper] Starting tromper action for user:', interaction.user.id);
     let partner = initialPartner;
@@ -1051,15 +1051,22 @@ async function handleEconomyAction(interaction, actionKey) {
         }
       }
       
-      // If no partner provided, DO NOT pick a random member (require explicit target)
+      // If no partner provided, auto-select a random eligible partner from available members
       if (!partner) {
-        console.log('[Tromper] No explicit partner provided; skipping auto-selection');
+        const candidates = availableMembers;
+        if (candidates.size > 0) {
+          const arr = Array.from(candidates.values());
+          partner = arr[Math.floor(Math.random() * arr.length)].user;
+          console.log('[Tromper] Auto-selected partner:', partner.id);
+        } else {
+          console.log('[Tromper] No partner candidates available for auto-selection');
+        }
       } else {
         console.log('[Tromper] Using provided partner:', partner.id);
       }
       
       // Pick third, excluding actor and partner if present
-      const thirdCandidates = availableMembers.filter(m => partner && m.user.id !== partner.id);
+      const thirdCandidates = availableMembers.filter(m => partner ? (m.user.id !== partner.id) : true);
       console.log('[Tromper] Third member candidates:', thirdCandidates.size);
       if (thirdCandidates.size > 0) {
         const arrT = Array.from(thirdCandidates.values());
@@ -1150,6 +1157,67 @@ async function handleEconomyAction(interaction, actionKey) {
     }
     console.log('[Tromper] Tromper logic completed successfully');
   }
+  // Special storyline for orgie (NSFW group): actor, optional cible, and 3-4 additional random members
+  if (actionKey === 'orgie') {
+    console.log('[Orgie] Starting orgie action for user:', interaction.user.id);
+    let partner = initialPartner;
+    let participants = [];
+    try {
+      let availableMembers = interaction.guild.members.cache.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+      if (availableMembers.size < 6) {
+        try {
+          const fetched = await interaction.guild.members.fetch({ limit: 30, force: false });
+          availableMembers = availableMembers.concat(fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id));
+        } catch (e) {
+          console.warn('[Orgie] Fetch members fallback failed:', e?.message || e);
+        }
+      }
+      // Ensure partner is set if provided and valid
+      const excludeIds = new Set([interaction.user.id]);
+      if (partner && !partner.bot) excludeIds.add(partner.id);
+      // Determine number of random others: 4 if partner exists, else 5
+      const needed = partner ? 4 : 5;
+      const pool = Array.from(availableMembers.values())
+        .map(m => m.user)
+        .filter(u2 => !u2.bot && !excludeIds.has(u2.id));
+      for (let i = 0; i < needed && pool.length > 0; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        participants.push(pool[idx]);
+        excludeIds.add(pool[idx].id);
+        pool.splice(idx, 1);
+      }
+    } catch (e) {
+      console.error('[Orgie] Error selecting participants:', e?.message || e);
+    }
+    const everyone = [partner, ...participants].filter(Boolean);
+    const list = everyone.length ? everyone.map(u2 => String(u2)).join(', ') : 'personne';
+    if (success) {
+      const texts = partner ? [
+        `Orgie réussie avec ${partner} et ${participants.length} autres: la pièce s'enflamme.`,
+        `Vous vous abandonnez, ${partner} et ${participants.length} complices… c'est mémorable.`,
+      ] : [
+        `Orgie sauvage avec ${participants.length} partenaires: tout le monde y trouve son compte.`,
+        `Tu lances une orgie à ${participants.length + 1}: extase collective.`,
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = partner ? [
+        `Orgie avortée: ${partner} et le groupe se dispersent, ambiance cassée.`,
+        `Le plan tourne court avec ${partner} et les autres: frustration générale.`,
+      ] : [
+        `Orgie ratée: le groupe ne prend pas, tu perds la main.`,
+        `Ça capote: l'envie n'y est pas, tout le monde s'éloigne.`,
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+    if (everyone.length) {
+      const currency = eco.currency?.name || 'BAG$';
+      const label = `Participants (${everyone.length})`;
+      const val = `${list}`;
+      global.__eco_orgie_participants = { name: label, value: val, inline: false };
+    }
+    console.log('[Orgie] Orgie logic completed successfully');
+  }
   // Decide how to render the image: embed if definitely image, else post link in message content
   let imageIsDirect = false;
   let imageLinkForContent = null;
@@ -1195,7 +1263,7 @@ async function handleEconomyAction(interaction, actionKey) {
       }
     }
   }
-  // Only set msgText from config if it hasn't been set by special action logic (like tromper)
+  // Only set msgText from config if it hasn't been set by special action logic (like tromper/orgie)
   if (!msgText) {
     msgText = success
       ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
@@ -1305,8 +1373,8 @@ async function handleEconomyAction(interaction, actionKey) {
     }
   }
   if (actionKey === 'lick') {
-    const zones = ['seins','chatte','cul','oreille','ventre'];
-    const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };
+    const zones = ['seins','chatte','cul','oreille','ventre','bite'];
+    const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son', bite: 'sa' };
     const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
     const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
     const p = poss[z] || 'sa';
@@ -2004,6 +2072,7 @@ async function handleEconomyAction(interaction, actionKey) {
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
     ...(partnerField ? [partnerField] : []),
     ...(global.__eco_tromper_third ? [global.__eco_tromper_third] : []),
+    ...(global.__eco_orgie_participants ? [global.__eco_orgie_participants] : []),
     { name: 'Solde charme', value: String(u.charm||0), inline: true },
     { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
   ];
@@ -2014,6 +2083,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (imageLinkForContent) parts.push(imageLinkForContent);
   const content = parts.filter(Boolean).join('\n') || undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
+  try { delete global.__eco_orgie_participants; } catch (_) {}
   
   // Final safety check to ensure interaction is always responded to
   try {
@@ -3721,7 +3791,8 @@ function actionKeyToLabel(key) {
     // Délires / Jeux
     oops: 'oups',
     caught: 'surpris',
-    tromper: 'tromper'
+    tromper: 'tromper',
+    orgie: 'orgie'
   };
   return map[key] || key;
 }
@@ -3764,7 +3835,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -7638,6 +7709,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'tromper') {
       return handleEconomyAction(interaction, 'tromper');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'orgie') {
+      return handleEconomyAction(interaction, 'orgie');
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {

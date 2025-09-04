@@ -74,6 +74,11 @@ const commands = [
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
     .toJSON(),
   new SlashCommandBuilder()
+    .setName('orgie')
+    .setDescription('Orgie (NSFW, consensuel) 😈')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .toJSON(),
+  new SlashCommandBuilder()
     .setName('caresser')
     .setDescription('Caresser (NSFW)')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
@@ -106,7 +111,8 @@ const commands = [
         { name: 'Chatte', value: 'chatte' },
         { name: 'Cul', value: 'cul' },
         { name: 'Oreille', value: 'oreille' },
-        { name: 'Ventre', value: 'ventre' }
+        { name: 'Ventre', value: 'ventre' },
+        { name: 'Bite', value: 'bite' }
       )
     )
     .toJSON(),
@@ -123,7 +129,8 @@ const commands = [
         { name: 'Chatte', value: 'chatte' },
         { name: 'Cul', value: 'cul' },
         { name: 'Oreille', value: 'oreille' },
-        { name: 'Ventre', value: 'ventre' }
+        { name: 'Ventre', value: 'ventre' },
+        { name: 'Bite', value: 'bite' }
       )
     )
     .toJSON(),
