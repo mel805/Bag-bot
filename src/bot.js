@@ -837,21 +837,37 @@ async function handleEconomyAction(interaction, actionKey) {
   if (initialPartner && initialPartner.bot) {
     return interaction.reply({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
   }
+  // For heavier actions like 'tromper', defer reply IMMEDIATELY to avoid 3s timeout
+  let hasDeferred = false;
+  if (actionKey === 'tromper') {
+    try {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply();
+        hasDeferred = true;
+        console.log('[Tromper] Reply deferred immediately to prevent timeout');
+      }
+    } catch (error) {
+      console.error('[Tromper] Failed to defer reply:', error.message);
+      // Fallback: try to reply immediately
+      return interaction.reply({ 
+        content: '⏳ Action en cours... Veuillez patienter.', 
+        ephemeral: true 
+      });
+    }
+  }
+  
   const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
   const now = Date.now();
   const conf = (eco.actions?.config || {})[actionKey] || {};
   const baseCd = Number(conf.cooldown || (eco.settings?.cooldowns?.[actionKey] || 0));
   let cdLeft = Math.max(0, (u.cooldowns?.[actionKey] || 0) - now);
-  if (cdLeft > 0) return interaction.reply({ content: `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.`, ephemeral: true });
-  // For heavier actions like 'tromper', defer reply to avoid 3s timeout
-  let hasDeferred = false;
-  try {
-    if (actionKey === 'tromper' && !interaction.deferred && !interaction.replied) {
-      await interaction.deferReply();
-      hasDeferred = true;
-      console.log('[Tromper] Reply deferred to prevent timeout');
+  if (cdLeft > 0) {
+    if (hasDeferred) {
+      return interaction.editReply({ content: `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.` });
+    } else {
+      return interaction.reply({ content: `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.`, ephemeral: true });
     }
-  } catch (_) {}
+  }
   // Booster cooldown multiplier
   let cdToSet = baseCd;
   try {
@@ -927,6 +943,20 @@ async function handleEconomyAction(interaction, actionKey) {
     let partner = initialPartner;
     let third = null;
     
+    // Helper function for fetch with timeout
+    const fetchMembersWithTimeout = async (guild, timeoutMs = 1500) => {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Member fetch timeout')), timeoutMs)
+      );
+      
+      const fetchPromise = guild.members.fetch({ 
+        limit: 20, // Reduced limit for faster response
+        force: false
+      });
+      
+      return Promise.race([fetchPromise, timeoutPromise]);
+    };
+    
     try {
       console.log('[Tromper] Getting available members from cache...');
       
@@ -934,12 +964,12 @@ async function handleEconomyAction(interaction, actionKey) {
       let availableMembers = interaction.guild.members.cache.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
       console.log('[Tromper] Cached members available:', availableMembers.size);
       
-      // If we have very few cached members, try to fetch more (but with a limit to avoid timeouts)
-      if (availableMembers.size < 5) {
-        console.log('[Tromper] Few cached members, attempting limited fetch...');
+      // If we have very few cached members, try to fetch more (but with strict timeout)
+      if (availableMembers.size < 3) {
+        console.log('[Tromper] Few cached members, attempting limited fetch with timeout...');
         try {
-          // Fetch with a reasonable limit to avoid timeouts
-          const fetched = await interaction.guild.members.fetch({ limit: 50, force: false });
+          // Fetch with strict timeout to avoid blocking
+          const fetched = await fetchMembersWithTimeout(interaction.guild, 1500);
           const fetchedHumans = fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
           console.log('[Tromper] Fetched additional members:', fetchedHumans.size);
           
@@ -948,6 +978,7 @@ async function handleEconomyAction(interaction, actionKey) {
           console.log('[Tromper] Total available members:', availableMembers.size);
         } catch (fetchError) {
           console.warn('[Tromper] Limited fetch failed, using cache only:', fetchError.message);
+          // Continue with cache only - this is acceptable
         }
       }
       
