@@ -829,6 +829,7 @@ async function handleEconomyAction(interaction, actionKey) {
   let tromperResolvedPartner = null;
   try {
     if (actionsWithTarget.includes(actionKey)) {
+      // Only get the target if user actually provided one
       initialPartner = interaction.options.getUser('cible', false);
     } else if (actionKey === 'crime') {
       initialPartner = interaction.options.getUser('complice', false);
@@ -1190,6 +1191,108 @@ async function handleEconomyAction(interaction, actionKey) {
       : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
   }
   // Custom user message override removed for 'orgasme' — keep only random messages
+  if (actionKey === 'kiss') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu embrasses ${partner} avec passion, les lèvres se rencontrent dans un baiser brûlant.` : `Tu t'embrasses dans le miroir, un moment d'intimité avec toi-même.`,
+        partner ? `Baiser tendre avec ${partner}, l'émotion monte entre vous.` : `Baiser solitaire mais intense, tu te fais plaisir.`,
+        partner ? `Vos lèvres se fondent dans un baiser sensuel avec ${partner}.` : `Baiser passionné, tu te laisses aller au plaisir.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes d'embrasser ${partner}, mais il/elle détourne la tête.` : `Tu tentes de t'embrasser, mais le moment n'y est pas.`,
+        partner ? `Baiser refusé par ${partner}, l'ambiance n'est pas au rendez-vous.` : `Baiser raté, tu préfères reporter à plus tard.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'flirt') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu dragues ${partner} avec charme, un regard complice s'échange.` : `Tu pratiques ton charme devant le miroir, confiance en toi renforcée.`,
+        partner ? `Séduction réussie avec ${partner}, l'ambiance devient électrique.` : `Tu séduis l'air, ton charme naturel ressort.`,
+        partner ? `Tu fais de l'œil à ${partner}, le jeu de la séduction commence.` : `Tu travailles ton charme, prêt(e) pour de nouvelles conquêtes.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de draguer ${partner}, mais il/elle n'est pas réceptif(ve).` : `Tu tentes de séduire, mais le charme ne fonctionne pas.`,
+        partner ? `Séduction ratée avec ${partner}, l'ambiance n'y est pas.` : `Drague maladroite, tu préfères reporter à plus tard.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'seduce') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu séduis ${partner} avec maîtrise, l'envie monte entre vous.` : `Tu pratiques l'art de la séduction, ton charme naturel ressort.`,
+        partner ? `Séduction intense avec ${partner}, l'ambiance devient torride.` : `Tu séduis l'air, prêt(e) pour de nouvelles aventures.`,
+        partner ? `Tu envoûtes ${partner} par ta présence magnétique.` : `Tu travailles ta séduction, confiance en toi décuplée.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de séduire ${partner}, mais il/elle résiste à ton charme.` : `Tu tentes de séduire, mais l'ambiance n'y est pas.`,
+        partner ? `Séduction échouée avec ${partner}, il/elle n'est pas réceptif(ve).` : `Séduction ratée, tu préfères reporter à plus tard.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'fuck') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu baises ${partner} avec passion, l'extase vous emporte tous les deux.` : `Tu te masturbes avec intensité, le plaisir monte en toi.`,
+        partner ? `Rapport sexuel torride avec ${partner}, plaisir partagé à son comble.` : `Masturbation intense, tu atteins l'extase.`,
+        partner ? `Tu pénètres ${partner} avec désir, l'ambiance est au rendez-vous.` : `Tu te fais plaisir, corps en feu et désir assouvi.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de baiser ${partner}, mais il/elle n'est pas d'humeur.` : `Tu tentes de te masturber, mais le moment n'y est pas.`,
+        partner ? `Rapport refusé par ${partner}, l'ambiance n'est pas au rendez-vous.` : `Masturbation ratée, tu préfères reporter à plus tard.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'massage') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu masses ${partner} avec douceur, détente et bien-être partagés.` : `Tu te masses, détente et relaxation au rendez-vous.`,
+        partner ? `Massage apaisant pour ${partner}, les tensions s'évacuent.` : `Auto-massage réussi, tu te détends complètement.`,
+        partner ? `Tes mains expertes soulagent ${partner}, moment de pure détente.` : `Massage personnel, tu prends soin de toi.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de masser ${partner}, mais il/elle préfère être seul(e).` : `Tu tentes de te masser, mais tu n'es pas dans le bon état d'esprit.`,
+        partner ? `Massage refusé par ${partner}, l'ambiance n'y est pas.` : `Auto-massage raté, tu préfères reporter à plus tard.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'dance') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu danses avec ${partner}, rythme et harmonie parfaits.` : `Tu danses seul(e), rythme et grâce naturelle.`,
+        partner ? `Danse sensuelle avec ${partner}, l'ambiance devient électrique.` : `Tu danses avec style, confiance et élégance.`,
+        partner ? `Vous dansez ensemble, ${partner} et toi, moment magique.` : `Danse libre, tu exprimes ta joie de vivre.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de danser avec ${partner}, mais il/elle n'est pas d'humeur.` : `Tu tentes de danser, mais tu n'es pas dans le bon rythme.`,
+        partner ? `Danse refusée par ${partner}, l'ambiance n'y est pas.` : `Danse ratée, tu préfères reporter à plus tard.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
   if (actionKey === 'lick') {
     const zones = ['seins','chatte','cul','oreille','ventre'];
     const poss = { seins: 'ses', chatte: 'sa', cul: 'son', oreille: 'son', ventre: 'son' };
@@ -1389,7 +1492,58 @@ async function handleEconomyAction(interaction, actionKey) {
     } else {
       const texts = [
         'Tu hésites… les mots ne sortent pas.',
-        'Tu tentes un geste, mais le moment ne s’y prête pas.'
+        'Tu tentes un geste, mais le moment ne s'y prête pas.'
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'shower') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu prends une douche avec ${partner}, moment d'intimité partagé.` : `Tu prends une douche relaxante, détente et bien-être.`,
+        partner ? `Douche sensuelle avec ${partner}, l'eau coule sur vos corps.` : `Douche chaude, tu te détends sous le jet d'eau.`,
+        partner ? `Vous vous lavez ensemble, ${partner} et toi, moment de complicité.` : `Douche rafraîchissante, tu te sens revigoré(e).`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de prendre une douche avec ${partner}, mais il/elle préfère être seul(e).` : `Tu tentes de prendre une douche, mais l'eau est froide.`,
+        partner ? `Douche refusée par ${partner}, l'ambiance n'y est pas.` : `Douche ratée, tu préfères reporter à plus tard.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'bed') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu t'allonges au lit avec ${partner}, moment de détente partagé.` : `Tu t'allonges au lit, repos et relaxation.`,
+        partner ? `Lit douillet avec ${partner}, vous vous détendez ensemble.` : `Lit confortable, tu te reposes paisiblement.`,
+        partner ? `Vous vous couchez ensemble, ${partner} et toi, moment de calme.` : `Tu te couches, prêt(e) pour une bonne nuit.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de t'allonger avec ${partner}, mais il/elle préfère être seul(e).` : `Tu tentes de te coucher, mais tu n'arrives pas à dormir.`,
+        partner ? `Lit refusé par ${partner}, l'ambiance n'y est pas.` : `Repos raté, tu préfères rester éveillé(e).`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'sleep') {
+    const partner = interaction.options.getUser('cible', false);
+    if (success) {
+      const texts = [
+        partner ? `Tu t'endors avec ${partner}, sommeil paisible et réparateur.` : `Tu t'endors, sommeil profond et réparateur.`,
+        partner ? `Dodo avec ${partner}, vous dormez paisiblement ensemble.` : `Tu dors, rêves doux et repos complet.`,
+        partner ? `Vous vous endormez ensemble, ${partner} et toi, moment de sérénité.` : `Tu t'endors, prêt(e) pour de beaux rêves.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        partner ? `Tu tentes de dormir avec ${partner}, mais il/elle préfère être seul(e).` : `Tu tentes de dormir, mais tu n'arrives pas à t'endormir.`,
+        partner ? `Sommeil refusé par ${partner}, l'ambiance n'y est pas.` : `Dodo raté, tu préfères rester éveillé(e).`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
