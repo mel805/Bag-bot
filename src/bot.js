@@ -938,6 +938,8 @@ async function handleEconomyAction(interaction, actionKey) {
           const arrP = Array.from(partnerCandidates.values());
           partner = arrP[Math.floor(Math.random() * arrP.length)].user;
           console.log('[Tromper] Selected partner:', partner.id);
+        } else {
+          console.log('[Tromper] No partner candidates available');
         }
       } else {
         console.log('[Tromper] Using provided partner:', partner.id);
@@ -955,7 +957,10 @@ async function handleEconomyAction(interaction, actionKey) {
         console.log('[Tromper] No third member available, will use simplified scenario');
       }
     } catch (e) {
-      console.warn('[Tromper] Error fetching members:', e?.message || e);
+      console.error('[Tromper] Error fetching members:', e?.message || e);
+      console.error('[Tromper] Stack trace:', e?.stack);
+      // Continue with simplified scenario if member fetching fails
+      console.log('[Tromper] Continuing with simplified scenario due to fetch error');
     }
     // Persist chosen partner for later use (mention + rewards/xp)
     if (partner) { 
@@ -3329,16 +3334,15 @@ client.once(Events.ClientReady, (readyClient) => {
           if (before !== nodes.length) console.log('[Music] Filtered out local Lavalink nodes because local Lavalink is disabled');
         }
       } catch (_) {}
-      // Final fallback: a few public nodes (multiple versions and protocols)
+      // Final fallback: tested and working public nodes (prioritized by reliability)
       if (!Array.isArray(nodes) || nodes.length === 0) {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
         nodes = [
-          { identifier: 'ajieblogs-v4-80', host: 'lava-v4.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
-          { identifier: 'ajieblogs-v3-80', host: 'lava-v3.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
-          { identifier: 'ajieblogs-v4-443', host: 'lava-v4.ajieblogs.eu.org', port: 443, password: 'https://dsc.gg/ajidevserver', secure: true, retryAmount: 3, retryDelay: 10000 },
-          { identifier: 'ajieblogs-v3-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: 'https://dsc.gg/ajidevserver', secure: true, retryAmount: 3, retryDelay: 10000 }
+          { identifier: 'ajieblogs-v4-80-primary', host: 'lava-v4.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
+          { identifier: 'ajieblogs-v3-80-secondary', host: 'lava-v3.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
+          { identifier: 'darrennathanael-http', host: 'lavalink.darrennathanael.com', port: 443, password: 'darrennathanael.com', secure: true, retryAmount: 3, retryDelay: 10000 }
         ];
-        console.log('[Music] Using default public nodes: ajieblogs v3/v4 (80/443)');
+        console.log('[Music] Using tested working nodes: ajieblogs v4/v3 (80), darrennathanael (443)');
       }
       // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
       if (shouldEnableLocalLavalink()) {

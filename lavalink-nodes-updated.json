@@ -1,0 +1,72 @@
+[
+  {
+    "identifier": "insouciant-dev",
+    "host": "lavalink.insouciant.dev",
+    "port": 443,
+    "password": "insouciant.dev",
+    "secure": true,
+    "retryAmount": 3,
+    "retryDelay": 10000,
+    "note": "Lavalink public node (insouciant.dev) - SSL"
+  },
+  {
+    "identifier": "darrennathanael",
+    "host": "lavalink.darrennathanael.com",
+    "port": 443,
+    "password": "darrennathanael.com",
+    "secure": true,
+    "retryAmount": 3,
+    "retryDelay": 10000,
+    "note": "Lavalink public node (darrennathanael) - SSL"
+  },
+  {
+    "identifier": "botsuniversity",
+    "host": "lavalink.botsuniversity.ml",
+    "port": 443,
+    "password": "botsuniversity.ml",
+    "secure": true,
+    "retryAmount": 3,
+    "retryDelay": 10000,
+    "note": "Lavalink public node (botsuniversity) - SSL"
+  },
+  {
+    "identifier": "ajieblogs-v4-80-backup",
+    "host": "lava-v4.ajieblogs.eu.org",
+    "port": 80,
+    "password": "https://dsc.gg/ajidevserver",
+    "secure": false,
+    "retryAmount": 3,
+    "retryDelay": 10000,
+    "note": "Lavalink v4 non-SSL (ajieblogs) - Backup"
+  },
+  {
+    "identifier": "ajieblogs-v3-80-backup",
+    "host": "lava-v3.ajieblogs.eu.org",
+    "port": 80,
+    "password": "https://dsc.gg/ajidevserver",
+    "secure": false,
+    "retryAmount": 3,
+    "retryDelay": 10000,
+    "note": "Lavalink v3 non-SSL (ajieblogs) - Backup"
+  },
+  {
+    "identifier": "local-v4-proxy",
+    "host": "127.0.0.1",
+    "port": 2334,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 5,
+    "retryDelay": 30000,
+    "note": "Local v4 via ws-proxy (v3 API) non-SSL"
+  },
+  {
+    "identifier": "local-v3",
+    "host": "127.0.0.1",
+    "port": 2340,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 5,
+    "retryDelay": 30000,
+    "note": "Local Lavalink v3 non-SSL"
+  }
+]
