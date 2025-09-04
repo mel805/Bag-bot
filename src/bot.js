@@ -922,27 +922,47 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   // Special storyline for tromper (NSFW): actor surprises target with a random third member
   if (actionKey === 'tromper') {
+    console.log('[Tromper] Starting tromper action for user:', interaction.user.id);
     let partner = initialPartner;
     let third = null;
     try {
+      console.log('[Tromper] Fetching guild members...');
       const all = await interaction.guild.members.fetch();
+      console.log('[Tromper] Fetched', all.size, 'members');
+      
       // If no partner provided, pick a random valid member
       if (!partner) {
         const partnerCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+        console.log('[Tromper] Partner candidates:', partnerCandidates.size);
         if (partnerCandidates.size > 0) {
           const arrP = Array.from(partnerCandidates.values());
           partner = arrP[Math.floor(Math.random() * arrP.length)].user;
+          console.log('[Tromper] Selected partner:', partner.id);
         }
+      } else {
+        console.log('[Tromper] Using provided partner:', partner.id);
       }
+      
       // Pick third, excluding actor and partner if present
+      // Only try to find a third member if there are at least 3 members total (actor + partner + third)
       const thirdCandidates = all.filter(m => !m.user.bot && m.user.id !== interaction.user.id && (!partner || m.user.id !== partner.id));
+      console.log('[Tromper] Third member candidates:', thirdCandidates.size);
       if (thirdCandidates.size > 0) {
         const arrT = Array.from(thirdCandidates.values());
         third = arrT[Math.floor(Math.random() * arrT.length)].user;
+        console.log('[Tromper] Selected third member:', third.id);
+      } else {
+        console.log('[Tromper] No third member available, will use simplified scenario');
       }
-    } catch (_) {}
+    } catch (e) {
+      console.warn('[Tromper] Error fetching members:', e?.message || e);
+    }
     // Persist chosen partner for later use (mention + rewards/xp)
-    if (partner) { initialPartner = partner; tromperResolvedPartner = partner; }
+    if (partner) { 
+      initialPartner = partner; 
+      tromperResolvedPartner = partner; 
+      console.log('[Tromper] Partner persisted for rewards');
+    }
     if (!third) {
       if (success) {
         const texts = partner ? [
@@ -964,6 +984,7 @@ async function handleEconomyAction(interaction, actionKey) {
         msgText = texts[randInt(0, texts.length - 1)];
       }
     } else {
+      console.log('[Tromper] Applying penalties to third member:', third.id);
       // Apply special penalties to the third member
       const thirdUser = await getEconomyUser(interaction.guild.id, third.id);
       const loseMin = Math.max(1, Number(conf.failMoneyMin||5));
@@ -976,7 +997,9 @@ async function handleEconomyAction(interaction, actionKey) {
       thirdUser.amount = Math.max(0, (thirdUser.amount||0) + thirdMoneyDelta);
       if (thirdCharmDelta) thirdUser.charm = (thirdUser.charm||0) + thirdCharmDelta;
       if (thirdPervDelta) thirdUser.perversion = (thirdUser.perversion||0) + thirdPervDelta;
+      console.log('[Tromper] Saving third member economy data...');
       await setEconomyUser(interaction.guild.id, third.id, thirdUser);
+      console.log('[Tromper] Third member penalties applied successfully');
       // Messages
       if (success) {
         const texts = partner ? [
@@ -1008,6 +1031,7 @@ async function handleEconomyAction(interaction, actionKey) {
         + (thirdPervDelta ? `, Perversion ${thirdPervDelta>=0?'+':''}${thirdPervDelta}` : '');
       global.__eco_tromper_third = { name: 'Sanction du tiers', value: thirdFieldVal, inline: false };
     }
+    console.log('[Tromper] Tromper logic completed successfully');
   }
   // Decide how to render the image: embed if definitely image, else post link in message content
   let imageIsDirect = false;
@@ -3305,14 +3329,16 @@ client.once(Events.ClientReady, (readyClient) => {
           if (before !== nodes.length) console.log('[Music] Filtered out local Lavalink nodes because local Lavalink is disabled');
         }
       } catch (_) {}
-      // Final fallback: a few public nodes (TLS 443 preferred)
+      // Final fallback: a few public nodes (multiple versions and protocols)
       if (!Array.isArray(nodes) || nodes.length === 0) {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
         nodes = [
-          { identifier: 'ajieblogs-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: pw, secure: true, retryAmount: 3, retryDelay: 10000 },
-          { identifier: 'oops-443', host: 'lavalink.oops.wtf', port: 443, password: pw, secure: true, retryAmount: 3, retryDelay: 10000 }
+          { identifier: 'ajieblogs-v4-80', host: 'lava-v4.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
+          { identifier: 'ajieblogs-v3-80', host: 'lava-v3.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
+          { identifier: 'ajieblogs-v4-443', host: 'lava-v4.ajieblogs.eu.org', port: 443, password: 'https://dsc.gg/ajidevserver', secure: true, retryAmount: 3, retryDelay: 10000 },
+          { identifier: 'ajieblogs-v3-443', host: 'lava-v3.ajieblogs.eu.org', port: 443, password: 'https://dsc.gg/ajidevserver', secure: true, retryAmount: 3, retryDelay: 10000 }
         ];
-        console.log('[Music] Using default public nodes: ajieblogs:443, oops:443');
+        console.log('[Music] Using default public nodes: ajieblogs v3/v4 (80/443)');
       }
       // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
       if (shouldEnableLocalLavalink()) {
