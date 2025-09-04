@@ -855,6 +855,15 @@ async function handleEconomyAction(interaction, actionKey) {
       });
     }
   }
+  // Also defer early for common economy actions which can hit storage and GIF lookups
+  if (!hasDeferred && (actionKey === 'work' || actionKey === 'fish' || actionKey === 'daily')) {
+    try {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply();
+        hasDeferred = true;
+      }
+    } catch (_) {}
+  }
   
   const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
   const now = Date.now();
@@ -1088,6 +1097,35 @@ async function handleEconomyAction(interaction, actionKey) {
     try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
     if (!imageIsDirect) {
       imageLinkForContent = String(imageUrl);
+    }
+  }
+  // Try to resolve non-direct GIF page URLs (e.g., Tenor/Giphy) and attach if needed
+  if (imageUrl && !imageIsDirect) {
+    // Defer before doing network lookups to avoid 3s timeout
+    try {
+      if (!hasDeferred && !interaction.deferred && !interaction.replied) {
+        await interaction.deferReply();
+        hasDeferred = true;
+      }
+    } catch (_) {}
+    // Attempt to resolve to a direct media URL
+    try {
+      const resolved = await resolveGifUrl(imageUrl, { timeoutMs: 2000 });
+      if (resolved) {
+        imageUrl = resolved;
+        try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
+        imageLinkForContent = imageIsDirect ? null : String(imageUrl);
+      }
+    } catch (_) {}
+    // As a final fallback, try to fetch and attach the image bytes
+    if (!imageIsDirect) {
+      try {
+        const att = await tryCreateImageAttachmentFromUrl(imageUrl, { timeoutMs: 2500 });
+        if (att && att.attachment) {
+          imageAttachment = att;
+          imageLinkForContent = null;
+        }
+      } catch (_) {}
     }
   }
   // Only set msgText from config if it hasn't been set by special action logic (like tromper)
