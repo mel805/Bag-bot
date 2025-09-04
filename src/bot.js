@@ -842,18 +842,32 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring
   trackInteraction(interaction, `economy-${actionKey}`);
+  const respondAndUntrack = async (payload, preferFollowUp = false) => {
+    try {
+      if (interaction.deferred || interaction.replied) {
+        const cloned = { ...(payload || {}) };
+        try { if ('ephemeral' in cloned) delete cloned.ephemeral; } catch (_) {}
+        if (preferFollowUp) {
+          return await interaction.followUp(cloned);
+        }
+        return await interaction.editReply(cloned);
+      }
+      return await interaction.reply(payload);
+    } finally {
+      try { untrackInteraction(interaction); } catch (_) {}
+    }
+  };
   
   try {
     const eco = await getEconomyConfig(interaction.guild.id);
     // Disallow bot users executing actions
     if (interaction.user?.bot) {
-      untrackInteraction(interaction);
-      return interaction.reply({ content: '⛔ Les bots ne peuvent pas utiliser cette action.', ephemeral: true });
+      return respondAndUntrack({ content: '⛔ Les bots ne peuvent pas utiliser cette action.', ephemeral: true });
     }
   // Check enabled
   const enabled = Array.isArray(eco.actions?.enabled) ? eco.actions.enabled : [];
   if (enabled.length && !enabled.includes(actionKey)) {
-    return interaction.reply({ content: `⛔ Action désactivée.`, ephemeral: true });
+    return respondAndUntrack({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
   const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper'];
@@ -868,7 +882,7 @@ async function handleEconomyAction(interaction, actionKey) {
     }
   } catch (_) {}
   if (initialPartner && initialPartner.bot) {
-    return interaction.reply({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
+    return respondAndUntrack({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
   }
   // For heavier actions like 'tromper', defer reply IMMEDIATELY to avoid 3s timeout
   let hasDeferred = false;
@@ -918,11 +932,11 @@ async function handleEconomyAction(interaction, actionKey) {
   const baseCd = Number(conf.cooldown || (eco.settings?.cooldowns?.[actionKey] || 0));
   let cdLeft = Math.max(0, (u.cooldowns?.[actionKey] || 0) - now);
   if (cdLeft > 0) {
-    if (hasDeferred) {
-      return interaction.editReply({ content: `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.` });
-    } else {
-      return interaction.reply({ content: `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.`, ephemeral: true });
+    const txt = `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.`;
+    if (interaction.deferred || hasDeferred) {
+      return respondAndUntrack({ content: txt });
     }
+    return respondAndUntrack({ content: txt, ephemeral: true });
   }
   // Booster cooldown multiplier
   let cdToSet = baseCd;
@@ -1820,9 +1834,9 @@ async function handleEconomyAction(interaction, actionKey) {
   // Special cases
   if (actionKey === 'give') {
     const cible = interaction.options.getUser('membre', true);
-    if (cible?.bot) return interaction.reply({ content: '⛔ Vous ne pouvez pas donner à un bot.', ephemeral: true });
+    if (cible?.bot) return respondAndUntrack({ content: '⛔ Vous ne pouvez pas donner à un bot.', ephemeral: true });
     const montant = interaction.options.getInteger('montant', true);
-    if ((u.amount||0) < montant) return interaction.reply({ content: `Solde insuffisant.`, ephemeral: true });
+    if ((u.amount||0) < montant) return respondAndUntrack({ content: `Solde insuffisant.`, ephemeral: true });
     u.amount = (u.amount||0) - montant;
     const tu = await getEconomyUser(interaction.guild.id, cible.id);
     tu.amount = (tu.amount||0) + montant;
@@ -1855,11 +1869,11 @@ async function handleEconomyAction(interaction, actionKey) {
     const parts = [String(cible)];
     if (imageLinkForContent) parts.push(imageLinkForContent);
     const content = parts.filter(Boolean).join('\n') || undefined;
-    return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+    return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
   }
   if (actionKey === 'steal') {
     const cible = interaction.options.getUser('membre', true);
-    if (cible?.bot) return interaction.reply({ content: '⛔ Vous ne pouvez pas voler un bot.', ephemeral: true });
+    if (cible?.bot) return respondAndUntrack({ content: '⛔ Vous ne pouvez pas voler un bot.', ephemeral: true });
     const tu = await getEconomyUser(interaction.guild.id, cible.id);
     if (success) {
       const canSteal = Math.max(0, Math.min(Number(conf.moneyMax||0), tu.amount||0));
@@ -1893,7 +1907,7 @@ async function handleEconomyAction(interaction, actionKey) {
         const parts = [String(cible)];
         if (imageLinkForContent) parts.push(imageLinkForContent);
         const content = parts.filter(Boolean).join('\n') || undefined;
-        return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
+        return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
       }
     } else {
       const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
@@ -1925,7 +1939,7 @@ async function handleEconomyAction(interaction, actionKey) {
         const parts = [String(cible)];
         if (imageLinkForContent) parts.push(imageLinkForContent);
         const content = parts.filter(Boolean).join('\n') || undefined;
-        return interaction.reply({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
+        return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
       }
     }
   }
