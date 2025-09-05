@@ -863,7 +863,7 @@ async function handleEconomyAction(interaction, actionKey) {
   
   try {
     // Early defer for heavy actions BEFORE any storage access to avoid 3s timeout
-    const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'nibble', 'branler', 'doigter'];
+    const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'nibble', 'branler', 'doigter', 'tromper', 'orgie'];
     let hasDeferred = false;
     if (heavyActions.includes(actionKey)) {
       try {
