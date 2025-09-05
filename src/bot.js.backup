@@ -146,7 +146,7 @@ async function resolveGifUrl(url, opts) {
   return normalized;
 }
 // Try to detect if a URL points to an image by checking Content-Type via HEAD
-async function urlContentTypeIsImage(url, timeoutMs = Math.min(2000, 1500)) {
+async function urlContentTypeIsImage(url, timeoutMs = 2000) {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, timeoutMs);
@@ -298,66 +298,6 @@ require('dotenv').config();
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
 
-
-// RENDER OPTIMIZATION: Déférer immédiatement TOUTES les interactions
-async function immediatelyDeferInteraction(interaction, actionType = 'command') {
-  if (!interaction.deferred && !interaction.replied) {
-    try {
-      await interaction.deferReply();
-      
-// RENDER OPTIMIZATION: Détection et optimisation environnement Render
-const isRenderEnvironment = process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RENDER_EXTERNAL_URL;
-if (isRenderEnvironment) {
-  console.log('[RENDER-OPT] Environnement Render détecté - Optimisations activées');
-  
-  // Réduire les timeouts par défaut
-  process.env.DEFAULT_TIMEOUT = '1500';
-  process.env.NETWORK_TIMEOUT = '2000';
-  process.env.INTERACTION_TIMEOUT = '2500';
-  
-  // Optimiser la garbage collection
-  if (global.gc) {
-    setInterval(() => {
-      try { global.gc(); } catch (_) {}
-    }, 30000);
-  }
-}
-
-console.log(`[RENDER-OPT] Interaction ${actionType} déférée immédiatement`);
-      return true;
-    } catch (error) {
-      console.warn(`[RENDER-OPT] Échec defer ${actionType}:`, error.message);
-      return false;
-    }
-  }
-  return interaction.deferred;
-
-// RENDER OPTIMIZATION: Fallbacks pour opérations critiques
-const renderSafeReply = async (interaction, content, options = {}) => {
-  const payload = typeof content === 'string' ? { content, ...options } : content;
-  
-  try {
-    if (interaction.deferred) {
-      return await interaction.editReply(payload);
-    } else if (!interaction.replied) {
-      return await interaction.reply(payload);
-    } else {
-      return await interaction.followUp(payload);
-    }
-  } catch (error) {
-    console.error('[RENDER-SAFE] Reply failed:', error.message);
-    // Dernière tentative avec followUp
-    try {
-      if (!interaction.replied) {
-        return await interaction.reply({ content: '⚠️ Réponse avec délai', ephemeral: true });
-      }
-    } catch (_) {
-      console.error('[RENDER-SAFE] All reply methods failed');
-    }
-  }
-};
-}
-
 // Interaction monitoring for debugging stuck interactions
 const pendingInteractions = new Map();
 
@@ -378,7 +318,7 @@ function trackInteraction(interaction, actionType = 'unknown') {
       console.warn(`[Monitor] Interaction ${actionType} from ${interaction.user.tag || interaction.user.id} timed out after 30s`);
       pendingInteractions.delete(key);
     }
-  }, 2000);
+  }, 30000);
 }
 
 function untrackInteraction(interaction) {
@@ -902,14 +842,6 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring
   trackInteraction(interaction, `economy-${actionKey}`);
-
-  // RENDER OPTIMIZATION: Déférer IMMÉDIATEMENT avant tout traitement
-  const wasDeferred = await immediatelyDeferInteraction(interaction, `economy-${actionKey}`);
-  if (!wasDeferred && !interaction.replied) {
-    try {
-      await interaction.reply({ content: '⏳ Traitement en cours...', ephemeral: true });
-    } catch (_) {}
-  }
   let fallbackTimer = null;
   const clearFallbackTimer = () => { try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) {} };
   const respondAndUntrack = async (payload, preferFollowUp = false) => {
@@ -965,7 +897,7 @@ async function handleEconomyAction(interaction, actionKey) {
   // Check enabled
   const enabled = Array.isArray(eco.actions?.enabled) ? eco.actions.enabled : [];
   if (enabled.length && !enabled.includes(actionKey)) {
-    return renderSafeReply(interaction, "⛔ Action désactivée.", { ephemeral: true });
+    return respondAndUntrack({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
   const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
@@ -980,7 +912,7 @@ async function handleEconomyAction(interaction, actionKey) {
     }
   } catch (_) {}
   if (initialPartner && initialPartner.bot) {
-    return renderSafeReply(interaction, "⛔ Cible invalide: les bots sont exclus.", { ephemeral: true });
+    return respondAndUntrack({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
   }
   // Pour les actions lourdes comme 'tromper', s'assurer qu'on a bien defer (éviter double defer)
   if ((actionKey === 'tromper' || actionKey === 'orgie') && !hasDeferred) {
@@ -1105,7 +1037,7 @@ async function handleEconomyAction(interaction, actionKey) {
     let third = null;
     
     // Helper function for fetch with timeout - version optimisée
-    const fetchMembersWithTimeout = async (guild, timeoutMs = Math.min(800, 1500)) => {
+    const fetchMembersWithTimeout = async (guild, timeoutMs = 800) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
@@ -5462,7 +5394,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.channel.send({ embeds: [embed], files: __banner ? [__banner] : [] }).catch(()=>{});
       // Optionally lock channel
       try { await interaction.channel.permissionOverwrites?.edit?.(rec.userId, { ViewChannel: false }); } catch (_) {}
-      try { setTimeout(() => { try { interaction.channel?.delete?.('Ticket fermé'); } catch (_) {} }, 2000); } catch (_) {}
+      try { setTimeout(() => { try { interaction.channel?.delete?.('Ticket fermé'); } catch (_) {} }, 5000); } catch (_) {}
       return;
     }
     if (interaction.isButton() && interaction.customId === 'ticket_certify') {
