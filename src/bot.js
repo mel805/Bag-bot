@@ -879,7 +879,7 @@ async function handleEconomyAction(interaction, actionKey) {
                   await interaction.editReply({ content: '⏳ Toujours en cours… merci de patienter quelques secondes de plus.' });
                 }
               } catch (_) {}
-            }, 10000);
+            }, 5000);
           } catch (_) {}
         }
       } catch (error) {
@@ -1002,9 +1002,16 @@ async function handleEconomyAction(interaction, actionKey) {
     else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.karmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.karmaDelta||0)}`]; }
     imageUrl = Array.isArray(gifs.success) && gifs.success.length ? gifs.success[Math.floor(Math.random()*gifs.success.length)] : undefined;
   } else {
-    moneyDelta = -randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
-    if (conf.karma === 'charm') { u.charm = (u.charm||0) - Number(conf.failKarmaDelta||0); karmaField = ['Karma charme', `-${Number(conf.failKarmaDelta||0)}`]; }
-    else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
+    moneyDelta = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
+    const karmaDelta = Number(conf.failKarmaDelta||0);
+    if (conf.karma === 'charm') { 
+      u.charm = (u.charm||0) + karmaDelta; 
+      karmaField = ['Karma charme', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+    }
+    else if (conf.karma === 'perversion') { 
+      u.perversion = (u.perversion||0) + karmaDelta; 
+      karmaField = ['Karma perversion', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+    }
     imageUrl = Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined;
   }
   if (imageUrl) {
@@ -1019,7 +1026,7 @@ async function handleEconomyAction(interaction, actionKey) {
     let third = null;
     
     // Helper function for fetch with timeout
-    const fetchMembersWithTimeout = async (guild, timeoutMs = 1500) => {
+    const fetchMembersWithTimeout = async (guild, timeoutMs = 1000) => {
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Member fetch timeout')), timeoutMs)
       );
@@ -1044,7 +1051,7 @@ async function handleEconomyAction(interaction, actionKey) {
         console.log('[Tromper] Few cached members, attempting limited fetch with timeout...');
         try {
           // Fetch with strict timeout to avoid blocking
-          const fetched = await fetchMembersWithTimeout(interaction.guild, 1500);
+          const fetched = await fetchMembersWithTimeout(interaction.guild, 1000);
           const fetchedHumans = fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
           console.log('[Tromper] Fetched additional members:', fetchedHumans.size);
           
@@ -1055,6 +1062,15 @@ async function handleEconomyAction(interaction, actionKey) {
           console.warn('[Tromper] Limited fetch failed, using cache only:', fetchError.message);
           // Continue with cache only - this is acceptable
         }
+      }
+      
+      // Emergency fallback: if still no members available, use a simplified response
+      if (availableMembers.size === 0) {
+        console.warn('[Tromper] No members available, using simplified response');
+        const fallbackMsg = success ? 
+          'Action réussie ! (participants indisponibles)' : 
+          'Action échouée ! (participants indisponibles)';
+        return respondAndUntrack({ content: fallbackMsg, ephemeral: true });
       }
       
       // If no partner provided, auto-select a random eligible partner from available members
@@ -1117,14 +1133,15 @@ async function handleEconomyAction(interaction, actionKey) {
       console.log('[Tromper] Applying penalties to third member:', third.id);
       // Apply special penalties to the third member
       const thirdUser = await getEconomyUser(interaction.guild.id, third.id);
-      const loseMin = Math.max(1, Number(conf.failMoneyMin||5));
-      const loseMax = Math.max(loseMin, Number(conf.failMoneyMax||10));
-      const thirdMoneyDelta = -randInt(loseMin, loseMax);
+      const moneyMin = Number(conf.failMoneyMin||5);
+      const moneyMax = Number(conf.failMoneyMax||10);
+      const thirdMoneyDelta = randInt(Math.min(moneyMin, moneyMax), Math.max(moneyMin, moneyMax));
+      const karmaDelta = Number(conf.failKarmaDelta||1);
       let thirdCharmDelta = 0;
       let thirdPervDelta = 0;
-      if (conf.karma === 'perversion') thirdPervDelta = Number(conf.failKarmaDelta||1);
-      else if (conf.karma === 'charm') thirdCharmDelta = -Number(conf.failKarmaDelta||1);
-      thirdUser.amount = Math.max(0, (thirdUser.amount||0) + thirdMoneyDelta);
+      if (conf.karma === 'perversion') thirdPervDelta = karmaDelta;
+      else if (conf.karma === 'charm') thirdCharmDelta = karmaDelta;
+      thirdUser.amount = Math.max(0, (thirdUser.amount||0) - Math.abs(thirdMoneyDelta));
       if (thirdCharmDelta) thirdUser.charm = (thirdUser.charm||0) + thirdCharmDelta;
       if (thirdPervDelta) thirdUser.perversion = (thirdUser.perversion||0) + thirdPervDelta;
       console.log('[Tromper] Saving third member economy data...');
@@ -1160,6 +1177,9 @@ async function handleEconomyAction(interaction, actionKey) {
         + (thirdCharmDelta ? `, Charme ${thirdCharmDelta>=0?'+':''}${thirdCharmDelta}` : '')
         + (thirdPervDelta ? `, Perversion ${thirdPervDelta>=0?'+':''}${thirdPervDelta}` : '');
       global.__eco_tromper_third = { name: 'Sanction du tiers', value: thirdFieldVal, inline: false };
+      // Store pings for content (partner + third)
+      const tromperPings = [partner, third].filter(Boolean).map(u => `<@${u.id}>`).join(' ');
+      global.__eco_tromper_pings = tromperPings;
     }
     console.log('[Tromper] Tromper logic completed successfully');
   }
@@ -1173,7 +1193,12 @@ async function handleEconomyAction(interaction, actionKey) {
       if (availableMembers.size < 6) {
         try {
           const fetched = await interaction.guild.members.fetch({ limit: 30, force: false });
-          availableMembers = availableMembers.concat(fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id));
+          // Merge the fetched members with existing ones (both are Collections)
+          fetched.forEach((member, id) => {
+            if (!member.user.bot && member.user.id !== interaction.user.id) {
+              availableMembers.set(id, member);
+            }
+          });
         } catch (e) {
           console.warn('[Orgie] Fetch members fallback failed:', e?.message || e);
         }
@@ -1184,19 +1209,18 @@ async function handleEconomyAction(interaction, actionKey) {
       // Determine number of random others: 4 if partner exists, else 5
       const needed = partner ? 4 : 5;
       const pool = Array.from(availableMembers.values())
-        .map(m => m.user)
-        .filter(u2 => !u2.bot && !excludeIds.has(u2.id));
+        .filter(m => !m.user.bot && !excludeIds.has(m.user.id));
       for (let i = 0; i < needed && pool.length > 0; i++) {
         const idx = Math.floor(Math.random() * pool.length);
         participants.push(pool[idx]);
-        excludeIds.add(pool[idx].id);
+        excludeIds.add(pool[idx].user.id);
         pool.splice(idx, 1);
       }
     } catch (e) {
       console.error('[Orgie] Error selecting participants:', e?.message || e);
     }
-    const everyone = [partner, ...participants].filter(Boolean);
-    const list = everyone.length ? everyone.map(u2 => String(u2)).join(', ') : 'personne';
+    const everyone = [partner, ...participants.map(m => m.user)].filter(Boolean);
+    const list = everyone.length ? everyone.map(u2 => `<@${u2.id}>`).join(', ') : 'personne';
     if (success) {
       const texts = partner ? [
         `Orgie réussie avec ${partner} et ${participants.length} autres: la pièce s'enflamme.`,
@@ -1221,6 +1245,8 @@ async function handleEconomyAction(interaction, actionKey) {
       const label = `Participants (${everyone.length})`;
       const val = `${list}`;
       global.__eco_orgie_participants = { name: label, value: val, inline: false };
+      // Store pings for content
+      global.__eco_orgie_pings = list;
     }
     console.log('[Orgie] Orgie logic completed successfully');
   }
@@ -1243,9 +1269,9 @@ async function handleEconomyAction(interaction, actionKey) {
         hasDeferred = true;
       }
     } catch (_) {}
-    // Attempt to resolve to a direct media URL with better error handling
+    // Attempt to resolve to a direct media URL with better error handling and shorter timeout
     try {
-      const resolved = await resolveGifUrl(imageUrl, { timeoutMs: 2000 });
+      const resolved = await resolveGifUrl(imageUrl, { timeoutMs: 1500 });
       if (resolved) {
         imageUrl = resolved;
         try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
@@ -2004,20 +2030,27 @@ async function handleEconomyAction(interaction, actionKey) {
         return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
       }
     } else {
-      const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
-      u.amount = Math.max(0, (u.amount||0) - lost);
-      tu.amount = (tu.amount||0) + lost;
+      const lostAmount = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
+      u.amount = Math.max(0, (u.amount||0) - Math.abs(lostAmount));
+      tu.amount = (tu.amount||0) + Math.abs(lostAmount);
       // Karma on fail
       let stealKarmaField = null;
-      if (conf.karma === 'charm' && Number(conf.failKarmaDelta||0) !== 0) { u.charm = (u.charm||0) - Number(conf.failKarmaDelta||0); stealKarmaField = ['Karma charme', `-${Number(conf.failKarmaDelta||0)}`]; }
-      else if (conf.karma === 'perversion' && Number(conf.failKarmaDelta||0) !== 0) { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); stealKarmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
+      const karmaDelta = Number(conf.failKarmaDelta||0);
+      if (conf.karma === 'charm' && karmaDelta !== 0) { 
+        u.charm = (u.charm||0) + karmaDelta; 
+        stealKarmaField = ['Karma charme', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+      }
+      else if (conf.karma === 'perversion' && karmaDelta !== 0) { 
+        u.perversion = (u.perversion||0) + karmaDelta; 
+        stealKarmaField = ['Karma perversion', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+      }
       setCd('steal', cdToSet);
       await setEconomyUser(interaction.guild.id, interaction.user.id, u);
       await setEconomyUser(interaction.guild.id, cible.id, tu);
       const currency = eco.currency?.name || 'BAG$';
-      const desc = msgText ? `${msgText}\nVous avez été repéré par ${cible} et perdu ${lost} ${currency}.` : `Vous avez été repéré par ${cible} et perdu ${lost} ${currency}.`;
+      const desc = msgText ? `${msgText}\nVous avez été repéré par ${cible} et perdu ${Math.abs(lostAmount)} ${currency}.` : `Vous avez été repéré par ${cible} et perdu ${Math.abs(lostAmount)} ${currency}.`;
       const fields = [
-        { name: 'Argent', value: `-${lost} ${currency}`, inline: true },
+        { name: 'Argent', value: `-${Math.abs(lostAmount)} ${currency}`, inline: true },
         { name: 'Solde argent', value: String(u.amount), inline: true },
         ...(stealKarmaField ? [{ name: 'Karma', value: `${stealKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${stealKarmaField[1]}`, inline: true }] : []),
         { name: 'Solde charme', value: String(u.charm||0), inline: true },
@@ -2107,13 +2140,30 @@ async function handleEconomyAction(interaction, actionKey) {
   else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
   const parts = [initialPartner ? String(initialPartner) : undefined];
   if (imageLinkForContent) parts.push(imageLinkForContent);
+  
+  // Add pings for special actions
+  if (global.__eco_orgie_pings) {
+    parts.push(`🔥 ${global.__eco_orgie_pings}`);
+  }
+  if (global.__eco_tromper_pings) {
+    parts.push(`💫 ${global.__eco_tromper_pings}`);
+  }
+  
   const content = parts.filter(Boolean).join('\n') || undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
   try { delete global.__eco_orgie_participants; } catch (_) {}
+  try { delete global.__eco_orgie_pings; } catch (_) {}
+  try { delete global.__eco_tromper_pings; } catch (_) {}
   
   // Final safety check to ensure interaction is always responded to
   try {
-    return await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
+    // Add emergency timeout for final response
+    const responsePromise = respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
+    const emergencyTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Emergency timeout')), 8000)
+    );
+    
+    return await Promise.race([responsePromise, emergencyTimeout]);
   } catch (error) {
     console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
     // Last resort: try followUp if possible
@@ -5477,9 +5527,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       modal.addComponents(
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('karma').setLabel("Type (charm/perversion/none)").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.karma||'none'))),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('karmaDelta').setLabel('Delta (succès)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.karmaDelta||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMin').setLabel('Argent min (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMin||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMax').setLabel('Argent max (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMax||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failKarmaDelta').setLabel('Delta Karma (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failKarmaDelta||0)))
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMin').setLabel('Argent min (échec) - accepte négatif').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMin||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMax').setLabel('Argent max (échec) - accepte négatif').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMax||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failKarmaDelta').setLabel('Delta Karma (échec) - accepte négatif').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failKarmaDelta||0)))
       );
       try { 
         return await interaction.showModal(modal); 
@@ -5553,9 +5603,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ...(c||{}), 
           karma, 
           karmaDelta: Math.max(0, karmaDelta), 
-          failMoneyMin: Math.max(0, failMoneyMin), 
-          failMoneyMax: Math.max(0, failMoneyMax), 
-          failKarmaDelta: Math.max(0, failKarmaDelta) 
+          failMoneyMin: failMoneyMin, 
+          failMoneyMax: failMoneyMax, 
+          failKarmaDelta: failKarmaDelta 
         };
         
         await updateEconomyConfig(interaction.guild.id, eco);
