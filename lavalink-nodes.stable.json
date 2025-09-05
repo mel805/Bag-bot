@@ -17,36 +17,6 @@
     "secure": false,
     "retryAmount": 3,
     "retryDelay": 10000,
-    "note": "Lavalink v3 non-SSL (ajieblogs) - Secondary - TESTED WORKING"
-  },
-  {
-    "identifier": "darrennathanael-http",
-    "host": "lavalink.darrennathanael.com",
-    "port": 443,
-    "password": "darrennathanael.com",
-    "secure": true,
-    "retryAmount": 3,
-    "retryDelay": 10000,
-    "note": "Lavalink public node (darrennathanael) - SSL - HTTP OK"
-  },
-  {
-    "identifier": "local-v4-proxy-nonssl",
-    "host": "127.0.0.1",
-    "port": 2334,
-    "password": "youshallnotpass",
-    "secure": false,
-    "retryAmount": 5,
-    "retryDelay": 30000,
-    "note": "Local v4 via ws-proxy (v3 API) non-SSL"
-  },
-  {
-    "identifier": "local-v3-nonssl",
-    "host": "127.0.0.1",
-    "port": 2340,
-    "password": "youshallnotpass",
-    "secure": false,
-    "retryAmount": 5,
-    "retryDelay": 30000,
-    "note": "Local Lavalink v3 non-SSL"
+    "note": "Lavalink v3 non-SSL (ajieblogs) - Secondary - HTTP OK"
   }
 ]

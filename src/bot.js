@@ -4089,10 +4089,9 @@ client.once(Events.ClientReady, (readyClient) => {
         const pw = String(process.env.LAVALINK_PASSWORD || 'youshallnotpass');
         nodes = [
           { identifier: 'ajieblogs-v4-80-primary', host: 'lava-v4.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
-          { identifier: 'ajieblogs-v3-80-secondary', host: 'lava-v3.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 },
-          { identifier: 'darrennathanael-http', host: 'lavalink.darrennathanael.com', port: 443, password: 'darrennathanael.com', secure: true, retryAmount: 3, retryDelay: 10000 }
+          { identifier: 'ajieblogs-v3-80-secondary', host: 'lava-v3.ajieblogs.eu.org', port: 80, password: 'https://dsc.gg/ajidevserver', secure: false, retryAmount: 3, retryDelay: 10000 }
         ];
-        console.log('[Music] Using tested working nodes: ajieblogs v4/v3 (80), darrennathanael (443)');
+        console.log('[Music] Using tested working nodes: ajieblogs v4/v3 (80)');
       }
       // If local lavalink enabled, add it as last-resort fallback (proxy port 2334)
       if (shouldEnableLocalLavalink()) {
