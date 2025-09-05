@@ -1,0 +1,24 @@
+[
+  {
+    "identifier": "ajieblogs-v3-primary",
+    "host": "lava-v3.ajieblogs.eu.org",
+    "port": 80,
+    "password": "https://dsc.gg/ajidevserver",
+    "secure": false,
+    "retryAmount": 5,
+    "retryDelay": 8000,
+    "priority": 1,
+    "note": "Public Lavalink v3 (ajieblogs) - Verified working HTTP OK 292ms"
+  },
+  {
+    "identifier": "local-v3-fallback",
+    "host": "127.0.0.1",
+    "port": 2340,
+    "password": "youshallnotpass",
+    "secure": false,
+    "retryAmount": 8,
+    "retryDelay": 15000,
+    "priority": 2,
+    "note": "Local Lavalink v3 - Fallback if public node fails"
+  }
+]
