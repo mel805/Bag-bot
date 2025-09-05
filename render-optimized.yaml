@@ -31,7 +31,7 @@ services:
           property: connectionString
       # OPTIMISATIONS RENDER SPÉCIFIQUES
       - key: NODE_OPTIONS
-        value: "--max-old-space-size=400 --optimize-for-size --max-semi-space-size=64"
+        value: "--max-old-space-size=400 --max-semi-space-size=64"
       - key: RENDER
         value: "true"
       - key: NODE_ENV
@@ -53,7 +53,7 @@ services:
       - key: MUSIC_V3_ONLY
         value: "true"
       - key: LAVALINK_NODES
-        value: '[{"identifier":"ajieblogs-v3-render","host":"lava-v3.ajieblogs.eu.org","port":80,"password":"https://dsc.gg/ajidevserver","secure":false,"retryAmount":3,"retryDelay":5000,"priority":1,"note":"Lavalink V3 optimisé pour Render"}]'
+        value: '[{"identifier":"darrennathanael-ssl","host":"lavalink.darrennathanael.com","port":443,"password":"darrennathanael.com","secure":true,"retryAmount":2,"retryDelay":3000,"priority":1,"timeout":2000,"note":"Primary SSL node - 61ms avg"},{"identifier":"ajieblogs-v3-backup","host":"lava-v3.ajieblogs.eu.org","port":80,"password":"https://dsc.gg/ajidevserver","secure":false,"retryAmount":2,"retryDelay":4000,"priority":2,"timeout":2000,"note":"Backup node - 471ms avg"}]'
       # OPTIMISATIONS PERFORMANCE
       - key: FORCE_DEFER_ALL_INTERACTIONS
         value: "true"
@@ -61,6 +61,24 @@ services:
         value: "true"
       - key: ENABLE_RENDER_OPTIMIZATIONS
         value: "true"
+      # LIMITES MUSIQUE POUR RENDER
+      - key: MUSIC_MAX_CONCURRENT_CONNECTIONS
+        value: "3"
+      - key: MUSIC_CONNECTION_TIMEOUT
+        value: "2000"
+      - key: MUSIC_MAX_QUEUE_SIZE
+        value: "25"
+      - key: MUSIC_MAX_TRACK_DURATION
+        value: "600"
+      - key: MUSIC_ENABLE_FALLBACK
+        value: "true"
+      # LIMITES DISCORD
+      - key: DISCORD_MAX_VOICE_CONNECTIONS
+        value: "1"
+      - key: DISCORD_VOICE_TIMEOUT
+        value: "5000"
+      - key: DISCORD_RECONNECT_ATTEMPTS
+        value: "2"
     volumes:
       - name: bag-bot-data
         mountPath: /var/data

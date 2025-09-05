@@ -1,0 +1,41 @@
+[
+  {
+    "identifier": "ajieblogs-v3-primary",
+    "host": "lava-v3.ajieblogs.eu.org",
+    "port": 80,
+    "password": "https://dsc.gg/ajidevserver",
+    "secure": false,
+    "retryAmount": 2,
+    "retryDelay": 3000,
+    "priority": 1,
+    "maxConnections": 50,
+    "timeout": 2000,
+    "note": "Ajieblogs V3 - VERIFIED WORKING - Optimized for Render"
+  },
+  {
+    "identifier": "insouciant-dev-ssl",
+    "host": "lavalink.insouciant.dev",
+    "port": 443,
+    "password": "insouciant.dev",
+    "secure": true,
+    "retryAmount": 2,
+    "retryDelay": 4000,
+    "priority": 2,
+    "maxConnections": 30,
+    "timeout": 2500,
+    "note": "Insouciant SSL - Backup node with SSL"
+  },
+  {
+    "identifier": "darrennathanael-ssl",
+    "host": "lavalink.darrennathanael.com",
+    "port": 443,
+    "password": "darrennathanael.com",
+    "secure": true,
+    "retryAmount": 2,
+    "retryDelay": 5000,
+    "priority": 3,
+    "maxConnections": 25,
+    "timeout": 3000,
+    "note": "Darrennathanael SSL - Secondary backup"
+  }
+]

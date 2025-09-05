@@ -1,0 +1,26 @@
+[
+  {
+    "identifier": "darrennathanael-ssl",
+    "host": "lavalink.darrennathanael.com",
+    "port": 443,
+    "password": "darrennathanael.com",
+    "secure": true,
+    "retryAmount": 2,
+    "retryDelay": 3000,
+    "priority": 1,
+    "timeout": 225,
+    "note": "Render optimized - 75ms avg"
+  },
+  {
+    "identifier": "ajieblogs-v3-primary",
+    "host": "lava-v3.ajieblogs.eu.org",
+    "port": 80,
+    "password": "https://dsc.gg/ajidevserver",
+    "secure": false,
+    "retryAmount": 2,
+    "retryDelay": 4000,
+    "priority": 2,
+    "timeout": 1242,
+    "note": "Render optimized - 414ms avg"
+  }
+]
