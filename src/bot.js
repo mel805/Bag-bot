@@ -919,6 +919,16 @@ async function handleEconomyAction(interaction, actionKey) {
         await interaction.deferReply();
         hasDeferred = true;
         console.log(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Reply deferred immediately to prevent timeout`);
+        try {
+          clearFallbackTimer();
+          fallbackTimer = setTimeout(async () => {
+            try {
+              if (!interaction.replied) {
+                await interaction.editReply({ content: '⏳ Toujours en cours… merci de patienter quelques secondes de plus.' });
+              }
+            } catch (_) {}
+          }, 5000);
+        } catch (_) {}
       }
     } catch (error) {
       console.error(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Failed to defer reply:`, error.message);
@@ -4010,7 +4020,12 @@ client.once(Events.ClientReady, (readyClient) => {
     validateKarmaCache();
   }, 30 * 60 * 1000);
   
-  startYtProxyServer();
+  const musicEnabled = String(process.env.ENABLE_MUSIC || 'false').toLowerCase() === 'true';
+  if (musicEnabled) {
+    startYtProxyServer();
+  } else {
+    try { console.log('[Music] Disabled (ENABLE_MUSIC not true) -> skipping YT proxy'); } catch (_) {}
+  }
   // Start local Lavalink stack only if explicitly enabled
   if (shouldEnableLocalLavalink()) {
     console.log('[Music] Local Lavalink enabled -> starting local Lavalink + proxy');
@@ -4027,7 +4042,7 @@ client.once(Events.ClientReady, (readyClient) => {
   }
   // Init Erela.js (if available) with multiple fallback nodes
   try {
-    if (ErelaManager && process.env.ENABLE_MUSIC !== 'false') {
+    if (ErelaManager && musicEnabled) {
       let nodes = [];
       try {
         if (process.env.LAVALINK_NODES) {
@@ -8176,7 +8191,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           };
           await sendDetailedBackupLog(interaction.guild, errorInfo, 'slash', interaction.user);
         } catch (_) {}
-        return interaction.reply({ content: 'Erreur export.', ephemeral: true });
+        try { return await interaction.editReply({ content: 'Erreur export.' }); } catch (_) { try { return await interaction.followUp({ content: 'Erreur export.', ephemeral: true }); } catch (_) { return; } }
       }
     }
 
@@ -8201,7 +8216,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           };
           await sendDetailedRestoreLog(interaction.guild, errorResult, 'slash', interaction.user);
         } catch (_) {}
-        return interaction.reply({ content: 'Erreur restauration.', ephemeral: true });
+        try { return await interaction.editReply({ content: 'Erreur restauration.' }); } catch (_) { try { return await interaction.followUp({ content: 'Erreur restauration.', ephemeral: true }); } catch (_) { return; } }
       }
     }
     // Admin-only: /github-backup (gestion des sauvegardes GitHub)
