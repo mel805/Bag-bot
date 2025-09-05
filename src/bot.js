@@ -1002,9 +1002,16 @@ async function handleEconomyAction(interaction, actionKey) {
     else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.karmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.karmaDelta||0)}`]; }
     imageUrl = Array.isArray(gifs.success) && gifs.success.length ? gifs.success[Math.floor(Math.random()*gifs.success.length)] : undefined;
   } else {
-    moneyDelta = -randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
-    if (conf.karma === 'charm') { u.charm = (u.charm||0) - Number(conf.failKarmaDelta||0); karmaField = ['Karma charme', `-${Number(conf.failKarmaDelta||0)}`]; }
-    else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
+    moneyDelta = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
+    const karmaDelta = Number(conf.failKarmaDelta||0);
+    if (conf.karma === 'charm') { 
+      u.charm = (u.charm||0) + karmaDelta; 
+      karmaField = ['Karma charme', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+    }
+    else if (conf.karma === 'perversion') { 
+      u.perversion = (u.perversion||0) + karmaDelta; 
+      karmaField = ['Karma perversion', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+    }
     imageUrl = Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined;
   }
   if (imageUrl) {
@@ -1117,14 +1124,15 @@ async function handleEconomyAction(interaction, actionKey) {
       console.log('[Tromper] Applying penalties to third member:', third.id);
       // Apply special penalties to the third member
       const thirdUser = await getEconomyUser(interaction.guild.id, third.id);
-      const loseMin = Math.max(1, Number(conf.failMoneyMin||5));
-      const loseMax = Math.max(loseMin, Number(conf.failMoneyMax||10));
-      const thirdMoneyDelta = -randInt(loseMin, loseMax);
+      const moneyMin = Number(conf.failMoneyMin||5);
+      const moneyMax = Number(conf.failMoneyMax||10);
+      const thirdMoneyDelta = randInt(Math.min(moneyMin, moneyMax), Math.max(moneyMin, moneyMax));
+      const karmaDelta = Number(conf.failKarmaDelta||1);
       let thirdCharmDelta = 0;
       let thirdPervDelta = 0;
-      if (conf.karma === 'perversion') thirdPervDelta = Number(conf.failKarmaDelta||1);
-      else if (conf.karma === 'charm') thirdCharmDelta = -Number(conf.failKarmaDelta||1);
-      thirdUser.amount = Math.max(0, (thirdUser.amount||0) + thirdMoneyDelta);
+      if (conf.karma === 'perversion') thirdPervDelta = karmaDelta;
+      else if (conf.karma === 'charm') thirdCharmDelta = karmaDelta;
+      thirdUser.amount = Math.max(0, (thirdUser.amount||0) - Math.abs(thirdMoneyDelta));
       if (thirdCharmDelta) thirdUser.charm = (thirdUser.charm||0) + thirdCharmDelta;
       if (thirdPervDelta) thirdUser.perversion = (thirdUser.perversion||0) + thirdPervDelta;
       console.log('[Tromper] Saving third member economy data...');
@@ -2004,20 +2012,27 @@ async function handleEconomyAction(interaction, actionKey) {
         return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
       }
     } else {
-      const lost = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
-      u.amount = Math.max(0, (u.amount||0) - lost);
-      tu.amount = (tu.amount||0) + lost;
+      const lostAmount = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
+      u.amount = Math.max(0, (u.amount||0) - Math.abs(lostAmount));
+      tu.amount = (tu.amount||0) + Math.abs(lostAmount);
       // Karma on fail
       let stealKarmaField = null;
-      if (conf.karma === 'charm' && Number(conf.failKarmaDelta||0) !== 0) { u.charm = (u.charm||0) - Number(conf.failKarmaDelta||0); stealKarmaField = ['Karma charme', `-${Number(conf.failKarmaDelta||0)}`]; }
-      else if (conf.karma === 'perversion' && Number(conf.failKarmaDelta||0) !== 0) { u.perversion = (u.perversion||0) + Number(conf.failKarmaDelta||0); stealKarmaField = ['Karma perversion', `+${Number(conf.failKarmaDelta||0)}`]; }
+      const karmaDelta = Number(conf.failKarmaDelta||0);
+      if (conf.karma === 'charm' && karmaDelta !== 0) { 
+        u.charm = (u.charm||0) + karmaDelta; 
+        stealKarmaField = ['Karma charme', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+      }
+      else if (conf.karma === 'perversion' && karmaDelta !== 0) { 
+        u.perversion = (u.perversion||0) + karmaDelta; 
+        stealKarmaField = ['Karma perversion', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
+      }
       setCd('steal', cdToSet);
       await setEconomyUser(interaction.guild.id, interaction.user.id, u);
       await setEconomyUser(interaction.guild.id, cible.id, tu);
       const currency = eco.currency?.name || 'BAG$';
-      const desc = msgText ? `${msgText}\nVous avez été repéré par ${cible} et perdu ${lost} ${currency}.` : `Vous avez été repéré par ${cible} et perdu ${lost} ${currency}.`;
+      const desc = msgText ? `${msgText}\nVous avez été repéré par ${cible} et perdu ${Math.abs(lostAmount)} ${currency}.` : `Vous avez été repéré par ${cible} et perdu ${Math.abs(lostAmount)} ${currency}.`;
       const fields = [
-        { name: 'Argent', value: `-${lost} ${currency}`, inline: true },
+        { name: 'Argent', value: `-${Math.abs(lostAmount)} ${currency}`, inline: true },
         { name: 'Solde argent', value: String(u.amount), inline: true },
         ...(stealKarmaField ? [{ name: 'Karma', value: `${stealKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${stealKarmaField[1]}`, inline: true }] : []),
         { name: 'Solde charme', value: String(u.charm||0), inline: true },
@@ -5477,9 +5492,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       modal.addComponents(
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('karma').setLabel("Type (charm/perversion/none)").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.karma||'none'))),
         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('karmaDelta').setLabel('Delta (succès)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.karmaDelta||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMin').setLabel('Argent min (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMin||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMax').setLabel('Argent max (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMax||0))),
-        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failKarmaDelta').setLabel('Delta Karma (échec)').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failKarmaDelta||0)))
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMin').setLabel('Argent min (échec) - accepte négatif').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMin||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failMoneyMax').setLabel('Argent max (échec) - accepte négatif').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failMoneyMax||0))),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('failKarmaDelta').setLabel('Delta Karma (échec) - accepte négatif').setStyle(TextInputStyle.Short).setRequired(true).setValue(String(c.failKarmaDelta||0)))
       );
       try { 
         return await interaction.showModal(modal); 
@@ -5553,9 +5568,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ...(c||{}), 
           karma, 
           karmaDelta: Math.max(0, karmaDelta), 
-          failMoneyMin: Math.max(0, failMoneyMin), 
-          failMoneyMax: Math.max(0, failMoneyMax), 
-          failKarmaDelta: Math.max(0, failKarmaDelta) 
+          failMoneyMin: failMoneyMin, 
+          failMoneyMax: failMoneyMax, 
+          failKarmaDelta: failKarmaDelta 
         };
         
         await updateEconomyConfig(interaction.guild.id, eco);
