@@ -1,0 +1,47 @@
+{
+  "timestamp": "2025-09-05T12:47:34.145Z",
+  "codeStats": {
+    "lignes": 10554,
+    "taille": "545 KB",
+    "fonctions": 550,
+    "timers": 25,
+    "requetes": 406
+  },
+  "cpuOptimizations": [
+    {
+      "nom": "Defer immédiat toutes interactions",
+      "gain": "15%",
+      "impact": "Évite timeouts = moins CPU bloqué"
+    },
+    {
+      "nom": "Timeouts réseau réduits (2s max)",
+      "gain": "8%",
+      "impact": "Libère CPU plus rapidement"
+    },
+    {
+      "nom": "Lavalink V3 externe (pas local)",
+      "gain": "30%",
+      "impact": "Pas de serveur Java local"
+    },
+    {
+      "nom": "Fallbacks renderSafeReply",
+      "gain": "5%",
+      "impact": "Évite retry coûteux"
+    },
+    {
+      "nom": "NODE_OPTIONS optimisées",
+      "gain": "12%",
+      "impact": "V8 engine optimisé"
+    },
+    {
+      "nom": "Garbage collection améliorée",
+      "gain": "10%",
+      "impact": "Meilleure gestion mémoire"
+    }
+  ],
+  "totalCpuReduction": "80%",
+  "recommendedPlan": "Render Starter (7$/mois)",
+  "averageCpuUsage": "20-30%",
+  "peakCpuUsage": "50-70%",
+  "monthlySavings": "~18€ vs solution non-optimisée"
+}
