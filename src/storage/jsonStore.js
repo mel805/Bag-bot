@@ -11,10 +11,11 @@ const DATABASE_URL = process.env.DATABASE_URL
   || process.env.PG_CONNECTION_STRING
   || '';
 const USE_PG = !!(DATABASE_URL && Pool);
+let pgHealthy = true; // désactivé si une connexion échoue
 let pgPool = null;
 async function getPg() {
-  if (!USE_PG) return null;
-  if (!pgPool) pgPool = new Pool({ connectionString: DATABASE_URL, max: 5 });
+  if (!USE_PG || !pgHealthy) return null;
+  if (!pgPool) pgPool = new Pool({ connectionString: DATABASE_URL, max: 5, connectionTimeoutMillis: 1500, idleTimeoutMillis: 10000 });
   return pgPool;
 }
 
@@ -26,7 +27,7 @@ function setDataDir(dir) {
 }
 
 async function ensureStorageExists() {
-  if (USE_PG) {
+  if (USE_PG && pgHealthy) {
     try {
       const pool = await getPg();
       const client = await pool.connect();
@@ -50,6 +51,7 @@ async function ensureStorageExists() {
       }
     } catch (e) {
       try { console.warn('[storage] Postgres unavailable, falling back to file storage:', e?.message || e); } catch (_) {}
+      pgHealthy = false;
       // fall back to FS below
     }
   }
@@ -87,7 +89,7 @@ async function ensureStorageExists() {
 
 async function readConfig() {
   await ensureStorageExists();
-  if (USE_PG) {
+  if (USE_PG && pgHealthy) {
     try {
       const pool = await getPg();
       const client = await pool.connect();
@@ -102,6 +104,7 @@ async function readConfig() {
       }
     } catch (e) {
       try { console.warn('[storage] Postgres read failed, using file storage:', e?.message || e); } catch (_) {}
+      pgHealthy = false;
     }
   }
   try {
@@ -122,7 +125,7 @@ async function readConfig() {
 
 async function writeConfig(cfg) {
   await ensureStorageExists();
-  if (USE_PG) {
+  if (USE_PG && pgHealthy) {
     try {
       const pool = await getPg();
       const client = await pool.connect();
@@ -136,6 +139,7 @@ async function writeConfig(cfg) {
       }
     } catch (e) {
       try { console.warn('[storage] Postgres write failed, writing file storage:', e?.message || e); } catch (_) {}
+      pgHealthy = false;
     }
   }
   try { await fsp.mkdir(DATA_DIR, { recursive: true }); } catch (_) {}
