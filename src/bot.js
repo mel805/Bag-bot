@@ -1991,9 +1991,9 @@ async function handleEconomyAction(interaction, actionKey) {
     // XP awards (actor + partner)
     try {
       const baseXp = success ? xpOnSuccess : xpOnFail; // give is always success, but keep consistent
-      await awardXp(interaction.user.id, baseXp);
+      Promise.resolve().then(() => awardXp(interaction.user.id, baseXp)).catch(()=>{});
       if (cible && cible.id !== interaction.user.id && partnerXpShare > 0) {
-        await awardXp(cible.id, Math.round(baseXp * partnerXpShare));
+        Promise.resolve().then(() => awardXp(cible.id, Math.round(baseXp * partnerXpShare))).catch(()=>{});
       }
     } catch (_) {}
     const parts = [String(cible)];
@@ -2031,7 +2031,7 @@ async function handleEconomyAction(interaction, actionKey) {
       else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
       // XP awards (actor + partner if applicable — not used for steal)
       try {
-        await awardXp(interaction.user.id, xpOnSuccess);
+        Promise.resolve().then(() => awardXp(interaction.user.id, xpOnSuccess)).catch(()=>{});
       } catch (_) {}
       {
         const parts = [String(cible)];
@@ -2070,7 +2070,7 @@ async function handleEconomyAction(interaction, actionKey) {
       if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
       else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
       try {
-        await awardXp(interaction.user.id, xpOnFail);
+        Promise.resolve().then(() => awardXp(interaction.user.id, xpOnFail)).catch(()=>{});
       } catch (_) {}
       {
         const parts = [String(cible)];
@@ -2087,7 +2087,7 @@ async function handleEconomyAction(interaction, actionKey) {
   // XP awards (actor + partner/complice if present)
   try {
     const baseXp = success ? xpOnSuccess : xpOnFail;
-    await awardXp(interaction.user.id, baseXp);
+    Promise.resolve().then(() => awardXp(interaction.user.id, baseXp)).catch(()=>{});
     let partnerUser = null;
     if (actionsWithTarget.includes(actionKey)) {
       partnerUser = actionKey === 'tromper' ? (tromperResolvedPartner || interaction.options.getUser('cible', false)) : interaction.options.getUser('cible', false);
@@ -2095,7 +2095,7 @@ async function handleEconomyAction(interaction, actionKey) {
       partnerUser = interaction.options.getUser('complice', false);
     }
     if (partnerUser && !partnerUser.bot && partnerUser.id !== interaction.user.id && partnerXpShare > 0) {
-      await awardXp(partnerUser.id, Math.round(baseXp * partnerXpShare));
+      Promise.resolve().then(() => awardXp(partnerUser.id, Math.round(baseXp * partnerXpShare))).catch(()=>{});
     }
   } catch (_) {}
   const nice = actionKeyToLabel(actionKey);
@@ -2167,13 +2167,7 @@ async function handleEconomyAction(interaction, actionKey) {
   
   // Final safety check to ensure interaction is always responded to
   try {
-    // Add emergency timeout for final response
-    const responsePromise = respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
-    const emergencyTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Emergency timeout')), 8000)
-    );
-    
-    return await Promise.race([responsePromise, emergencyTimeout]);
+    return await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
   } catch (error) {
     console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
     // Last resort: try followUp if possible
