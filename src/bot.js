@@ -252,12 +252,6 @@ const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
 
 
-// RENDER OPTIMIZATION: Déférer immédiatement TOUTES les interactions
-async function immediatelyDeferInteraction(interaction, actionType = 'command') {
-  if (!interaction.deferred && !interaction.replied) {
-    try {
-      await interaction.deferReply();
-      
 // RENDER OPTIMIZATION: Détection et optimisation environnement Render
 const isRenderEnvironment = process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RENDER_EXTERNAL_URL;
 if (isRenderEnvironment) {
@@ -275,15 +269,6 @@ if (isRenderEnvironment) {
     }, 30000);
   }
 }
-
-console.log(`[RENDER-OPT] Interaction ${actionType} déférée immédiatement`);
-      return true;
-    } catch (error) {
-      console.warn(`[RENDER-OPT] Échec defer ${actionType}:`, error.message);
-      return false;
-    }
-  }
-  return interaction.deferred;
 
 // RENDER OPTIMIZATION: Fallbacks pour opérations critiques
 const renderSafeReply = async (interaction, content, options = {}) => {
@@ -309,6 +294,20 @@ const renderSafeReply = async (interaction, content, options = {}) => {
     }
   }
 };
+
+// RENDER OPTIMIZATION: Déférer immédiatement TOUTES les interactions
+async function immediatelyDeferInteraction(interaction, actionType = 'command') {
+  if (!interaction.deferred && !interaction.replied) {
+    try {
+      await interaction.deferReply();
+      console.log(`[RENDER-OPT] Interaction ${actionType} déférée immédiatement`);
+      return true;
+    } catch (error) {
+      console.warn(`[RENDER-OPT] Échec defer ${actionType}:`, error.message);
+      return false;
+    }
+  }
+  return interaction.deferred;
 }
 
 // Interaction monitoring for debugging stuck interactions
@@ -965,16 +964,21 @@ async function handleEconomyAction(interaction, actionKey) {
     let partner = initialPartner;
     let third = null;
     
-    // Helper function for fetch with timeout - version optimisée
+    // Helper function for fetch with timeout - version optimisée RENDER
     const fetchMembersWithTimeout = async (guild, timeoutMs = 800) => {
+      // RENDER OPTIMIZATION: Réduire encore plus les timeouts sur Render
+      const renderTimeout = isRenderEnvironment ? Math.min(timeoutMs, 500) : timeoutMs;
+      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
-      }, timeoutMs);
+      }, renderTimeout);
       
       try {
+        // RENDER OPTIMIZATION: Limites encore plus strictes sur Render
+        const renderLimit = isRenderEnvironment ? 10 : 15;
         const fetchPromise = guild.members.fetch({ 
-          limit: 15, // limit 15 20 - Limite encore réduite pour plus de rapidité
+          limit: renderLimit, // limit 15 20 - Limite encore réduite pour plus de rapidité
           force: false,
           signal: controller.signal
         });
@@ -1002,8 +1006,9 @@ async function handleEconomyAction(interaction, actionKey) {
       if (availableMembers.size < 2) {
         console.log('[Tromper] Very few cached members, attempting ultra-fast fetch...');
         try {
-          // Timeout ultra-strict pour éviter tout blocage
-          const fetched = await fetchMembersWithTimeout(interaction.guild, 600);
+          // Timeout ultra-strict pour éviter tout blocage - RENDER OPTIMIZED
+          const renderTimeout = isRenderEnvironment ? 400 : 600;
+          const fetched = await fetchMembersWithTimeout(interaction.guild, renderTimeout);
           const fetchedHumans = fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
           console.log('[Tromper] Fetched additional members:', fetchedHumans.size);
           
@@ -1025,12 +1030,18 @@ async function handleEconomyAction(interaction, actionKey) {
           'Tu réussis ton plan... mais discrètement ! 🤫' : 
           'Ton plan échoue... heureusement personne ne t\'a vu ! 😅';
         
-        // S'assurer qu'on répond toujours
+        // S'assurer qu'on répond toujours - RENDER OPTIMIZED
         try {
+          if (isRenderEnvironment) {
+            return await renderSafeReply(interaction, fallbackMsg);
+          }
           return respondAndUntrack({ content: fallbackMsg });
         } catch (responseError) {
           console.error('[Tromper] Failed to send fallback response:', responseError.message);
-          // Dernière tentative avec reply direct
+          // Dernière tentative avec renderSafeReply pour Render
+          if (isRenderEnvironment) {
+            return await renderSafeReply(interaction, fallbackMsg);
+          }
           if (!interaction.replied) {
             return await interaction.reply({ content: fallbackMsg, ephemeral: true });
           }
@@ -1072,10 +1083,16 @@ async function handleEconomyAction(interaction, actionKey) {
           'Action échouée... peut-être mieux ainsi ! 😅';
         
         console.log('[Tromper] Using emergency fallback due to critical error');
+        if (isRenderEnvironment) {
+          return await renderSafeReply(interaction, emergencyMsg);
+        }
         return respondAndUntrack({ content: emergencyMsg });
       } catch (emergencyError) {
         console.error('[Tromper] Emergency fallback also failed:', emergencyError.message);
-        // Absolue dernière tentative
+        // Absolue dernière tentative avec Render optimization
+        if (isRenderEnvironment) {
+          return await renderSafeReply(interaction, '⚠️ Action terminée avec des erreurs.');
+        }
         if (!interaction.replied) {
           try {
             return await interaction.reply({ content: '⚠️ Action terminée avec des erreurs.', ephemeral: true });
@@ -1179,10 +1196,14 @@ async function handleEconomyAction(interaction, actionKey) {
         console.log('[Orgie] Few cached members, attempting fast fetch...');
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 700); // AbortController setTimeout abort - Timeout très strict
+          // RENDER OPTIMIZATION: Timeout encore plus strict sur Render
+          const renderTimeout = isRenderEnvironment ? 400 : 700;
+          const timeoutId = setTimeout(() => controller.abort(), renderTimeout); // AbortController setTimeout abort - Timeout très strict
           
+          // RENDER OPTIMIZATION: Limites encore plus strictes sur Render
+          const renderLimit = isRenderEnvironment ? 12 : 20;
           const fetched = await interaction.guild.members.fetch({ 
-            limit: 20, // Limite réduite pour plus de rapidité
+            limit: renderLimit, // Limite réduite pour plus de rapidité
             force: false,
             signal: controller.signal
           });
@@ -1225,10 +1246,16 @@ async function handleEconomyAction(interaction, actionKey) {
           'Orgie avortée... peut-être mieux ainsi ! 😅';
         
         console.log('[Orgie] Using emergency fallback due to error');
+        if (isRenderEnvironment) {
+          return await renderSafeReply(interaction, emergencyMsg);
+        }
         return respondAndUntrack({ content: emergencyMsg });
       } catch (emergencyError) {
         console.error('[Orgie] Emergency fallback failed:', emergencyError.message);
-        // Dernière tentative
+        // Dernière tentative avec Render optimization
+        if (isRenderEnvironment) {
+          return await renderSafeReply(interaction, '⚠️ Action orgie terminée avec des erreurs.');
+        }
         if (!interaction.replied) {
           try {
             return await interaction.reply({ content: '⚠️ Action orgie terminée avec des erreurs.', ephemeral: true });
