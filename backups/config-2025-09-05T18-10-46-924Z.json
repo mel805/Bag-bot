@@ -1,0 +1,39 @@
+{
+  "guilds": {
+    "1360897918504271882": {
+      "economy": {
+        "balances": {
+          "943487722738311219": {
+            "amount": 25,
+            "cooldowns": {
+              "work": 1757095772894,
+              "caress": 1757095272510
+            },
+            "charm": 1,
+            "perversion": 2,
+            "money": 25,
+            "lastVoiceReward": 0
+          },
+          "1173342775396286521": {
+            "amount": 11,
+            "cooldowns": {},
+            "charm": 0,
+            "perversion": 2,
+            "money": 11,
+            "lastVoiceReward": 0
+          },
+          "463272211269156865": {
+            "amount": 8,
+            "cooldowns": {
+              "flirt": 1757095906915
+            },
+            "charm": 2,
+            "perversion": 0,
+            "money": 8,
+            "lastVoiceReward": 0
+          }
+        }
+      }
+    }
+  }
+}

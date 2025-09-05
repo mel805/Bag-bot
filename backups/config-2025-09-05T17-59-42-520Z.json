@@ -1,0 +1,21 @@
+{
+  "guilds": {
+    "1360897918504271882": {
+      "economy": {
+        "balances": {
+          "943487722738311219": {
+            "amount": 25,
+            "cooldowns": {
+              "work": 1757095772894,
+              "caress": 1757095272510
+            },
+            "charm": 1,
+            "perversion": 2,
+            "money": 25,
+            "lastVoiceReward": 0
+          }
+        }
+      }
+    }
+  }
+}
