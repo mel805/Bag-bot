@@ -870,7 +870,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return respondAndUntrack({ content: `⛔ Action désactivée.`, ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
   let initialPartner = null;
   let tromperResolvedPartner = null;
   try {
@@ -904,7 +904,7 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   // Also defer early for common economy actions which can hit storage and GIF lookups
   // Extended list of actions that commonly cause timeouts
-  const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'branler', 'doigter'];
+  const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'nibble', 'branler', 'doigter'];
   if (!hasDeferred && heavyActions.includes(actionKey)) {
     try {
       if (!interaction.deferred && !interaction.replied) {
@@ -953,6 +953,7 @@ async function handleEconomyAction(interaction, actionKey) {
   const randInt = (min, max) => Math.floor(min + Math.random() * (max - min + 1));
   const gifs = ((eco.actions?.gifs || {})[actionKey]) || { success: [], fail: [] };
   const msgSet = ((eco.actions?.messages || {})[actionKey]) || { success: [], fail: [] };
+  let msgText = null;
   const successRate = Number(conf.successRate ?? 1);
   const success = Math.random() < successRate;
   // XP config
@@ -1269,7 +1270,7 @@ async function handleEconomyAction(interaction, actionKey) {
       ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
       : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
   }
-  // Custom user message override removed for 'orgasme' — keep only random messages
+  // Keep 'orgasme' simple: use curated short phrases matching the intent
   if (actionKey === 'kiss') {
     const partner = interaction.options.getUser('cible', false);
     if (success) {
@@ -1410,6 +1411,26 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = [
         `Tu t'approches de ${p} ${z}, mais il/elle te retient.`,
         `Tu tentes sur ${p} ${z}… l'ambiance n'y est pas.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    }
+  }
+  if (actionKey === 'nibble') {
+    const zones = ['cou','lèvres','épaule','lobe'];
+    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
+    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
+    const targetText = (z === 'lèvres') ? 'les lèvres' : (z === 'lobe' ? "le lobe" : (z === 'cou' ? 'le cou' : "l'épaule"));
+    if (success) {
+      const texts = [
+        `Tu mordilles ${targetText} avec douceur, frisson garanti.`,
+        `Petite morsure taquine sur ${targetText}, souffle coupé.`,
+        `Tu poses tes dents sur ${targetText}, excitation immédiate.`
+      ];
+      msgText = texts[randInt(0, texts.length - 1)];
+    } else {
+      const texts = [
+        `Tu tentes de mordre ${targetText}, mais il/elle préfère attendre.`,
+        `Mauvais timing pour une morsure, vous ralentissez.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
@@ -3766,6 +3787,7 @@ function actionKeyToLabel(key) {
     caress: 'caresser',
     lick: 'lécher',
     suck: 'sucer',
+    nibble: 'mordre',
     tickle: 'chatouiller',
     revive: 'réanimer',
     comfort: 'réconforter',
@@ -3835,7 +3857,7 @@ async function buildEconomyActionDetailRows(guild, selectedKey) {
 // Build rows for managing action GIFs
 async function buildEconomyGifRows(guild, currentKey) {
   const eco = await getEconomyConfig(guild.id);
-  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
+  const allKeys = ['daily','work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
   const opts = allKeys.map(k => ({ label: actionKeyToLabel(k), value: k, default: currentKey === k }));
   // Discord limite les StringSelectMenu à 25 options max. Divisons en plusieurs menus.
   const rows = [];
@@ -7639,6 +7661,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'sucer') {
       return handleEconomyAction(interaction, 'suck');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'mordre') {
+      return handleEconomyAction(interaction, 'nibble');
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'chatouiller') {
       return handleEconomyAction(interaction, 'tickle');

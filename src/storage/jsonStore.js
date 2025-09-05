@@ -610,7 +610,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','daily'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','daily'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -656,6 +656,7 @@ function ensureEconomyShape(g) {
     kiss: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.8, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     lick: { moneyMin: 8, moneyMax: 20, karma: 'perversion', karmaDelta: 3, cooldown: 120, successRate: 0.85, failMoneyMin: 3, failMoneyMax: 10, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     suck: { moneyMin: 12, moneyMax: 28, karma: 'perversion', karmaDelta: 4, cooldown: 120, successRate: 0.85, failMoneyMin: 4, failMoneyMax: 12, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    nibble: { moneyMin: 10, moneyMax: 24, karma: 'perversion', karmaDelta: 3, cooldown: 120, successRate: 0.9, failMoneyMin: 2, failMoneyMax: 6, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
     branler: { moneyMin: 10, moneyMax: 26, karma: 'perversion', karmaDelta: 4, cooldown: 120, successRate: 0.85, failMoneyMin: 3, failMoneyMax: 10, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     doigter: { moneyMin: 9, moneyMax: 22, karma: 'perversion', karmaDelta: 3, cooldown: 120, successRate: 0.85, failMoneyMin: 3, failMoneyMax: 9, failKarmaDelta: 2, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     tickle: { moneyMin: 4, moneyMax: 12, karma: 'charm', karmaDelta: 2, cooldown: 60, successRate: 0.9, failMoneyMin: 1, failMoneyMax: 3, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.0 },
@@ -703,6 +704,7 @@ function ensureEconomyShape(g) {
     kiss: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
     lick: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
     suck: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
+    nibble: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
     branler: { xpDelta: 12, failXpDelta: 3, partnerXpShare: 1.0 },
     doigter: { xpDelta: 10, failXpDelta: 2, partnerXpShare: 1.0 },
     tickle: { xpDelta: 6, failXpDelta: 1, partnerXpShare: 1.0 },
@@ -800,6 +802,10 @@ function ensureEconomyShape(g) {
     suck: {
       success: ['Tu prends ton temps… le regard devient fiévreux.', 'Tu alternes douceur et intensité, c’est torride.'],
       fail: ['Tu tentes, mais on te repousse gentiment.', 'Mauvais timing, ça refroidit l’ambiance.']
+    },
+    nibble: {
+      success: ['Morsure douce dans le cou… frisson garanti.', 'Tu mordilles ses lèvres, c’est électrique.', 'Petite morsure à l’épaule, souffle court.'],
+      fail: ['Il/elle préfère éviter la morsure maintenant.', 'Mauvais timing pour mordre, vous ralentissez.']
     },
     branler: {
       success: ['Mouvements maîtrisés, le souffle se fait court…', 'Rythme assuré, la tension monte.'],
