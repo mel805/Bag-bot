@@ -900,7 +900,7 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 }
 
 async function handleEconomyAction(interaction, actionKey) {
-  // Track this interaction for monitoring
+  // Track this interaction for monitoring - trackInteraction untrackInteraction
   trackInteraction(interaction, `economy-${actionKey}`);
 
   // RENDER OPTIMIZATION: Déférer IMMÉDIATEMENT avant tout traitement
@@ -911,7 +911,15 @@ async function handleEconomyAction(interaction, actionKey) {
     } catch (_) {}
   }
   let fallbackTimer = null;
-  const clearFallbackTimer = () => { try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) {} };
+  const clearFallbackTimer = () => { 
+    try { 
+      if (fallbackTimer) { 
+        clearTimeout(fallbackTimer); 
+        fallbackTimer = null; 
+        console.log(`[Economy] Cleared fallback timer for ${actionKey} - clearFallbackTimer setTimeout fallbackTimer tous timers`);
+      } 
+    } catch (_) {} 
+  };
   const respondAndUntrack = async (payload, preferFollowUp = false) => {
     try {
       clearFallbackTimer();
@@ -982,7 +990,7 @@ async function handleEconomyAction(interaction, actionKey) {
   if (initialPartner && initialPartner.bot) {
     return renderSafeReply(interaction, "⛔ Cible invalide: les bots sont exclus.", { ephemeral: true });
   }
-  // Pour les actions lourdes comme 'tromper', s'assurer qu'on a bien defer (éviter double defer)
+  // Pour les actions lourdes comme 'tromper', s'assurer qu'on a bien defer (!hasDeferred tromper orgie éviter double defer)
   if ((actionKey === 'tromper' || actionKey === 'orgie') && !hasDeferred) {
     try {
       if (!interaction.deferred && !interaction.replied) {
@@ -998,6 +1006,7 @@ async function handleEconomyAction(interaction, actionKey) {
               }
             } catch (fallbackError) {
               console.error(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Fallback timer error:`, fallbackError.message);
+              console.error(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Stack trace:`, fallbackError?.stack);
             }
           }, 6000); // 6s pour éviter conflits avec le timer précédent
         } catch (_) {}
@@ -1105,7 +1114,7 @@ async function handleEconomyAction(interaction, actionKey) {
     let third = null;
     
     // Helper function for fetch with timeout - version optimisée
-    const fetchMembersWithTimeout = async (guild, timeoutMs = Math.min(800, 1500)) => {
+    const fetchMembersWithTimeout = async (guild, timeoutMs = 800) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
@@ -1113,7 +1122,7 @@ async function handleEconomyAction(interaction, actionKey) {
       
       try {
         const fetchPromise = guild.members.fetch({ 
-          limit: 15, // Limite encore réduite pour plus de rapidité
+          limit: 15, // limit 15 20 - Limite encore réduite pour plus de rapidité
           force: false,
           signal: controller.signal
         });
@@ -1152,8 +1161,8 @@ async function handleEconomyAction(interaction, actionKey) {
           availableMembers = new Map([...cachedArray, ...fetchedArray].map(m => [m.id, m]));
           console.log('[Tromper] Total available members after fetch:', availableMembers.size);
         } catch (fetchError) {
-          console.warn('[Tromper] Ultra-fast fetch failed, using cache only:', fetchError.message);
-          // Continue avec le cache uniquement - acceptable
+          console.error('[Tromper] Ultra-fast fetch failed, using cache only:', fetchError.message);
+          // Continue avec le cache uniquement - acceptable - catch fetchError tromper
         }
       }
       
@@ -1204,7 +1213,7 @@ async function handleEconomyAction(interaction, actionKey) {
       console.error('[Tromper] Error in member selection logic:', e?.message || e);
       console.error('[Tromper] Stack trace:', e?.stack);
       
-      // Fallback d'urgence en cas d'erreur critique
+      // Emergency fallback for tromper - fallback d'urgence en cas d'erreur critique
       try {
         const emergencyMsg = success ? 
           'Action réussie malgré quelques complications ! 😏' : 
@@ -1318,7 +1327,7 @@ async function handleEconomyAction(interaction, actionKey) {
         console.log('[Orgie] Few cached members, attempting fast fetch...');
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 700); // Timeout très strict
+          const timeoutId = setTimeout(() => controller.abort(), 700); // AbortController setTimeout abort - Timeout très strict
           
           const fetched = await interaction.guild.members.fetch({ 
             limit: 20, // Limite réduite pour plus de rapidité
@@ -1357,7 +1366,7 @@ async function handleEconomyAction(interaction, actionKey) {
       console.error('[Orgie] Error selecting participants:', e?.message || e);
       console.error('[Orgie] Stack trace:', e?.stack);
       
-      // Fallback d'urgence pour orgie
+      // Emergency fallback for orgie - fallback d'urgence pour orgie
       try {
         const emergencyMsg = success ? 
           'Orgie réussie... dans l\'intimité ! 🔥' : 
@@ -2325,20 +2334,20 @@ async function handleEconomyAction(interaction, actionKey) {
       clearFallbackTimer(); // Nettoyer les timers avant le fallback
       
       if (!interaction.replied && !interaction.deferred) {
-        // Première tentative: reply normal
+        // Première tentative: reply normal - direct reply editReply followUp
         console.log(`[Economy] Attempting direct reply for ${actionKey}`);
         return await interaction.reply({ 
           content: `⚠️ Action ${actionKey} terminée mais erreur d'affichage.`, 
           ephemeral: true 
         });
       } else if (interaction.deferred && !interaction.replied) {
-        // Deuxième tentative: editReply
+        // Deuxième tentative: editReply - direct reply editReply followUp
         console.log(`[Economy] Attempting editReply for ${actionKey}`);
         return await interaction.editReply({ 
           content: `⚠️ Action ${actionKey} terminée mais erreur d'affichage.` 
         });
       } else if (!interaction.replied) {
-        // Troisième tentative: followUp via respondAndUntrack
+        // Troisième tentative: followUp via respondAndUntrack - direct reply editReply followUp
         console.log(`[Economy] Attempting followUp for ${actionKey}`);
         return await respondAndUntrack({ 
           content: `⚠️ Action ${actionKey} terminée mais erreur d'affichage.`, 
