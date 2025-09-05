@@ -8547,10 +8547,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
           try { const { addWarn, getWarns } = require('./storage/jsonStore'); await addWarn(interaction.guild.id, user.id, { by: interaction.user.id, reason }); const list = await getWarns(interaction.guild.id, user.id); const embed = buildModEmbed('Warn', `${user} a reçu un avertissement.`, [{ name:'Raison', value: reason }, { name:'Total avertissements', value: String(list.length) }]); await interaction.reply({ embeds: [embed] }); const cfg = await getLogsConfig(interaction.guild.id); const log = buildModEmbed(`${cfg.emoji} Modération • Warn`, `${user} averti par ${interaction.user}`, [{ name:'Raison', value: reason }, { name:'Total', value: String(list.length) }]); await sendLog(interaction.guild, 'moderation', log); return; } catch (_) { return interaction.reply({ content:'Échec du warn.', ephemeral:true }); }
         }
         if (cmd === 'masskick' || cmd === 'massban') {
+          try { if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true }); } catch (_) {}
           const mode = interaction.options.getString('mode', true); // with/without
           const role = interaction.options.getRole('role');
           const reason = interaction.options.getString('raison') || '—';
-          const members = await interaction.guild.members.fetch();
+          let members;
+          try {
+            members = await interaction.guild.members.fetch();
+          } catch (e) {
+            return interaction.editReply({ content: 'Échec de la récupération des membres.', ephemeral: true });
+          }
           const should = (m) => {
             if (!role) return true; // si pas de rôle précisé, tout le monde
             const has = m.roles.cache.has(role.id);
@@ -8566,7 +8572,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             } catch (_) {}
           }
           const embed = buildModEmbed(cmd === 'massban' ? 'Mass Ban' : 'Mass Kick', `Action: ${cmd} • Affectés: ${count}`, [ role ? { name:'Rôle', value: role.name } : { name:'Rôle', value: '—' }, { name:'Mode', value: mode }, { name:'Raison', value: reason } ]);
-          return interaction.reply({ embeds: [embed] });
+          return interaction.editReply({ embeds: [embed] });
         }
         if (cmd === 'purge') {
           const count = interaction.options.getInteger('nombre', true);
