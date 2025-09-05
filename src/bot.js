@@ -840,8 +840,6 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 }
 
 async function handleEconomyAction(interaction, actionKey) {
-  console.log(`[Economy] Starting action ${actionKey} for user ${interaction.user.id} in guild ${interaction.guild.id}`);
-  
   // Track this interaction for monitoring
   trackInteraction(interaction, `economy-${actionKey}`);
   let fallbackTimer = null;
@@ -880,10 +878,8 @@ async function handleEconomyAction(interaction, actionKey) {
                 if (!interaction.replied) {
                   await interaction.editReply({ content: '⏳ Toujours en cours… merci de patienter quelques secondes de plus.' });
                 }
-              } catch (timerError) {
-                console.error(`[Economy] Fallback timer failed for ${actionKey}:`, timerError.message);
-              }
-            }, 6000); // Réduit de 10s à 6s
+              } catch (_) {}
+            }, 10000);
           } catch (_) {}
         }
       } catch (error) {
@@ -1022,14 +1018,14 @@ async function handleEconomyAction(interaction, actionKey) {
     let partner = initialPartner;
     let third = null;
     
-    // Helper function for fetch with timeout (optimized)
-    const fetchMembersWithTimeout = async (guild, timeoutMs = 800) => {
+    // Helper function for fetch with timeout
+    const fetchMembersWithTimeout = async (guild, timeoutMs = 1500) => {
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Member fetch timeout')), timeoutMs)
       );
       
       const fetchPromise = guild.members.fetch({ 
-        limit: 10, // Further reduced limit for faster response
+        limit: 20, // Reduced limit for faster response
         force: false
       });
       
@@ -1044,11 +1040,11 @@ async function handleEconomyAction(interaction, actionKey) {
       console.log('[Tromper] Cached members available:', availableMembers.size);
       
       // If we have very few cached members, try to fetch more (but with strict timeout)
-      if (availableMembers.size < 2) {
+      if (availableMembers.size < 3) {
         console.log('[Tromper] Few cached members, attempting limited fetch with timeout...');
         try {
-          // Fetch with very strict timeout to avoid blocking
-          const fetched = await fetchMembersWithTimeout(interaction.guild, 800);
+          // Fetch with strict timeout to avoid blocking
+          const fetched = await fetchMembersWithTimeout(interaction.guild, 1500);
           const fetchedHumans = fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
           console.log('[Tromper] Fetched additional members:', fetchedHumans.size);
           
@@ -1174,14 +1170,9 @@ async function handleEconomyAction(interaction, actionKey) {
     let participants = [];
     try {
       let availableMembers = interaction.guild.members.cache.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
-      if (availableMembers.size < 4) {
+      if (availableMembers.size < 6) {
         try {
-          // Timeout rapide pour éviter les blocages
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Orgie fetch timeout')), 800)
-          );
-          const fetchPromise = interaction.guild.members.fetch({ limit: 15, force: false });
-          const fetched = await Promise.race([fetchPromise, timeoutPromise]);
+          const fetched = await interaction.guild.members.fetch({ limit: 30, force: false });
           availableMembers = availableMembers.concat(fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id));
         } catch (e) {
           console.warn('[Orgie] Fetch members fallback failed:', e?.message || e);
@@ -2141,9 +2132,6 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   } catch (mainError) {
     console.error(`[Economy] Critical error in handleEconomyAction for ${actionKey}:`, mainError);
-    console.error(`[Economy] Stack trace for ${actionKey}:`, mainError.stack);
-    console.error(`[Economy] Interaction state - replied: ${interaction.replied}, deferred: ${interaction.deferred}`);
-    
     try {
       return await respondAndUntrack({ 
         content: `❌ Erreur lors de l'exécution de l'action ${actionKey}.`, 
@@ -2151,11 +2139,8 @@ async function handleEconomyAction(interaction, actionKey) {
       });
     } catch (err) {
       console.error(`[Economy] Could not even send error message for ${actionKey}:`, err?.message || err);
-      console.error(`[Economy] Final error stack trace:`, err?.stack);
       try { untrackInteraction(interaction); } catch (_) {}
     }
-  } finally {
-    console.log(`[Economy] Completed action ${actionKey} for user ${interaction.user.id}`);
   }
 }
 
@@ -4544,23 +4529,6 @@ client.once(Events.ClientReady, (readyClient) => {
   }, 60 * 1000); // Check every minute
 });
 client.on(Events.InteractionCreate, async (interaction) => {
-  // Timeout global pour éviter les interactions qui traînent
-  const globalTimeout = setTimeout(() => {
-    console.warn(`[InteractionCreate] Timeout global atteint pour ${interaction.commandName || 'interaction'} par ${interaction.user.id}`);
-    try {
-      if (!interaction.replied && !interaction.deferred) {
-        interaction.reply({ 
-          content: '⏱️ Timeout - La commande a pris trop de temps. Veuillez réessayer.', 
-          ephemeral: true 
-        }).catch(() => {});
-      } else if (interaction.deferred) {
-        interaction.editReply({ 
-          content: '⏱️ Timeout - La commande a pris trop de temps. Veuillez réessayer.' 
-        }).catch(() => {});
-      }
-    } catch (_) {}
-  }, 25000); // 25 secondes max pour toute interaction
-  
   try {
     if (interaction.isChatInputCommand() && interaction.commandName === 'config') {
       const hasManageGuild = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) || interaction.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
@@ -4601,8 +4569,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         embed.setImage('attachment://map.png');
         return interaction.editReply({ embeds: [embed], files: [file] });
-      } catch (error) {
-        console.error('[Map] Erreur géolocalisation:', error.message);
+      } catch (_) {
         return interaction.reply({ content: 'Erreur géolocalisation.', ephemeral: true });
       }
     }
@@ -4644,8 +4611,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         embed.setImage('attachment://nearby.png');
         return interaction.editReply({ embeds: [embed], files: [file] });
-      } catch (error) {
-        console.error('[Proche] Erreur proximité:', error.message);
+      } catch (_) {
         return interaction.reply({ content: 'Erreur proximité.', ephemeral: true });
       }
     }
@@ -4713,8 +4679,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return interaction.editReply({ embeds: [embed], files: [file] });
         }
         return interaction.editReply({ embeds: [embed] });
-      } catch (error) {
-        console.error('[Localisation] Erreur localisation:', error.message);
+      } catch (_) {
         return interaction.reply({ content: 'Erreur localisation.', ephemeral: true });
       }
     }
@@ -8317,8 +8282,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const nodes = Array.from(client.music.nodes.values());
             const connectedNodes = nodes.filter(n => n.connected);
             return { total: nodes.length, connected: connectedNodes.length, nodes: connectedNodes };
-          } catch (error) { 
-            console.error('[Music] Erreur lors de la vérification des nœuds:', error.message);
+          } catch (_) { 
             return { total: 0, connected: 0, nodes: [] }; 
           }
         };
@@ -8330,8 +8294,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             : '⚠️ Aucun serveur audio configuré. Contactez un administrateur.';
           return interaction.editReply(statusMsg);
         }
-        // Timeout + multi-source fallback with better error handling (optimized)
-        const searchWithTimeout = (q, user, ms = 8000) => {
+        // Timeout + multi-source fallback with better error handling
+        const searchWithTimeout = (q, user, ms = 15000) => {
           const timeoutPromise = new Promise((_, rej) => 
             setTimeout(() => rej(new Error('Recherche musicale expirée')), ms)
           );
@@ -8380,7 +8344,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         let res = null;
         for (const attempt of attempts) {
           try {
-            res = await searchWithTimeout(attempt, interaction.user, 8000);
+            res = await searchWithTimeout(attempt, interaction.user, 15000);
             if (res && Array.isArray(res.tracks) && res.tracks.length) break;
           } catch (error) { 
             console.log(`[Music] Search attempt failed for ${JSON.stringify(attempt)}:`, error.message);
@@ -8406,8 +8370,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           try {
             const best = Array.isArray(res.tracks) ? res.tracks.sort((a,b)=> (b.info?.length||0)-(a.info?.length||0))[0] : res.tracks[0];
             player.queue.add(best || res.tracks[0]);
-          } catch (trackError) {
-            console.error('[Music] Erreur lors du tri des pistes:', trackError.message);
+          } catch (_) {
             player.queue.add(res.tracks[0]);
           }
         }
@@ -8445,16 +8408,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
         return;
       } catch (e) {
-        console.error('[Play] Erreur complète:', e);
-        console.error('[Play] Stack trace:', e.stack);
-        console.error('[Play] Query:', query);
-        console.error('[Play] User:', interaction.user.id);
-        try { 
-          return await interaction.editReply('❌ Erreur de lecture. Veuillez réessayer avec un autre terme de recherche.'); 
-        } catch (replyError) { 
-          console.error('[Play] Impossible de répondre:', replyError.message);
-          return; 
-        }
+        console.error('/play failed', e);
+        try { return await interaction.editReply('Erreur de lecture.'); } catch (_) { return; }
       }
     }
     // Moderation commands (staff-only)
@@ -10357,77 +10312,11 @@ async function getBoutiqueEntriesCount(guild) {
   return { entriesCount: count };
 }
 
-  } catch (error) {
-    console.error('[InteractionCreate] Erreur critique:', error);
-    console.error('[InteractionCreate] Stack trace:', error.stack);
-    
-    // Tentative de réponse d'urgence pour éviter le blocage
-    try {
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ 
-          content: '❌ Une erreur inattendue s\'est produite. Veuillez réessayer dans quelques instants.', 
-          ephemeral: true 
-        });
-      } else if (interaction.deferred) {
-        await interaction.editReply({ 
-          content: '❌ Une erreur inattendue s\'est produite. Veuillez réessayer dans quelques instants.' 
-        });
-      } else {
-        await interaction.followUp({ 
-          content: '❌ Une erreur inattendue s\'est produite. Veuillez réessayer dans quelques instants.', 
-          ephemeral: true 
-        });
-      }
-    } catch (replyError) {
-      console.error('[InteractionCreate] Impossible de répondre à l\'interaction:', replyError.message);
-    }
-    
-    // Nettoyer le tracking de l'interaction
-    try {
-      if (typeof untrackInteraction === 'function') {
-        untrackInteraction(interaction);
-      }
-    } catch (_) {}
-  } finally {
-    // Nettoyer le timeout global
-    try {
-      clearTimeout(globalTimeout);
-    } catch (_) {}
-  }
-});
-
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
     const ak = await getAutoKickConfig(member.guild.id);
     if (!ak?.enabled) return;
     await addPendingJoiner(member.guild.id, member.id, Date.now());
-  } catch (error) {
-    console.error('[GuildMemberAdd] Erreur:', error.message);
-  }
+  } catch (_) {}
 });
-
-// Nettoyage automatique des interactions bloquées
-setInterval(() => {
-  try {
-    if (typeof pendingInteractions !== 'undefined' && pendingInteractions.size > 0) {
-      const now = Date.now();
-      let cleanedCount = 0;
-      
-      for (const [key, data] of pendingInteractions.entries()) {
-        // Nettoyer les interactions de plus de 30 secondes
-        if (now - data.timestamp > 30000) {
-          pendingInteractions.delete(key);
-          cleanedCount++;
-        }
-      }
-      
-      if (cleanedCount > 0) {
-        console.log(`[Cleanup] Nettoyé ${cleanedCount} interactions bloquées`);
-      }
-    }
-  } catch (error) {
-    console.error('[Cleanup] Erreur lors du nettoyage:', error.message);
-  }
-}, 30000); // Nettoyer toutes les 30 secondes
-
 // Note: no automatic booster role assignment on join
