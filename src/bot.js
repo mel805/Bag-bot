@@ -1181,7 +1181,12 @@ async function handleEconomyAction(interaction, actionKey) {
       if (availableMembers.size < 6) {
         try {
           const fetched = await interaction.guild.members.fetch({ limit: 30, force: false });
-          availableMembers = availableMembers.concat(fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id));
+          // Merge the fetched members with existing ones (both are Collections)
+          fetched.forEach((member, id) => {
+            if (!member.user.bot && member.user.id !== interaction.user.id) {
+              availableMembers.set(id, member);
+            }
+          });
         } catch (e) {
           console.warn('[Orgie] Fetch members fallback failed:', e?.message || e);
         }
@@ -1192,19 +1197,18 @@ async function handleEconomyAction(interaction, actionKey) {
       // Determine number of random others: 4 if partner exists, else 5
       const needed = partner ? 4 : 5;
       const pool = Array.from(availableMembers.values())
-        .map(m => m.user)
-        .filter(u2 => !u2.bot && !excludeIds.has(u2.id));
+        .filter(m => !m.user.bot && !excludeIds.has(m.user.id));
       for (let i = 0; i < needed && pool.length > 0; i++) {
         const idx = Math.floor(Math.random() * pool.length);
         participants.push(pool[idx]);
-        excludeIds.add(pool[idx].id);
+        excludeIds.add(pool[idx].user.id);
         pool.splice(idx, 1);
       }
     } catch (e) {
       console.error('[Orgie] Error selecting participants:', e?.message || e);
     }
-    const everyone = [partner, ...participants].filter(Boolean);
-    const list = everyone.length ? everyone.map(u2 => String(u2)).join(', ') : 'personne';
+    const everyone = [partner, ...participants.map(m => m.user)].filter(Boolean);
+    const list = everyone.length ? everyone.map(u2 => `<@${u2.id}>`).join(', ') : 'personne';
     if (success) {
       const texts = partner ? [
         `Orgie réussie avec ${partner} et ${participants.length} autres: la pièce s'enflamme.`,
