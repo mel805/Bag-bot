@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-09-05T12:40:58.664Z",
+  "patches": [
+    "Defer immédiat de toutes les interactions",
+    "Optimisation des timeouts réseau (max 2000ms)",
+    "Fonction renderSafeReply pour fallbacks",
+    "Détection environnement Render",
+    "Optimisations spécifiques handleEconomyAction",
+    "Defer automatique commandes slash",
+    "Fallbacks critiques pour réponses"
+  ],
+  "filesModified": [
+    "src/bot.js"
+  ],
+  "filesCreated": [
+    "src/bot.js.backup",
+    "test-render-optimizations.js"
+  ],
+  "originalSize": 556082,
+  "optimizedSize": 558412,
+  "sizeDifference": 2330
+}

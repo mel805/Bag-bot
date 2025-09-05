@@ -1,0 +1,72 @@
+services:
+  - type: web
+    name: bag-discord-bot-optimized
+    env: node
+    autoDeploy: true
+    plan: free
+    buildCommand: npm ci --production --silent
+    startCommand: npm run render-start-optimized
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DATA_DIR
+        value: "/var/data"
+      - key: CLIENT_ID
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: LOCATIONIQ_TOKEN
+        sync: false
+      - key: LEVEL_CARD_LOGO_URL
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: "mel805/Bag-bot"
+      - key: GITHUB_BACKUP_BRANCH
+        value: "backup-data"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bag-bot-db
+          property: connectionString
+      # OPTIMISATIONS RENDER SPÉCIFIQUES
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=400 --optimize-for-size --max-semi-space-size=64"
+      - key: RENDER
+        value: "true"
+      - key: NODE_ENV
+        value: "production"
+      # TIMEOUTS OPTIMISÉS POUR RENDER
+      - key: DEFAULT_TIMEOUT
+        value: "1500"
+      - key: NETWORK_TIMEOUT
+        value: "2000"
+      - key: INTERACTION_TIMEOUT
+        value: "2500"
+      # CONFIGURATION MUSIQUE V3 OPTIMISÉE
+      - key: ENABLE_MUSIC
+        value: "true"
+      - key: ENABLE_LOCAL_LAVALINK
+        value: "false"
+      - key: ENABLE_LOCAL_LAVALINK_V3
+        value: "false"
+      - key: MUSIC_V3_ONLY
+        value: "true"
+      - key: LAVALINK_NODES
+        value: '[{"identifier":"ajieblogs-v3-render","host":"lava-v3.ajieblogs.eu.org","port":80,"password":"https://dsc.gg/ajidevserver","secure":false,"retryAmount":3,"retryDelay":5000,"priority":1,"note":"Lavalink V3 optimisé pour Render"}]'
+      # OPTIMISATIONS PERFORMANCE
+      - key: FORCE_DEFER_ALL_INTERACTIONS
+        value: "true"
+      - key: REDUCE_NETWORK_TIMEOUTS
+        value: "true"
+      - key: ENABLE_RENDER_OPTIMIZATIONS
+        value: "true"
+    volumes:
+      - name: bag-bot-data
+        mountPath: /var/data
+databases:
+  - name: bag-bot-db
+    plan: free
+volumes:
+  - name: bag-bot-data
+    sizeGB: 1
