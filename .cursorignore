@@ -1,0 +1,49 @@
+# Ignore large/binary and transient files to speed up indexing
+
+# Node and package managers
+node_modules/
+.npm/
+.npm-cache/
+package-lock.json
+
+# Python
+__pycache__/
+.venv/
+venv/
+*.pyc
+
+# Logs and runtime artifacts
+*.log
+logs/
+**/logs/
+*.tmp
+*.swp
+
+# Build outputs and caches
+dist/
+build/
+.cache/
+.next/
+
+# Images and large media
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+assets/
+output/
+
+# Git
+.git/
+
+# Lavalink jars and heavy binaries
+**/Lavalink.jar
+*.jar
+
+# Env and IDE
+.env
+.env.*
+.idea/
+.vscode/
+
