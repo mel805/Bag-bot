@@ -879,7 +879,7 @@ async function handleEconomyAction(interaction, actionKey) {
                   await interaction.editReply({ content: '⏳ Toujours en cours… merci de patienter quelques secondes de plus.' });
                 }
               } catch (_) {}
-            }, 10000);
+            }, 5000);
           } catch (_) {}
         }
       } catch (error) {
@@ -1026,7 +1026,7 @@ async function handleEconomyAction(interaction, actionKey) {
     let third = null;
     
     // Helper function for fetch with timeout
-    const fetchMembersWithTimeout = async (guild, timeoutMs = 1500) => {
+    const fetchMembersWithTimeout = async (guild, timeoutMs = 1000) => {
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Member fetch timeout')), timeoutMs)
       );
@@ -1051,7 +1051,7 @@ async function handleEconomyAction(interaction, actionKey) {
         console.log('[Tromper] Few cached members, attempting limited fetch with timeout...');
         try {
           // Fetch with strict timeout to avoid blocking
-          const fetched = await fetchMembersWithTimeout(interaction.guild, 1500);
+          const fetched = await fetchMembersWithTimeout(interaction.guild, 1000);
           const fetchedHumans = fetched.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
           console.log('[Tromper] Fetched additional members:', fetchedHumans.size);
           
@@ -1062,6 +1062,15 @@ async function handleEconomyAction(interaction, actionKey) {
           console.warn('[Tromper] Limited fetch failed, using cache only:', fetchError.message);
           // Continue with cache only - this is acceptable
         }
+      }
+      
+      // Emergency fallback: if still no members available, use a simplified response
+      if (availableMembers.size === 0) {
+        console.warn('[Tromper] No members available, using simplified response');
+        const fallbackMsg = success ? 
+          'Action réussie ! (participants indisponibles)' : 
+          'Action échouée ! (participants indisponibles)';
+        return respondAndUntrack({ content: fallbackMsg, ephemeral: true });
       }
       
       // If no partner provided, auto-select a random eligible partner from available members
@@ -1260,9 +1269,9 @@ async function handleEconomyAction(interaction, actionKey) {
         hasDeferred = true;
       }
     } catch (_) {}
-    // Attempt to resolve to a direct media URL with better error handling
+    // Attempt to resolve to a direct media URL with better error handling and shorter timeout
     try {
-      const resolved = await resolveGifUrl(imageUrl, { timeoutMs: 2000 });
+      const resolved = await resolveGifUrl(imageUrl, { timeoutMs: 1500 });
       if (resolved) {
         imageUrl = resolved;
         try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
@@ -2148,7 +2157,13 @@ async function handleEconomyAction(interaction, actionKey) {
   
   // Final safety check to ensure interaction is always responded to
   try {
-    return await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
+    // Add emergency timeout for final response
+    const responsePromise = respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
+    const emergencyTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Emergency timeout')), 8000)
+    );
+    
+    return await Promise.race([responsePromise, emergencyTimeout]);
   } catch (error) {
     console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
     // Last resort: try followUp if possible
