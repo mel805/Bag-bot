@@ -842,8 +842,11 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring
   trackInteraction(interaction, `economy-${actionKey}`);
+  let fallbackTimer = null;
+  const clearFallbackTimer = () => { try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) {} };
   const respondAndUntrack = async (payload, preferFollowUp = false) => {
     try {
+      clearFallbackTimer();
       if (interaction.deferred || interaction.replied) {
         const cloned = { ...(payload || {}) };
         try { if ('ephemeral' in cloned) delete cloned.ephemeral; } catch (_) {}
@@ -859,6 +862,30 @@ async function handleEconomyAction(interaction, actionKey) {
   };
   
   try {
+    // Early defer for heavy actions BEFORE any storage access to avoid 3s timeout
+    const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'nibble', 'branler', 'doigter'];
+    let hasDeferred = false;
+    if (heavyActions.includes(actionKey)) {
+      try {
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.deferReply();
+          hasDeferred = true;
+          console.log(`[Economy] Early defer for heavy action: ${actionKey}`);
+          try {
+            clearFallbackTimer();
+            fallbackTimer = setTimeout(async () => {
+              try {
+                if (!interaction.replied) {
+                  await interaction.editReply({ content: '⏳ Toujours en cours… merci de patienter quelques secondes de plus.' });
+                }
+              } catch (_) {}
+            }, 10000);
+          } catch (_) {}
+        }
+      } catch (error) {
+        console.error(`[Economy] Early defer failed for ${actionKey}:`, error.message);
+      }
+    }
     const eco = await getEconomyConfig(interaction.guild.id);
     // Disallow bot users executing actions
     if (interaction.user?.bot) {
@@ -885,7 +912,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return respondAndUntrack({ content: '⛔ Cible invalide: les bots sont exclus.', ephemeral: true });
   }
   // For heavier actions like 'tromper', defer reply IMMEDIATELY to avoid 3s timeout
-  let hasDeferred = false;
+  // preserve hasDeferred from early block above
   if (actionKey === 'tromper' || actionKey === 'orgie') {
     try {
       if (!interaction.deferred && !interaction.replied) {
@@ -902,29 +929,7 @@ async function handleEconomyAction(interaction, actionKey) {
       });
     }
   }
-  // Also defer early for common economy actions which can hit storage and GIF lookups
-  // Extended list of actions that commonly cause timeouts
-  const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'nibble', 'branler', 'doigter'];
-  if (!hasDeferred && heavyActions.includes(actionKey)) {
-    try {
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply();
-        hasDeferred = true;
-        console.log(`[Economy] Reply deferred for heavy action: ${actionKey}`);
-      }
-    } catch (error) {
-      console.error(`[Economy] Failed to defer reply for ${actionKey}:`, error.message);
-      // Fallback: try to reply immediately with a status message
-      try {
-        if (!interaction.replied) {
-          return respondAndUntrack({ 
-            content: '⏳ Action en cours... Veuillez patienter.', 
-            ephemeral: true 
-          });
-        }
-      } catch (_) {}
-    }
-  }
+  // (removed duplicate heavy defer block; handled earlier)
   
   const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
   const now = Date.now();
@@ -2128,14 +2133,13 @@ async function handleEconomyAction(interaction, actionKey) {
   } catch (mainError) {
     console.error(`[Economy] Critical error in handleEconomyAction for ${actionKey}:`, mainError);
     try {
-      if (!interaction.replied && !interaction.deferred) {
-        return respondAndUntrack({ 
-          content: `❌ Erreur lors de l'exécution de l'action ${actionKey}.`, 
-          ephemeral: true 
-        });
-      }
-    } catch (_) {
-      console.error(`[Economy] Could not even send error message for ${actionKey}`);
+      return await respondAndUntrack({ 
+        content: `❌ Erreur lors de l'exécution de l'action ${actionKey}.`, 
+        ephemeral: true 
+      });
+    } catch (err) {
+      console.error(`[Economy] Could not even send error message for ${actionKey}:`, err?.message || err);
+      try { untrackInteraction(interaction); } catch (_) {}
     }
   }
 }
