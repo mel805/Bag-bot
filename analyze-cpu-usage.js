@@ -268,8 +268,6 @@ const analysisReport = {
 fs.writeFileSync('/workspace/cpu-analysis-report.json', JSON.stringify(analysisReport, null, 2));
 console.log('\n📄 Rapport détaillé sauvegardé: cpu-analysis-report.json');
 
-}
-
 // Exécuter l'analyse
 async function main() {
   // Exécuter la simulation
