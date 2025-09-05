@@ -1168,6 +1168,9 @@ async function handleEconomyAction(interaction, actionKey) {
         + (thirdCharmDelta ? `, Charme ${thirdCharmDelta>=0?'+':''}${thirdCharmDelta}` : '')
         + (thirdPervDelta ? `, Perversion ${thirdPervDelta>=0?'+':''}${thirdPervDelta}` : '');
       global.__eco_tromper_third = { name: 'Sanction du tiers', value: thirdFieldVal, inline: false };
+      // Store pings for content (partner + third)
+      const tromperPings = [partner, third].filter(Boolean).map(u => `<@${u.id}>`).join(' ');
+      global.__eco_tromper_pings = tromperPings;
     }
     console.log('[Tromper] Tromper logic completed successfully');
   }
@@ -1233,6 +1236,8 @@ async function handleEconomyAction(interaction, actionKey) {
       const label = `Participants (${everyone.length})`;
       const val = `${list}`;
       global.__eco_orgie_participants = { name: label, value: val, inline: false };
+      // Store pings for content
+      global.__eco_orgie_pings = list;
     }
     console.log('[Orgie] Orgie logic completed successfully');
   }
@@ -2126,9 +2131,20 @@ async function handleEconomyAction(interaction, actionKey) {
   else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
   const parts = [initialPartner ? String(initialPartner) : undefined];
   if (imageLinkForContent) parts.push(imageLinkForContent);
+  
+  // Add pings for special actions
+  if (global.__eco_orgie_pings) {
+    parts.push(`🔥 ${global.__eco_orgie_pings}`);
+  }
+  if (global.__eco_tromper_pings) {
+    parts.push(`💫 ${global.__eco_tromper_pings}`);
+  }
+  
   const content = parts.filter(Boolean).join('\n') || undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
   try { delete global.__eco_orgie_participants; } catch (_) {}
+  try { delete global.__eco_orgie_pings; } catch (_) {}
+  try { delete global.__eco_tromper_pings; } catch (_) {}
   
   // Final safety check to ensure interaction is always responded to
   try {
