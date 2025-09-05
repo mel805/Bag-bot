@@ -12,6 +12,7 @@
     "render-build": "npm ci",
     "render-start": "node src/migrate/render-restore.js && node src/deploy-commands.js && node src/bot.js",
     "render-start-safe": "node -e \"console.log('🔍 Checking environment...'); const missing = ['DISCORD_TOKEN', 'CLIENT_ID', 'GUILD_ID'].filter(v => !process.env[v]); if (missing.length) { console.error('❌ Missing critical env vars:', missing.join(', ')); console.error('📋 Please configure these in Render Dashboard > Environment'); process.exit(1); } console.log('✅ Environment OK, starting bot...');\" && npm run render-start",
+    "render-start-optimized": "node scripts/parallel-start.js",
     "render-check": "node src/render-start-check.js",
     "build": "echo 'No build step'",
     "deploy:commands": "bash scripts/deploy-commands.sh",

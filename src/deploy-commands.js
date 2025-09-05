@@ -1,10 +1,17 @@
 const { REST, Routes, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
+
 // Log a brief storage mode hint on registration too
 try {
   const { paths } = require('./storage/jsonStore');
   console.log('[register] DATA_DIR:', paths.DATA_DIR, 'CONFIG_PATH:', paths.CONFIG_PATH);
 } catch (_) {}
+
+// Cache des commandes pour éviter les déploiements inutiles
+const COMMANDS_CACHE_FILE = path.join(__dirname, '../.commands-cache.json');
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
@@ -360,14 +367,57 @@ const commands = [
     .toJSON(),
 ];
 
-async function main() {
-  const rest = new REST({ version: '10' }).setToken(token);
+// Fonction pour vérifier si les commandes ont changé
+function shouldDeployCommands() {
   try {
-    console.log('Registering guild commands...');
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-    console.log('✓ /config registered for guild', guildId);
+    const commandsHash = crypto.createHash('md5').update(JSON.stringify(commands)).digest('hex');
+    const cache = JSON.parse(fs.readFileSync(COMMANDS_CACHE_FILE, 'utf8'));
+    
+    // Vérifier si le hash a changé ou si le cache est trop ancien (24h)
+    const cacheAge = Date.now() - cache.timestamp;
+    const maxCacheAge = 24 * 60 * 60 * 1000; // 24 heures
+    
+    if (cache.hash !== commandsHash || cacheAge > maxCacheAge) {
+      console.log('📝 Commandes modifiées ou cache expiré, déploiement nécessaire');
+      return { deploy: true, hash: commandsHash };
+    } else {
+      console.log('✅ Commandes inchangées, déploiement ignoré (gain de temps)');
+      return { deploy: false, hash: commandsHash };
+    }
+  } catch {
+    console.log('📝 Premier déploiement ou cache invalide');
+    const commandsHash = crypto.createHash('md5').update(JSON.stringify(commands)).digest('hex');
+    return { deploy: true, hash: commandsHash };
+  }
+}
+
+async function main() {
+  const startTime = Date.now();
+  const rest = new REST({ version: '10' }).setToken(token);
+  
+  try {
+    const { deploy, hash } = shouldDeployCommands();
+    
+    if (deploy) {
+      console.log('🚀 Registering guild commands...');
+      await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
+      
+      // Sauvegarder le cache
+      fs.writeFileSync(COMMANDS_CACHE_FILE, JSON.stringify({
+        hash,
+        timestamp: Date.now(),
+        commandCount: commands.length
+      }));
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ ${commands.length} commands registered for guild ${guildId} (${duration}ms)`);
+    } else {
+      const duration = Date.now() - startTime;
+      console.log(`⚡ Command deployment skipped - no changes detected (${duration}ms)`);
+    }
   } catch (err) {
-    console.error('Failed to register commands:', err?.response?.data || err);
+    const duration = Date.now() - startTime;
+    console.error(`❌ Failed to register commands (${duration}ms):`, err?.response?.data || err);
     process.exit(1);
   }
 }
