@@ -2,7 +2,7 @@ const http = require('http');
 
 // Health check endpoint optimized for Render free plan keep-alive
 const server = http.createServer((req, res) => {
-    if (req.url === '/health' || req.url === '/keep-alive') {
+    if (req.url === '/health' || req.url === '/keep-alive' || req.url === '/status') {
         const response = { 
             status: 'healthy', 
             timestamp: new Date().toISOString(),
