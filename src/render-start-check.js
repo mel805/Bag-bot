@@ -16,8 +16,6 @@ const criticalVars = [
 // Variables optionnelles
 const optionalVars = [
     { name: 'DATABASE_URL', description: 'URL PostgreSQL (auto-configurée par Render)' },
-    { name: 'GITHUB_TOKEN', description: 'Token GitHub pour les backups' },
-    { name: 'GITHUB_REPO', description: 'Repository GitHub' },
     { name: 'LOCATIONIQ_TOKEN', description: 'Token LocationIQ pour géolocalisation' },
     { name: 'LEVEL_CARD_LOGO_URL', description: 'URL du logo pour les cartes de niveau' }
 ];

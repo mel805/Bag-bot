@@ -171,13 +171,13 @@ async function writeConfig(cfg) {
 // Force a snapshot of current state into the configured storage
 async function backupNow() {
   const cfg = await readConfig();
-  // Ne pas appeler writeConfig ici car cela ferait un double appel GitHub
+  // Ne pas appeler writeConfig ici car cela ferait un double appel de sauvegarde
   // await writeConfig(cfg);
   const info = { 
     storage: USE_PG ? 'postgres' : 'file', 
     backupFile: null, 
     historyId: null, 
-    github: null,
+    freebox: null,
     local: { success: false, error: null },
     details: {
       dataSize: JSON.stringify(cfg).length,
@@ -224,52 +224,41 @@ async function backupNow() {
     console.error('[Backup] Erreur sauvegarde locale:', error.message);
   }
 
-  // Sauvegarde GitHub (nouvelle)
+  // Sauvegarde Freebox (locale)
   try {
-    const GitHubBackup = require('./githubBackup');
-    const github = new GitHubBackup();
+    const { exec } = require('child_process');
     
-    if (github.isConfigured()) {
-      const result = await github.backup(cfg);
-      info.github = { ...result, configured: true };
-      console.log('[Backup] Sauvegarde GitHub réussie:', result.commit_sha);
-    } else {
-      info.github = { success: false, configured: false, error: 'GitHub non configuré (GITHUB_TOKEN et GITHUB_REPO requis)' };
-      console.log('[Backup] GitHub non configuré, sauvegarde locale uniquement');
-    }
+    const freeboxResult = await new Promise((resolve, reject) => {
+      exec('/usr/local/bin/backup-bot.sh', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`[Backup] Erreur de sauvegarde Freebox : ${error.message}`);
+          reject(error);
+          return;
+        }
+        console.log(`[Backup] Sauvegarde Freebox réussie : ${stdout}`);
+        resolve({ success: true, output: stdout, configured: true });
+      });
+    });
+    
+    info.freebox = freeboxResult;
   } catch (error) {
-    info.github = { success: false, configured: true, error: error.message };
-    console.error('[Backup] Erreur sauvegarde GitHub:', error.message);
-    // Ne pas faire échouer la sauvegarde locale si GitHub échoue
+    info.freebox = { success: false, configured: true, error: error.message };
+    console.error('[Backup] Erreur sauvegarde Freebox:', error.message);
+    // Ne pas faire échouer la sauvegarde locale si Freebox échoue
   }
 
   return info;
 }
 
-// Restore the latest snapshot (GitHub priority, then Postgres history, then latest file backup)
+// Restore the latest snapshot (Postgres history, then latest file backup)
 async function restoreLatest() {
   let data = null;
   let source = 'unknown';
 
-  // 1. Essayer de restaurer depuis GitHub en priorité
-  try {
-    const GitHubBackup = require('./githubBackup');
-    const github = new GitHubBackup();
-    
-    if (github.isConfigured()) {
-      const result = await github.restore();
-      if (result.success && result.data) {
-        data = result.data;
-        source = 'github';
-        console.log(`[Restore] Restauration GitHub réussie depuis: ${result.metadata.timestamp}`);
-      }
-    }
-  } catch (error) {
-    console.error('[Restore] Erreur restauration GitHub:', error.message);
-    // Continuer avec les autres méthodes
-  }
+  // 1. Note: Sauvegarde Freebox locale uniquement (plus de GitHub)
+  console.log('[Restore] Utilisation de la sauvegarde locale uniquement');
 
-  // 2. Si GitHub a échoué, essayer Postgres
+  // 2. Essayer Postgres
   if (!data && USE_PG) {
     const pool = await getPg();
     const client = await pool.connect();

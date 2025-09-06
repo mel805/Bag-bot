@@ -411,20 +411,16 @@ async function sendDetailedBackupLog(guild, info, method, user) {
     
     // Déterminer le statut global
     const localSuccess = info.local?.success;
-    const githubSuccess = info.github?.success;
-    const githubConfigured = info.github?.configured;
+    const freeboxSuccess = info.freebox?.success;
     
     let globalStatus = '❌ Échec';
     let statusColor = 0xff4444; // Rouge
     
-    if (localSuccess && githubSuccess) {
+    if (localSuccess && freeboxSuccess) {
       globalStatus = '✅ Succès complet';
       statusColor = 0x44ff44; // Vert
-    } else if (localSuccess && !githubConfigured) {
-      globalStatus = '⚠️ Succès partiel';
-      statusColor = 0xffaa44; // Orange
     } else if (localSuccess) {
-      globalStatus = '⚠️ Local OK, GitHub KO';
+      globalStatus = '⚠️ Local OK, Freebox KO';
       statusColor = 0xffaa44; // Orange
     }
 
@@ -469,36 +465,30 @@ async function sendDetailedBackupLog(guild, info, method, user) {
       inline: true
     });
 
-    // Statut sauvegarde GitHub
-    const githubIcon = githubSuccess ? '✅' : (githubConfigured ? '❌' : '⚙️');
-    let githubValue = `${githubIcon} GitHub`;
+    // Statut sauvegarde Freebox
+    const freeboxIcon = freeboxSuccess ? '✅' : '❌';
+    let freeboxValue = `${freeboxIcon} Freebox`;
     
-    if (!githubConfigured) {
-      githubValue += '\n⚙️ Non configuré';
-    } else if (githubSuccess) {
-      githubValue += `\n🔗 ${info.github.commit_sha.substring(0, 7)}`;
-      if (info.github.commit_url) githubValue += `\n[Voir commit](${info.github.commit_url})`;
-    } else if (info.github?.error) {
-      githubValue += `\n💥 ${info.github.error.substring(0, 100)}`;
+    if (freeboxSuccess) {
+      freeboxValue += '\n✅ Script exécuté';
+      if (info.freebox.output) {
+        freeboxValue += `\n📄 ${info.freebox.output.substring(0, 50)}...`;
+      }
+    } else if (info.freebox?.error) {
+      freeboxValue += `\n💥 ${info.freebox.error.substring(0, 100)}`;
     }
 
     embed.fields.push({
-      name: '🐙 Sauvegarde GitHub',
-      value: githubValue,
+      name: '📦 Sauvegarde Freebox',
+      value: freeboxValue,
       inline: true
     });
 
-    // Recommandations si problèmes
-    if (!githubConfigured) {
+    // Recommandations si problèmes Freebox
+    if (!freeboxSuccess) {
       embed.fields.push({
-        name: '💡 Configuration GitHub',
-        value: 'Variables requises:\n`GITHUB_TOKEN`\n`GITHUB_REPO`\n\nUtilisez `/github-backup test` pour vérifier.',
-        inline: false
-      });
-    } else if (!githubSuccess && githubConfigured) {
-      embed.fields.push({
-        name: '🔧 Dépannage',
-        value: 'Vérifiez:\n• Token GitHub valide\n• Permissions du dépôt\n• Connexion réseau\n\nUtilisez `/github-backup test`',
+        name: '🔧 Dépannage Freebox',
+        value: 'Vérifiez:\n• Script `/usr/local/bin/backup-bot.sh` présent\n• Permissions d\'exécution\n• Espace disque disponible',
         inline: false
       });
     }
@@ -516,7 +506,6 @@ async function sendDetailedRestoreLog(guild, result, method, user) {
     if (!lc?.categories?.backup) return;
 
     const sourceLabels = {
-      'github': { icon: '🐙', name: 'GitHub', color: 0x6cc644 },
       'postgres_history': { icon: '🐘', name: 'PostgreSQL (Historique)', color: 0x336791 },
       'postgres_current': { icon: '🐘', name: 'PostgreSQL (Actuel)', color: 0x336791 },
       'file_backup': { icon: '📁', name: 'Fichier (Backup)', color: 0xffa500 },
@@ -549,13 +538,6 @@ async function sendDetailedRestoreLog(guild, result, method, user) {
     // Ajouter des détails selon la source
     if (success) {
       switch (result.source) {
-        case 'github':
-          embed.fields.push({
-            name: '🐙 Détails GitHub',
-            value: '✅ Restauration depuis la sauvegarde GitHub\n🔄 Synchronisation locale effectuée',
-            inline: false
-          });
-          break;
         case 'postgres_history':
         case 'postgres_current':
           embed.fields.push({
@@ -568,7 +550,7 @@ async function sendDetailedRestoreLog(guild, result, method, user) {
         case 'file_current':
           embed.fields.push({
             name: '📁 Détails Fichier',
-            value: '✅ Restauration depuis fichier local\n⚠️ Considérez configurer GitHub pour plus de sécurité',
+            value: '✅ Restauration depuis fichier local\n📦 Sauvegarde Freebox disponible',
             inline: false
           });
           break;
@@ -583,10 +565,10 @@ async function sendDetailedRestoreLog(guild, result, method, user) {
     }
 
     // Recommandations selon la source utilisée
-    if (success && result.source !== 'github') {
+    if (success) {
       embed.fields.push({
-        name: '💡 Recommandation',
-        value: 'Pour une sécurité maximale, configurez GitHub:\n• `GITHUB_TOKEN`\n• `GITHUB_REPO`\n\nUtilisez `/github-backup test`',
+        name: '💡 Information',
+        value: 'Sauvegarde automatique sur Freebox activée\n📦 Script: `/usr/local/bin/backup-bot.sh`',
         inline: false
       });
     }
@@ -624,7 +606,7 @@ function startKeepAliveServer() {
                 const httpInfo = { 
                   storage: 'http', 
                   local: { success: true }, 
-                  github: { success: false, configured: false, error: 'Non disponible via HTTP' },
+                  freebox: { success: false, configured: false, error: 'Non disponible via HTTP' },
                   details: { timestamp: new Date().toISOString() }
                 };
                 await sendDetailedBackupLog(g, httpInfo, 'http', null);
@@ -4346,18 +4328,18 @@ client.once(Events.ClientReady, (readyClient) => {
       const guild = readyClient.guilds.cache.get(guildId) || await readyClient.guilds.fetch(guildId).catch(()=>null);
       if (!guild) return;
       
-      // Force a read+write round-trip to create snapshot/rolling backups avec GitHub
+      // Force a read+write round-trip to create snapshot/rolling backups avec Freebox
       const { backupNow } = require('./storage/jsonStore');
       const backupInfo = await backupNow();
       
       const cfg = await getLogsConfig(guild.id);
       if (!cfg?.categories?.backup) return;
       
-      // Utiliser les vraies informations de sauvegarde (incluant GitHub)
+      // Utiliser les vraies informations de sauvegarde (incluant Freebox)
       const autoInfo = { 
         storage: 'auto', 
         local: backupInfo.local || { success: true }, 
-        github: backupInfo.github || { success: false, configured: false, error: 'GitHub non configuré' },
+        freebox: backupInfo.freebox || { success: false, configured: true, error: 'Script Freebox non disponible' },
         details: { 
           timestamp: new Date().toISOString(),
           dataSize: backupInfo.details?.dataSize || 0,
@@ -8021,19 +8003,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferReply({ ephemeral: true });
         const { readConfig, backupNow } = require('./storage/jsonStore');
         const info = await backupNow();
+        
+        // Exécuter le script Freebox
+        const { exec } = require('child_process');
+        
+        exec('/usr/local/bin/backup-bot.sh', (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Erreur de sauvegarde : ${error.message}`);
+            interaction.followUp({ content: '❌ Erreur lors de la sauvegarde.', ephemeral: true });
+            return;
+          }
+
+          console.log(`Sauvegarde réussie : ${stdout}`);
+          interaction.followUp({ content: '✅ Sauvegarde terminée (Freebox).', ephemeral: true });
+        });
+        
         const cfg = await readConfig();
         const json = Buffer.from(JSON.stringify(cfg, null, 2), 'utf8');
         const file = { attachment: json, name: 'bag-backup.json' };
         try {
           await sendDetailedBackupLog(interaction.guild, info, 'slash', interaction.user);
         } catch (_) {}
-        return interaction.editReply({ content: '📦 Sauvegarde générée.', files: [file] });
+        return interaction.editReply({ content: '📦 Sauvegarde générée et script Freebox lancé.', files: [file] });
       } catch (e) {
         try {
           const lc = await getLogsConfig(interaction.guild.id);
           const errorInfo = {
             local: { success: false, error: String(e?.message || e) },
-            github: { success: false, configured: false, error: 'Échec avant sauvegarde' },
+            freebox: { success: false, configured: true, error: 'Échec avant sauvegarde' },
             details: { timestamp: new Date().toISOString() }
           };
           await sendDetailedBackupLog(interaction.guild, errorInfo, 'slash', interaction.user);
@@ -8064,120 +8061,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await sendDetailedRestoreLog(interaction.guild, errorResult, 'slash', interaction.user);
         } catch (_) {}
         try { return await interaction.editReply({ content: 'Erreur restauration.' }); } catch (_) { try { return await interaction.followUp({ content: 'Erreur restauration.', ephemeral: true }); } catch (_) { return; } }
-      }
-    }
-    // Admin-only: /github-backup (gestion des sauvegardes GitHub)
-    if (interaction.isChatInputCommand() && interaction.commandName === 'github-backup') {
-      try {
-        const ok = await isStaffMember(interaction.guild, interaction.member);
-        if (!ok) return interaction.reply({ content: '⛔ Réservé aux administrateurs.', ephemeral: true });
-        await interaction.deferReply({ ephemeral: true });
-        
-        const action = interaction.options.getString('action', true);
-        const GitHubBackup = require('./storage/githubBackup');
-        const github = new GitHubBackup();
-
-        switch (action) {
-          case 'test':
-            const testResult = await github.testConnection();
-            if (testResult.success) {
-              return interaction.editReply({ 
-                content: `✅ **Connexion GitHub OK**\n🔗 Dépôt: \`${testResult.repo}\`\n📝 Push: ${testResult.permissions.push ? '✅' : '❌'}\n👑 Admin: ${testResult.permissions.admin ? '✅' : '❌'}` 
-              });
-            } else {
-              return interaction.editReply({ content: `❌ **Erreur GitHub**\n${testResult.error}` });
-            }
-
-          case 'list':
-            if (!github.isConfigured()) {
-              return interaction.editReply({ content: '❌ GitHub non configuré (variables GITHUB_TOKEN et GITHUB_REPO requises)' });
-            }
-            const backups = await github.listBackups(10);
-            if (backups.length === 0) {
-              return interaction.editReply({ content: '📭 Aucune sauvegarde GitHub trouvée.' });
-            }
-            const list = backups.map((b, i) => {
-              const when = new Date(b.date).toLocaleString('fr-FR');
-              const short = b.sha.substring(0,7);
-              return `${i+1}. ${when} — ref: \`${short}\`\n${b.message}\n   ➡️ Restaurer: \`/github-backup force-restore ref:${b.sha}\``;
-            }).join('\n\n');
-            return interaction.editReply({ content: `📋 **Dernières sauvegardes GitHub:**\n\n${list}` });
-
-          case 'force-backup':
-            if (!github.isConfigured()) {
-              return interaction.editReply({ content: '❌ GitHub non configuré' });
-            }
-            const { readConfig } = require('./storage/jsonStore');
-            const cfg = await readConfig();
-            const backupResult = await github.backup(cfg);
-            
-            // Envoyer un log détaillé
-            const forceBackupInfo = {
-              storage: 'github-force',
-              local: { success: true },
-              github: { ...backupResult, configured: true },
-              details: {
-                dataSize: JSON.stringify(cfg).length,
-                guildsCount: Object.keys(cfg.guilds || {}).length,
-                usersCount: 0,
-                timestamp: backupResult.timestamp
-              }
-            };
-            
-            // Compter les utilisateurs
-            for (const guildId in cfg.guilds || {}) {
-              const guild = cfg.guilds[guildId];
-              if (guild.levels?.users) forceBackupInfo.details.usersCount += Object.keys(guild.levels.users).length;
-              if (guild.economy?.balances) forceBackupInfo.details.usersCount += Object.keys(guild.economy.balances).length;
-            }
-            
-            await sendDetailedBackupLog(interaction.guild, forceBackupInfo, 'force-github', interaction.user);
-            
-            return interaction.editReply({ 
-              content: `✅ **Sauvegarde GitHub forcée**\n🔗 Commit: \`${backupResult.commit_sha.substring(0,7)}\`\n⏰ ${new Date(backupResult.timestamp).toLocaleString('fr-FR')}` 
-            });
-
-          case 'force-restore':
-            if (!github.isConfigured()) {
-              return interaction.editReply({ content: '❌ GitHub non configuré' });
-            }
-            const ref = interaction.options.getString('ref', false) || null;
-            const restoreResult = await github.restore(ref);
-            if (restoreResult.success) {
-              const { writeConfig } = require('./storage/jsonStore');
-              await writeConfig(restoreResult.data);
-              
-              // Envoyer un log détaillé
-              const forceRestoreResult = {
-                ok: true,
-                source: 'github',
-                metadata: restoreResult.metadata
-              };
-              await sendDetailedRestoreLog(interaction.guild, forceRestoreResult, 'force-github', interaction.user);
-              
-              const refInfo = ref ? `\n🔖 Ref: \`${ref}\`` : '';
-              return interaction.editReply({ 
-                content: `✅ **Restauration GitHub forcée**\n⏰ Depuis: ${new Date(restoreResult.metadata.timestamp).toLocaleString('fr-FR')}${refInfo}` 
-              });
-            } else {
-              // Log d'échec
-              const failedRestoreResult = {
-                ok: false,
-                source: 'github',
-                error: 'Échec de la restauration GitHub'
-              };
-              await sendDetailedRestoreLog(interaction.guild, failedRestoreResult, 'force-github', interaction.user);
-              
-              return interaction.editReply({ content: '❌ Échec de la restauration GitHub' });
-            }
-
-          default:
-            return interaction.editReply({ content: '❌ Action inconnue' });
-        }
-
-      } catch (e) {
-        console.error('[GitHub-Backup] Erreur:', e);
-        return interaction.reply({ content: `❌ Erreur: ${e.message}`, ephemeral: true });
       }
     }
     // Music /play command removed - system disabled for CPU optimization
