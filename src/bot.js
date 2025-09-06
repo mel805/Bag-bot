@@ -4066,7 +4066,7 @@ client.login(process.env.DISCORD_TOKEN).then(() => {
   console.error('Login failed:', err?.message || err);
   process.exit(1);
 });
-client.once(Events.ClientReady, (readyClient) => {
+client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   // Boot persistance dès le départ et journaliser le mode choisi
   ensureStorageExists().then(()=>console.log('[bot] Storage initialized')).catch((e)=>console.warn('[bot] Storage init error:', e?.message||e));
