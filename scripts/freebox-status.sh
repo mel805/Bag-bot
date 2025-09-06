@@ -112,11 +112,43 @@ show_system_status() {
     done
 }
 
+# Détection du gestionnaire de processus
+detect_process_manager() {
+    # Vérifier si PM2 est installé et gère l'application
+    if command -v pm2 &> /dev/null && sudo -u "$BOT_USER" pm2 list | grep -q "bagbot"; then
+        echo "pm2"
+    elif systemctl list-unit-files | grep -q "$SERVICE_NAME"; then
+        echo "systemd"
+    else
+        echo "none"
+    fi
+}
+
 # Statut du service
 show_service_status() {
     header "🤖 STATUT DU BOT DISCORD"
     
-    # Vérifier si le service existe
+    PROCESS_MANAGER=$(detect_process_manager)
+    
+    case "$PROCESS_MANAGER" in
+        "pm2")
+            show_pm2_status
+            ;;
+        "systemd")
+            show_systemd_status
+            ;;
+        "none")
+            error "Aucun gestionnaire de processus détecté pour le bot"
+            warning "Le bot n'est configuré ni avec systemd ni avec PM2"
+            return 1
+            ;;
+    esac
+}
+
+# Statut systemd
+show_systemd_status() {
+    info "Gestionnaire de processus: systemd"
+    echo
     if ! systemctl list-unit-files | grep -q "$SERVICE_NAME"; then
         error "Service $SERVICE_NAME non trouvé"
         return 1
@@ -178,6 +210,62 @@ show_service_status() {
     journalctl -u "$SERVICE_NAME" --since "7 days ago" | grep -E "(Started|Stopped)" | tail -n5 | while read line; do
         echo "  $line"
     done
+}
+
+# Statut PM2
+show_pm2_status() {
+    info "Gestionnaire de processus: PM2"
+    echo
+    
+    # Version de PM2
+    if command -v pm2 &> /dev/null; then
+        PM2_VERSION=$(pm2 --version)
+        echo -e "${PURPLE}Version PM2:${NC} $PM2_VERSION"
+    fi
+    
+    # Statut de l'application
+    if sudo -u "$BOT_USER" pm2 list | grep -q "bagbot"; then
+        APP_STATUS=$(sudo -u "$BOT_USER" pm2 list | grep "bagbot" | awk '{print $12}' 2>/dev/null || echo "unknown")
+        
+        case "$APP_STATUS" in
+            "online")
+                success "Application en ligne"
+                ;;
+            "stopped")
+                warning "Application arrêtée"
+                ;;
+            "errored")
+                error "Application en erreur"
+                ;;
+            *)
+                warning "Statut inconnu: $APP_STATUS"
+                ;;
+        esac
+        
+        # Informations détaillées
+        echo
+        echo -e "${PURPLE}Détails de l'application:${NC}"
+        
+        # Utilisation des ressources
+        CPU_PERCENT=$(sudo -u "$BOT_USER" pm2 list | grep "bagbot" | awk '{print $13}' 2>/dev/null || echo "N/A")
+        MEMORY_USAGE=$(sudo -u "$BOT_USER" pm2 list | grep "bagbot" | awk '{print $14}' 2>/dev/null || echo "N/A")
+        
+        echo -e "  ${PURPLE}CPU:${NC} $CPU_PERCENT"
+        echo -e "  ${PURPLE}Mémoire:${NC} $MEMORY_USAGE"
+        
+        # Autres détails
+        RESTARTS=$(sudo -u "$BOT_USER" pm2 describe "bagbot" 2>/dev/null | grep "restarts" | awk '{print $2}' || echo "0")
+        UPTIME=$(sudo -u "$BOT_USER" pm2 describe "bagbot" 2>/dev/null | grep "uptime" | awk '{print $2, $3}' || echo "unknown")
+        PID=$(sudo -u "$BOT_USER" pm2 describe "bagbot" 2>/dev/null | grep "pid" | awk '{print $2}' || echo "unknown")
+        
+        echo -e "  ${PURPLE}PID:${NC} $PID"
+        echo -e "  ${PURPLE}Uptime:${NC} $UPTIME"
+        echo -e "  ${PURPLE}Redémarrages:${NC} $RESTARTS"
+        
+    else
+        error "Application bagbot non trouvée dans PM2"
+        warning "Pour démarrer: sudo -u $BOT_USER pm2 start $BOT_DIR/ecosystem.config.js --env production"
+    fi
 }
 
 # Statut des fichiers et configuration
@@ -259,7 +347,24 @@ show_network_status() {
 show_recent_logs() {
     header "📋 LOGS RÉCENTS"
     
-    echo -e "${PURPLE}Dernières 10 entrées du journal:${NC}"
+    PROCESS_MANAGER=$(detect_process_manager)
+    
+    case "$PROCESS_MANAGER" in
+        "pm2")
+            show_pm2_logs
+            ;;
+        "systemd")
+            show_systemd_logs
+            ;;
+        *)
+            warning "Aucun gestionnaire de processus détecté pour afficher les logs"
+            ;;
+    esac
+}
+
+# Logs systemd
+show_systemd_logs() {
+    echo -e "${PURPLE}Dernières 10 entrées du journal systemd:${NC}"
     if journalctl -u "$SERVICE_NAME" -n 10 --no-pager >/dev/null 2>&1; then
         journalctl -u "$SERVICE_NAME" -n 10 --no-pager | while read line; do
             echo "  $line"
@@ -282,6 +387,36 @@ show_recent_logs() {
     fi
 }
 
+# Logs PM2
+show_pm2_logs() {
+    echo -e "${PURPLE}Dernières 10 entrées des logs PM2:${NC}"
+    if sudo -u "$BOT_USER" pm2 logs "bagbot" --lines 10 --raw >/dev/null 2>&1; then
+        sudo -u "$BOT_USER" pm2 logs "bagbot" --lines 10 --raw | while read line; do
+            echo "  $line"
+        done
+    else
+        warning "Impossible de récupérer les logs PM2"
+    fi
+    
+    # Logs d'erreur récents PM2
+    echo
+    echo -e "${PURPLE}Erreurs récentes PM2:${NC}"
+    PM2_ERROR_LOG="/home/$BOT_USER/.pm2/logs/bagbot-error.log"
+    if [[ -f "$PM2_ERROR_LOG" ]]; then
+        ERROR_COUNT=$(grep -c "$(date +%Y-%m-%d)" "$PM2_ERROR_LOG" 2>/dev/null || echo "0")
+        if [[ $ERROR_COUNT -gt 0 ]]; then
+            error "$ERROR_COUNT erreurs trouvées aujourd'hui"
+            tail -n5 "$PM2_ERROR_LOG" | while read line; do
+                echo "  $line"
+            done
+        else
+            success "Aucune erreur aujourd'hui"
+        fi
+    else
+        info "Fichier de log d'erreur PM2 non trouvé"
+    fi
+}
+
 # Recommandations
 show_recommendations() {
     header "💡 RECOMMANDATIONS"
@@ -300,16 +435,40 @@ show_recommendations() {
         RECOMMENDATIONS+=("⚠️  Espace disque faible (${DISK_PERCENT}%) - Nettoyez les logs ou augmentez l'espace")
     fi
     
-    # Vérifier si le service est actif
-    if ! systemctl is-active --quiet "$SERVICE_NAME"; then
-        RECOMMENDATIONS+=("🔴 Service inactif - Démarrez le service avec: sudo systemctl start $SERVICE_NAME")
-    fi
+    # Vérifier le statut selon le gestionnaire de processus
+    PROCESS_MANAGER=$(detect_process_manager)
     
-    # Vérifier les erreurs récentes
-    ERROR_COUNT=$(journalctl -u "$SERVICE_NAME" --since "24 hours ago" -p err --no-pager | wc -l)
-    if [[ $ERROR_COUNT -gt 5 ]]; then
-        RECOMMENDATIONS+=("🔍 Nombreuses erreurs récentes ($ERROR_COUNT) - Vérifiez les logs détaillés")
-    fi
+    case "$PROCESS_MANAGER" in
+        "pm2")
+            # Vérifier si l'application PM2 est active
+            if ! sudo -u "$BOT_USER" pm2 list | grep "bagbot" | grep -q "online"; then
+                RECOMMENDATIONS+=("🔴 Application PM2 hors ligne - Démarrez avec: sudo -u $BOT_USER pm2 start bagbot")
+            fi
+            
+            # Vérifier les redémarrages PM2
+            if sudo -u "$BOT_USER" pm2 list | grep -q "bagbot"; then
+                RESTARTS=$(sudo -u "$BOT_USER" pm2 describe "bagbot" 2>/dev/null | grep "restarts" | awk '{print $2}' || echo "0")
+                if [[ $RESTARTS -gt 10 ]]; then
+                    RECOMMENDATIONS+=("🔍 Nombreux redémarrages PM2 ($RESTARTS) - Vérifiez: sudo -u $BOT_USER pm2 logs bagbot")
+                fi
+            fi
+            ;;
+        "systemd")
+            # Vérifier si le service systemd est actif
+            if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+                RECOMMENDATIONS+=("🔴 Service systemd inactif - Démarrez avec: sudo systemctl start $SERVICE_NAME")
+            fi
+            
+            # Vérifier les erreurs récentes systemd
+            ERROR_COUNT=$(journalctl -u "$SERVICE_NAME" --since "24 hours ago" -p err --no-pager | wc -l)
+            if [[ $ERROR_COUNT -gt 5 ]]; then
+                RECOMMENDATIONS+=("🔍 Nombreuses erreurs récentes ($ERROR_COUNT) - Vérifiez: sudo journalctl -u $SERVICE_NAME -f")
+            fi
+            ;;
+        "none")
+            RECOMMENDATIONS+=("🚨 Aucun gestionnaire de processus détecté - Configurez systemd ou PM2")
+            ;;
+    esac
     
     # Vérifier la dernière mise à jour
     if [[ -d "$BOT_DIR/.git" ]]; then
@@ -351,9 +510,33 @@ main() {
     
     echo
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN}📋 Commandes utiles:${NC}"
-    echo -e "   • Logs temps réel: ${YELLOW}sudo journalctl -u $SERVICE_NAME -f${NC}"
-    echo -e "   • Redémarrer:      ${YELLOW}sudo systemctl restart $SERVICE_NAME${NC}"
+    
+    PROCESS_MANAGER=$(detect_process_manager)
+    
+    case "$PROCESS_MANAGER" in
+        "pm2")
+            echo -e "${CYAN}📋 Commandes PM2 utiles:${NC}"
+            echo -e "   • Monitoring:      ${YELLOW}sudo -u $BOT_USER pm2 monit${NC}"
+            echo -e "   • Logs temps réel: ${YELLOW}sudo -u $BOT_USER pm2 logs bagbot${NC}"
+            echo -e "   • Redémarrer:      ${YELLOW}sudo -u $BOT_USER pm2 restart bagbot${NC}"
+            echo -e "   • Interface web:   ${YELLOW}sudo -u $BOT_USER pm2 web${NC}"
+            echo -e "   • Statut PM2:      ${YELLOW}./scripts/freebox-pm2-status.sh${NC}"
+            echo -e "   • Redémarrage:     ${YELLOW}./scripts/freebox-pm2-restart.sh${NC}"
+            ;;
+        "systemd")
+            echo -e "${CYAN}📋 Commandes systemd utiles:${NC}"
+            echo -e "   • Logs temps réel: ${YELLOW}sudo journalctl -u $SERVICE_NAME -f${NC}"
+            echo -e "   • Redémarrer:      ${YELLOW}sudo systemctl restart $SERVICE_NAME${NC}"
+            echo -e "   • Statut:          ${YELLOW}sudo systemctl status $SERVICE_NAME${NC}"
+            echo -e "   • Migration PM2:   ${YELLOW}./scripts/freebox-pm2-setup.sh${NC}"
+            ;;
+        *)
+            echo -e "${CYAN}📋 Scripts de configuration:${NC}"
+            echo -e "   • Setup systemd:   ${YELLOW}./scripts/freebox-setup.sh${NC}"
+            echo -e "   • Setup PM2:       ${YELLOW}./scripts/freebox-setup.sh --pm2${NC}"
+            ;;
+    esac
+    
     echo -e "   • Mise à jour:     ${YELLOW}sudo ./scripts/freebox-update.sh${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
