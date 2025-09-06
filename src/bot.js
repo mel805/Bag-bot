@@ -1,5 +1,10 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events, AttachmentBuilder } = require('discord.js');
+
+// Système de musique
+const MusicManager = require('./music/MusicManager');
+const MusicCommands = require('./music/MusicCommands');
+const MusicInteractions = require('./music/MusicInteractions');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, editTdPrompt, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig, getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 
@@ -400,6 +405,11 @@ const client = new Client({
   ],
   partials: [Partials.GuildMember, Partials.Message, Partials.Channel],
 });
+
+// Initialisation du système de musique
+let musicManager = null;
+let musicCommands = null;
+let musicInteractions = null;
 
 // Fonction pour envoyer des logs détaillés de sauvegarde
 async function sendDetailedBackupLog(guild, info, method, user) {
@@ -4070,7 +4080,20 @@ client.once(Events.ClientReady, (readyClient) => {
     validateKarmaCache();
   }, 30 * 60 * 1000);
   
-  console.log('[Bot] Music system disabled - all music features removed for CPU optimization');
+  // Initialisation du système de musique
+  try {
+    console.log('[Bot] 🎵 Initialisation du système de musique...');
+    musicManager = new MusicManager(client);
+    await musicManager.initialize();
+    
+    musicCommands = new MusicCommands(musicManager);
+    musicInteractions = new MusicInteractions(musicManager);
+    
+    console.log('[Bot] ✅ Système de musique initialisé avec succès');
+  } catch (error) {
+    console.error('[Bot] ❌ Erreur lors de l\'initialisation du système de musique:', error);
+    console.warn('[Bot] ⚠️ Le bot continuera sans les fonctionnalités musicales');
+  }
   // Logs: register listeners
   client.on(Events.GuildMemberAdd, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
@@ -4977,6 +5000,92 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.followUp({ embeds: [embed], components: [buildBackRow(), ...rows], ephemeral: true }); } catch (_) {}
       return;
     }
+    // Gestion de la sélection de fichier de restauration
+    if (interaction.isStringSelectMenu() && interaction.customId === 'restore_file_select') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member || !(await isStaffMember(interaction.guild, member))) {
+        return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+      }
+
+      const filename = interaction.values[0];
+      
+      try {
+        await interaction.deferUpdate();
+        
+        const { restoreFromFreeboxFile } = require('./storage/jsonStore');
+        const result = await restoreFromFreeboxFile(filename);
+        
+        if (result.ok) {
+          try {
+            await sendDetailedRestoreLog(interaction.guild, result, 'select', interaction.user);
+          } catch (_) {}
+          
+          const embed = new EmbedBuilder()
+            .setTitle('✅ Restauration terminée')
+            .setDescription(`Restauration réussie depuis le fichier Freebox :\n**${filename}**`)
+            .setColor(0x00ff00)
+            .setTimestamp();
+            
+          if (result.metadata) {
+            if (result.metadata.timestamp) {
+              embed.addFields({ 
+                name: '📅 Date de sauvegarde', 
+                value: new Date(result.metadata.timestamp).toLocaleString('fr-FR'), 
+                inline: true 
+              });
+            }
+            if (result.metadata.guilds_count) {
+              embed.addFields({ 
+                name: '🏰 Serveurs', 
+                value: String(result.metadata.guilds_count), 
+                inline: true 
+              });
+            }
+            if (result.metadata.backup_type) {
+              embed.addFields({ 
+                name: '📦 Type', 
+                value: result.metadata.backup_type, 
+                inline: true 
+              });
+            }
+          }
+          
+          await interaction.editReply({ embeds: [embed], components: [] });
+        } else {
+          try {
+            await sendDetailedRestoreLog(interaction.guild, result, 'select', interaction.user);
+          } catch (_) {}
+          
+          const embed = new EmbedBuilder()
+            .setTitle('❌ Erreur de restauration')
+            .setDescription(`Échec de la restauration depuis **${filename}** :\n${result.error || 'Erreur inconnue'}`)
+            .setColor(0xff0000)
+            .setTimestamp();
+            
+          await interaction.editReply({ embeds: [embed], components: [] });
+        }
+      } catch (error) {
+        try {
+          const errorResult = {
+            ok: false,
+            source: 'freebox_file',
+            error: String(error?.message || error),
+            filename: filename
+          };
+          await sendDetailedRestoreLog(interaction.guild, errorResult, 'select', interaction.user);
+        } catch (_) {}
+        
+        const embed = new EmbedBuilder()
+          .setTitle('❌ Erreur de restauration')
+          .setDescription(`Erreur lors de la restauration :\n${error.message}`)
+          .setColor(0xff0000)
+          .setTimestamp();
+          
+        await interaction.editReply({ embeds: [embed], components: [] });
+      }
+      return;
+    }
+
     // Ticket open via panel
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_open') {
       await interaction.deferReply({ ephemeral: true });
@@ -5181,6 +5290,101 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setTimestamp(new Date());
       const __banner = maybeAttachTicketBanner(embed);
       await interaction.channel.send({ embeds: [embed], files: __banner ? [__banner] : [] }).catch(()=>{});
+      return;
+    }
+
+    // Gestion des boutons de restauration
+    if (interaction.isButton() && interaction.customId === 'restore_auto') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member || !(await isStaffMember(interaction.guild, member))) {
+        return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+      }
+
+      try {
+        await interaction.deferUpdate();
+        const { restoreLatest } = require('./storage/jsonStore');
+        const result = await restoreLatest();
+        
+        try {
+          await sendDetailedRestoreLog(interaction.guild, result, 'button', interaction.user);
+        } catch (_) {}
+        
+        const embed = new EmbedBuilder()
+          .setTitle('✅ Restauration automatique terminée')
+          .setDescription(`Restauration depuis : **${result.source}**`)
+          .setColor(0x00ff00)
+          .setTimestamp();
+          
+        await interaction.editReply({ embeds: [embed], components: [] });
+      } catch (error) {
+        try {
+          const errorResult = {
+            ok: false,
+            source: 'auto_restore',
+            error: String(error?.message || error)
+          };
+          await sendDetailedRestoreLog(interaction.guild, errorResult, 'button', interaction.user);
+        } catch (_) {}
+        
+        const embed = new EmbedBuilder()
+          .setTitle('❌ Erreur de restauration')
+          .setDescription(`Erreur : ${error.message}`)
+          .setColor(0xff0000)
+          .setTimestamp();
+          
+        await interaction.editReply({ embeds: [embed], components: [] });
+      }
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'restore_freebox') {
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
+      if (!member || !(await isStaffMember(interaction.guild, member))) {
+        return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
+      }
+
+      try {
+        const { listFreeboxBackups } = require('./storage/jsonStore');
+        const freeboxFiles = await listFreeboxBackups();
+        
+        if (freeboxFiles.length === 0) {
+          const embed = new EmbedBuilder()
+            .setTitle('📁 Aucun fichier de sauvegarde')
+            .setDescription('Aucun fichier de sauvegarde Freebox n\'a été trouvé.')
+            .setColor(0xff9900);
+          return interaction.update({ embeds: [embed], components: [] });
+        }
+
+        // Créer le menu de sélection de fichier (max 25 options)
+        const options = freeboxFiles.slice(0, 25).map(file => ({
+          label: file.displayName.length > 100 ? file.displayName.substring(0, 97) + '...' : file.displayName,
+          description: `${Math.round(file.size / 1024)}KB - ${file.filename}`.substring(0, 100),
+          value: file.filename,
+          emoji: file.metadata?.backup_type === 'github' ? '🐙' : 
+                 file.metadata?.backup_type === 'complete' ? '💾' : '📄'
+        }));
+
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('restore_file_select')
+          .setPlaceholder('Sélectionnez un fichier de sauvegarde...')
+          .addOptions(options);
+
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+        
+        const embed = new EmbedBuilder()
+          .setTitle('📁 Sélection du fichier de sauvegarde')
+          .setDescription(`${freeboxFiles.length} fichier${freeboxFiles.length > 1 ? 's' : ''} de sauvegarde trouvé${freeboxFiles.length > 1 ? 's' : ''} sur la Freebox.${freeboxFiles.length > 25 ? `\n⚠️ Seuls les 25 fichiers les plus récents sont affichés.` : ''}`)
+          .setColor(0x3498db)
+          .setFooter({ text: 'Sélectionnez le fichier à restaurer dans le menu ci-dessous' });
+
+        await interaction.update({ embeds: [embed], components: [row] });
+      } catch (error) {
+        const embed = new EmbedBuilder()
+          .setTitle('❌ Erreur')
+          .setDescription(`Impossible de lister les fichiers de sauvegarde : ${error.message}`)
+          .setColor(0xff0000);
+        await interaction.update({ embeds: [embed], components: [] });
+      }
       return;
     }
 
@@ -8042,18 +8246,53 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Admin-only: /restore (restaure le dernier snapshot disponible)
+    // Admin-only: /restore (restaure le dernier snapshot disponible ou depuis un fichier spécifique)
     if (interaction.isChatInputCommand() && interaction.commandName === 'restore') {
       try {
         const ok = await isStaffMember(interaction.guild, interaction.member);
         if (!ok) return interaction.reply({ content: '⛔ Réservé au staff.', ephemeral: true });
-        await interaction.deferReply({ ephemeral: true });
-        const { restoreLatest } = require('./storage/jsonStore');
-        const result = await restoreLatest();
-        try {
-          await sendDetailedRestoreLog(interaction.guild, result, 'slash', interaction.user);
-        } catch (_) {}
-        return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
+        
+        const { restoreLatest, listFreeboxBackups } = require('./storage/jsonStore');
+        
+        // Vérifier s'il y a des fichiers de sauvegarde Freebox disponibles
+        const freeboxFiles = await listFreeboxBackups();
+        
+        if (freeboxFiles.length > 0) {
+          // Proposer le choix entre restauration automatique et sélection de fichier
+          const embed = new EmbedBuilder()
+            .setTitle('🔄 Restauration des données')
+            .setDescription('Choisissez le type de restauration :')
+            .addFields(
+              { name: '🚀 Automatique', value: 'Restaure depuis la dernière sauvegarde disponible (GitHub → PostgreSQL → Fichier local)', inline: false },
+              { name: '📁 Fichier Freebox', value: `Sélectionner un fichier spécifique (${freeboxFiles.length} fichiers disponibles)`, inline: false }
+            )
+            .setColor(0x3498db);
+
+          const row = new ActionRowBuilder()
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId('restore_auto')
+                .setLabel('Restauration automatique')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('🚀'),
+              new ButtonBuilder()
+                .setCustomId('restore_freebox')
+                .setLabel('Choisir un fichier')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('📁')
+            );
+
+          await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+          return;
+        } else {
+          // Pas de fichiers Freebox, restauration automatique directe
+          await interaction.deferReply({ ephemeral: true });
+          const result = await restoreLatest();
+          try {
+            await sendDetailedRestoreLog(interaction.guild, result, 'slash', interaction.user);
+          } catch (_) {}
+          return interaction.editReply({ content: '✅ Restauration depuis le dernier snapshot effectuée.' });
+        }
       } catch (e) {
         try {
           const errorResult = {
@@ -8180,7 +8419,55 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: `❌ Erreur: ${e.message}`, ephemeral: true });
       }
     }
-    // Music /play command removed - system disabled for CPU optimization
+    // Commandes de musique
+    if (musicCommands && interaction.isChatInputCommand()) {
+      try {
+        switch (interaction.commandName) {
+          case 'play':
+            await musicCommands.handlePlay(interaction);
+            return;
+          case 'skip':
+            await musicCommands.handleSkip(interaction);
+            return;
+          case 'pause':
+            await musicCommands.handlePause(interaction);
+            return;
+          case 'stop':
+            await musicCommands.handleStop(interaction);
+            return;
+          case 'queue':
+            await musicCommands.handleQueue(interaction);
+            return;
+          case 'volume':
+            await musicCommands.handleVolume(interaction);
+            return;
+          case 'shuffle':
+            await musicCommands.handleShuffle(interaction);
+            return;
+          case 'nowplaying':
+            await musicCommands.handleNowPlaying(interaction);
+            return;
+          case 'disconnect':
+            await musicCommands.handleDisconnect(interaction);
+            return;
+          case 'repeat':
+            await musicCommands.handleRepeat(interaction);
+            return;
+          case 'clear':
+            await musicCommands.handleClear(interaction);
+            return;
+        }
+      } catch (error) {
+        console.error(`[Music] Erreur commande ${interaction.commandName}:`, error);
+        const content = '❌ Erreur lors de l\'exécution de la commande musicale !';
+        if (interaction.deferred) {
+          await interaction.editReply({ content });
+        } else {
+          await interaction.reply({ content, ephemeral: true });
+        }
+        return;
+      }
+    }
     // Moderation commands (staff-only)
     if (interaction.isChatInputCommand() && ['ban','unban','kick','mute','unmute','warn','masskick','massban','purge'].includes(interaction.commandName)) {
       try {
@@ -8303,38 +8590,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Music system removed - commands no longer available
 
-    // Music player button controls
-    if (interaction.isButton() && interaction.customId.startsWith('music_')) {
-      try {
-        await interaction.deferUpdate();
-      } catch (_) {
-        // ignore
-      }
-      const id = interaction.customId;
-      const player = client.music?.players.get(interaction.guild.id);
-      if (!player) return;
-      try {
-        if (id === 'music_pause') player.pause(true);
-        else if (id === 'music_play') player.pause(false);
-        else if (id === 'music_stop') { try { player.queue.clear(); } catch (_) {}; player.stop(); }
-        else if (id === 'music_next') player.stop();
-        else if (id === 'music_shuffle') player.queue.shuffle();
-        else if (id === 'music_loop') player.setQueueRepeat(!player.queueRepeat);
-        else if (id === 'music_leave') player.destroy();
-        else if (id === 'music_queue') {
-          const lines = [];
-          if (player.queue.current) lines.push(`En lecture: ${player.queue.current.title}`);
-          for (let i = 0; i < Math.min(10, player.queue.length); i++) { const tr = player.queue[i]; lines.push(`${i+1}. ${tr.title}`); }
-          const content = lines.join('\n') || 'File vide.';
-          try { console.log('[Music] button queue ->', content); } catch (_) {}
-          try { await interaction.followUp({ content, ephemeral: true }); } catch (_) {}
-        } else if (id === 'music_vol_down') {
-          try { const v = Math.max(0, (player.volume || 100) - 10); player.setVolume(v); } catch (_) {}
-        } else if (id === 'music_vol_up') {
-          try { const v = Math.min(200, (player.volume || 100) + 10); player.setVolume(v); } catch (_) {}
-        }
-      } catch (_) {}
-      return;
+    // Gestion des interactions musicales (boutons)
+    if (musicInteractions && interaction.isButton() && interaction.customId.startsWith('music_')) {
+      const handled = await musicInteractions.handleMusicInteraction(interaction);
+      if (handled) return;
     }
 
     // Truth/Dare game buttons
