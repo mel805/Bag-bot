@@ -11,11 +11,12 @@ class FreeboxBackup {
   constructor() {
     // Chemins possibles pour les sauvegardes sur Freebox
     this.backupPaths = [
+      '/workspace/data/backups',  // Chemin local pour développement/test
+      process.env.FREEBOX_BACKUP_PATH || '/opt/render/project/src/data/backups',
       '/media/Freebox/Disque dur/BAG-Backups',
       '/media/Disque dur/BAG-Backups',
       '/mnt/freebox/BAG-Backups',
-      '/home/freebox/BAG-Backups',
-      process.env.FREEBOX_BACKUP_PATH || '/opt/render/project/src/data/backups'
+      '/home/freebox/BAG-Backups'
     ];
     
     this.validBackupPath = null;
