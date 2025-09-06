@@ -1,0 +1,17 @@
+# Variables d'environnement Render optimisées
+# Copiez ces valeurs dans Render Dashboard > Environment
+
+RENDER=true
+NODE_ENV=production
+FORCE_DEFER_ALL_INTERACTIONS=true
+REDUCE_NETWORK_TIMEOUTS=true
+ENABLE_RENDER_OPTIMIZATIONS=true
+DEFAULT_TIMEOUT=1500
+NETWORK_TIMEOUT=2000
+INTERACTION_TIMEOUT=2500
+ENABLE_MUSIC=true
+ENABLE_LOCAL_LAVALINK=false
+ENABLE_LOCAL_LAVALINK_V3=false
+MUSIC_V3_ONLY=true
+LAVALINK_NODES=[{"identifier":"ajieblogs-v3-render","host":"lava-v3.ajieblogs.eu.org","port":80,"password":"https://dsc.gg/ajidevserver","secure":false,"retryAmount":3,"retryDelay":5000,"priority":1}]
+NODE_OPTIONS=--max-old-space-size=400 --optimize-for-size --max-semi-space-size=64

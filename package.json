@@ -1,0 +1,41 @@
+{
+  "name": "bag-discord-bot",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Boy and Girls (BAG) Discord bot",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "register": "node src/deploy-commands.js",
+    "redeploy:cmd": "node src/deploy-commands.js",
+    "migrate:pg": "node src/migrate/to-postgres.js",
+    "render-build": "npm ci",
+    "render-start": "node src/migrate/render-restore.js && node src/deploy-commands.js && node src/bot.js",
+    "render-start-safe": "node -e \"console.log('🔍 Checking environment...'); const missing = ['DISCORD_TOKEN', 'CLIENT_ID', 'GUILD_ID'].filter(v => !process.env[v]); if (missing.length) { console.error('❌ Missing critical env vars:', missing.join(', ')); console.error('📋 Please configure these in Render Dashboard > Environment'); process.exit(1); } console.log('✅ Environment OK, starting bot...');\" && npm run render-start",
+    "render-start-optimized": "node scripts/parallel-start.js",
+    "render-check": "node src/render-start-check.js",
+    "build": "echo 'No build step'",
+    "deploy:commands": "bash scripts/deploy-commands.sh",
+    "deploy:render": "bash scripts/render-deploy.sh",
+    "deploy:check": "bash scripts/render-deploy.sh --check-only",
+    "deploy:fast": "bash scripts/render-deploy.sh --skip-tests --skip-build",
+    "deploy:auto": "bash scripts/render-deploy-auto.sh",
+    "test:pm2": "node test-pm2-config.js",
+    "pm2:start": "pm2 start ecosystem.config.js --env production",
+    "pm2:stop": "pm2 stop bagbot",
+    "pm2:restart": "pm2 restart bagbot",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs bagbot",
+    "pm2:monit": "pm2 monit"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.50",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.6.1",
+    "pg": "^8.11.5",
+    "ws": "^8.18.3"
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "timestamp": "2025-09-05T14:17:01.590Z",
+  "codeMetrics": {
+    "totalLines": 10563,
+    "codeSize": 558999,
+    "functions": 309,
+    "eventListeners": 37,
+    "intervals": 11,
+    "timeouts": 16,
+    "databaseQueries": 627,
+    "networkCalls": 78,
+    "heavyOperations": 26
+  },
+  "cpuEstimates": {
+    "Commandes simples (ping, help)": {
+      "cpu": 0.1,
+      "frequency": 100,
+      "unit": "ms CPU/cmd"
+    },
+    "Commandes économiques (work, daily)": {
+      "cpu": 2.5,
+      "frequency": 200,
+      "unit": "ms CPU/cmd"
+    },
+    "Actions lourdes (tromper, orgie)": {
+      "cpu": 15,
+      "frequency": 20,
+      "unit": "ms CPU/cmd"
+    },
+    "Génération cartes niveau": {
+      "cpu": 50,
+      "frequency": 10,
+      "unit": "ms CPU/card"
+    },
+    "Requêtes base de données": {
+      "cpu": 1.2,
+      "frequency": 500,
+      "unit": "ms CPU/query"
+    },
+    "Gestion événements Discord": {
+      "cpu": 0.3,
+      "frequency": 1000,
+      "unit": "ms CPU/event"
+    },
+    "Système musique (V3)": {
+      "cpu": 8,
+      "frequency": 30,
+      "unit": "ms CPU/track"
+    },
+    "Garbage collection": {
+      "cpu": 20,
+      "frequency": 2,
+      "unit": "ms CPU/GC"
+    },
+    "Heartbeat Discord": {
+      "cpu": 0.5,
+      "frequency": 120,
+      "unit": "ms CPU/heartbeat"
+    }
+  },
+  "totalCpuPerHour": "153.00",
+  "optimizations": [
+    {
+      "name": "Defer immédiat interactions",
+      "impact": -15,
+      "desc": "Réduit les timeouts et blocages"
+    },
+    {
+      "name": "Timeouts réseau réduits",
+      "impact": -8,
+      "desc": "Moins d'attente, libère CPU plus vite"
+    },
+    {
+      "name": "Fallbacks renderSafeReply",
+      "impact": -5,
+      "desc": "Évite les retry coûteux"
+    },
+    {
+      "name": "Lavalink V3 externe",
+      "impact": -30,
+      "desc": "Pas de serveur Lavalink local"
+    },
+    {
+      "name": "Garbage collection optimisée",
+      "impact": -10,
+      "desc": "Meilleure gestion mémoire"
+    },
+    {
+      "name": "NODE_OPTIONS optimisées",
+      "impact": -12,
+      "desc": "V8 engine optimisé pour Render"
+    }
+  ],
+  "totalOptimization": -80,
+  "renderPlans": [
+    {
+      "name": "FREE",
+      "cpu": "0.1 CPU",
+      "ram": "512 MB",
+      "cost": "$0/mois",
+      "suitable": false,
+      "issues": [
+        "Sleep après 15min",
+        "CPU limite en pic"
+      ],
+      "recommendation": "❌ Non recommandé pour bot Discord 24/7"
+    },
+    {
+      "name": "STARTER ($7/mois)",
+      "cpu": "0.5 CPU",
+      "ram": "512 MB",
+      "cost": "$7/mois",
+      "suitable": true,
+      "issues": [],
+      "recommendation": "✅ IDÉAL pour ce bot optimisé"
+    },
+    {
+      "name": "STANDARD ($25/mois)",
+      "cpu": "1 CPU",
+      "ram": "2 GB",
+      "cost": "$25/mois",
+      "suitable": true,
+      "issues": [],
+      "recommendation": "✅ Parfait, mais surdimensionné"
+    }
+  ],
+  "recommendation": "Render Starter ($7/mois) pour fonctionnement 24/7 optimal"
+}

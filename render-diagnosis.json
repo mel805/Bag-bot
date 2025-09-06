@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-09-05T15:11:45.033Z",
+  "environment": {
+    "DISCORD_TOKEN": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    },
+    "CLIENT_ID": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    },
+    "GUILD_ID": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    },
+    "DATABASE_URL": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    },
+    "NODE_OPTIONS": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    },
+    "PORT": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    },
+    "RENDER": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    },
+    "NODE_ENV": {
+      "present": false,
+      "length": 0,
+      "type": "undefined"
+    }
+  },
+  "system": {
+    "nodeVersion": "v22.16.0",
+    "platform": "linux",
+    "memory": 6,
+    "uptime": 0
+  },
+  "issues": [
+    {
+      "name": "Timeout interactions Discord (3s)",
+      "solution": "Déférer les interactions lourdes AVANT tout traitement"
+    },
+    {
+      "name": "Réseau lent sur Render",
+      "solution": "Réduire les timeouts réseau et ajouter des fallbacks"
+    }
+  ],
+  "recommendations": [
+    "1. Déférer IMMÉDIATEMENT toutes les interactions (même les plus rapides)",
+    "2. Réduire tous les timeouts réseau à max 2000ms",
+    "3. Ajouter des fallbacks pour toutes les opérations externes",
+    "4. Optimiser les requêtes base de données avec un pool de connexions",
+    "5. Implémenter un système de cache en mémoire pour les données fréquentes",
+    "6. Ajouter des logs détaillés pour identifier les blocages spécifiques",
+    "7. Utiliser des AbortController pour toutes les opérations async",
+    "8. Séparer les tâches lourdes en micro-tâches avec yield"
+  ]
+}

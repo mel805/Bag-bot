@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: bag-discord-bot-fs
+    env: node
+    autoDeploy: true
+    plan: free
+    buildCommand: npm run render-build
+    startCommand: npm run render-start
+    envVars:
+      - key: DISCORD_TOKEN
+        value: ""
+      - key: CLIENT_ID
+        value: ""
+      - key: GUILD_ID
+        value: ""
+      - key: LOCATIONIQ_TOKEN
+        value: ""
+      - key: LEVEL_CARD_LOGO_URL
+        value: ""
+      - key: GITHUB_TOKEN
+        value: "ghs_x1Max6fBPQqrNhW9wQdXJUEm2MaFt14RcGlt"
+      - key: GITHUB_REPO
+        value: "mel805/Bag-bot"
+      - key: GITHUB_BACKUP_BRANCH
+        value: "backup-data"
+      - key: DATA_DIR
+        value: "/var/data"
+volumes:
+  - name: bag-bot-data
+    sizeGB: 1
+services[0].volumes:
+  - name: bag-bot-data
+    mountPath: /var/data

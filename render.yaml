@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: bag-discord-bot
+    env: node
+    autoDeploy: true
+    plan: free
+    buildCommand: npm ci --production --silent
+    startCommand: npm run render-start-optimized
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DATA_DIR
+        value: "/var/data"
+      - key: CLIENT_ID
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: LOCATIONIQ_TOKEN
+        sync: false
+      - key: LEVEL_CARD_LOGO_URL
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: "mel805/Bag-bot"
+      - key: GITHUB_BACKUP_BRANCH
+        value: "backup-data"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bag-bot-db
+          property: connectionString
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=512 --optimize-for-size"
+    volumes:
+      - name: bag-bot-data
+        mountPath: /var/data
+databases:
+  - name: bag-bot-db
+    plan: free
+volumes:
+  - name: bag-bot-data
+    sizeGB: 1
