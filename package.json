@@ -19,7 +19,14 @@
     "deploy:render": "bash scripts/render-deploy.sh",
     "deploy:check": "bash scripts/render-deploy.sh --check-only",
     "deploy:fast": "bash scripts/render-deploy.sh --skip-tests --skip-build",
-    "deploy:auto": "bash scripts/render-deploy-auto.sh"
+    "deploy:auto": "bash scripts/render-deploy-auto.sh",
+    "test:pm2": "node test-pm2-config.js",
+    "pm2:start": "pm2 start ecosystem.config.js --env production",
+    "pm2:stop": "pm2 stop bagbot",
+    "pm2:restart": "pm2 restart bagbot",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs bagbot",
+    "pm2:monit": "pm2 monit"
   },
   "engines": {
     "node": ">=18.17.0"

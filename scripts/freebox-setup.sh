@@ -77,6 +77,35 @@ install_nodejs() {
     success "Node.js $NODE_VERSION et npm $NPM_VERSION installés"
 }
 
+# Installation de PM2 (optionnel)
+install_pm2() {
+    if [[ "${USE_PM2:-false}" == "true" ]]; then
+        log "Installation de PM2..."
+        
+        # Vérifier si PM2 est déjà installé
+        if command -v pm2 &> /dev/null; then
+            PM2_VERSION=$(pm2 --version)
+            success "PM2 déjà installé : v$PM2_VERSION"
+            return
+        fi
+        
+        # Installation globale de PM2
+        npm install -g pm2@latest
+        
+        # Configuration de PM2 pour l'utilisateur botuser
+        sudo -u "$BOT_USER" pm2 install pm2-logrotate || true
+        sudo -u "$BOT_USER" pm2 set pm2-logrotate:max_size 10M || true
+        sudo -u "$BOT_USER" pm2 set pm2-logrotate:retain 7 || true
+        sudo -u "$BOT_USER" pm2 set pm2-logrotate:compress true || true
+        
+        # Vérification
+        PM2_VERSION=$(pm2 --version)
+        success "PM2 v$PM2_VERSION installé avec succès"
+    else
+        log "PM2 non installé (utilisation de systemd)"
+    fi
+}
+
 # Installation des dépendances système
 install_dependencies() {
     log "Installation des dépendances système..."
@@ -190,6 +219,15 @@ EOF
     fi
 }
 
+# Configuration du service systemd ou PM2
+setup_process_manager() {
+    if [[ "${USE_PM2:-false}" == "true" ]]; then
+        setup_pm2_service
+    else
+        setup_systemd_service
+    fi
+}
+
 # Configuration du service systemd
 setup_systemd_service() {
     log "Configuration du service systemd..."
@@ -240,6 +278,38 @@ EOF
     systemctl enable "$SERVICE_NAME"
     
     success "Service systemd configuré et activé"
+}
+
+# Configuration du service PM2
+setup_pm2_service() {
+    log "Configuration du service PM2..."
+    
+    # Créer le répertoire de logs pour PM2
+    sudo -u "$BOT_USER" mkdir -p "$BOT_DIR/logs"
+    
+    # Générer le script de démarrage pour systemd
+    STARTUP_SCRIPT=$(sudo -u "$BOT_USER" pm2 startup systemd -u "$BOT_USER" --hp "/home/$BOT_USER" | grep "sudo")
+    
+    if [[ -n "$STARTUP_SCRIPT" ]]; then
+        # Exécuter la commande de configuration
+        eval "$STARTUP_SCRIPT"
+        success "Script de démarrage PM2 configuré"
+    else
+        warning "Impossible de générer le script de démarrage automatique PM2"
+    fi
+    
+    # Démarrer l'application avec PM2
+    cd "$BOT_DIR"
+    if sudo -u "$BOT_USER" pm2 start ecosystem.config.js --env production; then
+        success "Bot démarré avec PM2"
+        
+        # Sauvegarder la configuration PM2
+        sudo -u "$BOT_USER" pm2 save
+        
+        success "Service PM2 configuré et démarré"
+    else
+        error "Échec du démarrage du bot avec PM2"
+    fi
 }
 
 # Configuration du firewall
@@ -294,20 +364,48 @@ show_final_info() {
     echo "1. 📝 Éditez le fichier de configuration :"
     echo "   sudo nano $BOT_DIR/.env"
     echo
-    echo "2. 🚀 Démarrez le bot :"
-    echo "   sudo systemctl start $SERVICE_NAME"
-    echo
-    echo "3. 📊 Vérifiez le statut :"
-    echo "   sudo systemctl status $SERVICE_NAME"
-    echo
-    echo "4. 📋 Consultez les logs :"
-    echo "   sudo journalctl -u $SERVICE_NAME -f"
-    echo
-    echo "📚 Commandes utiles :"
-    echo "   • Redémarrer : sudo systemctl restart $SERVICE_NAME"
-    echo "   • Arrêter    : sudo systemctl stop $SERVICE_NAME"
-    echo "   • Logs       : sudo journalctl -u $SERVICE_NAME"
-    echo "   • Statut     : sudo systemctl status $SERVICE_NAME"
+    
+    if [[ "${USE_PM2:-false}" == "true" ]]; then
+        echo "🤖 Le bot est géré par PM2 :"
+        echo
+        echo "2. 📊 Vérifiez le statut :"
+        echo "   sudo -u $BOT_USER pm2 status"
+        echo
+        echo "3. 📋 Consultez les logs :"
+        echo "   sudo -u $BOT_USER pm2 logs $SERVICE_NAME"
+        echo
+        echo "📚 Commandes PM2 utiles :"
+        echo "   • Monitoring  : sudo -u $BOT_USER pm2 monit"
+        echo "   • Redémarrer  : sudo -u $BOT_USER pm2 restart bagbot"
+        echo "   • Arrêter     : sudo -u $BOT_USER pm2 stop bagbot"
+        echo "   • Démarrer    : sudo -u $BOT_USER pm2 start bagbot"
+        echo "   • Interface   : sudo -u $BOT_USER pm2 web"
+        echo
+        echo "🚀 Scripts de gestion disponibles :"
+        echo "   • ./scripts/freebox-pm2-status.sh"
+        echo "   • ./scripts/freebox-pm2-restart.sh"
+    else
+        echo "🤖 Le bot est géré par systemd :"
+        echo
+        echo "2. 🚀 Démarrez le bot :"
+        echo "   sudo systemctl start $SERVICE_NAME"
+        echo
+        echo "3. 📊 Vérifiez le statut :"
+        echo "   sudo systemctl status $SERVICE_NAME"
+        echo
+        echo "4. 📋 Consultez les logs :"
+        echo "   sudo journalctl -u $SERVICE_NAME -f"
+        echo
+        echo "📚 Commandes systemd utiles :"
+        echo "   • Redémarrer : sudo systemctl restart $SERVICE_NAME"
+        echo "   • Arrêter    : sudo systemctl stop $SERVICE_NAME"
+        echo "   • Logs       : sudo journalctl -u $SERVICE_NAME"
+        echo "   • Statut     : sudo systemctl status $SERVICE_NAME"
+        echo
+        echo "🔄 Pour migrer vers PM2 :"
+        echo "   • ./scripts/freebox-pm2-setup.sh"
+    fi
+    
     echo
     warning "N'oubliez pas de configurer vos tokens Discord dans le fichier .env !"
     echo
@@ -325,12 +423,13 @@ main() {
     
     update_system
     install_nodejs
+    install_pm2
     install_dependencies
     create_bot_user
     setup_bot_directory
     install_project_files
     setup_environment
-    setup_systemd_service
+    setup_process_manager
     setup_firewall
     setup_log_rotation
     
@@ -339,6 +438,43 @@ main() {
 
 # Gestion des signaux pour un arrêt propre
 trap 'error "Installation interrompue"; exit 1' INT TERM
+
+# Gestion des options de ligne de commande
+case "${1:-}" in
+    --help|-h)
+        echo "Usage: $0 [options]"
+        echo
+        echo "Ce script installe et configure le bot Discord BAG sur Freebox Delta"
+        echo
+        echo "Options:"
+        echo "  --help, -h    Afficher cette aide"
+        echo "  --pm2         Utiliser PM2 comme gestionnaire de processus (au lieu de systemd)"
+        echo "  --systemd     Utiliser systemd comme gestionnaire de processus (défaut)"
+        echo
+        echo "Exemples:"
+        echo "  $0                # Installation avec systemd (défaut)"
+        echo "  $0 --pm2          # Installation avec PM2"
+        echo
+        echo "Prérequis:"
+        echo "  • Freebox Delta avec VM Ubuntu/Debian"
+        echo "  • Accès root (sudo)"
+        echo "  • Connexion Internet"
+        echo
+        exit 0
+        ;;
+    --pm2)
+        export USE_PM2=true
+        echo "🚀 Installation avec PM2 comme gestionnaire de processus"
+        ;;
+    --systemd)
+        export USE_PM2=false
+        echo "🔧 Installation avec systemd comme gestionnaire de processus"
+        ;;
+    *)
+        # Par défaut, utiliser systemd
+        export USE_PM2=false
+        ;;
+esac
 
 # Exécution du script principal
 main "$@"
