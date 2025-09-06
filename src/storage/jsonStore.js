@@ -346,6 +346,80 @@ async function restoreLatest() {
   return { ok: true, source };
 }
 
+// Restore from a specific Freebox backup file
+async function restoreFromFreeboxFile(filename) {
+  try {
+    const FreeboxBackup = require('./freeboxBackup');
+    const freebox = new FreeboxBackup();
+    
+    const result = await freebox.restoreFromFile(filename);
+    if (!result.success || !result.data) {
+      throw new Error('Échec de la restauration depuis le fichier Freebox');
+    }
+
+    const data = result.data;
+    
+    // Appliquer la restauration
+    await writeConfig(data);
+    
+    // Synchroniser avec la base de données si elle est disponible
+    if (USE_PG) {
+      try {
+        const pool = await getPg();
+        const client = await pool.connect();
+        try {
+          await client.query('INSERT INTO app_config (id, data, updated_at) VALUES (1, $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()', [data]);
+        } finally {
+          client.release();
+        }
+      } catch (_) {}
+    }
+
+    // Synchroniser avec le fichier local
+    try {
+      await fsp.mkdir(DATA_DIR, { recursive: true });
+      const tmp = CONFIG_PATH + '.tmp';
+      await fsp.writeFile(tmp, JSON.stringify(data, null, 2), 'utf8');
+      try { await fsp.rename(tmp, CONFIG_PATH); } catch (_) { await fsp.writeFile(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8'); }
+    } catch (_) {}
+
+    console.log(`[Restore] Restauration Freebox réussie depuis: ${filename}`);
+    
+    return { 
+      ok: true, 
+      source: 'freebox_file', 
+      filename: filename,
+      metadata: result.metadata 
+    };
+    
+  } catch (error) {
+    console.error(`[Restore] Erreur restauration Freebox depuis ${filename}:`, error.message);
+    return { 
+      ok: false, 
+      source: 'freebox_file', 
+      error: error.message,
+      filename: filename 
+    };
+  }
+}
+
+// List available Freebox backup files
+async function listFreeboxBackups() {
+  try {
+    const FreeboxBackup = require('./freeboxBackup');
+    const freebox = new FreeboxBackup();
+    
+    if (!(await freebox.isAvailable())) {
+      return [];
+    }
+    
+    return await freebox.listBackupFiles();
+  } catch (error) {
+    console.error('[Restore] Erreur liste sauvegardes Freebox:', error.message);
+    return [];
+  }
+}
+
 async function getGuildConfig(guildId) {
   const cfg = await readConfig();
   if (!cfg.guilds[guildId]) cfg.guilds[guildId] = {};
@@ -1517,8 +1591,11 @@ module.exports = {
   // Moderation
   getWarns,
   addWarn,
+  // Backup & Restore
   backupNow,
   restoreLatest,
+  restoreFromFreeboxFile,
+  listFreeboxBackups,
   paths,
 };
 
