@@ -11,22 +11,32 @@ const server = http.createServer((req, res) => {
     });
 
     req.on('end', () => {
-      console.log('Webhook reçu. Mise à jour du dépôt...');
-      exec('cd ~/Bag-bot && git pull origin main && pm2 restart bagbot', (err, stdout, stderr) => {
+      try {
+        JSON.parse(body); // Pour éviter les erreurs si GitHub envoie du JSON
+      } catch (e) {
+        console.warn('⚠️ Corps de requête non-JSON ou malformé');
+      }
+
+      console.log('✅ Webhook reçu. Mise à jour du dépôt...');
+
+      exec('cd /home/bagbot/Bag-bot && git pull origin main && pm2 restart bagbot', (err, stdout, stderr) => {
         if (err) {
-          console.error(`Erreur de mise à jour : ${err}`);
+          console.error(`❌ Erreur de mise à jour : ${stderr}`);
+          res.writeHead(500);
           return res.end('Erreur');
         }
-        console.log(`Mise à jour : ${stdout}`);
+
+        console.log(`✅ Mise à jour : ${stdout}`);
+        res.writeHead(200);
         res.end('OK');
       });
     });
   } else {
     res.writeHead(404);
-    res.end();
+    res.end('Not Found');
   }
 });
 
 server.listen(PORT, () => {
-  console.log(`Serveur Webhook actif sur le port ${PORT}`);
+  console.log(`🚀 Serveur Webhook actif sur le port ${PORT}`);
 });
