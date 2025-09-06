@@ -263,28 +263,6 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
     .toJSON(),
-  new SlashCommandBuilder()
-    .setName('github-backup')
-    .setDescription('Admin: gérer les sauvegardes GitHub')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .setDMPermission(false)
-    .addStringOption(o => o
-      .setName('action')
-      .setDescription('Action à effectuer')
-      .setRequired(true)
-      .addChoices(
-        { name: 'test', value: 'test' },
-        { name: 'list', value: 'list' },
-        { name: 'force-backup', value: 'force-backup' },
-        { name: 'force-restore', value: 'force-restore' }
-      )
-    )
-    .addStringOption(o => o
-      .setName('ref')
-      .setDescription('SHA / tag / branche à utiliser pour restaurer (optionnel)')
-      .setRequired(false)
-    )
-    .toJSON(),
   // Hot & Fun — catégorie
   new SlashCommandBuilder().setName('shower').setDescription('Gif douche chaude ou douche froide surprise 🚿').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('wet').setDescription('Ambiance humide, suggestive 💧').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
