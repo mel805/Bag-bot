@@ -129,6 +129,13 @@ configure_github() {
     if [[ -z "$CURRENT_GITHUB_BRANCH" ]]; then
         CURRENT_GITHUB_BRANCH="backup-data"
     fi
+    
+    # Vérifier si la branche actuelle est incorrecte
+    if [[ "$CURRENT_GITHUB_BRANCH" == "backu" ]]; then
+        warning "⚠️  Branche incorrecte détectée: 'backu'"
+        info "Correction automatique vers 'backup-data'"
+        CURRENT_GITHUB_BRANCH="backup-data"
+    fi
     prompt "Branche de sauvegarde" "GITHUB_BACKUP_BRANCH" "$CURRENT_GITHUB_BRANCH"
 }
 
