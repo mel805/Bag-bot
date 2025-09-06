@@ -178,6 +178,7 @@ async function backupNow() {
     backupFile: null, 
     historyId: null, 
     github: null,
+    freebox: { success: false, available: false, error: null, filename: null },
     local: { success: false, error: null },
     details: {
       dataSize: JSON.stringify(cfg).length,
@@ -222,6 +223,24 @@ async function backupNow() {
   } catch (error) {
     info.local.error = error.message;
     console.error('[Backup] Erreur sauvegarde locale:', error.message);
+  }
+
+  // Sauvegarde Freebox (si disponible) — en parallèle de la locale/PG
+  try {
+    const FreeboxBackup = require('./freeboxBackup');
+    const fb = new FreeboxBackup();
+    if (await fb.isAvailable()) {
+      info.freebox.available = true;
+      const res = await fb.saveBackupFile(cfg);
+      if (res && res.success) {
+        info.freebox.success = true;
+        info.freebox.filename = res.filename || null;
+      } else {
+        info.freebox.error = (res && res.error) || 'Échec inconnu';
+      }
+    }
+  } catch (e) {
+    info.freebox.error = e?.message || String(e);
   }
 
   // Sauvegarde GitHub (nouvelle)

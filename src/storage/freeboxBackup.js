@@ -212,6 +212,45 @@ class FreeboxBackup {
   }
 
   /**
+   * Crée une sauvegarde JSON sur le disque Freebox (BAG-Backups)
+   * @param {object} configData Données complètes du bot ({ guilds: { ... } })
+   * @returns {Promise<{ success: boolean, path?: string, filename?: string, metadata?: object }>}
+   */
+  async saveBackupFile(configData) {
+    try {
+      if (!configData || typeof configData !== 'object') {
+        throw new Error('Données invalides (objet requis)');
+      }
+
+      const backupPath = await this.findBackupPath();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `bot-data-${timestamp}.json`;
+      const dest = path.join(backupPath, filename);
+
+      const metadata = {
+        timestamp: new Date().toISOString(),
+        backup_type: 'complete',
+        source: 'freebox',
+        data_size: JSON.stringify(configData).length,
+        guilds_count: Object.keys(configData.guilds || {}).length,
+      };
+
+      const payload = {
+        metadata,
+        data: configData,
+      };
+
+      await fsp.writeFile(dest, JSON.stringify(payload, null, 2), 'utf8');
+      console.log(`[FreeboxBackup] Sauvegarde écrite: ${dest}`);
+
+      return { success: true, path: dest, filename, metadata };
+    } catch (error) {
+      console.error('[FreeboxBackup] Échec écriture sauvegarde:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Vérifie la disponibilité des sauvegardes Freebox
    */
   async isAvailable() {
