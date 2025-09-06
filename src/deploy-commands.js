@@ -24,84 +24,6 @@ if (!token || !clientId || !guildId) {
 
 // Build /config command - visible to members with ManageGuild by default
 const commands = [
-  // Commandes de musique
-  new SlashCommandBuilder()
-    .setName('play')
-    .setDescription('Joue une musique ou playlist depuis YouTube, Spotify, etc.')
-    .setDMPermission(false)
-    .addStringOption(option =>
-      option.setName('query')
-        .setDescription('Nom de la musique, URL YouTube/Spotify, ou playlist')
-        .setRequired(true)
-    )
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('skip')
-    .setDescription('Passe à la musique suivante')
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('pause')
-    .setDescription('Met en pause ou reprend la lecture')
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('stop')
-    .setDescription('Arrête la musique et vide la file d\'attente')
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('queue')
-    .setDescription('Affiche la file d\'attente des musiques')
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('volume')
-    .setDescription('Ajuste le volume de la musique')
-    .setDMPermission(false)
-    .addIntegerOption(option =>
-      option.setName('level')
-        .setDescription('Niveau de volume (0-200)')
-        .setRequired(true)
-        .setMinValue(0)
-        .setMaxValue(200)
-    )
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('shuffle')
-    .setDescription('Mélange la file d\'attente')
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('nowplaying')
-    .setDescription('Affiche la musique actuellement en cours de lecture')
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('disconnect')
-    .setDescription('Déconnecte le bot du salon vocal')
-    .setDMPermission(false)
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('repeat')
-    .setDescription('Active/désactive la répétition')
-    .setDMPermission(false)
-    .addStringOption(option =>
-      option.setName('mode')
-        .setDescription('Mode de répétition')
-        .setRequired(false)
-        .addChoices(
-          { name: 'Désactivée', value: 'off' },
-          { name: 'Piste actuelle', value: 'track' },
-          { name: 'File d\'attente', value: 'queue' }
-        )
-    )
-    .toJSON(),
-  new SlashCommandBuilder()
-    .setName('clear')
-    .setDescription('Vide la file d\'attente')
-    .setDMPermission(false)
-    .toJSON(),
   new SlashCommandBuilder()
     .setName('config')
     .setDescription('Configurer le serveur (Staff, AutoKick, Levels)')
@@ -419,30 +341,6 @@ const commands = [
   new SlashCommandBuilder().setName('masskick').setDescription('Kick en masse par rôle').setDefaultMemberPermissions(PermissionFlagsBits.KickMembers).addStringOption(o=>o.setName('mode').setDescription('Avec ou sans le rôle').setRequired(true).addChoices({name:'sans_role', value:'without'},{name:'avec_role', value:'with'})).addRoleOption(o=>o.setName('role').setDescription('Rôle cible')).addStringOption(o=>o.setName('raison').setDescription('Raison')).toJSON(),
   new SlashCommandBuilder().setName('massban').setDescription('Ban en masse par rôle').setDefaultMemberPermissions(PermissionFlagsBits.BanMembers).addStringOption(o=>o.setName('mode').setDescription('Avec ou sans le rôle').setRequired(true).addChoices({name:'sans_role', value:'without'},{name:'avec_role', value:'with'})).addRoleOption(o=>o.setName('role').setDescription('Rôle cible')).addStringOption(o=>o.setName('raison').setDescription('Raison')).toJSON(),
   new SlashCommandBuilder().setName('purge').setDescription('Vider le salon courant (X messages) et réinitialiser les systèmes').setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).addIntegerOption(o=>o.setName('nombre').setDescription('Nombre de messages à supprimer (1-100)').setRequired(true).setMinValue(1).setMaxValue(100)).toJSON(),
-  // Music commands
-  new SlashCommandBuilder()
-    .setName('play')
-    .setDescription('Lire une musique (URL ou recherche)')
-    .addStringOption(o=>o.setName('recherche').setDescription('URL ou mots-clés').setRequired(true))
-    .toJSON(),
-  new SlashCommandBuilder().setName('pause').setDescription('Mettre la musique en pause').toJSON(),
-  new SlashCommandBuilder().setName('resume').setDescription('Reprendre la musique').toJSON(),
-  new SlashCommandBuilder().setName('skip').setDescription('Passer au titre suivant').toJSON(),
-  new SlashCommandBuilder().setName('stop').setDescription('Arrêter et vider la file').toJSON(),
-  new SlashCommandBuilder().setName('queue').setDescription('Voir la file d\'attente').toJSON(),
-  new SlashCommandBuilder().setName('leave').setDescription('Quitter le salon vocal').toJSON(),
-  new SlashCommandBuilder().setName('music-status').setDescription('Vérifier le statut du système musique').toJSON(),
-  new SlashCommandBuilder()
-    .setName('radio')
-    .setDescription('Lancer une radio')
-    .addStringOption(o=>o.setName('station').setDescription('Station').setRequired(true)
-      .addChoices(
-        { name: 'Chillout', value: 'chillout' },
-        { name: 'LoFi', value: 'lofi' },
-        { name: 'EDM', value: 'edm' },
-        { name: 'Jazz', value: 'jazz' }
-      ))
-    .toJSON(),
 ];
 
 // Fonction pour vérifier si les commandes ont changé

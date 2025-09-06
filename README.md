@@ -2,19 +2,11 @@
 
 Fonctionnalités principales
 - /config (Staff, AutoKick, Levels, Économie, Action/Vérité, Confessions, AutoThread, Comptage, Logs, Booster)
-- Niveaux avec cartes et annonces, économie complète, musique (Lavalink), modération, logs
+- Niveaux avec cartes et annonces, économie complète, modération, logs
 
 Configuration
 - Variables requises: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`
-- Optionnelles: `DATABASE_URL` (Postgres), `LOCATIONIQ_TOKEN`, `LAVALINK_NODES`, `ENABLE_LOCAL_LAVALINK=false`, `LAVALINK_PASSWORD=youshallnotpass`, `ENABLE_YTDLP_PROXY=false`, `YTDLP_BIN=/usr/bin/yt-dlp`
-
-Musique (Lavalink)
-- Fournissez au minimum `LAVALINK_NODES` (JSON array). Exemple:
-  - `[{"host":"node.example.com","port":2333,"password":"youshallnotpass","secure":false}]`
-- Alternative locale (dev ou conteneur):
-  - Définir `ENABLE_LOCAL_LAVALINK=true` pour démarrer `lavalink/Lavalink.jar` et un proxy WS local sur `127.0.0.1:2334` (pont v3→v4)
-  - Si `LAVALINK_NODES` est absent et `ENABLE_LOCAL_LAVALINK=true`, un nœud fallback `127.0.0.1:2334` sera utilisé automatiquement
-  - Le mot de passe par défaut est `youshallnotpass` (configurable via `LAVALINK_PASSWORD`)
+- Optionnelles: `DATABASE_URL` (Postgres), `LOCATIONIQ_TOKEN`
 
 Scripts
 - Installer: `npm ci` (ou `npm install`)
