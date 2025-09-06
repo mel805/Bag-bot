@@ -258,7 +258,7 @@
             "lastVoiceReward": 0
           },
           "1173342775396286521": {
-            "amount": 16635,
+            "amount": 16649,
             "cooldowns": {
               "bed": 1757119349173,
               "undress": 1757119340560,
@@ -270,7 +270,7 @@
               "massage": 1757052700840,
               "wet": 1757071714612,
               "flirt": 1757024127913,
-              "oops": 1757021974494,
+              "oops": 1757150975897,
               "dance": 1757024182477,
               "work": 1757149374726,
               "fish": 1757149082728,
@@ -301,8 +301,8 @@
               "nibble": 1757119200663
             },
             "charm": 232,
-            "perversion": 855,
-            "money": 16635,
+            "perversion": 856,
+            "money": 16649,
             "lastVoiceReward": 0
           },
           "533285985883127840": {
@@ -2287,13 +2287,13 @@
             "messages": 588
           },
           "1173342775396286521": {
-            "xp": 252877,
+            "xp": 252916,
             "level": 34,
-            "xpSinceLevel": 7265,
+            "xpSinceLevel": 7304,
             "lastMessageAt": 0,
             "voiceMsAccum": 0,
             "voiceJoinedAt": 0,
-            "messages": 1275
+            "messages": 1276
           },
           "560058104113528843": {
             "xp": 103864,
