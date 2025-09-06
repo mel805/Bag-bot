@@ -107,6 +107,23 @@ async function main() {
     const sys = await exec(conn, 'apt-get update -y && apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev git curl wget', { useSudo: true });
     if (sys.code !== 0) err('System deps stderr:', sys.stderr);
 
+    // Ensure Node.js 18.x
+    log('Ensuring Node.js 18.x...');
+    const nodeCheck = await exec(conn, 'bash -lc "node -v 2>/dev/null || true"');
+    const currentNode = (nodeCheck.stdout || '').trim();
+    const needsNodeInstall = !/^v18\./.test(currentNode);
+    if (needsNodeInstall) {
+      log(`Installing Node.js 18.x (current: ${currentNode || 'none'})...`);
+      const setup = await exec(conn, 'curl -fsSL https://deb.nodesource.com/setup_18.x | bash -', { useSudo: true });
+      if (setup.code !== 0) err('NodeSource setup stderr:', setup.stderr);
+      const inst = await exec(conn, 'apt-get install -y nodejs', { useSudo: true });
+      if (inst.code !== 0) err('Node.js install stderr:', inst.stderr);
+      const checkAfter = await exec(conn, 'bash -lc "node -v && npm -v"');
+      log('Node/npm versions:\n' + checkAfter.stdout);
+    } else {
+      log(`Remote Node detected: ${currentNode}`);
+    }
+
     // Ensure bot user and directories
     await exec(conn, `id ${BOT_USER} || useradd -m -s /bin/bash ${BOT_USER}`, { useSudo: true });
     await exec(conn, `mkdir -p ${BOT_DIR} ${BOT_DIR}/logs ${BOT_DIR}/data`, { useSudo: true });
