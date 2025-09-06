@@ -1,10 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, Events, AttachmentBuilder } = require('discord.js');
 
-// Système de musique
-const MusicManager = require('./music/MusicManager');
-const MusicCommands = require('./music/MusicCommands');
-const MusicInteractions = require('./music/MusicInteractions');
 const { setGuildStaffRoleIds, getGuildStaffRoleIds, ensureStorageExists, getAutoKickConfig, updateAutoKickConfig, addPendingJoiner, removePendingJoiner, getLevelsConfig, updateLevelsConfig, getUserStats, setUserStats, getEconomyConfig, updateEconomyConfig, getEconomyUser, setEconomyUser, getTruthDareConfig, updateTruthDareConfig, addTdChannels, removeTdChannels, addTdPrompts, deleteTdPrompts, editTdPrompt, getConfessConfig, updateConfessConfig, addConfessChannels, removeConfessChannels, incrementConfessCounter, getGeoConfig, setUserLocation, getUserLocation, getAllLocations, getAutoThreadConfig, updateAutoThreadConfig, getCountingConfig, updateCountingConfig, setCountingState, getDisboardConfig, updateDisboardConfig, getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 
@@ -406,10 +402,6 @@ const client = new Client({
   partials: [Partials.GuildMember, Partials.Message, Partials.Channel],
 });
 
-// Initialisation du système de musique
-let musicManager = null;
-let musicCommands = null;
-let musicInteractions = null;
 
 // Fonction pour envoyer des logs détaillés de sauvegarde
 async function sendDetailedBackupLog(guild, info, method, user) {
@@ -4080,20 +4072,6 @@ client.once(Events.ClientReady, async (readyClient) => {
     validateKarmaCache();
   }, 30 * 60 * 1000);
   
-  // Initialisation du système de musique
-  try {
-    console.log('[Bot] 🎵 Initialisation du système de musique...');
-    musicManager = new MusicManager(client);
-    await musicManager.initialize();
-    
-    musicCommands = new MusicCommands(musicManager);
-    musicInteractions = new MusicInteractions(musicManager);
-    
-    console.log('[Bot] ✅ Système de musique initialisé avec succès');
-  } catch (error) {
-    console.error('[Bot] ❌ Erreur lors de l\'initialisation du système de musique:', error);
-    console.warn('[Bot] ⚠️ Le bot continuera sans les fonctionnalités musicales');
-  }
   // Logs: register listeners
   client.on(Events.GuildMemberAdd, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
@@ -8419,55 +8397,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: `❌ Erreur: ${e.message}`, ephemeral: true });
       }
     }
-    // Commandes de musique
-    if (musicCommands && interaction.isChatInputCommand()) {
-      try {
-        switch (interaction.commandName) {
-          case 'play':
-            await musicCommands.handlePlay(interaction);
-            return;
-          case 'skip':
-            await musicCommands.handleSkip(interaction);
-            return;
-          case 'pause':
-            await musicCommands.handlePause(interaction);
-            return;
-          case 'stop':
-            await musicCommands.handleStop(interaction);
-            return;
-          case 'queue':
-            await musicCommands.handleQueue(interaction);
-            return;
-          case 'volume':
-            await musicCommands.handleVolume(interaction);
-            return;
-          case 'shuffle':
-            await musicCommands.handleShuffle(interaction);
-            return;
-          case 'nowplaying':
-            await musicCommands.handleNowPlaying(interaction);
-            return;
-          case 'disconnect':
-            await musicCommands.handleDisconnect(interaction);
-            return;
-          case 'repeat':
-            await musicCommands.handleRepeat(interaction);
-            return;
-          case 'clear':
-            await musicCommands.handleClear(interaction);
-            return;
-        }
-      } catch (error) {
-        console.error(`[Music] Erreur commande ${interaction.commandName}:`, error);
-        const content = '❌ Erreur lors de l\'exécution de la commande musicale !';
-        if (interaction.deferred) {
-          await interaction.editReply({ content });
-        } else {
-          await interaction.reply({ content, ephemeral: true });
-        }
-        return;
-      }
-    }
     // Moderation commands (staff-only)
     if (interaction.isChatInputCommand() && ['ban','unban','kick','mute','unmute','warn','masskick','massban','purge'].includes(interaction.commandName)) {
       try {
@@ -8588,13 +8517,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // /testlog removed
 
-    // Music system removed - commands no longer available
 
-    // Gestion des interactions musicales (boutons)
-    if (musicInteractions && interaction.isButton() && interaction.customId.startsWith('music_')) {
-      const handled = await musicInteractions.handleMusicInteraction(interaction);
-      if (handled) return;
-    }
 
     // Truth/Dare game buttons
     if (interaction.isButton() && interaction.customId.startsWith('td_game:')) {
