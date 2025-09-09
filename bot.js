@@ -928,11 +928,11 @@ async function handleEconomyAction(interaction, actionKey) {
   let msgText = null;
   const successRate = Number(conf.successRate ?? 1);
   const success = Math.random() < successRate;
-  // Apply direct karma grants (extra money) when success
+  // Apply direct karma grants (extra money) regardless of success
   let grantMoney = 0;
   try {
     // Evaluate grants based on current user economy/karma
-    grantMoney = success ? Math.max(0, Number(calculateKarmaGrants(eco.karmaModifiers?.grants, u.charm || 0, u.perversion || 0, u.amount || 0))) : 0;
+    grantMoney = Math.max(0, Number(calculateKarmaGrants(eco.karmaModifiers?.grants, u.charm || 0, u.perversion || 0, u.amount || 0)));
   } catch (_) { grantMoney = 0; }
   // XP config
   const xpOnSuccess = Math.max(0, Number(conf.xpDelta || 0));
@@ -2171,7 +2171,8 @@ async function handleEconomyAction(interaction, actionKey) {
   const nice = actionKeyToLabel(actionKey);
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
   const currency = eco.currency?.name || 'BAG$';
-  const desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  let desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  if (grantMoney > 0) desc += ` • Grant: +${grantMoney} ${currency}`;
   // Partner rewards (cible/complice)
   let partnerField = null;
   if (success) {
@@ -2204,11 +2205,13 @@ async function handleEconomyAction(interaction, actionKey) {
       }
     } catch (_) {}
   }
-  const moneyField = { name: 'Argent', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true };
+  const moneyField = { name: 'Argent (base)', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true };
   const grantField = grantMoney > 0 ? { name: 'Grant', value: `+${grantMoney} ${currency}`, inline: true } : null;
+  const totalField = { name: 'Total', value: `${moneyDelta + grantMoney >= 0 ? '+' : '-'}${Math.abs(moneyDelta + grantMoney)} ${currency}`, inline: true };
   const fields = [
     moneyField,
     ...(grantField ? [grantField] : []),
+    totalField,
     { name: 'Solde argent', value: String(u.amount), inline: true },
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
     ...(partnerField ? [partnerField] : []),
@@ -8428,21 +8431,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
           try { await interaction.followUp({ content: 'Aucun prompt disponible.', ephemeral: true }); } catch (_) {}
           return;
         }
-        // Non-répétition: conserver une file pour chaque (guild, mode, type)
+        // Non-répétition: conserver une file pour chaque (guild, channel, mode, type)
         if (!client._tdQueue) client._tdQueue = new Map();
-        const key = `${interaction.guild.id}:${mode}:${String(type||'').toLowerCase()}`;
-        let q = client._tdQueue.get(key);
-        // Rebuild queue if missing or exhausted or invalid
+        const chanId = interaction.channel?.id || 'global';
+        const key = `${interaction.guild.id}:${chanId}:${mode}:${String(type||'').toLowerCase()}`;
         const ids = list.map(p => p.id).filter(id => id != null);
-        if (!Array.isArray(q) || q.length === 0 || q.some(id => !ids.includes(id))) {
-          // Shuffle a fresh queue of IDs
+        let q = client._tdQueue.get(key);
+        // Si de nouveaux prompts ont été ajoutés, on les intègre au cycle en cours
+        if (!Array.isArray(q)) q = [];
+        const missing = ids.filter(id => !q.includes(id));
+        if (missing.length) q.push(...missing);
+        // Si la file contient des IDs obsolètes, on les supprime
+        q = q.filter(id => ids.includes(id));
+        // Si la file est vide, on la remplit et on mélange
+        if (q.length === 0) {
           q = ids.slice();
           for (let i = q.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [q[i], q[j]] = [q[j], q[i]];
           }
         }
+        // Prendre en tête de file et réinserer à la fin pour un cycle complet avant répétition
         const nextId = q.shift();
+        if (typeof nextId !== 'undefined') q.push(nextId);
         client._tdQueue.set(key, q);
         const pick = list.find(p => p.id === nextId) || list[Math.floor(Math.random() * list.length)];
         const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'));
