@@ -764,13 +764,19 @@ function evaluateKarmaCondition(conditionExpr, charm, perversion, amount) {
   }
 }
 
-function calculateKarmaGrants(grantRules, charm, perversion, amount) {
+function calculateKarmaGrants(grantRules, charm, perversion, amount, actionKey) {
   if (!Array.isArray(grantRules)) return 0;
   let total = 0;
   for (const rule of grantRules) {
     if (!rule || typeof rule !== 'object') continue;
     if (typeof rule.condition !== 'string') continue;
     if (typeof rule.money !== 'number') continue;
+    // Optionnel: limiter à certaines actions si rule.actions est défini
+    if (Array.isArray(rule.actions) && rule.actions.length) {
+      const ak = String(actionKey || '').toLowerCase();
+      const allow = rule.actions.map(v => String(v || '').toLowerCase());
+      if (!allow.includes(ak)) continue;
+    }
     if (evaluateKarmaCondition(rule.condition, charm, perversion, amount)) {
       total += rule.money;
     }
@@ -928,11 +934,10 @@ async function handleEconomyAction(interaction, actionKey) {
   let msgText = null;
   const successRate = Number(conf.successRate ?? 1);
   const success = Math.random() < successRate;
-  // Apply direct karma grants (extra money) regardless of success
+  // Apply direct karma grants (extra money) only on success and matching actions
   let grantMoney = 0;
   try {
-    // Evaluate grants based on current user economy/karma
-    grantMoney = Math.max(0, Number(calculateKarmaGrants(eco.karmaModifiers?.grants, u.charm || 0, u.perversion || 0, u.amount || 0)));
+    grantMoney = success ? Math.max(0, Number(calculateKarmaGrants(eco.karmaModifiers?.grants, u.charm || 0, u.perversion || 0, u.amount || 0, actionKey))) : 0;
   } catch (_) { grantMoney = 0; }
   // XP config
   const xpOnSuccess = Math.max(0, Number(conf.xpDelta || 0));
