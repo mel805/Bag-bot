@@ -815,8 +815,8 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey,
       const cond = typeof rule.condition === 'string' ? rule.condition : '';
       const wasOk = evaluateKarmaCondition(cond, Number(prevCharm||0), Number(prevPerversion||0), Number(prevAmount||0));
       const nowOk = evaluateKarmaCondition(cond, userEcoAfter.charm || 0, userEcoAfter.perversion || 0, userEcoAfter.amount || 0);
-      // N'attribuer que lors d'un franchissement de seuil: false -> true
-      if (!nowOk || wasOk) continue;
+      // Attribuer si la condition est remplie maintenant et pas encore donnée
+      if (!nowOk) continue;
       if (!ok) continue;
       const money = Math.max(0, Number(rule.money || 0));
       if (!money) continue;
