@@ -977,6 +977,10 @@ async function handleEconomyAction(interaction, actionKey) {
   // (removed duplicate heavy defer block; handled earlier)
   
   const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
+  // Capture valeurs avant modifications pour le contrôle de franchissement
+  const prevCharm = Number(u.charm || 0);
+  const prevPerversion = Number(u.perversion || 0);
+  const prevAmount = Number(u.amount || 0);
   const now = Date.now();
   const conf = (eco.actions?.config || {})[actionKey] || {};
   const baseCd = Number(conf.cooldown || (eco.settings?.cooldowns?.[actionKey] || 0));
@@ -2313,20 +2317,8 @@ async function handleEconomyAction(interaction, actionKey) {
   try {
     clearFallbackTimer(); // S'assurer que tous les timers sont nettoyés
     const res = await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
-    // Après réponse principale, tenter d'attribuer un grant one-shot si conditions atteintes (franchissement)
-    try {
-      await maybeAwardOneTimeGrant(
-        interaction,
-        eco,
-        u,
-        actionKey,
-        // valeurs avant action
-        (u.charm || 0) - (karmaField && karmaField[0].toLowerCase().includes('charme') ? Number(conf.karmaDelta||0) : 0),
-        (u.perversion || 0) - (karmaField && karmaField[0].toLowerCase().includes('perversion') ? Number(conf.karmaDelta||0) : 0),
-        // approx solde avant (sans grant): u.amount - moneyDelta
-        Math.max(0, (u.amount || 0) - moneyDelta)
-      );
-    } catch (_) {}
+    // Après réponse principale, tenter d'attribuer un grant one-shot si franchissement de seuil (karma)
+    try { await maybeAwardOneTimeGrant(interaction, eco, u, actionKey, prevCharm, prevPerversion, prevAmount); } catch (_) {}
     return res;
   } catch (error) {
     console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
@@ -7352,15 +7344,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       try { await interaction.reply({ embeds: [embed], ephemeral: true }); } catch (_) {}
       // Déclencher un éventuel grant suite à la modification d'admin (franchissement)
       try {
-        await maybeAwardOneTimeGrant(
-          interaction,
-          eco,
-          await getEconomyUser(interaction.guild.id, member.id),
-          'adminkarma',
-          (type === 'charm' ? before : (await getEconomyUser(interaction.guild.id, member.id)).charm || 0),
-          (type === 'perversion' ? before : (await getEconomyUser(interaction.guild.id, member.id)).perversion || 0),
-          (await getEconomyUser(interaction.guild.id, member.id)).amount || 0
-        );
+        const eco2 = await getEconomyConfig(interaction.guild.id);
+        const afterEco = await getEconomyUser(interaction.guild.id, member.id);
+        const prevCharm = type === 'charm' ? before : Number(afterEco.charm || 0);
+        const prevPerv = type === 'perversion' ? before : Number(afterEco.perversion || 0);
+        const prevAmount = Number(afterEco.amount || 0);
+        await maybeAwardOneTimeGrant(interaction, eco2, afterEco, 'adminkarma', prevCharm, prevPerv, prevAmount);
       } catch (_) {}
       return;
     }
