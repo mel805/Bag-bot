@@ -144,7 +144,7 @@ const commands = [
   new SlashCommandBuilder().setName('reconforter').setDescription('Réconforter (alias sans accent) 🤍').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   // Nouvelles commandes FR
   new SlashCommandBuilder()
-    .setName('touche')
+    .setName('action_touche')
     .setDescription('Touche sensuellement un(e) membre (NSFW)')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
     .addStringOption(o=>o.setName('zone').setDescription('Zone (optionnel)').setRequired(false)
@@ -161,7 +161,7 @@ const commands = [
     )
     .toJSON(),
   new SlashCommandBuilder()
-    .setName('reveiller')
+    .setName('action_reveiller')
     .setDescription('Réveiller (SFW/NSFW aléatoire)')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
     .addStringOption(o=>o.setName('mode').setDescription('Mode (optionnel)').setRequired(false)
@@ -169,12 +169,12 @@ const commands = [
     .addStringOption(o=>o.setName('zone').setDescription('Zone/Action (optionnel)').setRequired(false))
     .toJSON(),
   new SlashCommandBuilder()
-    .setName('cuisiner')
+    .setName('action_cuisiner')
     .setDescription('Cuisiner (NSFW) — scène suggestive')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
     .toJSON(),
   new SlashCommandBuilder()
-    .setName('douche')
+    .setName('action_douche')
     .setDescription('Douche sensuelle (NSFW)')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
     .toJSON(),
@@ -284,7 +284,7 @@ const commands = [
     .setDMPermission(false)
     .toJSON(),
   // Hot & Fun — catégorie
-  new SlashCommandBuilder().setName('shower').setDescription('Gif douche chaude ou douche froide surprise 🚿').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  // removed shower to avoid duplication and regroup actions under action_*
   new SlashCommandBuilder().setName('wet').setDescription('Ambiance humide, suggestive 💧').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('bed').setDescription('Invitation au lit 😏').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('undress').setDescription('Déshabillage progressif').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
