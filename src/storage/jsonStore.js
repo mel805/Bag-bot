@@ -862,181 +862,114 @@ function ensureEconomyShape(g) {
   const msgDefaults = {
     hairpull: {
       success: ['Tu tires ses cheveux avec fermeté, regard brûlant 😈', 'Main dans la chevelure, tu guides avec assurance.', 'Prise maîtrisée, consentement affiché: ça le/la rend fou/folle.'],
-      fail: ['Tu hésites, le geste n’est pas clair.', 'Pas d’accord là-dessus, vous préférez éviter.', 'Mauvais timing, on en discute d’abord.']
+      fail: ['Tu hésites, le geste n'est pas clair.', 'Pas d'accord là-dessus, vous préférez éviter.', 'Mauvais timing, on en discute d'abord.']
     },
     caress: {
-      success: ['Tes mains glissent lentement, la température monte…', 'Des caresses expertes, frisson garanti.', 'Douceur et intention: irrésistible.'],
-      fail: ['Tu tentes une caresse, mais il/elle préfère attendre.', 'Le moment n’y est pas, vous ralentissez.']
-    },
-    daily: {
-      success: ['Bonus quotidien reçu !', 'Récompense du jour collectée. À demain !'],
-      fail: []
-    },
-    work: {
-      success: ['Beau boulot, votre chef est ravi !', 'Paie reçue, continuez comme ça !'],
-      fail: ['Journée compliquée… vous aurez plus de chance demain.', 'Retard et paperasse… pas de prime aujourd’hui.']
-    },
-    fish: {
-      success: ['Bravo, vous avez pêché un saumon !', 'Félicitations, vous avez attrapé un banc de poissons !'],
-      fail: ['Rien n’a mordu cette fois…', 'La ligne a cassé au dernier moment !']
+      success: [
+        'Tes mains glissent lentement sur {cible}, la température monte, {zone} frisonne…',
+        'Des caresses expertes sur {zone}, {cible} cherche ton regard, haletant(e)…',
+        'Douceur et intention: {zone} explorée, {cible} se cambre sous tes doigts.'
+      ],
+      fail: ['Tu tentes une caresse, mais {cible} préfère attendre.', 'Le moment n'y est pas, vous ralentissez.']
     },
     kiss: {
-      success: ['Un baiser qui fait fondre les cœurs…', 'Doux moment, tout le monde est conquis.'],
-      fail: ['Moment gênant… ce n’était pas réciproque.', 'Oups, malentendu.']
+      success: [
+        'Tes lèvres capturent celles de {cible}, lentement, sans fuir, un gémissement étouffé…',
+        'Baiser profond, langues qui se trouvent, {cible} s'accroche à toi.',
+        'Un baiser vorace, puis un autre… {cible} en redemande.'
+      ],
+      fail: ['{cible} détourne la tête, frustrant mais respecté.', 'Vous souriez, pas pour maintenant.']
     },
     lick: {
-      success: ['Un coup de langue bien placé…', 'Tu fais monter la température.'],
-      fail: ['Tu tentes… mais on te repousse gentiment.', 'Ambiance un peu gênante cette fois.']
-    },
-    flirt: {
-      success: ['Votre clin d’œil a fait mouche ✨', 'Votre charme opère irrésistiblement.'],
-      fail: ['On vous a mis un râteau…', 'Pas réceptif aujourd’hui.']
-    },
-    seduce: {
-      success: ['Séduction réussie, quelle prestance !', 'Vous avez fait chavirer des cœurs.'],
-      fail: ['Raté… la magie n’a pas pris.', 'Trop direct, ça n’a pas marché.']
+      success: [
+        'Ta langue trace un sillon humide sur {zone} de {cible}… son souffle se brise.',
+        'Tu lapes {zone} avec lenteur, {cible} frissonne sous chaque coup de langue.',
+        'Jeu taquin sur {zone}, un regard et {cible} se mord la lèvre.'
+      ],
+      fail: ['{cible} te retient d'un sourire, pas ici.', 'Ambiance coupée, tu patientes.']
     },
     suck: {
-      success: ['Tu prends ton temps… le regard devient fiévreux.', 'Tu alternes douceur et intensité, c’est torride.'],
-      fail: ['Tu tentes, mais on te repousse gentiment.', 'Mauvais timing, ça refroidit l’ambiance.']
+      success: [
+        'Tu prends {zone} en bouche, aspiration lente, {cible} gémit sans retenue.',
+        'Bouche chaude, rythme maîtrisé, {cible} perd ses repères.',
+        'Tu alternes douceur et intensité sur {zone}, torride.'
+      ],
+      fail: ['{cible} te repousse doucement, un autre moment.', 'Tu t'arrêtes, consentement d'abord.']
     },
     nibble: {
-      success: ['Morsure douce dans le cou… frisson garanti.', 'Tu mordilles ses lèvres, c’est électrique.', 'Petite morsure à l’épaule, souffle court.'],
-      fail: ['Il/elle préfère éviter la morsure maintenant.', 'Mauvais timing pour mordre, vous ralentissez.']
+      success: [
+        'Morsure douce dans le cou de {cible}, frisson garanti.',
+        'Tu mordilles ses lèvres, {cible} se colle à toi.',
+        'Petite morsure à l'épaule, souffle court.'
+      ],
+      fail: ['{cible} préfère éviter la morsure maintenant.', 'Mauvais timing, vous ralentissez.']
     },
     branler: {
-      success: ['Mouvements maîtrisés, le souffle se fait court…', 'Rythme assuré, la tension monte.'],
-      fail: ['Tu tentes, mais il/elle préfère ralentir.', 'Pas le bon moment, on s’arrête.']
+      success: [
+        'Mouvements maîtrisés sur {zone}, le souffle de {cible} se brise…',
+        'Rythme assuré, poigne ferme, {cible} se cambre.'
+      ],
+      fail: ['Tu tentes, mais {cible} préfère ralentir.', 'Pas le bon moment, on s'arrête.']
     },
     doigter: {
-      success: ['Doigts habiles, regards qui se croisent…', 'Tu explores avec douceur et assurance.'],
-      fail: ['Tu t’approches, mais il/elle n’est pas à l’aise.', 'On préfère en parler d’abord.']
-    },
-    revive: {
-      success: ['Bouche-à-bouche efficace, le souffle revient !', 'Massage cardiaque précis, il/elle ouvre les yeux.'],
-      fail: ['Tu paniques, les gestes ne sont pas coordonnés…', 'Rien pour le moment, continue les compressions.']
-    },
-    comfort: {
-      success: ['Tu le/la prends délicatement dans tes bras.', 'Mots doux murmurés, les épaules se relâchent.', 'Un câlin chaleureux réchauffe son cœur.'],
-      fail: ['Tu cherches les mots… silence maladroit.', 'Tu t’approches, mais il/elle préfère rester seul(e) pour l’instant.']
-    },
-    tickle: {
-      success: ['Des rires éclatent, mission chatouilles réussie !', 'Tu déclenches une crise de fou rire.'],
-      fail: ['Pas d’humeur à rire…', 'Tu t’y prends mal, ça ne chatouille pas.']
+      success: [
+        'Doigts habiles, {zone} explorée, {cible} se tend sous toi.',
+        'Tu entres lentement, {cible} gémit, ton rythme s'installe.'
+      ],
+      fail: ['Tu t'approches, mais {cible} n'est pas à l'aise.', 'On préfère en parler d'abord.']
     },
     fuck: {
-      success: ['Nuit torride 😈', 'Explosion de passion…'],
-      fail: ['Mauvais timing…', 'Ça ne l’a pas fait cette fois.']
+      success: [
+        'Tu la/le prends contre toi, va-et-vient profonds, peau contre peau…',
+        'Hanches qui claquent, rythme vorace, {cible} crie ton nom.',
+        'Corps emmêlés, rythme qui monte, vous vous abandonnez.'
+      ],
+      fail: ['Mauvais timing…', 'Ça ne l'a pas fait cette fois.']
     },
     sodo: {
-      success: ['Tu le/la prends par derrière avec intensité 🔥', 'Vous vous abandonnez à une sodomie passionnée 😈', 'Rythme assuré, consentement total et plaisir partagé.'],
-      fail: ['Vous tentez… mais ce n’est pas le bon moment.', 'Sans préparation, impossible d’y arriver correctement.', 'On arrête: confort avant tout.']
+      success: [
+        'Tu le/la prends par derrière avec intensité 🔥, lubrifié et consentant.',
+        'Sodomie passionnée, tu guides chaque souffle de {cible}.',
+        'Rythme assuré, confort avant tout, {cible} succombe.'
+      ],
+      fail: ['Vous tentez… mais ce n'est pas le bon moment.', 'Sans préparation, impossible d'y arriver correctement.']
     },
     orgasme: {
-      success: ['Tu le/la guides jusqu’à l’extase, souffle coupé…', 'Plaisir partagé, frissons et regards complices.', 'Climax atteint, sourire aux lèvres.'],
-      fail: ['Le moment n’y est pas, vous préférez ralentir.', 'On communique et on remet ça plus tard.']
-    },
-    massage: {
-      success: ['Relaxation totale, mains de fée !', 'Vous avez détendu toutes les tensions.'],
-      fail: ['Crampes… ce n’était pas si relaxant.', 'Un peu trop appuyé…']
-    },
-    dance: {
-      success: ['Vous avez enflammé la piste 💃', 'Quel rythme ! Tout le monde a adoré.'],
-      fail: ['Deux pieds gauches aujourd’hui…', 'Le tempo vous a échappé.']
-    },
-    crime: {
-      success: ['Coup monté propre et net.', 'Plan parfait, personne ne vous a vu.'],
-      fail: ['La police vous a cueilli net…', 'Un complice vous a trahi.']
-    },
-    steal: {
-      success: ['Vol réussi, quelle dextérité !', 'Vous avez filé avec le butin.'],
-      fail: ['Pris la main dans le sac…', 'La cible vous a repéré !']
-    },
-    // Hot & Fun
-    shower: {
-      success: ['Douche chaude… ou froide surprise 😏🚿', 'Ça chauffe sous la douche !'],
-      fail: ['L’eau est glacée… brrr !', 'Oups, la serviette a glissé…']
-    },
-    wet: {
-      success: ['Ambiance humide garantie 💧', 'Ça devient glissant…'],
-      fail: ['Rien à signaler… trop sec.']
-    },
-    bed: {
-      success: ['Invitation au lit acceptée 😏', 'Le lit vous tend les bras.'],
-      fail: ['Pas d’humeur pour se coucher.']
-    },
-    undress: {
-      success: ['Déshabillage progressif engagé…', 'Tout en douceur.'],
-      fail: ['Boutons récalcitrants…']
-    },
-    // Domination / Soumission
-    collar: {
-      success: ['Collier posé 🔗', 'Un lien se crée…'],
-      fail: ['Refusé…']
-    },
-    leash: {
-      success: ['En laisse 🐾', 'Suivez-moi.'],
-      fail: ['La laisse s’échappe…']
-    },
-    kneel: {
-      success: ['À genoux, bon/ne soumis/e.', 'Obéissance parfaite.'],
-      fail: ['Résistance détectée.']
-    },
-    order: {
-      success: ['Ordre donné, exécution immédiate.', 'Vous imposez votre volonté.'],
-      fail: ['Ordre ignoré…']
-    },
-    punish: {
-      success: ['Punition appliquée 😈', 'Leçon mémorable.'],
-      fail: ['Grâce accordée.']
-    },
-    // Séduction & RP doux
-    rose: {
-      success: ['Une rose offerte 🌹', 'Le cœur fond.'],
-      fail: ['La rose fane…']
-    },
-    wine: {
-      success: ['Verre partagé 🍷', 'Tchin !'],
-      fail: ['Pas de verre ce soir.']
-    },
-    pillowfight: {
-      success: ['Bataille d’oreillers épique 🛏️', 'Pluie de plumes !'],
-      fail: ['Oreillers introuvables…']
-    },
-    sleep: {
-      success: ['Endormi dans ses bras 💤', 'Rêves doux.'],
-      fail: ['Insomnie…']
-    },
-    // Délires coquins / Jeux
-    oops: {
-      success: ['Oups, j’ai glissé…', 'Quelle maladresse sexy !'],
-      fail: ['On refait ?']
-    },
-    caught: {
-      success: ['Surpris en flagrant délit 👀', 'Pris sur le fait !'],
-      fail: ['Personne ne vous a vu.']
-    },
-    tromper: {
       success: [
-        'Tu surprends la cible en train de te tromper… tu renverses la situation. 😈',
-        'Pris en flagrant délit avec un(e) autre… et pourtant, c’est toi qui gagnes la partie.',
-        'Découverte chaude: un(e) troisième s’en mêle, mais tu reprends l’avantage.'
+        'Tu le/la guides jusqu'à l'extase, jambes tremblantes, gémissements étouffés…',
+        'Climax atteint, doigts qui serrent, {cible} s'abandonne.'
       ],
-      fail: [
-        'Tout s’écroule: tu es pris(e) sur le fait…',
-        'Ça tourne mal: la cible vous surprend, la honte et la perte retombent sur toi.',
-        'Le plan foire: exposé(e) au grand jour, tu perds gros.'
-      ]
+      fail: ['Le moment n'y est pas, vous préférez ralentir.', 'On communique et on remet ça plus tard.']
     },
-    orgie: {
+    // Nouvelles actions
+    touche: {
       success: [
-        'Orgie réussie: tout le monde repart comblé.',
-        'Exultation collective, c’était intense et consentie.',
+        'Tu touches {zone} de {cible}, caresse lente et assumée…',
+        'Main audacieuse sur {zone}, {cible} halète.',
+        'Tu effleures {zone}, {cible} frisonne contre toi.'
       ],
-      fail: [
-        'Orgie avortée: ambiance cassée, on remballe.',
-        'Ça ne prend pas cette fois, chacun rentre frustré.',
-      ]
+      fail: ['{cible} te retient, pas ici.', 'Tu retires ta main, un autre moment.']
+    },
+    reveiller: {
+      success: [
+        'Tu réveilles {cible} en embrassant {zone}, soupirs encore ensommeillés.',
+        'Réveil taquin: tes doigts parcourent {zone}, {cible} sourit en s'étirant.'
+      ],
+      fail: ['{cible} grogne et se tourne, encore un peu de sommeil.', 'Chut… ce n'est pas le moment.']
+    },
+    cuisiner: {
+      success: [
+        'Tu cuisines à moitié habillé(e), {cible} te dévore des yeux.',
+        'Cuillère à la bouche, tu laisses un gémissement s'échapper, chaud devant.'
+      ],
+      fail: ['La sauce tourne, il faudra recommencer.', 'Le four t'a déconcentré(e)…']
+    },
+    douche: {
+      success: [
+        'Douche sensuelle contre {cible}, eau chaude, corps qui glissent…',
+        'Tu savonnes {zone} en détail, {cible} perd le fil.'
+      ],
+      fail: ['L'eau passe du chaud au froid, vous sautez hors de la douche…', 'Glissade évitée de justesse.']
     }
   };
   for (const [k, def] of Object.entries(msgDefaults)) {
