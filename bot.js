@@ -402,8 +402,6 @@ const client = new Client({
   ],
   partials: [Partials.GuildMember, Partials.Message, Partials.Channel],
 });
-
-
 // Fonction pour envoyer des logs détaillés de sauvegarde
 async function sendDetailedBackupLog(guild, info, method, user) {
   try {
@@ -879,7 +877,6 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey,
     } catch (_) {}
   } catch (_) {}
 }
-
 async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring - trackInteraction untrackInteraction
   trackInteraction(interaction, `economy-${actionKey}`);
@@ -1483,6 +1480,22 @@ async function handleEconomyAction(interaction, actionKey) {
       ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
       : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
   }
+  // Replace placeholders {cible}/{target}/{montant}/{devise}/{zone}/{mode}
+  try {
+    if (msgText) {
+      const targetMention = initialPartner ? String(initialPartner) : String(interaction.user);
+      const currency = eco.currency?.name || 'BAG$';
+      const zoneOpt = (()=>{ try { return interaction.options.getString?.('zone', false) || ''; } catch (_) { return ''; } })();
+      const modeOpt = (()=>{ try { return interaction.options.getString?.('mode', false) || ''; } catch (_) { return ''; } })();
+      msgText = String(msgText)
+        .replace(/\{target\}/gi, targetMention)
+        .replace(/\{cible\}/gi, targetMention)
+        .replace(/\{montant\}/gi, String(moneyDelta))
+        .replace(/\{devise\}/gi, currency)
+        .replace(/\{zone\}/gi, zoneOpt)
+        .replace(/\{mode\}/gi, modeOpt);
+    }
+  } catch (_) {}
   // Keep 'orgasme' simple: use curated short phrases matching the intent
   if (actionKey === 'kiss') {
     const partner = interaction.options.getUser('cible', false);
@@ -4031,7 +4044,6 @@ async function buildTicketsRows(guild, submenu) {
   rows.push(new ActionRowBuilder().addComponents(catSelectAccess));
   return rows;
 }
-
 function actionKeyToLabel(key) {
   const map = {
     daily: 'quotidien',
@@ -4520,7 +4532,6 @@ client.once(Events.ClientReady, async (readyClient) => {
       console.error('[Backup Auto] Erreur:', error.message);
     }
   }, 30 * 60 * 1000);
-
   // Weekly karma reset at configured day (UTC) at 00:00
   setInterval(async () => {
     try {
@@ -5513,7 +5524,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       return;
     }
-
     if (interaction.isButton() && interaction.customId === 'ticket_transfer') {
       const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
       if (!member) return;
@@ -7493,7 +7503,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try { return await interaction.editReply({ content: 'Une erreur est survenue lors du rendu de votre carte de niveau.' }); } catch (_) { return; }
       }
     }
-
     if (interaction.isChatInputCommand() && interaction.commandName === 'top') {
       const sub = interaction.options.getSubcommand();
       if (sub === 'niveau') {
@@ -8911,7 +8920,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true
       });
     }
-    
     if (interaction.isButton() && interaction.customId.startsWith('suite_list_')) {
       const ownerId = interaction.customId.split('_')[2];
       if (interaction.user.id !== ownerId) {
@@ -9701,7 +9709,6 @@ function clampPaletteOffset(total, offset, limit) {
   if (offset > last) return last;
   return Math.floor(offset / limit) * limit;
 }
-
 function buildColorSelectView(targetType, targetId, category, offset = 0) {
   const colorsAll = COLOR_PALETTES[category] || [];
   const limit = 15;
