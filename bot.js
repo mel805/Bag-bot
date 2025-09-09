@@ -754,10 +754,17 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 // Karma grants helper: evaluate configured grant rules and compute extra money
 function evaluateKarmaCondition(conditionExpr, charm, perversion, amount) {
   try {
+    // Normalize common French aliases to internal vars
+    let expr = String(conditionExpr || '').trim();
+    expr = expr.replace(/\bcharme\b/gi, 'charm');
+    expr = expr.replace(/\bargent\b/gi, 'amount');
+    expr = expr.replace(/\bsolde\b/gi, 'amount');
+    expr = expr.replace(/\bperversité\b/gi, 'perversion');
+    expr = expr.replace(/\bperversite\b/gi, 'perversion');
     // Admin-provided simple expressions like "charm>=100 && perversion<50"
     // Only expose numeric variables; no other scope
     // eslint-disable-next-line no-new-func
-    const fn = new Function('charm', 'perversion', 'amount', `return ( ${String(conditionExpr || 'false')} );`);
+    const fn = new Function('charm', 'perversion', 'amount', `return ( ${expr} );`);
     return !!fn(Number(charm || 0), Number(perversion || 0), Number(amount || 0));
   } catch (_) {
     return false;
@@ -792,10 +799,14 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey,
     if (!client._ecoGrantGiven) client._ecoGrantGiven = new Map();
     const keyBase = `${interaction.guild.id}:${interaction.user.id}`;
     // Collecter les règles éligibles non encore attribuées
+    // Si rule.scope === 'action', ne tester que sur action; si 'admin', ne tester que sur /adminkarma; sinon 'any'
     const candidates = [];
     for (let i = 0; i < grants.length; i++) {
       const rule = grants[i];
       if (!rule || typeof rule !== 'object') continue;
+      const scope = String(rule.scope || 'any').toLowerCase();
+      if (scope === 'action' && actionKey === 'adminkarma') continue;
+      if (scope === 'admin' && actionKey !== 'adminkarma') continue;
       if (Array.isArray(rule.actions) && rule.actions.length) {
         const ak = String(actionKey || '').toLowerCase();
         const allow = rule.actions.map(v => String(v || '').toLowerCase());
