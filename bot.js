@@ -784,6 +784,45 @@ function calculateKarmaGrants(grantRules, charm, perversion, amount, actionKey) 
   return total;
 }
 
+async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
+  try {
+    const grants = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
+    if (!grants.length) return;
+    // Espace de suivi: éviter de redonner le même grant plusieurs fois
+    if (!client._ecoGrantGiven) client._ecoGrantGiven = new Map();
+    const keyBase = `${interaction.guild.id}:${interaction.user.id}`;
+    for (let i = 0; i < grants.length; i++) {
+      const rule = grants[i];
+      if (!rule || typeof rule !== 'object') continue;
+      if (Array.isArray(rule.actions) && rule.actions.length) {
+        const ak = String(actionKey || '').toLowerCase();
+        const allow = rule.actions.map(v => String(v || '').toLowerCase());
+        if (!allow.includes(ak)) continue;
+      }
+      const cond = typeof rule.condition === 'string' ? rule.condition : '';
+      const ok = evaluateKarmaCondition(cond, userEco.charm || 0, userEco.perversion || 0, userEco.amount || 0);
+      if (!ok) continue;
+      const money = Math.max(0, Number(rule.money || 0));
+      if (!money) continue;
+      const grantKey = `${keyBase}:grant:${i}`;
+      if (client._ecoGrantGiven.get(grantKey)) continue; // déjà donné
+      // Attribuer une seule fois
+      userEco.amount = Math.max(0, (userEco.amount || 0) + money);
+      await setEconomyUser(interaction.guild.id, interaction.user.id, userEco);
+      client._ecoGrantGiven.set(grantKey, Date.now());
+      // Embed séparé
+      const currency = eco.currency?.name || 'BAG$';
+      const embed = new EmbedBuilder()
+        .setColor(0x3fb950)
+        .setTitle('🎁 Grant débloqué')
+        .setDescription(`Vous avez reçu un grant de **+${money} ${currency}**`)
+        .addFields({ name: 'Condition', value: cond || '—', inline: false })
+        .setTimestamp(new Date());
+      try { await interaction.followUp({ embeds: [embed], ephemeral: true }); } catch (_) {}
+    }
+  } catch (_) {}
+}
+
 async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring - trackInteraction untrackInteraction
   trackInteraction(interaction, `economy-${actionKey}`);
@@ -934,11 +973,8 @@ async function handleEconomyAction(interaction, actionKey) {
   let msgText = null;
   const successRate = Number(conf.successRate ?? 1);
   const success = Math.random() < successRate;
-  // Apply direct karma grants (extra money) only on success and matching actions
-  let grantMoney = 0;
-  try {
-    grantMoney = success ? Math.max(0, Number(calculateKarmaGrants(eco.karmaModifiers?.grants, u.charm || 0, u.perversion || 0, u.amount || 0, actionKey))) : 0;
-  } catch (_) { grantMoney = 0; }
+  // Grants ne sont pas ajoutés à chaque action: ils seront attribués une seule fois via un embed séparé quand le seuil est atteint
+  let grantMoney = 0; // legacy var (non utilisé dans le calcul de l'embed principal)
   // XP config
   const xpOnSuccess = Math.max(0, Number(conf.xpDelta || 0));
   const xpOnFail = Math.max(0, Number(conf.failXpDelta || 0));
@@ -2155,8 +2191,8 @@ async function handleEconomyAction(interaction, actionKey) {
       }
     }
   }
-  // Generic flow
-  u.amount = Math.max(0, (u.amount||0) + moneyDelta + grantMoney);
+  // Generic flow (sans grant permanent)
+  u.amount = Math.max(0, (u.amount||0) + moneyDelta);
   setCd(actionKey, cdToSet);
   await setEconomyUser(interaction.guild.id, interaction.user.id, u);
   // XP awards (actor + partner/complice if present)
@@ -2176,8 +2212,7 @@ async function handleEconomyAction(interaction, actionKey) {
   const nice = actionKeyToLabel(actionKey);
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
   const currency = eco.currency?.name || 'BAG$';
-  let desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
-  if (grantMoney > 0) desc += ` • Grant: +${grantMoney} ${currency}`;
+  const desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
   // Partner rewards (cible/complice)
   let partnerField = null;
   if (success) {
@@ -2210,13 +2245,9 @@ async function handleEconomyAction(interaction, actionKey) {
       }
     } catch (_) {}
   }
-  const moneyField = { name: 'Argent (base)', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true };
-  const grantField = grantMoney > 0 ? { name: 'Grant', value: `+${grantMoney} ${currency}`, inline: true } : null;
-  const totalField = { name: 'Total', value: `${moneyDelta + grantMoney >= 0 ? '+' : '-'}${Math.abs(moneyDelta + grantMoney)} ${currency}`, inline: true };
+  const moneyField = { name: 'Argent', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true };
   const fields = [
     moneyField,
-    ...(grantField ? [grantField] : []),
-    totalField,
     { name: 'Solde argent', value: String(u.amount), inline: true },
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
     ...(partnerField ? [partnerField] : []),
@@ -2248,7 +2279,10 @@ async function handleEconomyAction(interaction, actionKey) {
   // Vérification de sécurité finale pour s'assurer que l'interaction a toujours une réponse
   try {
     clearFallbackTimer(); // S'assurer que tous les timers sont nettoyés
-    return await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
+    const res = await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
+    // Après réponse principale, tenter d'attribuer un grant one-shot si conditions atteintes
+    try { await maybeAwardOneTimeGrant(interaction, eco, u, actionKey); } catch (_) {}
+    return res;
   } catch (error) {
     console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
     
