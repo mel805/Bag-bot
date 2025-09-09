@@ -2260,7 +2260,18 @@ async function handleEconomyAction(interaction, actionKey) {
   const nice = actionKeyToLabel(actionKey);
   const title = success ? `Action réussie — ${nice}` : `Action échouée — ${nice}`;
   const currency = eco.currency?.name || 'BAG$';
-  const desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  // Resolve personalized message with placeholders
+  let desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
+  try {
+    if (msgText) {
+      const targetMention = initialPartner ? String(initialPartner) : String(interaction.user);
+      desc = String(msgText)
+        .replace(/\{target\}/gi, targetMention)
+        .replace(/\{cible\}/gi, targetMention)
+        .replace(/\{montant\}/gi, String(moneyDelta))
+        .replace(/\{devise\}/gi, currency);
+    }
+  } catch (_) {}
   // Partner rewards (cible/complice)
   let partnerField = null;
   if (success) {

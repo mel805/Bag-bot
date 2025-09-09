@@ -739,12 +739,36 @@ function ensureEconomyShape(g) {
     "Le gâteau s’effondre… on commandera!"
   ]);
   ensureMsgs('douche',[
-    "Une douche sensuelle commence…",
-    "La buée monte, les regards s’échangent…",
-    "L’eau coule, la température aussi monte."
+    "Tu caresses le corps de {cible} sous l’eau tiède…",
+    "Tes mains savonneuses glissent sur {cible} de façon érotique…",
+    "L’eau ruisselle, vos corps se frôlent: {cible} frissonne."
   ],[
-    "Pas d’eau chaude… ambiance glaciale!",
-    "Le savon glisse… et l’instant aussi."
+    "L’eau froide coupe court aux envies…",
+    "Le savon pique les yeux, vous riez et remettez ça plus tard."
+  ]);
+  ensureMsgs('touche',[
+    "Tu touches {cible} d’une manière délicieusement suggestive…",
+    "Tes doigts explorent {cible}, lentement, avec envie…",
+    "{cible} gémit lorsque tes mains s’attardent aux bons endroits."
+  ],[
+    "{cible} recule avec un sourire timide…",
+    "Le moment n’est pas propice, {cible} préfère attendre."
+  ]);
+  ensureMsgs('reveiller',[
+    "Tu réveilles {cible} par de tendres baisers… ou d’habiles caresses…",
+    "Petit-déjeuner au lit, ou doigts malicieux: {cible} s’éveille sous tes attentions.",
+    "{cible} ouvre les yeux, troublé(e) par tes gestes."
+  ],[
+    "{cible} reste profondément endormi(e)…",
+    "Le réveil vibre… et casse l’ambiance."
+  ]);
+  ensureMsgs('cuisiner',[
+    "Tu cuisines nu(e) pour {cible}, un tablier et des intentions…",
+    "La recette est simple: toi, {cible}, et une pincée de tentation.",
+    "Le plat mijote; la passion aussi. {cible} te dévore des yeux."
+  ],[
+    "Ça brûle un peu… mais l’appétit reste entier!",
+    "La cuisine est en désordre, vous finirez par commander."
   ]);
   const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','daily','touche','reveiller','cuisiner','douche'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
