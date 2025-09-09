@@ -706,7 +706,7 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
-  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','daily'];
+  const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','daily','touche','reveiller','cuisiner','douche'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {
     for (const k of defaultEnabled) if (!e.actions.enabled.includes(k)) e.actions.enabled.push(k);
@@ -768,6 +768,11 @@ function ensureEconomyShape(g) {
     massage: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
     dance: { moneyMin: 5, moneyMax: 15, karma: 'charm', karmaDelta: 1, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 4, failKarmaDelta: 1, partnerMoneyShare: 1.5, partnerKarmaShare: 1.5 },
     crime: { moneyMin: 30, moneyMax: 80, karma: 'perversion', karmaDelta: 4, cooldown: 1800, successRate: 0.6, failMoneyMin: 15, failMoneyMax: 30, failKarmaDelta: 4, partnerMoneyShare: 1.2, partnerKarmaShare: 1.5 },
+    // Nouvelles actions
+    touche: { moneyMin: 8, moneyMax: 22, karma: 'perversion', karmaDelta: 2, cooldown: 90, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 6, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    reveiller: { moneyMin: 10, moneyMax: 26, karma: 'charm', karmaDelta: 2, cooldown: 120, successRate: 0.85, failMoneyMin: 3, failMoneyMax: 8, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    cuisiner: { moneyMin: 12, moneyMax: 28, karma: 'perversion', karmaDelta: 2, cooldown: 180, successRate: 0.9, failMoneyMin: 4, failMoneyMax: 10, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
+    douche: { moneyMin: 14, moneyMax: 32, karma: 'perversion', karmaDelta: 3, cooldown: 180, successRate: 0.9, failMoneyMin: 5, failMoneyMax: 12, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
     // Hot & Fun
     shower: { moneyMin: 5, moneyMax: 20, karma: 'perversion', karmaDelta: 2, cooldown: 120, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },
     wet: { moneyMin: 5, moneyMax: 15, karma: 'perversion', karmaDelta: 2, cooldown: 90, successRate: 0.85, failMoneyMin: 2, failMoneyMax: 5, failKarmaDelta: 1, partnerMoneyShare: 1.0, partnerKarmaShare: 1.2 },

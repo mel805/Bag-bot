@@ -7970,6 +7970,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'orgie') {
       return handleEconomyAction(interaction, 'orgie');
     }
+    // Nouvelles actions
+    if (interaction.isChatInputCommand() && interaction.commandName === 'touche') {
+      return handleEconomyAction(interaction, 'touche');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'reveiller') {
+      return handleEconomyAction(interaction, 'reveiller');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'cuisiner') {
+      return handleEconomyAction(interaction, 'cuisiner');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'douche') {
+      return handleEconomyAction(interaction, 'douche');
+    }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
       const PAGE_SIZE = 10;
