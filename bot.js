@@ -838,7 +838,13 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
       .setDescription(`Vous avez reçu un grant de **+${money} ${currency}**`)
       .addFields({ name: 'Condition', value: pick.cond || '—', inline: false })
       .setTimestamp(new Date());
-    try { await interaction.followUp({ embeds: [embed], ephemeral: true }); } catch (_) {}
+    try {
+      if (interaction.channel && typeof interaction.channel.send === 'function') {
+        await interaction.channel.send({ content: String(interaction.user), embeds: [embed] });
+      } else {
+        await interaction.followUp({ embeds: [embed] });
+      }
+    } catch (_) {}
   } catch (_) {}
 }
 
