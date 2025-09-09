@@ -706,6 +706,46 @@ function ensureEconomyShape(g) {
       e.actions.gifs = {};
     }
   }
+  // Pré-remplir des messages personnalisés pour les nouvelles actions si absent
+  if (!e.actions.messages || typeof e.actions.messages !== 'object') e.actions.messages = {};
+  const preset = e.actions.messages;
+  function ensureMsgs(key, succArr, failArr){
+    if (!preset[key] || typeof preset[key] !== 'object') preset[key] = { success: [], fail: [] };
+    if (!Array.isArray(preset[key].success) || preset[key].success.length === 0) preset[key].success = succArr.slice();
+    if (!Array.isArray(preset[key].fail) || preset[key].fail.length === 0) preset[key].fail = failArr.slice();
+  }
+  ensureMsgs('touche',[
+    "Tu frôles délicatement la peau de {target}…",
+    "Tes mains se posent avec envie sur {target}…",
+    "Un contact doux qui fait frissonner {target}."
+  ],[
+    "{target} esquive avec un sourire taquin.",
+    "Moment raté… {target} n’était pas prêt(e)."
+  ]);
+  ensureMsgs('reveiller',[
+    "Tu réveilles {target} avec douceur…",
+    "Petit réveil sensuel pour {target}…",
+    "{target} ouvre les yeux avec un sourire."
+  ],[
+    "{target} ronfle encore… mission reportée.",
+    "Le café est froid… le réveil attendra."
+  ]);
+  ensureMsgs('cuisiner',[
+    "Tu prépares un plat irrésistible…",
+    "L’odeur envoûtante met {target} en appétit…",
+    "Chef en cuisine, cœur en ébullition!"
+  ],[
+    "La recette tourne mal… ça fumait un peu trop.",
+    "Le gâteau s’effondre… on commandera!"
+  ]);
+  ensureMsgs('douche',[
+    "Une douche sensuelle commence…",
+    "La buée monte, les regards s’échangent…",
+    "L’eau coule, la température aussi monte."
+  ],[
+    "Pas d’eau chaude… ambiance glaciale!",
+    "Le savon glisse… et l’instant aussi."
+  ]);
   const defaultEnabled = ['work','fish','give','steal','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','crime','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','daily','touche','reveiller','cuisiner','douche'];
   if (!Array.isArray(e.actions.enabled)) e.actions.enabled = defaultEnabled;
   else {

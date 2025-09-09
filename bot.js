@@ -944,7 +944,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return renderSafeReply(interaction, "⛔ Action désactivée.", { ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','touche','reveiller','douche'];
   let initialPartner = null;
   let tromperResolvedPartner = null;
   try {
