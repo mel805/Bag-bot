@@ -791,6 +791,8 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
     // Espace de suivi: éviter de redonner le même grant plusieurs fois
     if (!client._ecoGrantGiven) client._ecoGrantGiven = new Map();
     const keyBase = `${interaction.guild.id}:${interaction.user.id}`;
+    // Collecter les règles éligibles non encore attribuées
+    const candidates = [];
     for (let i = 0; i < grants.length; i++) {
       const rule = grants[i];
       if (!rule || typeof rule !== 'object') continue;
@@ -806,20 +808,37 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
       if (!money) continue;
       const grantKey = `${keyBase}:grant:${i}`;
       if (client._ecoGrantGiven.get(grantKey)) continue; // déjà donné
-      // Attribuer une seule fois
-      userEco.amount = Math.max(0, (userEco.amount || 0) + money);
-      await setEconomyUser(interaction.guild.id, interaction.user.id, userEco);
-      client._ecoGrantGiven.set(grantKey, Date.now());
-      // Embed séparé
-      const currency = eco.currency?.name || 'BAG$';
-      const embed = new EmbedBuilder()
-        .setColor(0x3fb950)
-        .setTitle('🎁 Grant débloqué')
-        .setDescription(`Vous avez reçu un grant de **+${money} ${currency}**`)
-        .addFields({ name: 'Condition', value: cond || '—', inline: false })
-        .setTimestamp(new Date());
-      try { await interaction.followUp({ embeds: [embed], ephemeral: true }); } catch (_) {}
+      // Extraire un seuil si présent (charm>=N ou perversion>=N) pour ordonner
+      let thr = Number.POSITIVE_INFINITY;
+      try {
+        const m1 = /charm\s*>=\s*(\d+)/i.exec(cond);
+        const m2 = /perversion\s*>=\s*(\d+)/i.exec(cond);
+        const t1 = m1 ? Number(m1[1]) : Number.POSITIVE_INFINITY;
+        const t2 = m2 ? Number(m2[1]) : Number.POSITIVE_INFINITY;
+        thr = Math.min(t1, t2);
+      } catch (_) {}
+      candidates.push({ i, money, cond, thr });
     }
+    if (!candidates.length) return;
+    // N'attribuer qu'un seul grant par action: le plus faible seuil, sinon le plus petit montant
+    candidates.sort((a, b) => (a.thr - b.thr) || (a.money - b.money));
+    const pick = candidates[0];
+    const idx = pick.i;
+    const rule = grants[idx];
+    const grantKey = `${keyBase}:grant:${idx}`;
+    const money = pick.money;
+    userEco.amount = Math.max(0, (userEco.amount || 0) + money);
+    await setEconomyUser(interaction.guild.id, interaction.user.id, userEco);
+    client._ecoGrantGiven.set(grantKey, Date.now());
+    // Embed séparé
+    const currency = eco.currency?.name || 'BAG$';
+    const embed = new EmbedBuilder()
+      .setColor(0x3fb950)
+      .setTitle('🎁 Grant débloqué')
+      .setDescription(`Vous avez reçu un grant de **+${money} ${currency}**`)
+      .addFields({ name: 'Condition', value: pick.cond || '—', inline: false })
+      .setTimestamp(new Date());
+    try { await interaction.followUp({ embeds: [embed], ephemeral: true }); } catch (_) {}
   } catch (_) {}
 }
 
