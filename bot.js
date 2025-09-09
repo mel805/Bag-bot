@@ -795,6 +795,7 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey,
     if (!grants.length) return;
     // Espace de suivi: éviter de redonner le même grant plusieurs fois
     if (!client._ecoGrantGiven) client._ecoGrantGiven = new Map();
+    if (!userEcoAfter || typeof userEcoAfter !== 'object') return;
     const keyBase = `${interaction.guild.id}:${interaction.user.id}`;
     // Collecter les règles éligibles non encore attribuées
     // Si rule.scope === 'action', ne tester que sur action; si 'admin', ne tester que sur /adminkarma; sinon 'any'
@@ -813,9 +814,10 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey,
       const cond = typeof rule.condition === 'string' ? rule.condition : '';
       const wasOk = evaluateKarmaCondition(cond, Number(prevCharm||0), Number(prevPerversion||0), Number(prevAmount||0));
       const nowOk = evaluateKarmaCondition(cond, userEcoAfter.charm || 0, userEcoAfter.perversion || 0, userEcoAfter.amount || 0);
-      // Attribuer si la condition est remplie maintenant et pas encore donnée
+      // Attribuer uniquement si la condition vient d'être atteinte (franchissement de seuil) ou si thresholdCrossing est désactivé
+      const thresholdCrossing = rule.thresholdCrossing !== false; // par défaut true
       if (!nowOk) continue;
-      if (!ok) continue;
+      if (thresholdCrossing && wasOk) continue;
       const money = Math.max(0, Number(rule.money || 0));
       if (!money) continue;
       const grantKey = `${keyBase}:grant:${i}`;
@@ -856,10 +858,11 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey,
       )
       .setTimestamp(new Date());
     try {
+      const mention = `<@${interaction.user.id}>`;
       if (interaction.channel && typeof interaction.channel.send === 'function') {
-        await interaction.channel.send({ content: String(interaction.user), embeds: [embed] });
+        await interaction.channel.send({ content: mention, embeds: [embed] });
       } else {
-        await interaction.followUp({ embeds: [embed] });
+        await interaction.followUp({ content: mention, embeds: [embed] });
       }
     } catch (_) {}
     // Log économie
@@ -961,6 +964,16 @@ async function handleEconomyAction(interaction, actionKey) {
     if (actionsWithTarget.includes(actionKey)) {
       // Only get the target if user actually provided one
       initialPartner = interaction.options.getUser('cible', false);
+      // If not provided, auto-pick a random non-bot member (not the actor)
+      if (!initialPartner) {
+        try {
+          const candidates = interaction.guild.members.cache.filter(m => !m.user.bot && m.user.id !== interaction.user.id);
+          if (candidates.size > 0) {
+            const arr = Array.from(candidates.values());
+            initialPartner = arr[Math.floor(Math.random() * arr.length)].user;
+          }
+        } catch (_) {}
+      }
     } else if (actionKey === 'crime') {
       initialPartner = interaction.options.getUser('complice', false);
     }
@@ -2290,7 +2303,7 @@ async function handleEconomyAction(interaction, actionKey) {
   let desc = msgText || (success ? `Gain: ${moneyDelta} ${currency}` : `Perte: ${Math.abs(moneyDelta)} ${currency}`);
   try {
     if (msgText) {
-      const targetMention = initialPartner ? String(initialPartner) : String(interaction.user);
+      const targetMention = initialPartner ? String(initialPartner) : '';
       desc = String(msgText)
         .replace(/\{target\}/gi, targetMention)
         .replace(/\{cible\}/gi, targetMention)
