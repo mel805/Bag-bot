@@ -8007,6 +8007,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'douche') {
       return handleEconomyAction(interaction, 'douche');
     }
+    // Variantes avec préfixe action_
+    if (interaction.isChatInputCommand() && interaction.commandName === 'action_touche') {
+      return handleEconomyAction(interaction, 'touche');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'action_reveiller') {
+      return handleEconomyAction(interaction, 'reveiller');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'action_cuisiner') {
+      return handleEconomyAction(interaction, 'cuisiner');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'action_douche') {
+      return handleEconomyAction(interaction, 'douche');
+    }
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
       const PAGE_SIZE = 10;
