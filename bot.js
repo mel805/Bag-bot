@@ -784,7 +784,7 @@ function calculateKarmaGrants(grantRules, charm, perversion, amount, actionKey) 
   return total;
 }
 
-async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
+async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey, prevCharm, prevPerversion, prevAmount) {
   try {
     const grants = Array.isArray(eco.karmaModifiers?.grants) ? eco.karmaModifiers.grants : [];
     if (!grants.length) return;
@@ -802,7 +802,10 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
         if (!allow.includes(ak)) continue;
       }
       const cond = typeof rule.condition === 'string' ? rule.condition : '';
-      const ok = evaluateKarmaCondition(cond, userEco.charm || 0, userEco.perversion || 0, userEco.amount || 0);
+      const wasOk = evaluateKarmaCondition(cond, Number(prevCharm||0), Number(prevPerversion||0), Number(prevAmount||0));
+      const nowOk = evaluateKarmaCondition(cond, userEcoAfter.charm || 0, userEcoAfter.perversion || 0, userEcoAfter.amount || 0);
+      // N'attribuer que lors d'un franchissement de seuil: false -> true
+      if (!nowOk || wasOk) continue;
       if (!ok) continue;
       const money = Math.max(0, Number(rule.money || 0));
       if (!money) continue;
@@ -827,8 +830,10 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
     const rule = grants[idx];
     const grantKey = `${keyBase}:grant:${idx}`;
     const money = pick.money;
-    userEco.amount = Math.max(0, (userEco.amount || 0) + money);
-    await setEconomyUser(interaction.guild.id, interaction.user.id, userEco);
+    const beforeAmt = Number(userEcoAfter.amount || 0);
+    const afterAmt = Math.max(0, beforeAmt + money);
+    userEcoAfter.amount = afterAmt;
+    await setEconomyUser(interaction.guild.id, interaction.user.id, userEcoAfter);
     client._ecoGrantGiven.set(grantKey, Date.now());
     // Embed séparé
     const currency = eco.currency?.name || 'BAG$';
@@ -836,7 +841,10 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEco, actionKey) {
       .setColor(0x3fb950)
       .setTitle('🎁 Grant débloqué')
       .setDescription(`Vous avez reçu un grant de **+${money} ${currency}**`)
-      .addFields({ name: 'Condition', value: pick.cond || '—', inline: false })
+      .addFields(
+        { name: 'Condition', value: pick.cond || '—', inline: false },
+        { name: 'Solde', value: `${beforeAmt} → ${afterAmt} ${currency}`, inline: true },
+      )
       .setTimestamp(new Date());
     try {
       if (interaction.channel && typeof interaction.channel.send === 'function') {
@@ -2305,8 +2313,20 @@ async function handleEconomyAction(interaction, actionKey) {
   try {
     clearFallbackTimer(); // S'assurer que tous les timers sont nettoyés
     const res = await respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined }, false);
-    // Après réponse principale, tenter d'attribuer un grant one-shot si conditions atteintes
-    try { await maybeAwardOneTimeGrant(interaction, eco, u, actionKey); } catch (_) {}
+    // Après réponse principale, tenter d'attribuer un grant one-shot si conditions atteintes (franchissement)
+    try {
+      await maybeAwardOneTimeGrant(
+        interaction,
+        eco,
+        u,
+        actionKey,
+        // valeurs avant action
+        (u.charm || 0) - (karmaField && karmaField[0].toLowerCase().includes('charme') ? Number(conf.karmaDelta||0) : 0),
+        (u.perversion || 0) - (karmaField && karmaField[0].toLowerCase().includes('perversion') ? Number(conf.karmaDelta||0) : 0),
+        // approx solde avant (sans grant): u.amount - moneyDelta
+        Math.max(0, (u.amount || 0) - moneyDelta)
+      );
+    } catch (_) {}
     return res;
   } catch (error) {
     console.error(`[Economy] Failed to respond to ${actionKey} interaction:`, error.message);
@@ -7329,7 +7349,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
         description: `Membre: ${member}\n${label}: ${before} → ${after}`,
         fields: [{ name: 'Action', value: action, inline: true }]
       });
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      try { await interaction.reply({ embeds: [embed], ephemeral: true }); } catch (_) {}
+      // Déclencher un éventuel grant suite à la modification d'admin (franchissement)
+      try {
+        await maybeAwardOneTimeGrant(
+          interaction,
+          eco,
+          await getEconomyUser(interaction.guild.id, member.id),
+          'adminkarma',
+          (type === 'charm' ? before : (await getEconomyUser(interaction.guild.id, member.id)).charm || 0),
+          (type === 'perversion' ? before : (await getEconomyUser(interaction.guild.id, member.id)).perversion || 0),
+          (await getEconomyUser(interaction.guild.id, member.id)).amount || 0
+        );
+      } catch (_) {}
+      return;
     }
 
     // /ajout argent — Admin only
