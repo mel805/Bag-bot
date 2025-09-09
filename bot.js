@@ -864,6 +864,19 @@ async function maybeAwardOneTimeGrant(interaction, eco, userEcoAfter, actionKey,
         await interaction.followUp({ embeds: [embed] });
       }
     } catch (_) {}
+    // Log économie
+    try {
+      const log = new EmbedBuilder()
+        .setColor(0x3fb950)
+        .setTitle('Économie • Grant attribué')
+        .setDescription(`${interaction.user} a reçu +${money} ${currency}`)
+        .addFields(
+          { name: 'Condition', value: pick.cond || '—', inline: false },
+          { name: 'Solde', value: `${beforeAmt} → ${afterAmt} ${currency}`, inline: true }
+        )
+        .setTimestamp(new Date());
+      await sendLog(interaction.guild, 'economy', log);
+    } catch (_) {}
   } catch (_) {}
 }
 
