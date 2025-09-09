@@ -23,7 +23,7 @@ if (!token || !clientId || !guildId) {
 }
 
 // Build /config command - visible to members with ManageGuild by default
-const commands = [
+let commands = [
   new SlashCommandBuilder()
     .setName('config')
     .setDescription('Configurer le serveur (Staff, AutoKick, Levels)')
@@ -322,10 +322,19 @@ const commands = [
   new SlashCommandBuilder().setName('purge').setDescription('Vider le salon courant (X messages) et réinitialiser les systèmes').setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).addIntegerOption(o=>o.setName('nombre').setDescription('Nombre de messages à supprimer (1-100)').setRequired(true).setMinValue(1).setMaxValue(100)).toJSON(),
 ];
 
+// Déduplication par nom (éviter APPLICATION_COMMANDS_DUPLICATE_NAME)
+const uniqueMap = new Map();
+for (const cmd of commands) {
+  if (cmd && typeof cmd === 'object' && typeof cmd.name === 'string') {
+    if (!uniqueMap.has(cmd.name)) uniqueMap.set(cmd.name, cmd);
+  }
+}
+const uniqueCommands = Array.from(uniqueMap.values());
+
 // Fonction pour vérifier si les commandes ont changé
 function shouldDeployCommands() {
   try {
-    const commandsHash = crypto.createHash('md5').update(JSON.stringify(commands)).digest('hex');
+    const commandsHash = crypto.createHash('md5').update(JSON.stringify(uniqueCommands)).digest('hex');
     const cache = JSON.parse(fs.readFileSync(COMMANDS_CACHE_FILE, 'utf8'));
     
     // Vérifier si le hash a changé ou si le cache est trop ancien (24h)
@@ -341,7 +350,7 @@ function shouldDeployCommands() {
     }
   } catch {
     console.log('📝 Premier déploiement ou cache invalide');
-    const commandsHash = crypto.createHash('md5').update(JSON.stringify(commands)).digest('hex');
+    const commandsHash = crypto.createHash('md5').update(JSON.stringify(uniqueCommands)).digest('hex');
     return { deploy: true, hash: commandsHash };
   }
 }
@@ -355,17 +364,17 @@ async function main() {
     
     if (deploy) {
       console.log('🚀 Registering guild commands...');
-      await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
+      await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: uniqueCommands });
       
       // Sauvegarder le cache
       fs.writeFileSync(COMMANDS_CACHE_FILE, JSON.stringify({
         hash,
         timestamp: Date.now(),
-        commandCount: commands.length
+        commandCount: uniqueCommands.length
       }));
       
       const duration = Date.now() - startTime;
-      console.log(`✅ ${commands.length} commands registered for guild ${guildId} (${duration}ms)`);
+      console.log(`✅ ${uniqueCommands.length} commands registered for guild ${guildId} (${duration}ms)`);
     } else {
       const duration = Date.now() - startTime;
       console.log(`⚡ Command deployment skipped - no changes detected (${duration}ms)`);
