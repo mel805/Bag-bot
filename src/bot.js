@@ -2034,7 +2034,7 @@ async function handleEconomyAction(interaction, actionKey) {
         Promise.resolve().then(() => awardXp(cible.id, Math.round(baseXp * partnerXpShare))).catch(()=>{});
       }
     } catch (_) {}
-    const parts = [String(cible)];
+    const parts = [];
     if (imageLinkForContent) parts.push(imageLinkForContent);
     const content = parts.filter(Boolean).join('\n') || undefined;
     return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
@@ -2072,7 +2072,7 @@ async function handleEconomyAction(interaction, actionKey) {
         Promise.resolve().then(() => awardXp(interaction.user.id, xpOnSuccess)).catch(()=>{});
       } catch (_) {}
       {
-        const parts = [String(cible)];
+        const parts = [];
         if (imageLinkForContent) parts.push(imageLinkForContent);
         const content = parts.filter(Boolean).join('\n') || undefined;
         return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
@@ -2111,7 +2111,7 @@ async function handleEconomyAction(interaction, actionKey) {
         Promise.resolve().then(() => awardXp(interaction.user.id, xpOnFail)).catch(()=>{});
       } catch (_) {}
       {
-        const parts = [String(cible)];
+        const parts = [];
         if (imageLinkForContent) parts.push(imageLinkForContent);
         const content = parts.filter(Boolean).join('\n') || undefined;
         return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
