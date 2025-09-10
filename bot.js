@@ -2501,8 +2501,13 @@ async function handleEconomyAction(interaction, actionKey) {
   const content = parts.filter(Boolean).join('\n') || undefined;
   
   // Debug pour identifier le ping
-  if (content && (actionKey === 'caress' || actionKey === 'lick' || actionKey === 'suck' || actionKey === 'nibble')) {
-    console.log(`[DEBUG] Action ${actionKey} - Content: "${content}" - InitialPartner: ${initialPartner ? 'OUI' : 'NON'} - Parts:`, parts);
+  if (actionKey === 'caress' || actionKey === 'lick' || actionKey === 'suck' || actionKey === 'nibble') {
+    console.log(`[DEBUG] Action ${actionKey}:`);
+    console.log(`[DEBUG] - Content: "${content}"`);
+    console.log(`[DEBUG] - InitialPartner: ${initialPartner ? String(initialPartner) : 'NULL'}`);
+    console.log(`[DEBUG] - Parts:`, parts);
+    console.log(`[DEBUG] - PartnerField:`, partnerField);
+    console.log(`[DEBUG] - MsgText: "${msgText}"`);
   }
   
   try { delete global.__eco_tromper_third; } catch (_) {}
