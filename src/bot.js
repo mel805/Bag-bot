@@ -2203,6 +2203,11 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   
   const content = parts.filter(Boolean).join('\n') || undefined;
+  // Debug: log content for troubleshooting
+  if (content && actionKey !== 'tromper' && actionKey !== 'orgie') {
+    console.log(`[DEBUG] Unexpected content for ${actionKey}:`, JSON.stringify(content));
+    console.log(`[DEBUG] Parts array:`, JSON.stringify(parts));
+  }
   try { delete global.__eco_tromper_third; } catch (_) {}
   try { delete global.__eco_orgie_participants; } catch (_) {}
   try { delete global.__eco_orgie_pings; } catch (_) {}
