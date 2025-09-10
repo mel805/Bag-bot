@@ -253,7 +253,6 @@ try { require('dotenv').config({ override: true, path: '/var/data/.env' }); } ca
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.GUILD_ID;
 
-
 // RENDER OPTIMIZATION: Détection et optimisation environnement Render
 const isRenderEnvironment = process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RENDER_EXTERNAL_URL;
 if (isRenderEnvironment) {
@@ -643,7 +642,6 @@ function startKeepAliveServer() {
   }
 }
 startKeepAliveServer();
-
 
 const THEME_COLOR_PRIMARY = 0x1e88e5; // blue
 const THEME_COLOR_ACCENT = 0xec407a; // pink
@@ -1683,32 +1681,7 @@ async function handleEconomyAction(interaction, actionKey) {
         .replace(/\{mode\}/gi, modeOpt);
     }
   } catch (_) {}
-  // Keep 'orgasme' simple: use curated short phrases matching the intent
-  if (actionKey === 'fuck') {
-    const zones = ['chatte','bite'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const fuckMessages = {
-      chatte: {
-        success: [
-          'Tu pénètres sa chatte lentement, halètements immédiats.',
-          'Tes va-et-vient profonds la font crier ton nom.',
-          'Rythme animal, sa chatte ruisselle déjà.',
-          'Tu alternes rapidité et douceur, {cible} s\'abandonne.',
-          'Tu la prends à quatre pattes, torride et cru.',
-          'Tu cambres ses hanches pour mieux la pilonner.',
-          'Tes coups de reins rapides la/laissent tremblant(e).',
-          'Tu la prends contre un mur, fougue brute.',
-          'Ta bite s\'enfonce profondément, extase totale.',
-          'Vous vous abandonnez à une baise sauvage, inarrêtable.'
-        ],
-        fail: [
-          'Tu veux la pénétrer, mais {cible} serre les jambes.',
-          'Il/elle te repousse doucement, pas maintenant.',
-          'Échec : absence de préparation.'
-        ]
-      },
+  // Keep 'orgasme' simple: use curated short phrases matching the intent,
       bite: {
         success: [
           'Tu chevauches sa bite lentement, contrôle total.',
@@ -1746,23 +1719,7 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'lick') {
-    const zones = ['seins','chatte','cul','oreille','ventre','bite'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const lickMessages = {
-      seins: {
-        success: [
-          'Ta langue cerne son téton durci, {cible} soupire fort.',
-          'Tu lèches en cercles son sein, frisson immédiat.',
-          'Tes coups de langue alternent avec des mordillements doux sur ses tétons.',
-          'Tu suces un téton tout en léchant l\'autre, {cible} gémit.',
-          'Ton souffle chaud après un léchage la/le fait trembler.'
-        ],
-        fail: ['{cible} saisit ta tête et t\'éloigne de sa poitrine.']
-      },
+  },
       chatte: {
         success: [
           'Tu lèches ses lèvres intimes lentement, {cible} halète.',
@@ -1820,23 +1777,7 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = success ? zoneMessages.success : zoneMessages.fail;
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'suck') {
-    const zones = ['bite','téton','oreille'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const suckMessages = {
-      bite: {
-        success: [
-          'Tu prends son gland en bouche, aspiration lente, {cible} gémit fort.',
-          'Ta bouche chaude engloutit sa bite, rythme maîtrisé.',
-          'Tu alternes succion intense et douceur, {cible} perd le contrôle.',
-          'Chaque va-et-vient de ta bouche l\'amène au bord de l\'explosion.',
-          'Tu suçotes son gland en fixant ses yeux, torride.'
-        ],
-        fail: ['Tu veux la prendre en bouche, {cible} t\'arrête fermement.']
-      },
+  },
       téton: {
         success: [
           'Tu suces son téton avec avidité, il/elle gémit.',
@@ -1864,23 +1805,7 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = success ? zoneMessages.success : zoneMessages.fail;
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'nibble') {
-    const zones = ['cou','lèvres','épaule','lobe'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const nibbleMessages = {
-      cou: {
-        success: [
-          'Tu mordilles son cou, {cible} gémit aussitôt.',
-          'Chaque morsure légère laisse une marque rouge.',
-          'Tu alternes morsures et léchages sur sa nuque.',
-          'Tu mords doucement, souffle chaud dans son oreille.',
-          'Tes dents effleurent sa gorge, frisson animal.'
-        ],
-        fail: ['{cible} te repousse, pas d\'humeur pour ça.']
-      },
+  },
       lèvres: {
         success: [
           'Tu mordilles ses lèvres, {cible} t\'embrasse plus fort.',
@@ -1940,53 +1865,11 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     }
   }
-  if (actionKey === 'sodo') {
-    const sodoMessages = {
-      cul: {
-        success: [
-          'Tu pénètres son cul lentement, {cible} gémit à la surprise.',
-          'Va-et-vient intenses, il/elle crie ton nom.',
-          'Tu alternes rapidité et douceur, tabou brisé.',
-          'Tu l\'encaisses par derrière, peau contre peau.',
-          'Lubrifié et rythmé, {cible} succombe totalement.',
-          'Tu tires ses cheveux tout en le/la sodomisant.',
-          'Ton sexe s\'enfonce profondément, soupir arraché.',
-          'Chaque coup de reins secoue tout son corps.',
-          'Tu varies la cadence, {cible} supplie d\'accélérer.',
-          'Sodomie passionnée, souffle court et plaisir interdit.'
-        ],
-        fail: [
-          'Tu veux pénétrer son cul, mais {cible} serre trop fort.',
-          'Pas assez préparé, douleur bloquante.',
-          'Il/elle recule net, refus clair.',
-          'Tu tentes, mais le moment est gâché.',
-          'Pas ce soir, {cible} secoue la tête.'
-        ]
-      }
     };
     
     const texts = success ? sodoMessages.cul.success : sodoMessages.cul.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'orgasme') {
-    const zones = ['chatte','bite','corps'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const orgasmeMessages = {
-      chatte: {
-        success: [
-          'Tu la guides au climax, ses jambes tremblent de plaisir.',
-          'Ses gémissements étouffés annoncent son orgasme puissant.',
-          'Ses ongles s\'enfoncent dans ta peau quand elle jouit.',
-          'Tu la maintiens pendant qu\'elle s\'abandonne totalement.',
-          'Sa chatte pulse autour de toi, orgasme incontrôlable.'
-        ],
-        fail: [
-          'Tu accélères, mais elle secoue la tête : pas encore.',
-          'Elle gémit… puis s\'arrête brusquement, orgasme raté.'
-        ]
-      },
+  },
       bite: {
         success: [
           'Tu le fais jouir violemment, sa bite explose dans ta main.',
@@ -2021,59 +1904,11 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     }
   }
-  if (actionKey === 'branler') {
-    const branlerMessages = {
-      bite: {
-        success: [
-          'Ta main glisse lentement sur sa bite, {cible} grogne de plaisir.',
-          'Tes doigts serrent son sexe avec fermeté, rythme assuré.',
-          'Tu alternes vitesse et douceur, {cible} halète.',
-          'Chaque va-et-vient arrache un râle animal.',
-          'Ton poignet travaille sans relâche, {cible} se cambre.',
-          'Tu joues sur son gland avec ton pouce, extase immédiate.',
-          'Tes mains alternent, double plaisir sur sa bite.',
-          'Ton geste devient plus rapide, {cible} gémit ton nom.',
-          'Tu resserres ton étreinte, soupirs incontrôlables.',
-          'Sa verge pulse dans ta main, torride.'
-        ],
-        fail: [
-          'Tu saisis sa bite, mais {cible} écarte ta main.',
-          'Ton rythme est trop brusque, {cible} grimace.',
-          'Tentative stoppée, pas d\'envie maintenant.',
-          'Ta main reste en suspens, refus clair.',
-          'Mauvais moment, {cible} recule.'
-        ]
-      }
     };
     
     const texts = success ? branlerMessages.bite.success : branlerMessages.bite.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'doigter') {
-    const zones = ['chatte','cul'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const doigterMessages = {
-      chatte: {
-        success: [
-          'Tes doigts glissent entre ses lèvres, {cible} gémit aussitôt.',
-          'Tu explores lentement sa chatte, chaque mouvement la fait trembler.',
-          'Un doigt, puis deux, {cible} pousse un cri haletant.',
-          'Tes doigts s\'enfoncent avec rythme, excitation grandissante.',
-          'Tu caresses son clito tout en la doigtant, explosion imminente.',
-          'Chaque pénétration de tes doigts déclenche un spasme.',
-          'Tu varies profondeur et vitesse, {cible} supplie de continuer.',
-          'Ton pouce joue sur son clito pendant que tes doigts s\'agitent.',
-          'Tu courbes tes doigts en elle, {cible} perd le contrôle.',
-          'Tu la doigtes intensément, elle s\'accroche à toi en criant.'
-        ],
-        fail: [
-          'Tu approches tes doigts, {cible} les repousse.',
-          'Tentative stoppée net, refus clair.',
-          'Tes doigts frôlent son intimité, mais elle referme les jambes.'
-        ]
-      },
+  },
       cul: {
         success: [
           'Un doigt glisse à son entrée arrière, {cible} se cambre.',
@@ -2094,29 +1929,7 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = success ? zoneMessages.success : zoneMessages.fail;
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'hairpull') {
-    const hairpullMessages = {
-      success: [
-        'Tu tires ses cheveux d\'un geste ferme, {cible} gémit, yeux brûlants.',
-        'Tes doigts s\'emmêlent dans sa chevelure, tu guides ses mouvements.',
-        'Tu tires légèrement, {cible} se cambre avec un sourire pervers.',
-        'Prise ferme dans ses cheveux, {cible} halète de plaisir.',
-        'Tu tires plus fort, cri arraché à {cible}.',
-        'Main pleine de cheveux, tu imposes ton rythme, {cible} adore ça.',
-        'Tu tires en arrière, son cou offert devient ta proie.',
-        'Tu alternes douceur et tir violent, excitation décuplée.',
-        'Tu tires ses cheveux tout en murmurant à son oreille.',
-        'Tu tires ses cheveux, domination assumée, {cible} succombe.'
-      ],
-      fail: [
-        'Tu tires trop fort, {cible} grimace et t\'arrête.',
-        'Tentative stoppée, {cible} ne veut pas ça.',
-        'Tu hésites, geste maladroit, ambiance cassée.',
-        'Pas d\'accord pour ce jeu, {cible} secoue la tête.',
-        'Tu tires, mais {cible} se dégage sèchement.'
-      ]
-    };
+  };
     
     const texts = success ? hairpullMessages.success : hairpullMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
@@ -2153,55 +1966,11 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'shower') {
-    const showerMessages = {
-      success: [
-        'Sous la douche chaude, vos corps glissent l\'un contre l\'autre.',
-        'Tu savonnes lentement {cible}, chaque geste est une caresse.',
-        'L\'eau coule entre vos corps collés, atmosphère brûlante.',
-        'Tu embrasses {cible} sous le jet d\'eau, baiser humide et torride.',
-        'Le savon mousse sur sa peau, tu en profites pour explorer chaque zone.',
-        'Tu presses {cible} contre le carrelage trempé, sauvagerie sensuelle.',
-        'Tes mains glissent avec l\'eau chaude, exploration totale.',
-        'Tu fais couler l\'eau brûlante sur sa nuque avant de mordre doucement.',
-        'Douche passionnée, cris étouffés sous l\'eau.',
-        'Vos corps trempés deviennent inséparables sous le jet.'
-      ],
-      fail: [
-        'L\'eau devient glacée, vous reculez en jurant.',
-        'Savon dans les yeux, ambiance ruinée.',
-        'Vous glissez presque, éclat de rire forcé.',
-        'Tu tends une serviette, {cible} refuse de partager.',
-        'Douche écourtée, trop d\'imprévus.'
-      ]
-    };
+  };
     
     const texts = success ? showerMessages.success : showerMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'bed') {
-    const bedMessages = {
-      success: [
-        'Tu tires {cible} sur le lit, promesse explicite.',
-        'Vous tombez ensemble sur les draps, rires et baisers.',
-        'Le lit grince sous vos mouvements passionnés.',
-        'Invitation au lit acceptée, {cible} se couche lascivement.',
-        'Tu jettes {cible} sur le lit, sauvagerie assumée.',
-        'Vos corps s\'entremêlent entre les draps froissés.',
-        'Vous roulez ensemble sur le matelas, jeu excitant.',
-        'Le lit devient votre terrain de bataille torride.',
-        'Un drap glisse, dévoilant vos corps excités.',
-        'Le matelas devient témoin de vos gémissements.'
-      ],
-      fail: [
-        'Pas d\'humeur à se coucher, {cible} s\'écarte.',
-        'Tu tires {cible}, mais il/elle refuse l\'invitation.',
-        'Le lit craque sous ton poids, moment cassé.',
-        'Tu trébuches en essayant de l\'attirer, ridicule.',
-        'Refus clair, pas ce soir.'
-      ]
-    };
+  };
     
     const texts = success ? bedMessages.success : bedMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
@@ -2299,23 +2068,7 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'undress') {
-    const zones = ['haut','bas','sous-vêtements','chaussures','accessoires'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const undressMessages = {
-      haut: {
-        success: [
-          'Tu retires lentement son haut, dévoilant sa poitrine.',
-          'Le tissu glisse, révélant sa peau nue.',
-          'Tu déboutonnes sa chemise avec sensualité.',
-          'Son haut tombe, {cible} frissonne.',
-          'Tu fais glisser le vêtement, peau offerte.'
-        ],
-        fail: ['{cible} retient son haut, pas encore prêt(e).']
-      },
+  },
       bas: {
         success: [
           'Tu fais glisser son pantalon lentement, anticipation.',
@@ -2363,127 +2116,23 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = success ? zoneMessages.success : zoneMessages.fail;
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'collar') {
-    const collarMessages = {
-      success: [
-        'Tu attaches un collier autour de son cou, lien symbolique.',
-        'Le cliquetis du collier l\'excite, yeux soumis.',
-        'Tu fermes le collier, {cible} se mord la lèvre.',
-        'Un sourire dominateur quand tu poses le collier sur lui/elle.',
-        'Le collier claque, scellant votre jeu interdit.',
-        'Tu caresses son cou après avoir posé le collier.',
-        'Le cuir contre sa peau, {cible} frissonne de plaisir.',
-        'Tu tires légèrement le collier, domination subtile.',
-        'Le collier devient votre symbole, tension montée.',
-        'Tu verrouilles le collier, {cible} t\'offre son cou.'
-      ],
-      fail: [
-        '{cible} secoue la tête, refus du collier.',
-        'Tu essaies, mais il/elle recule.',
-        'Collier posé maladroitement, ambiance cassée.',
-        'Le fermoir coince, moment brisé.',
-        'Pas ce soir, refus immédiat.'
-      ]
-    };
+  };
     
     const texts = success ? collarMessages.success : collarMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'leash') {
-    const leashMessages = {
-      success: [
-        'Tu attaches la laisse au collier, {cible} se soumet.',
-        'La chaîne cliquette, tension érotique maximale.',
-        'Tu tires doucement la laisse, {cible} avance docilement.',
-        'En laisse, {cible} s\'offre totalement.',
-        'Tu joues avec la laisse comme un maître patient.',
-        'Chaque tirée de laisse arrache un soupir de plaisir.',
-        'Tu tires sèchement, {cible} se cambre de désir.',
-        'Le bruit métallique excite vos sens.',
-        'Tu guides {cible} comme un jouet docile.',
-        'En laisse, il/elle accepte ton contrôle total.'
-      ],
-      fail: [
-        'La laisse t\'échappe des mains, ridicule.',
-        '{cible} refuse la laisse et se dégage.',
-        'Tentative stoppée, pas d\'envie de ce jeu.',
-        'Tu tires trop fort, {cible} grimace.',
-        'Laisse mal accrochée, tout tombe.'
-      ]
-    };
+  };
     
     const texts = success ? leashMessages.success : leashMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'kneel') {
-    const kneelMessages = {
-      success: [
-        '{cible} s\'agenouille devant toi, soumis(e) et brûlant(e).',
-        'À genoux, {cible} lève les yeux vers toi avec adoration.',
-        'Il/elle tombe à genoux d\'un geste fluide, obéissance totale.',
-        'À tes pieds, {cible} attend ton ordre.',
-        'Tu le/la fais plier d\'un regard, genoux au sol.',
-        'Il/elle s\'agenouille en silence, respiration haletante.',
-        'Soumission acceptée, {cible} sourit en bas.',
-        'Tu le/la forces à genoux, frisson d\'autorité.',
-        'À genoux, il/elle tend la main vers toi.',
-        'Ses lèvres tout près de ton sexe, position parfaite.'
-      ],
-      fail: [
-        '{cible} refuse de s\'agenouiller.',
-        'Il/elle résiste à ton ordre, défiant ton regard.',
-        'Pas ce jeu-là aujourd\'hui, {cible} secoue la tête.',
-        'Tu veux imposer, {cible} se redresse brusquement.',
-        'Échec : ton autorité est rejetée.'
-      ]
-    };
+  };
     
     const texts = success ? kneelMessages.success : kneelMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'order') {
-    const orderMessages = {
-      success: [
-        'Tu donnes un ordre, exécuté immédiatement par {cible}.',
-        'Ta voix ferme impose le respect et l\'excitation.',
-        'Un ordre murmuré, {cible} obéit en frissonnant.',
-        'Ton ton dominateur fait baisser ses yeux.',
-        'Un seul mot, et {cible} s\'exécute sans réfléchir.',
-        'Tu ordonnes, il/elle s\'agenouille aussitôt.',
-        'Ton ordre est suivi d\'un sourire soumis.',
-        'Un claquement de doigt, obéissance instantanée.',
-        'Ton autorité fait chavirer {cible}.',
-        'Ordre donné, plaisir partagé.'
-      ],
-      fail: [
-        '{cible} ignore ton ordre, sourire moqueur.',
-        'Refus net, ton autorité échoue.',
-        'Il/elle secoue la tête et rit.',
-        'Ton ton trop hésitant casse l\'effet.',
-        'Ordre repoussé, domination brisée.'
-      ]
-    };
+  };
     
     const texts = success ? orderMessages.success : orderMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'punish') {
-    const types = ['fessée','fouet','attacher','privation','pincement'];
-    const typeOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const t = types.includes(typeOpt) ? typeOpt : types[randInt(0, types.length - 1)];
-    
-    const punishMessages = {
-      fessée: {
-        success: [
-          'Ta main claque sur ses fesses, {cible} gémit de douleur et plaisir.',
-          'Tu alternes caresses et claques fermes, excitation montée.',
-          'Chaque coup fait rebondir sa chair, halètements incontrôlables.',
-          'Tu rythmes vos jeux avec des fessées sonores.',
-          'Tes claques sèches marquent sa peau de rougeurs délicieuses.'
-        ],
-        fail: ['{cible} arrête ton geste net.']
-      },
+  },
       fouet: {
         success: [
           'Le cuir du fouet claque, {cible} sursaute et gémit.',
@@ -2607,23 +2256,7 @@ async function handleEconomyAction(interaction, actionKey) {
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'touche') {
-    const zones = ['seins','fesses','bite','nuque'];
-    const zoneOpt = String(interaction.options.getString('zone', false) || '').toLowerCase();
-    const z = zones.includes(zoneOpt) ? zoneOpt : zones[randInt(0, zones.length - 1)];
-    
-    const toucheMessages = {
-      seins: {
-        success: [
-          'Tu effleures ses seins, tétons qui se durcissent aussitôt.',
-          'Ta main malaxe doucement sa poitrine, soupir arraché.',
-          'Tu joues avec ses tétons entre tes doigts.',
-          'Chaque contact sur ses seins déclenche un frisson.',
-          'Tes doigts taquinent sa poitrine, {cible} gémit.'
-        ],
-        fail: ['{cible} repousse ta main sèchement.']
-      },
+  },
       fesses: {
         success: [
           'Tu poses ta main sur ses fesses, geste assumé.',
@@ -2661,45 +2294,11 @@ async function handleEconomyAction(interaction, actionKey) {
       const texts = success ? zoneMessages.success : zoneMessages.fail;
       msgText = texts[randInt(0, texts.length - 1)];
     }
-  }
-  if (actionKey === 'reveiller') {
-    const reveillerMessages = {
-      success: [
-        'Tu réveilles {cible} en embrassant doucement sa nuque.',
-        'Tes doigts glissent sur sa cuisse, soupir encore endormi.',
-        'Tu lèches ses tétons pour le/la tirer du sommeil.',
-        'Un baiser profond sur ses lèvres endormies, yeux qui s\'ouvrent.',
-        'Tes caresses sur son sexe le/la réveillent en gémissant.'
-      ],
-      fail: [
-        '{cible} grogne et tire la couverture.',
-        'Pas ce matin, il/elle te repousse.',
-        'Tes caresses sont ignorées, il/elle continue de dormir.',
-        'Il/elle râle et se retourne, refus clair.',
-        'Tentative avortée, encore trop tôt.'
-      ]
-    };
+  };
     
     const texts = success ? reveillerMessages.success : reveillerMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
-  }
-  if (actionKey === 'douche') {
-    const doucheMessages = {
-      success: [
-        'Tu presses {cible} contre le carrelage trempé, sauvage et torride.',
-        'Tu savonnes lentement son sexe, gémissements étouffés.',
-        'Tes mains glissent partout, accentuées par l\'eau chaude.',
-        'Tu mordilles son épaule sous le jet brûlant.',
-        'La vapeur rend vos corps inséparables.'
-      ],
-      fail: [
-        'L\'eau devient glacée, fuite immédiate.',
-        'Tu glisses au sol, éclat de rire gêné.',
-        'Savon dans les yeux, ambiance cassée.',
-        'La douche s\'arrête brutalement, panne.',
-        'Refus clair, {cible} sort de la douche.'
-      ]
-    };
+  };
     
     const texts = success ? doucheMessages.success : doucheMessages.fail;
     msgText = texts[randInt(0, texts.length - 1)];
@@ -4026,7 +3625,6 @@ async function buildBoosterRows(guild) {
   const row4 = new ActionRowBuilder().addComponents(removeSelect);
   return [row1, row2, row3, row4];
 }
-
 
 // Initialize and validate economy cache maps
 function initializeEconomyCaches() {
@@ -8431,8 +8029,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    
-
     // Economy standalone commands (aliases)
     if (interaction.isChatInputCommand() && interaction.commandName === 'daily') {
       return handleEconomyAction(interaction, 'daily');
@@ -10226,8 +9822,6 @@ function emojiForHex(hex) {
     return '🟤';
   } catch (_) { return '⬛'; }
 }
-
-
 
 async function buildTruthDareRows(guild, mode = 'sfw') {
   const td = await getTruthDareConfig(guild.id);
