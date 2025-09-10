@@ -974,113 +974,17 @@ async function handleEconomyAction(interaction, actionKey) {
     },
     caress: {
       success: [
-        'Tu caresses {cible} avec douceur électrique.',
-        'Tes mains explorent {cible} tendrement.',
-        'Caresses sensuelles sur {cible}.',
-        'Tu caresses {cible}, frissons garantis.',
-        'Tes doigts effleurent {cible} délicatement.'
+        'Tu caresses avec douceur.',
+        'Caresses sensuelles.',
+        'Tes mains explorent tendrement.',
+        'Frissons garantis.',
+        'Contact délicat.'
       ],
       fail: [
-        'Tu tentes de caresser {cible}, mais refus poli.',
-        'Caresse refusée par {cible}.',
-        'Pas le bon moment pour caresser {cible}.'
+        'Caresse refusée.',
+        'Pas le bon moment.',
+        'Geste repoussé.'
       ]
-    },
-    // Caress par zone
-    caress_sein: {
-      success: [
-        'Tes paumes recouvrent ses seins, {cible} gémit à ton contact.',
-        'Tu frottes tes pouces sur ses tétons durcis, frisson immédiat.',
-        'Tes mains malaxent doucement sa poitrine offerte.',
-        'Tu alternes douceur et pression sur ses seins, il/elle halète.',
-        'Un soupir profond quand tu caresses ses courbes fermes.'
-      ],
-      fail: [
-        'Tu poses la main sur ses seins, il/elle l\'écarte aussitôt.',
-        'Tes doigts frôlent ses tétons, mais {cible} secoue la tête.'
-      ]
-    },
-    caress_fesses: {
-      success: [
-        'Tu serres fermement ses fesses, {cible} se cambre contre toi.',
-        'Tes doigts s\'enfoncent dans la chair tendre de ses fesses.',
-        'Tu masses ses fesses lentement, provocateur.',
-        'Un claquement discret suivi d\'une caresse tendre.',
-        'Tes mains possèdent ses fesses, excitation montée.'
-      ],
-      fail: [
-        'Tu tentes une caresse sur ses fesses, {cible} se crispe.',
-        'Tes mains glissent, mais il/elle les repousse doucement.'
-      ]
-    },
-    caress_jambes: {
-      success: [
-        'Tes doigts effleurent l\'intérieur de ses cuisses, proche du centre brûlant.',
-        'Tu remontes lentement ses jambes, cruel(le) et sensuel(le).',
-        'Chaque caresse sur ses cuisses la/le fait trembler.',
-        'Tes doigts s\'attardent derrière ses genoux, zone sensible.',
-        'Sa peau frissonne quand tu caresses ses jambes.'
-      ],
-      fail: [
-        'Tu caresses l\'intérieur de ses cuisses, refus clair.',
-        '{cible} referme brusquement ses jambes.'
-      ]
-    },
-    caress_bite: {
-      success: [
-        'Tu encadres sa bite de ta main, geste lent et assuré.',
-        'Tes doigts remontent son sexe durci, soupir rauque.',
-        'Tu caresses son gland du bout des doigts, précis et cruel.',
-        'Chaque frottement de ta main lui arrache un gémissement.',
-        'Ton contact ferme et tendre électrise sa verge.'
-      ],
-      fail: [
-        'Tu veux caresser sa bite, mais il/elle recule la main.',
-        'Ton geste est stoppé, pas envie ce soir.'
-      ]
-    },
-    caress_nuque: {
-      success: [
-        'Tes doigts glissent sur sa nuque, {cible} penche la tête.',
-        'Tu grattes légèrement sa nuque, frisson garanti.',
-        'Tes caresses remontent lentement, chaleur à son oreille.',
-        'Un souffle chaud sur sa nuque accentue tes caresses.',
-        'Tu joues avec ses cheveux tout en caressant sa nuque.'
-      ],
-      fail: [
-        'Tu effleures sa nuque, il/elle esquive.',
-        'Tes doigts glissent maladroitement, {cible} se détourne.'
-      ]
-    },
-    caress_corps: {
-      success: [
-        'Tes mains explorent tout son corps, frissons partout.',
-        'Tu caresses chaque courbe, {cible} se cambre.',
-        'Tes doigts glissent sur sa peau, chaleur montante.',
-        'Tu explores son corps entier, soupirs continus.',
-        'Caresses générales, {cible} fond sous tes mains.'
-      ],
-      fail: ['Tes gestes sont trop brusques, {cible} grimace.']
-    },
-    caress_pied: {
-      success: [
-        'Tu caresses ses pieds délicatement, chatouilles douces.',
-        'Tes doigts massent ses orteils, {cible} rit nerveusement.',
-        'Tu embrasses ses pieds, geste tendre.',
-        'Caresses sur ses voûtes plantaires, détente.',
-        'Tu joues avec ses orteils, moment intime.'
-      ],
-      fail: ['Trop chatouilleux, {cible} retire ses pieds.']
-    },
-    caress_épaule: {
-      success: [
-        'Tu caresses ses épaules nues, tension qui s\'évacue.',
-        'Tes mains glissent sur ses épaules, soupir de bien-être.',
-        'Tu masses tendrement ses épaules, {cible} se détend.',
-        'Caresses circulaires sur ses épaules, frisson doux.',
-        'Tu embrasses ses épaules entre deux caresses.'
-      ],
-      fail: ['Tes mains s\'égarent, {cible} les repousse.']
     },
     // Action lick avec zones
     lick: {
@@ -1715,13 +1619,13 @@ async function handleEconomyAction(interaction, actionKey) {
       console.log(`[DEBUG ZONE] ZoneOpt: "${zoneOpt}" - Length: ${zoneOpt.length}`);
     }
     
-    // Pour caress, utiliser la version avec zone si spécifiée
-    if (actionKey === 'caress' && zoneOpt) {
-      const validZones = ['sein', 'fesses', 'corps', 'jambes', 'bite', 'pied', 'nuque', 'épaule'];
-      if (validZones.includes(zoneOpt)) {
-        actionWithZone = `caress_${zoneOpt}`;
-      }
-    }
+    // Temporairement désactivé pour debug
+    // if (actionKey === 'caress' && zoneOpt) {
+    //   const validZones = ['sein', 'fesses', 'corps', 'jambes', 'bite', 'pied', 'nuque', 'épaule'];
+    //   if (validZones.includes(zoneOpt)) {
+    //     actionWithZone = `caress_${zoneOpt}`;
+    //   }
+    // }
     
     // Pour lick, utiliser la version avec zone si spécifiée
     if (actionKey === 'lick' && zoneOpt) {
