@@ -2166,7 +2166,8 @@ async function handleEconomyAction(interaction, actionKey) {
         if (partnerMoneyGain > 0) partner.amount = Math.max(0, (partner.amount||0) + partnerMoneyGain);
         await setEconomyUser(interaction.guild.id, partnerUser.id, partner);
         if (partnerMoneyGain > 0 || partnerKarmaText) {
-          const value = `${partnerUser} → ${partnerMoneyGain > 0 ? `+${partnerMoneyGain} ${currency}` : ''}${partnerKarmaText}`.trim();
+          const partnerDisplay = partnerUser.nickname || partnerUser.username || partnerUser.displayName || 'Partenaire';
+          const value = `${partnerDisplay} → ${partnerMoneyGain > 0 ? `+${partnerMoneyGain} ${currency}` : ''}${partnerKarmaText}`.trim();
           partnerField = { name: 'Partenaire récompenses', value, inline: false };
         }
       }
