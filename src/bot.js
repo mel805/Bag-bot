@@ -1178,11 +1178,9 @@ async function handleEconomyAction(interaction, actionKey) {
         + (thirdCharmDelta ? `, Charme ${thirdCharmDelta>=0?'+':''}${thirdCharmDelta}` : '')
         + (thirdPervDelta ? `, Perversion ${thirdPervDelta>=0?'+':''}${thirdPervDelta}` : '');
       global.__eco_tromper_third = { name: 'Sanction du tiers', value: thirdFieldVal, inline: false };
-      // Store pings for content (partner + third) - only if there's a specific target
-      if (partner || third) {
-        const tromperPings = [partner, third].filter(Boolean).map(u => `<@${u.id}>`).join(' ');
-        global.__eco_tromper_pings = tromperPings;
-      }
+      // Store pings for content (partner + third)
+      const tromperPings = [partner, third].filter(Boolean).map(u => `<@${u.id}>`).join(' ');
+      global.__eco_tromper_pings = tromperPings;
     }
     console.log('[Tromper] Tromper logic completed successfully');
   }
@@ -1295,10 +1293,8 @@ async function handleEconomyAction(interaction, actionKey) {
       const label = `Participants (${everyone.length})`;
       const val = `${list}`;
       global.__eco_orgie_participants = { name: label, value: val, inline: false };
-      // Store pings for content - only if there's a specific initial partner/target
-      if (partner) {
-        global.__eco_orgie_pings = list;
-      }
+      // Store pings for content
+      global.__eco_orgie_pings = list;
     }
     console.log('[Orgie] Orgie logic completed successfully');
   }
@@ -2190,7 +2186,8 @@ async function handleEconomyAction(interaction, actionKey) {
   const embed = buildEcoEmbed({ title, description: desc, fields });
   if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
   else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
-  const parts = [initialPartner ? String(initialPartner) : undefined];
+  // Only ping the initial partner for tromper and orgie actions
+  const parts = [(actionKey === 'tromper' || actionKey === 'orgie') && initialPartner ? String(initialPartner) : undefined];
   if (imageLinkForContent) parts.push(imageLinkForContent);
   
   // Add pings for special actions
