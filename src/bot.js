@@ -2188,7 +2188,10 @@ async function handleEconomyAction(interaction, actionKey) {
   if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
   else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
   // Only ping the initial partner for tromper and orgie actions
-  const parts = [(actionKey === 'tromper' || actionKey === 'orgie') && initialPartner ? String(initialPartner) : undefined];
+  const parts = [];
+  if ((actionKey === 'tromper' || actionKey === 'orgie') && initialPartner) {
+    parts.push(String(initialPartner));
+  }
   if (imageLinkForContent) parts.push(imageLinkForContent);
   
   // Add pings for special actions
