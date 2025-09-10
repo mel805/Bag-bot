@@ -2034,7 +2034,7 @@ async function handleEconomyAction(interaction, actionKey) {
         Promise.resolve().then(() => awardXp(cible.id, Math.round(baseXp * partnerXpShare))).catch(()=>{});
       }
     } catch (_) {}
-    const parts = [String(cible)];
+    const parts = [];
     if (imageLinkForContent) parts.push(imageLinkForContent);
     const content = parts.filter(Boolean).join('\n') || undefined;
     return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
@@ -2072,7 +2072,7 @@ async function handleEconomyAction(interaction, actionKey) {
         Promise.resolve().then(() => awardXp(interaction.user.id, xpOnSuccess)).catch(()=>{});
       } catch (_) {}
       {
-        const parts = [String(cible)];
+        const parts = [];
         if (imageLinkForContent) parts.push(imageLinkForContent);
         const content = parts.filter(Boolean).join('\n') || undefined;
         return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, ephemeral: true });
@@ -2111,7 +2111,7 @@ async function handleEconomyAction(interaction, actionKey) {
         Promise.resolve().then(() => awardXp(interaction.user.id, xpOnFail)).catch(()=>{});
       } catch (_) {}
       {
-        const parts = [String(cible)];
+        const parts = [];
         if (imageLinkForContent) parts.push(imageLinkForContent);
         const content = parts.filter(Boolean).join('\n') || undefined;
         return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
@@ -2166,7 +2166,8 @@ async function handleEconomyAction(interaction, actionKey) {
         if (partnerMoneyGain > 0) partner.amount = Math.max(0, (partner.amount||0) + partnerMoneyGain);
         await setEconomyUser(interaction.guild.id, partnerUser.id, partner);
         if (partnerMoneyGain > 0 || partnerKarmaText) {
-          const value = `${partnerUser} → ${partnerMoneyGain > 0 ? `+${partnerMoneyGain} ${currency}` : ''}${partnerKarmaText}`.trim();
+          const partnerDisplay = partnerUser.nickname || partnerUser.username || partnerUser.displayName || 'Partenaire';
+          const value = `${partnerDisplay} → ${partnerMoneyGain > 0 ? `+${partnerMoneyGain} ${currency}` : ''}${partnerKarmaText}`.trim();
           partnerField = { name: 'Partenaire récompenses', value, inline: false };
         }
       }
@@ -2186,7 +2187,11 @@ async function handleEconomyAction(interaction, actionKey) {
   const embed = buildEcoEmbed({ title, description: desc, fields });
   if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
   else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
-  const parts = [initialPartner ? String(initialPartner) : undefined];
+  // Only ping the initial partner for tromper and orgie actions
+  const parts = [];
+  if ((actionKey === 'tromper' || actionKey === 'orgie') && initialPartner) {
+    parts.push(String(initialPartner));
+  }
   if (imageLinkForContent) parts.push(imageLinkForContent);
   
   // Add pings for special actions
@@ -2198,6 +2203,11 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   
   const content = parts.filter(Boolean).join('\n') || undefined;
+  // Debug: log content for troubleshooting
+  if (content && actionKey !== 'tromper' && actionKey !== 'orgie') {
+    console.log(`[DEBUG] Unexpected content for ${actionKey}:`, JSON.stringify(content));
+    console.log(`[DEBUG] Parts array:`, JSON.stringify(parts));
+  }
   try { delete global.__eco_tromper_third; } catch (_) {}
   try { delete global.__eco_orgie_participants; } catch (_) {}
   try { delete global.__eco_orgie_pings; } catch (_) {}
