@@ -714,9 +714,6 @@ function ensureEconomyShape(g) {
   }
   if (!e.actions.config || typeof e.actions.config !== 'object') e.actions.config = {};
   
-  // Configuration pour les pings dans les actions spéciales
-  if (typeof e.actions.config.disablePings !== 'boolean') e.actions.config.disablePings = false;
-  
   // Ensure karmaModifiers structure exists and is valid
   if (!e.karmaModifiers || typeof e.karmaModifiers !== 'object') {
     e.karmaModifiers = { shop: [], actions: [], grants: [] };
