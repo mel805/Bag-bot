@@ -751,6 +751,11 @@ function buildTruthDarePromptEmbed(mode, type, text) {
 }
 
 async function handleEconomyAction(interaction, actionKey) {
+  // Debug précoce pour tracer l'exécution
+  if (actionKey === 'caress') {
+    console.log(`[DEBUG EARLY] Starting caress action for user: ${interaction.user.id}`);
+  }
+  
   // Track this interaction for monitoring - trackInteraction untrackInteraction
   trackInteraction(interaction, `economy-${actionKey}`);
   
