@@ -23,7 +23,7 @@ if (!token || !clientId || !guildId) {
 }
 
 // Build /config command - visible to members with ManageGuild by default
-const commands = [
+const staticCommands = [
   new SlashCommandBuilder()
     .setName('config')
     .setDescription('Configurer le serveur (Staff, AutoKick, Levels)')
@@ -321,10 +321,79 @@ const commands = [
   new SlashCommandBuilder().setName('purge').setDescription('Vider le salon courant (X messages) et réinitialiser les systèmes').setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).addIntegerOption(o=>o.setName('nombre').setDescription('Nombre de messages à supprimer (1-100)').setRequired(true).setMinValue(1).setMaxValue(100)).toJSON(),
 ];
 
-// Fonction pour vérifier si les commandes ont changé
-function shouldDeployCommands() {
+// Optionally load additional commands from src/command
+const EXTERNAL_COMMANDS_DIR = path.join(__dirname, 'command');
+
+function loadExternalCommandsFromFolder(folderPath) {
+  const external = [];
   try {
-    const commandsHash = crypto.createHash('md5').update(JSON.stringify(commands)).digest('hex');
+    if (!fs.existsSync(folderPath)) return external;
+    const files = fs.readdirSync(folderPath).filter(f => f.endsWith('.js'));
+    for (const file of files) {
+      try {
+        const fullPath = path.join(folderPath, file);
+        // Clear require cache to ensure fresh read on repeated runs
+        delete require.cache[require.resolve(fullPath)];
+        const mod = require(fullPath);
+
+        let candidate = null;
+        if (mod?.data) candidate = mod.data;
+        else if (mod?.command) candidate = mod.command;
+        else if (mod?.default) candidate = mod.default;
+        else candidate = mod;
+
+        let json = null;
+        if (candidate?.data && typeof candidate.data.toJSON === 'function') {
+          json = candidate.data.toJSON();
+        } else if (typeof candidate?.toJSON === 'function') {
+          json = candidate.toJSON();
+        } else if (candidate && typeof candidate === 'object' && candidate.name && candidate.description) {
+          json = candidate;
+        }
+
+        if (json?.name && json?.description) {
+          external.push(json);
+        } else {
+          console.warn(`[register] Ignoring invalid command module: ${file}`);
+        }
+      } catch (err) {
+        console.warn(`[register] Failed to load command from ${file}:`, err?.message || err);
+      }
+    }
+  } catch (err) {
+    console.warn('[register] No external commands loaded:', err?.message || err);
+  }
+  return external;
+}
+
+function mergeUniqueByName(commandsA, commandsB) {
+  const byName = new Map();
+  for (const cmd of commandsA) {
+    if (cmd?.name) byName.set(cmd.name, cmd);
+  }
+  for (const cmd of commandsB) {
+    if (!cmd?.name) continue;
+    if (!byName.has(cmd.name)) {
+      byName.set(cmd.name, cmd);
+    } else {
+      console.warn(`[register] Duplicate command name skipped: ${cmd.name}`);
+    }
+  }
+  return Array.from(byName.values());
+}
+
+function buildCommands() {
+  const external = loadExternalCommandsFromFolder(EXTERNAL_COMMANDS_DIR);
+  if (external.length > 0) {
+    console.log(`[register] Loaded ${external.length} external command(s) from src/command`);
+  }
+  return mergeUniqueByName(staticCommands, external);
+}
+
+// Fonction pour vérifier si les commandes ont changé
+function shouldDeployCommands(allCommands) {
+  try {
+    const commandsHash = crypto.createHash('md5').update(JSON.stringify(allCommands)).digest('hex');
     const cache = JSON.parse(fs.readFileSync(COMMANDS_CACHE_FILE, 'utf8'));
     
     // Vérifier si le hash a changé ou si le cache est trop ancien (24h)
@@ -340,7 +409,7 @@ function shouldDeployCommands() {
     }
   } catch {
     console.log('📝 Premier déploiement ou cache invalide');
-    const commandsHash = crypto.createHash('md5').update(JSON.stringify(commands)).digest('hex');
+    const commandsHash = crypto.createHash('md5').update(JSON.stringify(allCommands)).digest('hex');
     return { deploy: true, hash: commandsHash };
   }
 }
@@ -350,7 +419,8 @@ async function main() {
   const rest = new REST({ version: '10' }).setToken(token);
   
   try {
-    const { deploy, hash } = shouldDeployCommands();
+    const commands = buildCommands();
+    const { deploy, hash } = shouldDeployCommands(commands);
     
     if (deploy) {
       console.log('🚀 Registering guild commands...');
