@@ -700,18 +700,28 @@ function buildTruthDareStartEmbed(mode, hasAction, hasTruth) {
   return embed;
 }
 
-function buildTruthDarePromptEmbed(mode, type, text, id) {
+// Remove leading numbering like "1.", "01)", "2 -" etc. from prompt text
+function sanitizePromptText(raw) {
+  try {
+    const s = String(raw || '');
+    return s.replace(/^\s*\d{1,4}[\s\.)\-:–—]*\s*/, '');
+  } catch (_) {
+    return String(raw || '');
+  }
+}
+
+function buildTruthDarePromptEmbed(mode, type, text, displayNumber) {
   const isNsfw = String(mode||'').toLowerCase() === 'nsfw';
   const footerText = isNsfw ? 'BAG • Premium' : 'BAG • Pro';
   let color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_PRIMARY;
   if (String(type||'').toLowerCase() === 'verite') color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_ACCENT;
   const baseTitle = String(type||'').toLowerCase() === 'action' ? '🔥 ACTION' : '🎯 VÉRITÉ';
-  const title = id ? `${baseTitle} #${id}` : baseTitle;
+  const title = Number.isFinite(displayNumber) ? `${baseTitle} #${displayNumber}` : baseTitle;
   const embed = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: 'Action/Vérité • Boy and Girls (BAG)' })
     .setTitle(title)
-    .setDescription(`${String(text||'—')}\n\nCliquez pour un nouveau prompt.`)
+    .setDescription(`${String(sanitizePromptText(text)||'—')}\n\nCliquez pour un nouveau prompt.`)
     .setThumbnail(THEME_IMAGE)
     .setTimestamp(new Date())
     .setFooter({ text: footerText, iconURL: THEME_FOOTER_ICON });
@@ -6549,9 +6559,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const parts = interaction.customId.split(':');
       const type = parts[1] || 'action';
       const mode = parts[2] || 'sfw';
-      const textsRaw = (interaction.fields.getTextInputValue('texts')||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      const textsRaw = (interaction.fields.getTextInputValue('texts')||'').split(/\r?\n/).map(s=>sanitizePromptText(s.trim())).filter(Boolean);
       if (textsRaw.length === 0) return interaction.reply({ content: 'Aucun texte fourni.', ephemeral: true });
       await addTdPrompts(interaction.guild.id, type, textsRaw, mode);
+      try {
+        const td = await getTruthDareConfig(interaction.guild.id);
+        const nextMode = { ...(td?.[mode] || {}) };
+        const prevRot = { ...(nextMode.rotation || {}) };
+        prevRot[String(type||'').toLowerCase()] = 0;
+        await updateTruthDareConfig(interaction.guild.id, { [mode]: { ...nextMode, rotation: prevRot } });
+      } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
       return interaction.reply({ content: '✅ Ajouté.', ephemeral: true }).then(async ()=>{ try { await interaction.followUp({ embeds: [embed], components: [...rows] }); } catch (_) {} });
@@ -6561,6 +6578,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const td = await getTruthDareConfig(interaction.guild.id);
       const ids = (td?.[mode]?.prompts || []).map(p => p.id);
       await deleteTdPrompts(interaction.guild.id, ids, mode);
+      try { await updateTruthDareConfig(interaction.guild.id, { [mode]: { ...(td?.[mode]||{}), rotation: { action: 0, verite: 0 } } }); } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
       return interaction.update({ embeds: [embed], components: [...rows] });
@@ -6575,6 +6593,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const mode = parts[1] || 'sfw';
       if (interaction.values.includes('none')) return interaction.deferUpdate();
       await deleteTdPrompts(interaction.guild.id, interaction.values, mode);
+      try {
+        const td2 = await getTruthDareConfig(interaction.guild.id);
+        await updateTruthDareConfig(interaction.guild.id, { [mode]: { ...(td2?.[mode]||{}), rotation: { action: 0, verite: 0 } } });
+      } catch (_) {}
       const embed = await buildConfigEmbed(interaction.guild);
       const rows = await buildTruthDareRows(interaction.guild, mode);
       try { await interaction.update({ content: '✅ Supprimé.', components: [] }); } catch (_) {}
@@ -6621,7 +6643,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const mode = parts[1] || 'sfw';
       const id = parts[2];
       const offset = Number(parts[3]) || 0;
-      const text = String(interaction.fields.getTextInputValue('text') || '').trim();
+      const text = sanitizePromptText(String(interaction.fields.getTextInputValue('text') || '').trim());
       if (!text) return interaction.reply({ content: 'Texte vide.', ephemeral: true });
       const updated = await editTdPrompt(interaction.guild.id, id, text, mode);
       if (!updated) return interaction.reply({ content: '❌ Prompt introuvable.', ephemeral: true });
@@ -8446,15 +8468,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
           try { await interaction.reply({ content: 'Aucun prompt disponible.', ephemeral: true }); } catch (_) {}
           return;
         }
-        // Non-repeating rotation per message (no interference with ongoing games)
-        const messageId = String(interaction?.message?.id || '');
-        const key = `lastIdx:${messageId}:${mode}:${String(type||'').toLowerCase()}`;
-        if (!global.__TD_STATE__) global.__TD_STATE__ = new Map();
-        const prev = Number(global.__TD_STATE__.get(key) || -1);
-        const next = (prev + 1) % list.length;
-        global.__TD_STATE__.set(key, next);
-        const pick = list[next];
-        const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'), pick.id);
+        // Non-repeating rotation persisted per guild/mode/type across restarts
+        const tkey = String(type||'').toLowerCase();
+        const rot = ((td?.[mode]?.rotation) || {});
+        const prevIdx = Number.isFinite(Number(rot[tkey])) ? Number(rot[tkey]) : -1;
+        const nextIdx = (prevIdx + 1) % list.length;
+        try {
+          const nextMode = { ...(td?.[mode] || {}) };
+          const nextRot = { ...(nextMode.rotation || {}) };
+          nextRot[tkey] = nextIdx;
+          await updateTruthDareConfig(interaction.guild.id, { [mode]: { ...nextMode, rotation: nextRot } });
+        } catch (_) {}
+        const pick = list[nextIdx];
+        const displayNumber = nextIdx + 1; // 1-based numbering
+        const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'), displayNumber);
         const hasAction = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'action');
         const hasTruth = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'verite');
         const row = new ActionRowBuilder().addComponents(
@@ -9682,7 +9709,7 @@ async function buildTdDeleteComponents(guild, mode = 'sfw', offset = 0) {
     .setPlaceholder(total ? ('Choisir des prompts à supprimer • ' + pageText) : 'Aucun prompt')
     .setMinValues(1)
     .setMaxValues(Math.max(1, view.length || 1));
-  if (view.length) select.addOptions(...view.map(p => ({ label: `#${p.id} ${String(p.text||'').slice(0,80)}`, value: String(p.id) })));
+  if (view.length) select.addOptions(...view.map((p, i) => ({ label: `#${off + i + 1} ${String(sanitizePromptText(p.text)||'').slice(0,80)}`, value: String(p.id) })));
   else select.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
 
   const hasPrev = off > 0;
@@ -9717,7 +9744,7 @@ async function buildTdEditComponents(guild, mode = 'sfw', offset = 0) {
     .setPlaceholder(total ? ('Choisir un prompt à modifier • ' + pageText) : 'Aucun prompt')
     .setMinValues(1)
     .setMaxValues(1);
-  if (view.length) select.addOptions(...view.map(p => ({ label: `#${p.id} ${String(p.text||'').slice(0,80)}`, value: String(p.id) })));
+  if (view.length) select.addOptions(...view.map((p, i) => ({ label: `#${off + i + 1} ${String(sanitizePromptText(p.text)||'').slice(0,80)}`, value: String(p.id) })));
   else select.addOptions({ label: 'Aucun', value: 'none' }).setDisabled(true);
 
   const hasPrev = off > 0;
