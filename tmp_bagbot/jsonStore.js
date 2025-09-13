@@ -973,7 +973,7 @@ function ensureEconomyShape(g) {
     },
     massage: {
       success: ['Relaxation totale, mains de fée !', 'Vous avez détendu toutes les tensions.'],
-      fail: ['Crampes… ce n'était pas si relaxant.', 'Un peu trop appuyé…']
+      fail: ["Crampes… ce n'était pas si relaxant.", 'Un peu trop appuyé…']
     },
     dance: {
       success: ['Vous avez enflammé la piste 💃', 'Quel rythme ! Tout le monde a adoré.'],
@@ -990,7 +990,7 @@ function ensureEconomyShape(g) {
     // Hot & Fun
     shower: {
       success: ['Douche chaude… ou froide surprise 😏🚿', 'Ça chauffe sous la douche !'],
-      fail: ['L'eau est glacée… brrr !', 'Oups, la serviette a glissé…']
+      fail: ["L'eau est glacée… brrr !", 'Oups, la serviette a glissé…']
     },
     wet: {
       success: ['Ambiance humide garantie 💧', 'Ça devient glissant…'],
@@ -1044,7 +1044,7 @@ function ensureEconomyShape(g) {
     },
     // Délires coquins / Jeux
     oops: {
-      success: ['Oups, j'ai glissé…', 'Quelle maladresse sexy !'],
+      success: ["Oups, j'ai glissé…", 'Quelle maladresse sexy !'],
       fail: ['On refait ?']
     },
     caught: {
@@ -1054,11 +1054,11 @@ function ensureEconomyShape(g) {
     tromper: {
       success: [
         'Tu surprends la cible en train de te tromper… tu renverses la situation. 😈',
-        "Pris en flagrant délit avec un(e) autre… et pourtant, c'est toi qui gagnes la partie.",
-        'Découverte chaude: un(e) troisième s'en mêle, mais tu reprends l'avantage.'
+        "Pris en flagrant délit avec un(e) autre… et pourtant, c'était toi qui gagnes la partie.",
+        "Découverte chaude: un(e) troisième s'en mêle, mais tu reprends l'avantage."
       ],
       fail: [
-        'Tout s'écroule: tu es pris(e) sur le fait…',
+        "Tout s'écroule: tu es pris(e) sur le fait…",
         'Ça tourne mal: la cible vous surprend, la honte et la perte retombent sur toi.',
         'Le plan foire: exposé(e) au grand jour, tu perds gros.'
       ]
