@@ -3816,7 +3816,7 @@ async function buildTicketsRows(guild, submenu) {
   if (current === 'transcript') {
     const styleSel = new StringSelectMenuBuilder()
       .setCustomId('tickets_transcript_style')
-      .setPlaceholder(`Style actuel: ${t.transcript?.style || 'pro}`)
+      .setPlaceholder(`Style actuel: ${t.transcript?.style || 'pro'}`)
       .setMinValues(1)
       .setMaxValues(1)
       .addOptions(
@@ -8975,7 +8975,7 @@ const ACTION_GIFS = {
     ],
     fail: [
       'https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif',
-      'https://media.giphy.com/media/3o6ZtpxSZbQRRnwCKQ/giphy.gif'
+      'https://media.giphy.com/media/3o6ZsUT0G3jvm7FQ5S/giphy.gif'
     ]
   },
   fish: {
