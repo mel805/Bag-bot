@@ -8437,18 +8437,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // Truth/Dare game buttons
     if (interaction.isButton() && interaction.customId.startsWith('td_game:')) {
       try {
-        await interaction.deferUpdate().catch(()=>{});
         const [, mode, type] = interaction.customId.split(':');
         const td = await getTruthDareConfig(interaction.guild.id);
         const listAll = (td?.[mode]?.prompts || []).filter(p => (p?.type||'').toLowerCase() === String(type||'').toLowerCase());
         // Ensure stable ordering by id
         const list = listAll.slice().sort((a,b) => Number(a.id||0) - Number(b.id||0));
         if (!list.length) {
-          try { await interaction.followUp({ content: 'Aucun prompt disponible.', ephemeral: true }); } catch (_) {}
+          try { await interaction.reply({ content: 'Aucun prompt disponible.', ephemeral: true }); } catch (_) {}
           return;
         }
-        // Non-repeating rotation per guild/mode/type
-        const key = `lastIdx:${interaction.guild.id}:${mode}:${String(type||'').toLowerCase()}`;
+        // Non-repeating rotation per message (no interference with ongoing games)
+        const messageId = String(interaction?.message?.id || '');
+        const key = `lastIdx:${messageId}:${mode}:${String(type||'').toLowerCase()}`;
         if (!global.__TD_STATE__) global.__TD_STATE__ = new Map();
         const prev = Number(global.__TD_STATE__.get(key) || -1);
         const next = (prev + 1) % list.length;
@@ -8461,7 +8461,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
           new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
         );
-        try { await interaction.followUp({ embeds: [embed], components: [row] }); } catch (_) {}
+        // Update the same message, do not spawn a new one
+        await interaction.update({ embeds: [embed], components: [row] }).catch(async () => {
+          // Fallback if update fails
+          try { await interaction.editReply({ embeds: [embed], components: [row] }); } catch (_) {}
+        });
       } catch (_) {}
       return;
     }
