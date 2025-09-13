@@ -721,6 +721,20 @@ async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring - trackInteraction untrackInteraction
   trackInteraction(interaction, `economy-${actionKey}`);
 
+  // Pre-ping target before deferring to ensure notification
+  try {
+    const __prePingTarget =
+      interaction?.options?.getUser?.('cible', false)
+      || interaction?.options?.getUser?.('membre', false)
+      || interaction?.options?.getUser?.('member', false)
+      || interaction?.options?.getUser?.('target', false)
+      || interaction?.options?.getUser?.('user', false);
+    const __eligible = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','touche','reveiller','cuisiner','douche','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
+    if (__prePingTarget && !__prePingTarget.bot && __prePingTarget.id !== interaction.user.id && __eligible.includes(actionKey)) {
+      try { await interaction.channel?.send?.({ content: `<@${__prePingTarget.id}>`, allowedMentions: { users: [String(__prePingTarget.id)], repliedUser: false } }); } catch (_) {}
+    }
+  } catch (_) {}
+
   // RENDER OPTIMIZATION: Déférer IMMÉDIATEMENT avant tout traitement
   const wasDeferred = await immediatelyDeferInteraction(interaction, `economy-${actionKey}`);
   if (!wasDeferred && !interaction.replied) {
@@ -7417,7 +7431,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: 'Action inconnue.', ephemeral: true });
       }
     }
-
     if (interaction.isButton() && interaction.customId.startsWith('top_niveau_more:')) {
       const parts = interaction.customId.split(':');
       const offset = Number(parts[1]) || 0;
