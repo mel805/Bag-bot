@@ -724,7 +724,7 @@ async function handleEconomyAction(interaction, actionKey) {
   // Immediate reply with mention for specific FR actions to avoid timeouts and ensure ping
   let wasDeferred = false;
   try {
-    const preReplyActions = new Set(['touche','caress','cuisiner','douche','reveiller']);
+    const preReplyActions = new Set(['touche','caress','cuisiner','douche','reveiller','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','lick','suck','nibble','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','crime','give','steal','work','daily']);
     if (preReplyActions.has(actionKey) && !interaction.deferred && !interaction.replied) {
       const targetUser = interaction?.options?.getUser?.('cible', false)
         || interaction?.options?.getUser?.('membre', false)
@@ -735,9 +735,6 @@ async function handleEconomyAction(interaction, actionKey) {
       const preContent = mentionId ? `<@${mentionId}> ⏳ Traitement en cours…` : '⏳ Traitement en cours…';
       const preAllowed = mentionId ? { users: [mentionId], repliedUser: false } : undefined;
       try { await interaction.reply({ content: preContent, ...(preAllowed ? { allowedMentions: preAllowed } : {}) }); } catch (_) {}
-    } else {
-      // RENDER OPTIMIZATION: Déférer IMMÉDIATEMENT avant tout traitement
-      wasDeferred = await immediatelyDeferInteraction(interaction, `economy-${actionKey}`);
     }
   } catch (_) {}
 
@@ -769,33 +766,6 @@ async function handleEconomyAction(interaction, actionKey) {
   };
   
   try {
-    // Early defer for heavy actions BEFORE any storage access to avoid 3s timeout
-    const heavyActions = ['work', 'fish', 'daily', 'steal', 'kiss', 'flirt', 'seduce', 'fuck', 'sodo', 'orgasme', 'lick', 'suck', 'nibble', 'branler', 'doigter', 'tromper', 'orgie'];
-    let hasDeferred = false;
-    if (heavyActions.includes(actionKey)) {
-      try {
-        if (!interaction.deferred && !interaction.replied) {
-          await interaction.deferReply();
-          hasDeferred = true;
-          console.log(`[Economy] Early defer for heavy action: ${actionKey}`);
-          try {
-            clearFallbackTimer();
-            fallbackTimer = setTimeout(async () => {
-              try {
-                if (!interaction.replied && interaction.deferred) {
-                  await interaction.editReply({ content: '⏳ Toujours en cours… merci de patienter quelques secondes de plus.' });
-                }
-              } catch (fallbackError) {
-                console.error(`[Economy] Fallback timer error for ${actionKey}:`, fallbackError.message);
-              }
-            }, 4000); // Réduit à 4s pour éviter les conflits
-          } catch (_) {}
-        }
-      } catch (error) {
-        console.error(`[Economy] Early defer failed for ${actionKey}:`, error.message);
-        // Continue même si le defer échoue - on essaiera plus tard
-      }
-    }
     const eco = await getEconomyConfig(interaction.guild.id);
     // Disallow bot users executing actions
     if (interaction.user?.bot) {
@@ -829,35 +799,6 @@ async function handleEconomyAction(interaction, actionKey) {
   if (initialPartner && initialPartner.bot) {
     return renderSafeReply(interaction, "⛔ Cible invalide: les bots sont exclus.", { ephemeral: true });
   }
-  // Pour les actions lourdes comme 'tromper', s'assurer qu'on a bien defer (!hasDeferred tromper orgie éviter double defer)
-  if ((actionKey === 'tromper' || actionKey === 'orgie') && !hasDeferred) {
-    try {
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply();
-        hasDeferred = true;
-        console.log(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Reply deferred to prevent timeout`);
-        try {
-          clearFallbackTimer();
-          fallbackTimer = setTimeout(async () => {
-            try {
-              if (!interaction.replied && interaction.deferred) {
-                await interaction.editReply({ content: '⏳ Toujours en cours… merci de patienter quelques secondes de plus.' });
-              }
-            } catch (fallbackError) {
-              console.error(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Fallback timer error:`, fallbackError.message);
-              console.error(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Stack trace:`, fallbackError?.stack);
-            }
-          }, 6000); // 6s pour éviter conflits avec le timer précédent
-        } catch (_) {}
-      }
-    } catch (error) {
-      console.error(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Failed to defer reply:`, error.message);
-      // Ne pas retourner ici - continuer avec l'action même sans defer
-      console.log(`[${actionKey === 'tromper' ? 'Tromper' : 'Orgie'}] Continuing without defer...`);
-    }
-  }
-  // (removed duplicate heavy defer block; handled earlier)
-  
   const u = await getEconomyUser(interaction.guild.id, interaction.user.id);
   const now = Date.now();
   const conf = (eco.actions?.config || {})[actionKey] || {};
@@ -865,7 +806,7 @@ async function handleEconomyAction(interaction, actionKey) {
   let cdLeft = Math.max(0, (u.cooldowns?.[actionKey] || 0) - now);
   if (cdLeft > 0) {
     const txt = `Veuillez patienter ${Math.ceil(cdLeft/1000)}s avant de réessayer.`;
-    if (interaction.deferred || hasDeferred) {
+    if (interaction.deferred || wasDeferred) {
       return respondAndUntrack({ content: txt });
     }
     return respondAndUntrack({ content: txt, ephemeral: true });
@@ -3829,7 +3770,7 @@ async function buildTicketsRows(guild, submenu) {
   if (current === 'transcript') {
     const styleSel = new StringSelectMenuBuilder()
       .setCustomId('tickets_transcript_style')
-      .setPlaceholder(`Style actuel: ${t.transcript?.style || 'pro'}`)
+      .setPlaceholder('Style actuel: ' + (t.transcript?.style || 'pro'))
       .setMinValues(1)
       .setMaxValues(1)
       .addOptions(
@@ -7575,8 +7516,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ content: `✅ Récompense vocal mise à jour: ${min}-${max} ${eco.currency?.symbol || '🪙'} toutes les ${interval} minutes` });
     }
 
-    // removed economy_set_base and economy_set_cooldowns
-
     if (interaction.isButton() && interaction.customId === 'economy_gifs') {
       try {
         const embed = await buildConfigEmbed(interaction.guild);
@@ -7686,7 +7625,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await updateEconomyConfig(interaction.guild.id, eco);
       return interaction.editReply({ content: '✅ Cooldowns mis à jour.' });
     }
-
     // Anonymous reply button → modal
     if (interaction.isButton() && (interaction.customId === 'confess_reply' || interaction.customId.startsWith('confess_reply_thread:'))) {
       let msgId = interaction.message?.id || '0';
@@ -9617,7 +9555,6 @@ function buildColorSelectView(targetType, targetId, category, offset = 0) {
 
   return { embed, rows, files: [attachment] };
 }
-
 function emojiForHex(hex) {
   try {
     const h = hex.startsWith('#') ? hex.slice(1) : hex;
