@@ -700,12 +700,13 @@ function buildTruthDareStartEmbed(mode, hasAction, hasTruth) {
   return embed;
 }
 
-function buildTruthDarePromptEmbed(mode, type, text) {
+function buildTruthDarePromptEmbed(mode, type, text, id) {
   const isNsfw = String(mode||'').toLowerCase() === 'nsfw';
   const footerText = isNsfw ? 'BAG • Premium' : 'BAG • Pro';
   let color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_PRIMARY;
   if (String(type||'').toLowerCase() === 'verite') color = isNsfw ? THEME_COLOR_NSFW : THEME_COLOR_ACCENT;
-  const title = String(type||'').toLowerCase() === 'action' ? '🔥 ACTION' : '🎯 VÉRITÉ';
+  const baseTitle = String(type||'').toLowerCase() === 'action' ? '🔥 ACTION' : '🎯 VÉRITÉ';
+  const title = id ? `${baseTitle} #${id}` : baseTitle;
   const embed = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: 'Action/Vérité • Boy and Girls (BAG)' })
@@ -8439,13 +8440,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferUpdate().catch(()=>{});
         const [, mode, type] = interaction.customId.split(':');
         const td = await getTruthDareConfig(interaction.guild.id);
-        const list = (td?.[mode]?.prompts || []).filter(p => (p?.type||'').toLowerCase() === String(type||'').toLowerCase());
+        const listAll = (td?.[mode]?.prompts || []).filter(p => (p?.type||'').toLowerCase() === String(type||'').toLowerCase());
+        // Ensure stable ordering by id
+        const list = listAll.slice().sort((a,b) => Number(a.id||0) - Number(b.id||0));
         if (!list.length) {
           try { await interaction.followUp({ content: 'Aucun prompt disponible.', ephemeral: true }); } catch (_) {}
           return;
         }
-        const pick = list[Math.floor(Math.random() * list.length)];
-        const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'));
+        // Non-repeating rotation per guild/mode/type
+        const key = `lastIdx:${interaction.guild.id}:${mode}:${String(type||'').toLowerCase()}`;
+        if (!global.__TD_STATE__) global.__TD_STATE__ = new Map();
+        const prev = Number(global.__TD_STATE__.get(key) || -1);
+        const next = (prev + 1) % list.length;
+        global.__TD_STATE__.set(key, next);
+        const pick = list[next];
+        const embed = buildTruthDarePromptEmbed(mode, type, String(pick.text||'—'), pick.id);
         const hasAction = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'action');
         const hasTruth = (td?.[mode]?.prompts || []).some(p => (p?.type||'').toLowerCase() === 'verite');
         const row = new ActionRowBuilder().addComponents(
