@@ -734,7 +734,11 @@ async function handleEconomyAction(interaction, actionKey) {
       const mentionId = (targetUser && !targetUser.bot && targetUser.id !== interaction.user.id) ? String(targetUser.id) : null;
       const preContent = mentionId ? `<@${mentionId}> ⏳ Traitement en cours…` : '⏳ Traitement en cours…';
       const preAllowed = mentionId ? { users: [mentionId], repliedUser: false } : undefined;
-      try { await interaction.reply({ content: preContent, ...(preAllowed ? { allowedMentions: preAllowed } : {}) }); } catch (_) {}
+      try {
+        await interaction.reply({ content: preContent, ...(preAllowed ? { allowedMentions: preAllowed } : {}) });
+      } catch (_) {
+        try { await interaction.deferReply(); wasDeferred = true; } catch (_) {}
+      }
     }
   } catch (_) {}
 
