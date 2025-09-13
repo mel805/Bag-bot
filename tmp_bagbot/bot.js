@@ -477,7 +477,6 @@ async function sendDetailedBackupLog(guild, info, method, user) {
     console.error('[BackupLog] Erreur envoi log:', error.message);
   }
 }
-
 // Fonction pour envoyer des logs détaillés de restauration
 async function sendDetailedRestoreLog(guild, result, method, user) {
   try {
@@ -795,7 +794,7 @@ async function handleEconomyAction(interaction, actionKey) {
     return renderSafeReply(interaction, "⛔ Action désactivée.", { ephemeral: true });
   }
   // Resolve optional/required partner for actions that target a user
-  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
+  const actionsWithTarget = ['kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','caress','lick','suck','nibble','tickle','revive','comfort','massage','dance','touche','reveiller','cuisiner','douche','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie'];
   let initialPartner = null;
   let tromperResolvedPartner = null;
   try {
@@ -7392,7 +7391,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try { return await interaction.editReply({ content: 'Une erreur est survenue lors du rendu de votre carte de niveau.' }); } catch (_) { return; }
       }
     }
-
     if (interaction.isChatInputCommand() && interaction.commandName === 'top') {
       const sub = interaction.options.getSubcommand();
       if (sub === 'niveau') {
@@ -7892,7 +7890,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'orgie') {
       return handleEconomyAction(interaction, 'orgie');
     }
-
     if (interaction.isChatInputCommand() && interaction.commandName === 'boutique') {
       const PAGE_SIZE = 10;
       const embed = await buildBoutiqueEmbed(interaction.guild, interaction.user, 0, PAGE_SIZE);
@@ -8445,10 +8442,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // /testlog removed
-
-
-
     // Truth/Dare game buttons
     if (interaction.isButton() && interaction.customId.startsWith('td_game:')) {
       try {
@@ -8829,7 +8822,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const targetUserId = interaction.values[0];
       const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
       if (!targetMember) {
-        return interaction.reply({ content: '❌ Membre introuvable.', ephemeral: true });
+        return interaction.reply({ content: '❌ Membre introufable.', ephemeral: true });
       }
       
       // Ajouter les permissions au membre pour les deux canaux
@@ -8893,7 +8886,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const eco = await getEconomyConfig(interaction.guild.id);
       const suiteInfo = eco.suites?.active?.[ownerId];
       if (!suiteInfo) {
-        return interaction.reply({ content: '❌ Suite privée introuvable ou expirée.', ephemeral: true });
+        return interaction.reply({ content: '❌ Suite privée introufable ou expirée.', ephemeral: true });
       }
       
       const targetUserId = interaction.values[0];
@@ -9763,7 +9756,6 @@ function calculateKarmaShopModifier(karmaModifiers, userCharm, userPerversion) {
     }
   }, 0);
 }
-
 // Calculate final shop price with cumulative booster and karma modifiers
 async function calculateShopPrice(guild, user, basePrice) {
   const eco = await getEconomyConfig(guild.id);
