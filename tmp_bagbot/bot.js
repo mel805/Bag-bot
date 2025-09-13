@@ -802,8 +802,16 @@ async function handleEconomyAction(interaction, actionKey) {
     if (actionsWithTarget.includes(actionKey)) {
       // Only get the target if user actually provided one
       initialPartner = interaction.options.getUser('cible', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('membre', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('member', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('target', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('user', false);
     } else if (actionKey === 'crime') {
       initialPartner = interaction.options.getUser('complice', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('membre', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('member', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('target', false);
+      if (!initialPartner) initialPartner = interaction.options.getUser('user', false);
     }
   } catch (_) {}
   if (initialPartner && initialPartner.bot) {
@@ -3808,7 +3816,7 @@ async function buildTicketsRows(guild, submenu) {
   if (current === 'transcript') {
     const styleSel = new StringSelectMenuBuilder()
       .setCustomId('tickets_transcript_style')
-      .setPlaceholder(`Style actuel: ${t.transcript?.style || 'pro'}`)
+      .setPlaceholder(`Style actuel: ${t.transcript?.style || 'pro}`)
       .setMinValues(1)
       .setMaxValues(1)
       .addOptions(
