@@ -721,13 +721,26 @@ async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring - trackInteraction untrackInteraction
   trackInteraction(interaction, `economy-${actionKey}`);
 
-  // RENDER OPTIMIZATION: Déférer IMMÉDIATEMENT avant tout traitement
-  const wasDeferred = await immediatelyDeferInteraction(interaction, `economy-${actionKey}`);
-  if (!wasDeferred && !interaction.replied) {
-    try {
-      await interaction.reply({ content: '⏳ Traitement en cours...', ephemeral: true });
-    } catch (_) {}
-  }
+  // Immediate reply with mention for specific FR actions to avoid timeouts and ensure ping
+  let wasDeferred = false;
+  try {
+    const preReplyActions = new Set(['touche','caress','cuisiner','douche','reveiller']);
+    if (preReplyActions.has(actionKey) && !interaction.deferred && !interaction.replied) {
+      const targetUser = interaction?.options?.getUser?.('cible', false)
+        || interaction?.options?.getUser?.('membre', false)
+        || interaction?.options?.getUser?.('member', false)
+        || interaction?.options?.getUser?.('target', false)
+        || interaction?.options?.getUser?.('user', false);
+      const mentionId = (targetUser && !targetUser.bot && targetUser.id !== interaction.user.id) ? String(targetUser.id) : null;
+      const preContent = mentionId ? `<@${mentionId}> ⏳ Traitement en cours…` : '⏳ Traitement en cours…';
+      const preAllowed = mentionId ? { users: [mentionId], repliedUser: false } : undefined;
+      try { await interaction.reply({ content: preContent, ...(preAllowed ? { allowedMentions: preAllowed } : {}) }); } catch (_) {}
+    } else {
+      // RENDER OPTIMIZATION: Déférer IMMÉDIATEMENT avant tout traitement
+      wasDeferred = await immediatelyDeferInteraction(interaction, `economy-${actionKey}`);
+    }
+  } catch (_) {}
+
   let fallbackTimer = null;
   const clearFallbackTimer = () => { 
     try { 
@@ -2186,7 +2199,8 @@ async function handleEconomyAction(interaction, actionKey) {
     }
   } catch (_) {}
   const mentionUserIds = Array.from(new Set(_mentionUserIds));
-  const preferFollowUp = mentionUserIds.length > 0;
+  let preferFollowUp = mentionUserIds.length > 0;
+  if (interaction.replied) preferFollowUp = false;
   const allowedMentions = mentionUserIds.length ? { users: mentionUserIds, repliedUser: false } : undefined;
   try { delete global.__eco_tromper_third; } catch (_) {}
   try { delete global.__eco_orgie_participants; } catch (_) {}
