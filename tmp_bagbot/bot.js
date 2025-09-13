@@ -9668,7 +9668,7 @@ function clampOffset(total, offset, limit) {
 
 async function buildTdDeleteComponents(guild, mode = 'sfw', offset = 0) {
   const td = await getTruthDareConfig(guild.id);
-  const list = (td?.[mode]?.prompts || []).slice();
+  const list = (td?.[mode]?.prompts || []).slice().sort((a,b) => Number(a.id||0) - Number(b.id||0));
   const limit = 25;
   const total = list.length;
   const off = clampOffset(total, Number(offset) || 0, limit);
@@ -9703,7 +9703,7 @@ async function buildTdDeleteComponents(guild, mode = 'sfw', offset = 0) {
 }
 async function buildTdEditComponents(guild, mode = 'sfw', offset = 0) {
   const td = await getTruthDareConfig(guild.id);
-  const list = (td?.[mode]?.prompts || []).slice();
+  const list = (td?.[mode]?.prompts || []).slice().sort((a,b) => Number(a.id||0) - Number(b.id||0));
   const limit = 25;
   const total = list.length;
   const off = clampOffset(total, Number(offset) || 0, limit);
