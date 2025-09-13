@@ -750,21 +750,27 @@ async function handleEconomyAction(interaction, actionKey) {
         || interaction?.options?.getUser?.('target', false)
         || interaction?.options?.getUser?.('user', false);
       const mentionId = (targetUser && !targetUser.bot && targetUser.id !== interaction.user.id) ? String(targetUser.id) : null;
-      const preContent = mentionId ? `<@${mentionId}> ⏳ Traitement en cours…` : '⏳ Traitement en cours…';
-      const preAllowed = mentionId ? { users: [mentionId], repliedUser: false } : undefined;
-      try {
-        if (isDebugChannel && debugActions.has(actionKey)) {
-          console.log(`[ECONOMY DEBUG] preReply attempt action=${actionKey} mention=${mentionId || 'none'} deferred=${interaction.deferred} replied=${interaction.replied}`);
+      if (mentionId) {
+        const preContent = `<@${mentionId}> ⏳ Traitement en cours…`;
+        const preAllowed = { users: [mentionId], repliedUser: false };
+        try {
+          if (isDebugChannel && debugActions.has(actionKey)) {
+            console.log(`[ECONOMY DEBUG] preReply attempt action=${actionKey} mention=${mentionId} deferred=${interaction.deferred} replied=${interaction.replied}`);
+          }
+          await interaction.reply({ content: preContent, allowedMentions: preAllowed });
+          if (isDebugChannel && debugActions.has(actionKey)) {
+            console.log(`[ECONOMY DEBUG] preReply OK action=${actionKey}`);
+          }
+        } catch (_) {
+          if (isDebugChannel && debugActions.has(actionKey)) {
+            try { console.log(`[ECONOMY DEBUG] preReply FAILED action=${actionKey}`); } catch (_) {}
+          }
+          try { await interaction.deferReply(); wasDeferred = true; } catch (_) {}
         }
-        await interaction.reply({ content: preContent, ...(preAllowed ? { allowedMentions: preAllowed } : {}) });
+      } else {
         if (isDebugChannel && debugActions.has(actionKey)) {
-          console.log(`[ECONOMY DEBUG] preReply OK action=${actionKey}`);
+          try { console.log(`[ECONOMY DEBUG] skip preReply (no target) action=${actionKey}`); } catch (_) {}
         }
-      } catch (_) {
-        if (isDebugChannel && debugActions.has(actionKey)) {
-          try { console.log(`[ECONOMY DEBUG] preReply FAILED action=${actionKey}`); } catch (_) {}
-        }
-        try { await interaction.deferReply(); wasDeferred = true; } catch (_) {}
       }
     }
   } catch (_) {}
