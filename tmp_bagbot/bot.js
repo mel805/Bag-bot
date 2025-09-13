@@ -723,6 +723,13 @@ async function handleEconomyAction(interaction, actionKey) {
 
   // Immediate reply with mention for specific FR actions to avoid timeouts and ensure ping
   let wasDeferred = false;
+  // Channel-specific debug for problematic actions
+  const DEBUG_CHANNEL_ID = '1411636045312950412';
+  const debugActions = new Set(['touche','douche','cuisiner','reveiller']);
+  const isDebugChannel = String(interaction?.channel?.id || '') === DEBUG_CHANNEL_ID;
+  if (isDebugChannel && debugActions.has(actionKey)) {
+    try { console.log(`[ECONOMY DEBUG] start action=${actionKey} user=${interaction.user?.id} channel=${interaction.channel?.id}`); } catch (_) {}
+  }
   try {
     const preReplyActions = new Set(['touche','caress','cuisiner','douche','reveiller','kiss','flirt','seduce','fuck','sodo','orgasme','branler','doigter','hairpull','lick','suck','nibble','tickle','revive','comfort','massage','dance','shower','wet','bed','undress','collar','leash','kneel','order','punish','rose','wine','pillowfight','sleep','oops','caught','tromper','orgie','crime','give','steal','work','daily']);
     if (preReplyActions.has(actionKey) && !interaction.deferred && !interaction.replied) {
@@ -735,8 +742,17 @@ async function handleEconomyAction(interaction, actionKey) {
       const preContent = mentionId ? `<@${mentionId}> ⏳ Traitement en cours…` : '⏳ Traitement en cours…';
       const preAllowed = mentionId ? { users: [mentionId], repliedUser: false } : undefined;
       try {
+        if (isDebugChannel && debugActions.has(actionKey)) {
+          console.log(`[ECONOMY DEBUG] preReply attempt action=${actionKey} mention=${mentionId || 'none'} deferred=${interaction.deferred} replied=${interaction.replied}`);
+        }
         await interaction.reply({ content: preContent, ...(preAllowed ? { allowedMentions: preAllowed } : {}) });
+        if (isDebugChannel && debugActions.has(actionKey)) {
+          console.log(`[ECONOMY DEBUG] preReply OK action=${actionKey}`);
+        }
       } catch (_) {
+        if (isDebugChannel && debugActions.has(actionKey)) {
+          try { console.log(`[ECONOMY DEBUG] preReply FAILED action=${actionKey}`); } catch (_) {}
+        }
         try { await interaction.deferReply(); wasDeferred = true; } catch (_) {}
       }
     }
@@ -755,6 +771,9 @@ async function handleEconomyAction(interaction, actionKey) {
   const respondAndUntrack = async (payload, preferFollowUp = false) => {
     try {
       clearFallbackTimer();
+      if (isDebugChannel && debugActions.has(actionKey)) {
+        try { console.log(`[ECONOMY DEBUG] respond action=${actionKey} preferFollowUp=${!!preferFollowUp} deferred=${interaction.deferred} replied=${interaction.replied}`); } catch (_) {}
+      }
       if (interaction.deferred || interaction.replied) {
         const cloned = { ...(payload || {}) };
         try { if ('ephemeral' in cloned) delete cloned.ephemeral; } catch (_) {}
@@ -765,6 +784,9 @@ async function handleEconomyAction(interaction, actionKey) {
       }
       return await interaction.reply(payload);
     } finally {
+      if (isDebugChannel && debugActions.has(actionKey)) {
+        try { console.log(`[ECONOMY DEBUG] end action=${actionKey}`); } catch (_) {}
+      }
       try { untrackInteraction(interaction); } catch (_) {}
     }
   };
@@ -7739,6 +7761,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isChatInputCommand() && interaction.commandName === 'flirter') {
       return handleEconomyAction(interaction, 'flirt');
+    }
+    // FR aliases explicitly mapped for stability in problematic channel
+    if (interaction.isChatInputCommand() && interaction.commandName === 'touche') {
+      return handleEconomyAction(interaction, 'touche');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'cuisiner') {
+      return handleEconomyAction(interaction, 'cuisiner');
+    }
+    if (interaction.isChatInputCommand() && interaction.commandName === 'douche') {
+      return handleEconomyAction(interaction, 'douche');
+    }
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'réveiller' || interaction.commandName === 'reveiller')) {
+      return handleEconomyAction(interaction, 'reveiller');
     }
     if (interaction.isChatInputCommand() && (interaction.commandName === 'séduire' || interaction.commandName === 'seduire')) {
       return handleEconomyAction(interaction, 'seduce');
