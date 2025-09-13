@@ -868,11 +868,12 @@ async function handleEconomyAction(interaction, actionKey) {
   let moneyDelta = 0;
   let karmaField = null;
   let imageUrl = undefined;
+  const noGifActions = new Set(['touche','douche','cuisiner','reveiller']);
   if (success) {
     moneyDelta = randInt(Number(conf.moneyMin||0), Number(conf.moneyMax||0));
     if (conf.karma === 'charm') { u.charm = (u.charm||0) + Number(conf.karmaDelta||0); karmaField = ['Karma charme', `+${Number(conf.karmaDelta||0)}`]; }
     else if (conf.karma === 'perversion') { u.perversion = (u.perversion||0) + Number(conf.karmaDelta||0); karmaField = ['Karma perversion', `+${Number(conf.karmaDelta||0)}`]; }
-    imageUrl = Array.isArray(gifs.success) && gifs.success.length ? gifs.success[Math.floor(Math.random()*gifs.success.length)] : undefined;
+    imageUrl = noGifActions.has(actionKey) ? undefined : (Array.isArray(gifs.success) && gifs.success.length ? gifs.success[Math.floor(Math.random()*gifs.success.length)] : undefined);
   } else {
     moneyDelta = randInt(Number(conf.failMoneyMin||0), Number(conf.failMoneyMax||0));
     const karmaDelta = Number(conf.failKarmaDelta||0);
@@ -884,7 +885,7 @@ async function handleEconomyAction(interaction, actionKey) {
       u.perversion = (u.perversion||0) + karmaDelta; 
       karmaField = ['Karma perversion', `${karmaDelta >= 0 ? '+' : ''}${karmaDelta}`]; 
     }
-    imageUrl = Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined;
+    imageUrl = noGifActions.has(actionKey) ? undefined : (Array.isArray(gifs.fail) && gifs.fail.length ? gifs.fail[Math.floor(Math.random()*gifs.fail.length)] : undefined);
   }
   if (imageUrl) {
     try {
