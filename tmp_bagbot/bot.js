@@ -4057,16 +4057,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   try {
     client.user.setPresence({ status: 'online', activities: [{ name: '/config | /backup | /restore', type: 0 }] });
   } catch (_) {}
-  // Diagnostic: envoyer un message dans le salon fourni pour confirmer la présence
-  try {
-    const diagChannelId = process.env.DIAG_CHANNEL_ID || '1411636045312950412';
-    const ch = await client.channels.fetch(diagChannelId).catch((e) => { try { console.warn('[DIAG] fetch channel failed', e?.message||e); } catch (_) {} return null; });
-    try { console.log('[DIAG] channel', diagChannelId, 'found:', Boolean(ch), 'typeOK:', ch?.isTextBased?.() || false); } catch (_) {}
-    if (ch && ch.isTextBased?.()) {
-      const ts = new Date().toLocaleString('fr-FR');
-      await ch.send({ content: `🔎 Diagnostic: bot en ligne (${ts}).`, allowedMentions: { parse: [] } }).then(() => { try { console.log('[DIAG] message sent OK'); } catch (_) {} }).catch((e) => { try { console.warn('[DIAG] send failed', e?.message||e); } catch (_) {} });
-    }
-  } catch (_) {}
+  // Diagnostic disabled per request
   // Boot persistance dès le départ et journaliser le mode choisi
   ensureStorageExists().then(()=>console.log('[bot] Storage initialized')).catch((e)=>console.warn('[bot] Storage init error:', e?.message||e));
   
