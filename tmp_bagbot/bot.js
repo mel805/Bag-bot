@@ -8488,11 +8488,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
           new ButtonBuilder().setCustomId('td_game:' + mode + ':action').setLabel('ACTION').setStyle(ButtonStyle.Primary).setDisabled(!hasAction),
           new ButtonBuilder().setCustomId('td_game:' + mode + ':verite').setLabel('VÉRITÉ').setStyle(ButtonStyle.Success).setDisabled(!hasTruth),
         );
-        // Update the same message, do not spawn a new one
-        await interaction.update({ embeds: [embed], components: [row] }).catch(async () => {
-          // Fallback if update fails
-          try { await interaction.editReply({ embeds: [embed], components: [row] }); } catch (_) {}
-        });
+        // Post a NEW message with the next prompt
+        try {
+          await interaction.reply({ embeds: [embed], components: [row] });
+        } catch (_) {
+          try { await interaction.followUp({ embeds: [embed], components: [row] }); } catch (_) {}
+        }
       } catch (_) {}
       return;
     }
