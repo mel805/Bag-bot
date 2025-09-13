@@ -642,7 +642,6 @@ function formatDuration(ms) {
   if (sec < 86400) return `${Math.round(sec / 3600)} h`;
   return `${Math.round(sec / 86400)} j`;
 }
-
 async function isStaffMember(guild, member) {
   try {
     const { getGuildStaffRoleIds } = require('./storage/jsonStore');
@@ -2080,8 +2079,7 @@ async function handleEconomyAction(interaction, actionKey) {
         const parts = [String(cible)];
         if (imageLinkForContent) parts.push(imageLinkForContent);
         const content = parts.filter(Boolean).join('\n') || undefined;
--       return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined });
-+       return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, allowedMentions: { users: [String(cible.id)], repliedUser: false } }, true);
+        return respondAndUntrack({ content, embeds: [embed], files: imageAttachment ? [imageAttachment.attachment] : undefined, allowedMentions: { users: [String(cible.id)], repliedUser: false } }, true);
       }
     }
   }
@@ -2153,7 +2151,7 @@ async function handleEconomyAction(interaction, actionKey) {
   const embed = buildEcoEmbed({ title, description: desc, fields });
   if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
   else if (imageAttachment) embed.setImage(`attachment://${imageAttachment.filename}`);
-  const parts = [initialPartner ? String(initialPartner) : undefined];
+  const parts = [initialPartner ? (initialPartner.id ? `<@${initialPartner.id}>` : String(initialPartner)) : undefined];
   if (imageLinkForContent) parts.push(imageLinkForContent);
   
   // Add pings for special actions
@@ -3167,7 +3165,6 @@ async function buildTopNiveauEmbed(guild, entriesSorted, offset, limit) {
 
   return { embed, components };
 }
-
 async function buildTopEconomieEmbed(guild, entriesSorted, offset, limit) {
   const slice = entriesSorted.slice(offset, offset + limit);
   const formatNum = (n) => (Number(n) || 0).toLocaleString('fr-FR');
@@ -7018,7 +7015,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({ embeds: [embed], components: [...levelsGeneralRows] });
       return;
     }
-
     if (interaction.isChannelSelectMenu() && interaction.customId === 'levels_announce_role_channel') {
       const value = interaction.values[0];
       if (value === 'none') return interaction.deferUpdate();
@@ -7659,7 +7655,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({ embeds: [embed], components: [...rows] });
       return;
     }
-
     if (interaction.isModalSubmit() && interaction.customId === 'economy_cd_modal') {
       await interaction.deferReply({ ephemeral: true });
       const eco = await getEconomyConfig(interaction.guild.id);
@@ -8278,7 +8273,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         try { return await interaction.editReply({ content: 'Erreur export.' }); } catch (_) { try { return await interaction.followUp({ content: 'Erreur export.', ephemeral: true }); } catch (_) { return; } }
       }
     }
-
     // Admin-only: /restore (restaure le dernier snapshot disponible ou depuis un fichier spécifique)
     if (interaction.isChatInputCommand() && interaction.commandName === 'restore') {
       try {
@@ -8882,7 +8876,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '❌ Erreur lors de l\'invitation du membre.', ephemeral: true });
       }
     }
-    
     if (interaction.isUserSelectMenu() && interaction.customId.startsWith('suite_remove_select_')) {
       const ownerId = interaction.customId.split('_')[3];
       if (interaction.user.id !== ownerId) {
