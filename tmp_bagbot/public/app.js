@@ -54,30 +54,53 @@
       $('#configs').textContent = JSON.stringify(data, null, 2);
       // Pre-fill economy currency
       $('#currencyName').value = (data.economy?.currency?.name || 'BAG$');
+      // Overview metrics
+      try {
+        const balances = data.economy?.balances || {};
+        const total = Object.values(balances).reduce((acc, u) => acc + (u?.amount||0), 0);
+        $('#ecoTotal').textContent = String(total) + ' ' + (data.economy?.currency?.name || 'BAG$');
+      } catch(_) { $('#ecoTotal').textContent = '—'; }
+      $('#ecoCurrency').textContent = data.economy?.currency?.name || '—';
+      $('#ecoActions').textContent = Object.keys(data.economy?.actions?.config || {}).length + ' actions';
       // Pre-fill TD channels
       $('#tdSfwChannels').value = (data.truthdare?.sfw?.channels || []).join(',');
       $('#tdNsfwChannels').value = (data.truthdare?.nsfw?.channels || []).join(',');
+      $('#tdSfwCount').textContent = String((data.truthdare?.sfw?.prompts || []).length || 0);
+      $('#tdNsfwCount').textContent = String((data.truthdare?.nsfw?.prompts || []).length || 0);
+      $('#tdChannels').textContent = `${(data.truthdare?.sfw?.channels||[]).length + (data.truthdare?.nsfw?.channels||[]).length}`;
       // Confess
       $('#confessAllowReplies').checked = !!data.confess?.allowReplies;
+      $('#confAllow').textContent = data.confess?.allowReplies ? 'activé' : 'désactivé';
       // Logs
       $('#logJoinLeave').checked = !!data.logs?.categories?.joinleave;
       $('#logMessages').checked = !!data.logs?.categories?.messages;
       $('#logThreads').checked = !!data.logs?.categories?.threads;
       $('#logBackup').checked = !!data.logs?.categories?.backup;
+      const act = [];
+      try { const c = data.logs?.categories || {}; for (const k of Object.keys(c)) if (c[k]) act.push(k); } catch(_) {}
+      $('#logsActive').textContent = act.length ? act.join(', ') : 'aucune';
       // Levels
       $('#xpPerMessage').value = String(data.levels?.xpPerMessage ?? '');
       $('#xpPerVoiceMinute').value = String(data.levels?.xpPerVoiceMinute ?? '');
       $('#levelBase').value = String(data.levels?.levelCurve?.base ?? '');
       $('#levelFactor').value = String(data.levels?.levelCurve?.factor ?? '');
+      $('#xpMsg').textContent = String(data.levels?.xpPerMessage ?? '—');
+      $('#xpVoice').textContent = String(data.levels?.xpPerVoiceMinute ?? '—');
+      $('#levelCurve').textContent = `${data.levels?.levelCurve?.base || '—'} / ${data.levels?.levelCurve?.factor || '—'}`;
       // AutoThread
       $('#atChannels').value = (data.autothread?.channels || []).join(',');
       $('#atPolicy').value = String(data.autothread?.policy || '');
       $('#atArchive').value = String(data.autothread?.archivePolicy || '');
+      $('#atCount').textContent = String((data.autothread?.channels || []).length);
+      $('#atArchiveView').textContent = String(data.autothread?.archivePolicy || '—');
       // Counting
       $('#countingChannels').value = (data.counting?.channels || []).join(',');
+      $('#countingCount').textContent = String((data.counting?.channels || []).length);
       // Disboard
       $('#disboardReminders').checked = !!data.disboard?.remindersEnabled;
       $('#disboardChannel').value = String(data.disboard?.remindChannelId || '');
+      $('#disboardRem').textContent = data.disboard?.remindersEnabled ? 'activés' : 'désactivés';
+      $('#disboardCh').textContent = data.disboard?.remindChannelId ? ('<#'+data.disboard.remindChannelId+'>') : '—';
       $('#apiState').textContent = 'API: OK';
     } catch (e) {
       $('#apiState').textContent = 'API: erreur';

@@ -102,7 +102,11 @@
     </section>
     <section id="view-economy" class="view">
       <div class="slide" id="economy-overview">
-        <div class="placeholder">Aperçu économie (à venir)</div>
+        <div class="cards">
+          <div class="card"><h3>Solde total (approx)</h3><div class="metric" id="ecoTotal">—</div></div>
+          <div class="card"><h3>Devise</h3><div class="metric" id="ecoCurrency">—</div></div>
+          <div class="card"><h3>Actions configurées</h3><div class="metric" id="ecoActions">—</div></div>
+        </div>
       </div>
       <div class="slide" id="economy-currency">
         <div class="panel">
@@ -119,7 +123,13 @@
       </div>
     </section>
     <section id="view-truthdare" class="view">
-      <div class="slide" id="td-overview"><div class="placeholder">Aperçu TD (à venir)</div></div>
+      <div class="slide" id="td-overview">
+        <div class="cards">
+          <div class="card"><h3>Prompts SFW</h3><div class="metric" id="tdSfwCount">—</div></div>
+          <div class="card"><h3>Prompts NSFW</h3><div class="metric" id="tdNsfwCount">—</div></div>
+          <div class="card"><h3>Salons autorisés</h3><div class="metric" id="tdChannels">—</div></div>
+        </div>
+      </div>
       <div class="slide" id="td-channels">
         <div class="panel">
           <h3>Salons Action/Vérité</h3>
@@ -136,7 +146,11 @@
       </div>
     </section>
     <section id="view-confess" class="view">
-      <div class="slide" id="confess-overview"><div class="placeholder">Aperçu confessions (à venir)</div></div>
+      <div class="slide" id="confess-overview">
+        <div class="cards">
+          <div class="card"><h3>Réponses anonymes</h3><div class="metric" id="confAllow">—</div></div>
+        </div>
+      </div>
       <div class="slide" id="confess-settings">
         <div class="panel">
           <h3>Paramètres Confessions</h3>
@@ -146,7 +160,11 @@
       </div>
     </section>
     <section id="view-logs" class="view">
-      <div class="slide" id="logs-overview"><div class="placeholder">Aperçu logs (à venir)</div></div>
+      <div class="slide" id="logs-overview">
+        <div class="cards">
+          <div class="card"><h3>Catégories actives</h3><div class="metric" id="logsActive">—</div></div>
+        </div>
+      </div>
       <div class="slide" id="logs-settings">
         <div class="panel">
           <h3>Catégories de logs</h3>
@@ -159,7 +177,13 @@
       </div>
     </section>
     <section id="view-levels" class="view">
-      <div class="slide" id="levels-overview"><div class="placeholder">Aperçu levels (à venir)</div></div>
+      <div class="slide" id="levels-overview">
+        <div class="cards">
+          <div class="card"><h3>XP/msg</h3><div class="metric" id="xpMsg">—</div></div>
+          <div class="card"><h3>XP/min vocal</h3><div class="metric" id="xpVoice">—</div></div>
+          <div class="card"><h3>Courbe</h3><div class="metric" id="levelCurve">—</div></div>
+        </div>
+      </div>
       <div class="slide" id="levels-settings">
         <div class="panel">
           <h3>XP</h3>
@@ -172,7 +196,12 @@
       </div>
     </section>
     <section id="view-autothread" class="view">
-      <div class="slide" id="autothread-overview"><div class="placeholder">Aperçu autoThread (à venir)</div></div>
+      <div class="slide" id="autothread-overview">
+        <div class="cards">
+          <div class="card"><h3>Salons AutoThread</h3><div class="metric" id="atCount">—</div></div>
+          <div class="card"><h3>Archivage</h3><div class="metric" id="atArchiveView">—</div></div>
+        </div>
+      </div>
       <div class="slide" id="autothread-settings">
         <div class="panel"><h3>AutoThread</h3>
           <div class="form-row"><label>Salons (IDs, virgules)</label><input id="atChannels" type="text" placeholder="123,456" /></div>
@@ -183,7 +212,11 @@
       </div>
     </section>
     <section id="view-counting" class="view">
-      <div class="slide" id="counting-overview"><div class="placeholder">Aperçu comptage (à venir)</div></div>
+      <div class="slide" id="counting-overview">
+        <div class="cards">
+          <div class="card"><h3>Salons comptage</h3><div class="metric" id="countingCount">—</div></div>
+        </div>
+      </div>
       <div class="slide" id="counting-settings">
         <div class="panel"><h3>Comptage</h3>
           <div class="form-row"><label>Salons (IDs, virgules)</label><input id="countingChannels" type="text" placeholder="123,456" /></div>
@@ -192,7 +225,12 @@
       </div>
     </section>
     <section id="view-disboard" class="view">
-      <div class="slide" id="disboard-overview"><div class="placeholder">Aperçu Disboard (à venir)</div></div>
+      <div class="slide" id="disboard-overview">
+        <div class="cards">
+          <div class="card"><h3>Rappels</h3><div class="metric" id="disboardRem">—</div></div>
+          <div class="card"><h3>Salon rappel</h3><div class="metric" id="disboardCh">—</div></div>
+        </div>
+      </div>
       <div class="slide" id="disboard-settings">
         <div class="panel"><h3>Disboard</h3>
           <div class="form-row"><label><input id="disboardReminders" type="checkbox" /> Rappels automatiques</label></div>

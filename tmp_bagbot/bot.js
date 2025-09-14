@@ -8309,8 +8309,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     // /dashboard → returns URL
     if (interaction.isChatInputCommand() && interaction.commandName === 'dashboard') {
-      const host = process.env.DASHBOARD_HOST || null; // optional public host
-      const url = host ? (host.startsWith('http') ? host : ('https://' + host)) : `http://127.0.0.1:${Number(process.env.PORT||5000)}`;
+      // Prefer explicit host if provided, else fallback to provided public IP
+      const host = process.env.DASHBOARD_HOST || 'http://82.67.65.98:5000';
+      const url = host.startsWith('http') ? host : ('https://' + host);
       const key = String(process.env.DASHBOARD_KEY || '').trim();
       const link = key ? (url + `?key=${encodeURIComponent(key)}`) : url;
       return interaction.reply({ content: `🔗 Dashboard: ${link}`, ephemeral: true });
