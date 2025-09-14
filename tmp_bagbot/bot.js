@@ -3722,8 +3722,10 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
     try {
       if (!u) return undefined;
       if (/^https?:\/\//i.test(u)) return u;
-      if (String(u).startsWith('/')) return 'file://' + path.join(PUBLIC_DIR, String(u).replace(/^\/+/, ''));
-      if (String(u).startsWith('uploads/')) return 'file://' + path.join(PUBLIC_DIR, String(u));
+      if (String(u).startsWith('file://')) return u;
+      const PUBLIC_DIR2 = path2.resolve(__dirname, '../public');
+      if (String(u).startsWith('/')) return 'file://' + path2.join(PUBLIC_DIR2, String(u).replace(/^\/+/, ''));
+      if (String(u).startsWith('uploads/')) return 'file://' + path2.join(PUBLIC_DIR2, String(u));
     } catch (_) {}
     return undefined;
   };
@@ -3811,6 +3813,17 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
   const name = memberDisplayName(guild, memberOrMention, memberOrMention?.id);
   const mention = memberOrMention?.id ? `<@${memberOrMention.id}>` : '';
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const resolveBg = (u) => {
+    try {
+      if (!u) return undefined;
+      if (/^https?:\/\//i.test(u)) return u;
+      if (String(u).startsWith('file://')) return u;
+      const PUBLIC_DIR2 = path2.resolve(__dirname, '../public');
+      if (String(u).startsWith('/')) return 'file://' + path2.join(PUBLIC_DIR2, String(u).replace(/^\/+/, ''));
+      if (String(u).startsWith('uploads/')) return 'file://' + path2.join(PUBLIC_DIR2, String(u));
+    } catch (_) {}
+    return undefined;
+  };
   const sub = [ `Nouvelle distinction : ${roleName}` ];
   const isCert = memberHasCertifiedRole(memberOrMention, levels);
   const isFemale = memberHasFemaleRole(memberOrMention, levels);
@@ -3828,7 +3841,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
       isCertified: true,
       isRoleAward: true,
-      backgroundUrl: chooseCardBackgroundForMember(memberOrMention, levels) || undefined,
+      backgroundUrl: resolveBg(bg),
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
@@ -3850,7 +3863,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       isRoleAward: true,
-      backgroundUrl: chooseCardBackgroundForMember(memberOrMention, levels) || undefined,
+      backgroundUrl: resolveBg(bg),
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
@@ -3872,7 +3885,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
       isRoleAward: true,
-      backgroundUrl: chooseCardBackgroundForMember(memberOrMention, levels) || undefined,
+      backgroundUrl: resolveBg(bg),
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});

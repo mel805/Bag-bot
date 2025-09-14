@@ -198,8 +198,8 @@ export default function CategoryPage() {
               ))}
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer régalges</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLogs(logCats, logChannels); }}>Enregistrer catégories/salons</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des réglages de logs ?')) return; await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer régalges</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des catégories/salons de logs ?')) return; await saveLogs(logCats, logChannels); }}>Enregistrer catégories/salons</button>
             </div>
           </div>
         )}
@@ -220,8 +220,8 @@ export default function CategoryPage() {
               </label>
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoKickRole(autoKickRole); }}>Enregistrer rôle</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoKickAdvanced(autoKickEnabled, autoKickDelay); }}>Enregistrer réglages</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le rôle AutoKick ?')) return; await saveAutoKickRole(autoKickRole); }}>Enregistrer rôle</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer les réglages AutoKick ?')) return; await saveAutoKickAdvanced(autoKickEnabled, autoKickDelay); }}>Enregistrer réglages</button>
             </div>
           </div>
         )}
@@ -241,8 +241,8 @@ export default function CategoryPage() {
             <div className="text-white/70">Symbole</div>
             <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-32" value={currencySymbol} onChange={e=>setCurrencySymbol(e.target.value)} />
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrency(currencyName); }}>Enregistrer nom</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrencySymbol(currencySymbol); }}>Enregistrer symbole</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le nom de la devise ?')) return; await saveCurrency(currencyName); }}>Enregistrer nom</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le symbole de la devise ?')) return; await saveCurrencySymbol(currencySymbol); }}>Enregistrer symbole</button>
             </div>
           </div>
         )}
@@ -305,6 +305,7 @@ export default function CategoryPage() {
                 payload.messages.fail = msgFail.split('\n').map(s=>s.trim()).filter(Boolean);
                 payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
                 payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
+                if(!confirm('Confirmer la sauvegarde de cette action ?')) return;
                 await saveEconomyAction(actKey, payload);
               }}>Enregistrer l'action</button>
             </div>
@@ -380,6 +381,7 @@ export default function CategoryPage() {
                 const payload:any = { action: actKey, gifs: {} };
                 payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
                 payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
+                if(!confirm('Confirmer la sauvegarde des GIFs ?')) return;
                 await saveEconomyAction(actKey, payload);
               }}>Enregistrer GIFs</button>
             </div>
@@ -429,7 +431,7 @@ export default function CategoryPage() {
             <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdNsfw} onChange={e=>setTdNsfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveTd(tdSfw, tdNsfw); }}>Enregistrer</button>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Action/Vérité ?')) return; await saveTd(tdSfw, tdNsfw); }}>Enregistrer</button>
           </div>
         )}
         {cat==='levels' && (
@@ -453,7 +455,7 @@ export default function CategoryPage() {
               <label className="text-white/70">Cooldown vocal (s)<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={vocCd as any} onChange={e=>setVocCd(e.target.value===''?'':Number(e.target.value))} /></label>
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde niveaux (base/facteur/xp) ?')) return; await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const payload:any = {};
                 if (xpMsgMin !== '') payload.xpMessageMin = Number(xpMsgMin);
@@ -462,6 +464,7 @@ export default function CategoryPage() {
                 if (xpVocMax !== '') payload.xpVoiceMax = Number(xpVocMax);
                 if (msgCd !== '') payload.messageCooldownSec = Number(msgCd);
                 if (vocCd !== '') payload.voiceCooldownSec = Number(vocCd);
+                if(!confirm('Confirmer la sauvegarde des réglages avancés ?')) return;
                 await saveLevelsExtra(payload);
               }}>Enregistrer avancé</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(true, {}); }}>Activer</button>
@@ -629,7 +632,7 @@ export default function CategoryPage() {
                 </select>
               </label>
             </div>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoThread(autoThreadChannels, autoThreadPolicy, autoThreadArchive); }}>Enregistrer</button>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Auto-threads ?')) return; await saveAutoThread(autoThreadChannels, autoThreadPolicy, autoThreadArchive); }}>Enregistrer</button>
           </div>
         )}
         {cat==='counting' && (
@@ -638,7 +641,7 @@ export default function CategoryPage() {
             <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={countingChannels} onChange={e=>setCountingChannels(Array.from(e.target.selectedOptions).map(o=>o.value))}>
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCounting(countingChannels); }}>Enregistrer</button>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Compteur ?')) return; await saveCounting(countingChannels); }}>Enregistrer</button>
           </div>
         )}
         {cat==='disboard' && (
@@ -651,7 +654,7 @@ export default function CategoryPage() {
               <option value="">—</option>
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Disboard ?')) return; await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
           </div>
         )}
       </div>
