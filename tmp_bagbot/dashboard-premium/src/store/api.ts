@@ -17,6 +17,13 @@ type ApiState = {
   error: string | null;
   fetchAll: () => Promise<void>;
   saveCurrency: (name: string) => Promise<boolean>;
+  saveLogs: (categories: Record<string, boolean>) => Promise<boolean>;
+  saveConfess: (allowReplies: boolean) => Promise<boolean>;
+  saveTd: (sfw: string[], nsfw: string[]) => Promise<boolean>;
+  saveLevels: (xpMsg: number, xpVoice: number, base: number, factor: number) => Promise<boolean>;
+  saveAutoThread: (channels: string[], policy: string, archivePolicy: string) => Promise<boolean>;
+  saveCounting: (channels: string[]) => Promise<boolean>;
+  saveDisboard: (remindersEnabled: boolean, remindChannelId: string) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -49,6 +56,48 @@ export const useApi = create<ApiState>((set, get) => ({
     } catch {
       return false;
     }
+  }
+  , saveLogs: async (categories) => {
+    try {
+      const res = await fetch('/api/configs/logs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ categories }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveConfess: async (allowReplies) => {
+    try {
+      const res = await fetch('/api/configs/confess', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ allowReplies }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveTd: async (sfw, nsfw) => {
+    try {
+      const res = await fetch('/api/configs/truthdare', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sfwChannels: sfw, nsfwChannels: nsfw }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveLevels: async (xpMsg, xpVoice, base, factor) => {
+    try {
+      const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ xpPerMessage: xpMsg, xpPerVoiceMinute: xpVoice, levelCurve:{ base, factor } }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveAutoThread: async (channels, policy, archivePolicy) => {
+    try {
+      const res = await fetch('/api/configs/autothread', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ channels, policy, archivePolicy }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveCounting: async (channels) => {
+    try {
+      const res = await fetch('/api/configs/counting', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ channels }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveDisboard: async (remindersEnabled, remindChannelId) => {
+    try {
+      const res = await fetch('/api/configs/disboard', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ remindersEnabled, remindChannelId }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
   }
 }));
 
