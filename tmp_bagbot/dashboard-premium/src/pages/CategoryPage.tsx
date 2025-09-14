@@ -71,6 +71,15 @@ export default function CategoryPage() {
   const [countingChannels, setCountingChannels] = useState<string[]>([]);
   const [disboardReminders, setDisboardReminders] = useState(false);
   const [disboardChannel, setDisboardChannel] = useState('');
+  const dashKey = useMemo(() => {
+    try {
+      const urlKey = new URLSearchParams(window.location.search).get('key');
+      const lsKey = localStorage.getItem('DASHBOARD_KEY');
+      const k = urlKey || lsKey || '';
+      if (k) localStorage.setItem('DASHBOARD_KEY', k);
+      return k;
+    } catch { return ''; }
+  }, []);
   useEffect(()=>{
     if (!configs) return;
     setLogChannelMsgs(String(configs.logs?.channels?.messages || ''));
@@ -266,6 +275,16 @@ export default function CategoryPage() {
             </div>
             <div className="flex gap-2">
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const payload:any = {};
+                if (xpMsgMin !== '') payload.xpMessageMin = Number(xpMsgMin);
+                if (xpMsgMax !== '') payload.xpMessageMax = Number(xpMsgMax);
+                if (xpVocMin !== '') payload.xpVoiceMin = Number(xpVocMin);
+                if (xpVocMax !== '') payload.xpVoiceMax = Number(xpVocMax);
+                if (msgCd !== '') payload.messageCooldownSec = Number(msgCd);
+                if (vocCd !== '') payload.voiceCooldownSec = Number(vocCd);
+                await saveLevelsExtra(payload);
+              }}>Enregistrer avancé</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(true, {}); }}>Activer</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(false, {}); }}>Désactiver</button>
             </div>
@@ -288,14 +307,37 @@ export default function CategoryPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-white/60 text-sm mb-2">Actuelle</div>
-                  {(() => { const curMap:any={default:curBgDefault,female:curBgFemale,certified:curBgCertified,prestigeBlue:curBgPrestigeBlue,prestigeRose:curBgPrestigeRose}; const u=String(curMap[cardKey]||''); return u? (<img src={u.startsWith('http')?u:(u.startsWith('/')?window.location.origin+u:u)} className="h-24 w-full object-cover rounded border border-white/10" />):(<div className="h-24 w-full rounded bg-white/5 border border-white/10" />); })()}
+                  {(() => {
+                    const variant = (cardKey==='certified') ? 'certified' : (cardKey==='female' || cardKey==='prestigeRose') ? 'rose' : 'blue';
+                    const base = `/api/levels/preview?style=${encodeURIComponent(variant)}&memberName=${encodeURIComponent('Alyssa')}&level=${encodeURIComponent(38)}&roleName=${encodeURIComponent('Étoile du Serveur')}`;
+                    const url = dashKey ? (base + `&key=${encodeURIComponent(dashKey)}`) : base;
+                    return (
+                      <div className="aspect-video w-full bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                        <img src={url} className="w-full h-full object-contain" />
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div>
                   <div className="text-white/60 text-sm mb-2">Prévisualisation</div>
                   {(() => {
-                    const style = cardKey==='certified' ? 'certified' : (cardKey==='female'?'female':'default');
-                    const url = `/api/levels/preview?style=${encodeURIComponent(style)}&memberName=${encodeURIComponent('Alyssa')}&level=${encodeURIComponent(38)}&roleName=${encodeURIComponent('Étoile du Serveur')}`;
-                    return (<img src={url} className="h-24 w-full object-cover rounded border border-white/10" />);
+                    const variant = (cardKey==='certified') ? 'certified' : (cardKey==='female' || cardKey==='prestigeRose') ? 'rose' : 'blue';
+                    const params = new URLSearchParams();
+                    params.set('style', variant);
+                    params.set('memberName', 'Alyssa');
+                    params.set('level', String(38));
+                    params.set('roleName', 'Étoile du Serveur');
+                    if (tplLevelUp) params.set('subtitle', tplLevelUp);
+                    if (tplRole) params.set('roleLine', tplRole);
+                    if (dashKey) params.set('key', dashKey);
+                    // cache-bust on state changes
+                    params.set('ts', String(Date.now()));
+                    const url = `/api/levels/preview?${params.toString()}`;
+                    return (
+                      <div className="aspect-video w-full bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                        <img src={url} className="w-full h-full object-contain" />
+                      </div>
+                    );
                   })()}
                 </div>
               </div>

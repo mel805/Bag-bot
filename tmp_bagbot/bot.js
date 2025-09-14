@@ -1010,25 +1010,35 @@ function startKeepAliveServer() {
         if (parsed.pathname === '/api/levels/preview' && req.method === 'GET') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           try {
-            const style = String(parsed.query?.style || parsed.query?.variant || 'default');
+            const variantRaw = String(parsed.query?.style || parsed.query?.variant || 'blue').toLowerCase();
             const memberName = String(parsed.query?.memberName || 'Membre');
             const level = Number(parsed.query?.level || 1);
             const roleName = String(parsed.query?.roleName || '—');
             const { getLevelsConfig } = require('./storage/jsonStore');
             const levels = await getLevelsConfig(guildId);
             const texts = {};
-            // Optionally override some texts using saved templates
+            // Saved templates (defaults)
             if (levels?.announce?.levelUp?.template && String(levels.announce.levelUp.template).trim()) {
               texts.subtitle = String(levels.announce.levelUp.template);
             }
             if (levels?.announce?.roleAward?.template && String(levels.announce.roleAward.template).trim()) {
               texts.roleLine = String(levels.announce.roleAward.template).replace('{role}', roleName);
             }
+            // Query overrides
+            if (typeof parsed.query?.title === 'string') texts.title = String(parsed.query.title);
+            if (typeof parsed.query?.subtitle === 'string') texts.subtitle = String(parsed.query.subtitle);
+            if (typeof parsed.query?.roleLine === 'string') texts.roleLine = String(parsed.query.roleLine).replace('{role}', roleName);
+            if (typeof parsed.query?.baseline === 'string') texts.baseline = String(parsed.query.baseline);
+
+            // Variant mapping
+            const isCertified = variantRaw.includes('cert');
+            const isRose = variantRaw.includes('rose') || variantRaw === 'female';
+            const isBlue = !isCertified && !isRose; // default
             let png;
-            if (style === 'certified') {
+            if (isCertified) {
               const { renderLevelCardLandscape } = require('../src/level-landscape');
               png = await renderLevelCardLandscape({ memberName, level, roleName, isCertified: true, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts });
-            } else if (style === 'female') {
+            } else if (isRose) {
               const { renderPrestigeCardRoseGoldLandscape } = require('../src/prestige-rose-gold-landscape');
               png = await renderPrestigeCardRoseGoldLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts });
             } else {
