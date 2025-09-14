@@ -677,6 +677,41 @@ function startKeepAliveServer() {
           }
         }
 
+        if (parsed.pathname === '/api/meta') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          try {
+            const g = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(()=>null);
+            if (!g) return sendJson(res, 404, { error: 'guild not found' });
+            await g.channels.fetch().catch(()=>null);
+            await g.roles.fetch().catch(()=>null);
+            const channels = Array.from(g.channels.cache.values())
+              .filter(ch => ch?.isTextBased?.())
+              .map(ch => ({ id: ch.id, name: ch.name || ch.id, type: ch.type }));
+            const roles = Array.from(g.roles.cache.values()).map(r => ({ id: r.id, name: r.name }));
+            return sendJson(res, 200, { channels, roles, guildIconUrl: g.iconURL?.({ size: 256 }) || null });
+          } catch (e) {
+            return sendJson(res, 500, { error: String(e?.message || e) });
+          }
+        }
+
+        if (parsed.pathname === '/api/configs/autokick' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getAutoKickConfig, updateAutoKickConfig } = require('./storage/jsonStore');
+              const curr = await getAutoKickConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (data.roleId) next.roleId = String(data.roleId);
+              await updateAutoKickConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
         if (parsed.pathname === '/api/configs/logs' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           let body = '';
