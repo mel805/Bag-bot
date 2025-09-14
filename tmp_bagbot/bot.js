@@ -2187,17 +2187,23 @@ async function handleEconomyAction(interaction, actionKey) {
   }
   if (actionKey === 'punish') {
     const partner = interaction.options.getUser('cible', false);
+    const kindRaw = String(interaction.options.getString('punition', false) || '').trim();
+    const zoneRaw = String(interaction.options.getString('zone', false) || '').trim();
+    const kinds = ['fessée','corde','paddle','bâillon','martinet','règle','bosse','fouet'];
+    const zones = ['fesses','cuisses','mains','pieds','dos','épaules'];
+    const kind = kindRaw ? kindRaw.toLowerCase() : kinds[randInt(0, kinds.length - 1)];
+    const zone = zoneRaw ? zoneRaw.toLowerCase() : zones[randInt(0, zones.length - 1)];
     if (success) {
       const texts = [
-        partner ? `Tu punis ${partner} avec douceur, moment de jeu et d'intimité.` : `Tu te punis, moment de réflexion personnelle.`,
-        partner ? `Punition donnée à ${partner}, jeu de confiance partagé.` : `Tu assumes ta punition, moment de croissance.`,
-        partner ? `Vous jouez le jeu de la punition, ${partner} et toi, complicité spéciale.` : `Tu acceptes ta punition, confiance en toi renforcée.`
+        partner ? `Tu appliques une ${kind} sur ${partner}, ciblant les ${zone}, dans un cadre consensuel.` : `Tu te donnes une ${kind}, concentrée sur les ${zone}, pour le jeu.`,
+        partner ? `Punition (${kind}) pour ${partner}, attention sur les ${zone}, complicité et confiance.` : `Auto-punition (${kind}) sur les ${zone}, tu explores tes limites.`,
+        partner ? `Vous jouez la punition (${kind}) ensemble; ${partner} reçoit sur les ${zone}, ambiance contrôlée.` : `Tu t'infliges une ${kind} sur les ${zone}, avec douceur et contrôle.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     } else {
       const texts = [
-        partner ? `Tu tentes de punir ${partner}, mais il/elle n'est pas d'accord.` : `Tu tentes de te punir, mais ça ne te convient pas.`,
-        partner ? `Punition refusée par ${partner}, l'ambiance n'y est pas.` : `Punition ratée, tu préfères la douceur.`
+        partner ? `Tu tentes une ${kind} sur ${partner} (zone: ${zone}), mais il/elle n'est pas d'accord.` : `Tu tentes une ${kind} sur les ${zone}, mais tu préfères renoncer.`,
+        partner ? `Punition (${kind}) refusée par ${partner} (zone: ${zone}).` : `Punition (${kind}) abandonnée, mieux vaut la douceur.`
       ];
       msgText = texts[randInt(0, texts.length - 1)];
     }

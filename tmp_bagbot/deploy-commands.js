@@ -345,7 +345,11 @@ let commands = [
   new SlashCommandBuilder().setName('leash').setDescription('Tenir en laisse 🐾').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
   new SlashCommandBuilder().setName('kneel').setDescription('Soumission à genoux').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
   new SlashCommandBuilder().setName('order').setDescription('Donner un ordre (RP dominant)').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
-  new SlashCommandBuilder().setName('punish').setDescription('Punition sexy (fessée, corde, etc.)').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
+  new SlashCommandBuilder().setName('punish').setDescription('Punition sexy (fessée, corde, etc.)')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true))
+    .addStringOption(o=>o.setName('punition').setDescription('Type de punition (ex: fessée, corde, paddle, bâillon)').setRequired(false))
+    .addStringOption(o=>o.setName('zone').setDescription('Zone ciblée (ex: fesses, cuisses, mains, pieds)').setRequired(false))
+    .toJSON(),
   // Séduction & RP doux
   new SlashCommandBuilder().setName('rose').setDescription('Offrir une rose 🌹').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
   new SlashCommandBuilder().setName('wine').setDescription('Partager un verre 🍷').addUserOption(o=>o.setName('cible').setDescription('Membre').setRequired(true)).toJSON(),
