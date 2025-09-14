@@ -168,6 +168,11 @@
       connectWs();
       loadConfigs();
     });
+    // Collapse sidebar
+    $('#toggleSidebar').addEventListener('click', () => {
+      const sb = $('#sidebar');
+      sb.classList.toggle('collapsed');
+    });
 
     // Save currency
     $('#saveCurrency').addEventListener('click', async () => {

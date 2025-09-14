@@ -22,6 +22,7 @@ body {
   background: radial-gradient(1200px 600px at -100px -200px, rgba(236, 64, 122, 0.25), transparent 60%), var(--bg);
   border-right: 1px solid rgba(255,255,255,0.06);
   padding: 20px;
+  transition: width 200ms ease, padding 200ms ease;
 }
 .brand {
   display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
@@ -33,11 +34,20 @@ nav { display: grid; gap: 8px; }
 .nav-item {
   background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.08);
   padding: 10px 12px; text-align: left; border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
 }
 .nav-item:hover { border-color: rgba(255,255,255,0.18); }
 .nav-item.active { background: linear-gradient(135deg, rgba(236, 64, 122, 0.22), rgba(30, 136, 229, 0.18)); border-color: transparent; }
 .submenu { display: none; margin: 4px 0 10px 6px; padding-left: 6px; border-left: 2px solid rgba(255,255,255,0.08); }
-.submenu .sub-item { display: block; width: 100%; background: transparent; color: var(--muted); border: none; padding: 6px 8px; text-align: left; border-radius: 8px; cursor: pointer; }
+.submenu .sub-item { display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; color: var(--muted); border: none; padding: 6px 8px; text-align: left; border-radius: 8px; cursor: pointer; }
+.icon { width: 18px; display: inline-block; text-align: center; }
+.label { flex: 1; }
+
+.sidebar.collapsed { width: 72px; padding: 16px 8px; }
+.sidebar.collapsed .brand-text { display: none; }
+.sidebar.collapsed .label { display: none; }
+.sidebar.collapsed .submenu { display: none !important; }
+.topbar .auth #toggleSidebar { background: var(--bg-soft); color: var(--text); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 8px 10px; cursor: pointer; }
 .submenu .sub-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
 .content { position: relative; }
 .topbar {

@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <img id="guildIcon" src="https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png" alt="BAG" />
       <div class="brand-text">
@@ -19,46 +19,46 @@
       </div>
     </div>
     <nav>
-      <button class="nav-item active" data-view="overview">Aperçu</button>
-      <button class="nav-item" data-view="economy">Économie</button>
+      <button class="nav-item active" data-view="overview"><span class="icon">🏠</span><span class="label">Aperçu</span></button>
+      <button class="nav-item" data-view="economy"><span class="icon">🪙</span><span class="label">Économie</span></button>
       <div class="submenu" data-for="economy">
-        <button class="sub-item" data-subview="economy-overview">Aperçu</button>
-        <button class="sub-item" data-subview="economy-currency">Devise</button>
+        <button class="sub-item" data-subview="economy-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="economy-currency"><span class="icon">💱</span><span class="label">Devise</span></button>
       </div>
-      <button class="nav-item" data-view="truthdare">Action/Vérité</button>
+      <button class="nav-item" data-view="truthdare"><span class="icon">🎲</span><span class="label">Action/Vérité</span></button>
       <div class="submenu" data-for="truthdare">
-        <button class="sub-item" data-subview="td-overview">Aperçu</button>
-        <button class="sub-item" data-subview="td-channels">Salons</button>
+        <button class="sub-item" data-subview="td-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="td-channels"><span class="icon">#</span><span class="label">Salons</span></button>
       </div>
-      <button class="nav-item" data-view="confess">Confessions</button>
+      <button class="nav-item" data-view="confess"><span class="icon">🕊️</span><span class="label">Confessions</span></button>
       <div class="submenu" data-for="confess">
-        <button class="sub-item" data-subview="confess-overview">Aperçu</button>
-        <button class="sub-item" data-subview="confess-settings">Paramètres</button>
+        <button class="sub-item" data-subview="confess-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="confess-settings"><span class="icon">⚙️</span><span class="label">Paramètres</span></button>
       </div>
-      <button class="nav-item" data-view="logs">Logs</button>
+      <button class="nav-item" data-view="logs"><span class="icon">📜</span><span class="label">Logs</span></button>
       <div class="submenu" data-for="logs">
-        <button class="sub-item" data-subview="logs-overview">Aperçu</button>
-        <button class="sub-item" data-subview="logs-settings">Paramètres</button>
+        <button class="sub-item" data-subview="logs-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="logs-settings"><span class="icon">⚙️</span><span class="label">Paramètres</span></button>
       </div>
-      <button class="nav-item" data-view="levels">Levels</button>
+      <button class="nav-item" data-view="levels"><span class="icon">🆙</span><span class="label">Levels</span></button>
       <div class="submenu" data-for="levels">
-        <button class="sub-item" data-subview="levels-overview">Aperçu</button>
-        <button class="sub-item" data-subview="levels-settings">Paramètres</button>
+        <button class="sub-item" data-subview="levels-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="levels-settings"><span class="icon">⚙️</span><span class="label">Paramètres</span></button>
       </div>
-      <button class="nav-item" data-view="autothread">AutoThread</button>
+      <button class="nav-item" data-view="autothread"><span class="icon">🧵</span><span class="label">AutoThread</span></button>
       <div class="submenu" data-for="autothread">
-        <button class="sub-item" data-subview="autothread-overview">Aperçu</button>
-        <button class="sub-item" data-subview="autothread-settings">Paramètres</button>
+        <button class="sub-item" data-subview="autothread-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="autothread-settings"><span class="icon">⚙️</span><span class="label">Paramètres</span></button>
       </div>
-      <button class="nav-item" data-view="counting">Comptage</button>
+      <button class="nav-item" data-view="counting"><span class="icon">🔢</span><span class="label">Comptage</span></button>
       <div class="submenu" data-for="counting">
-        <button class="sub-item" data-subview="counting-overview">Aperçu</button>
-        <button class="sub-item" data-subview="counting-settings">Paramètres</button>
+        <button class="sub-item" data-subview="counting-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="counting-settings"><span class="icon">⚙️</span><span class="label">Paramètres</span></button>
       </div>
-      <button class="nav-item" data-view="disboard">Disboard</button>
+      <button class="nav-item" data-view="disboard"><span class="icon">📣</span><span class="label">Disboard</span></button>
       <div class="submenu" data-for="disboard">
-        <button class="sub-item" data-subview="disboard-overview">Aperçu</button>
-        <button class="sub-item" data-subview="disboard-settings">Paramètres</button>
+        <button class="sub-item" data-subview="disboard-overview"><span class="icon">📊</span><span class="label">Aperçu</span></button>
+        <button class="sub-item" data-subview="disboard-settings"><span class="icon">⚙️</span><span class="label">Paramètres</span></button>
       </div>
     </nav>
   </aside>
@@ -73,6 +73,7 @@
         </div>
       </div>
       <div class="auth">
+        <button id="toggleSidebar" title="Réduire le menu">☰</button>
         <input id="dashKey" type="password" placeholder="Clé Dashboard (optionnel)" />
         <button id="applyKey">Appliquer</button>
       </div>
