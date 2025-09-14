@@ -376,6 +376,7 @@ let commands = [
   new SlashCommandBuilder().setName('masskick').setDescription('Kick en masse par rôle').setDefaultMemberPermissions(PermissionFlagsBits.KickMembers).addStringOption(o=>o.setName('mode').setDescription('Avec ou sans le rôle').setRequired(true).addChoices({name:'sans_role', value:'without'},{name:'avec_role', value:'with'})).addRoleOption(o=>o.setName('role').setDescription('Rôle cible')).addStringOption(o=>o.setName('raison').setDescription('Raison')).toJSON(),
   new SlashCommandBuilder().setName('massban').setDescription('Ban en masse par rôle').setDefaultMemberPermissions(PermissionFlagsBits.BanMembers).addStringOption(o=>o.setName('mode').setDescription('Avec ou sans le rôle').setRequired(true).addChoices({name:'sans_role', value:'without'},{name:'avec_role', value:'with'})).addRoleOption(o=>o.setName('role').setDescription('Rôle cible')).addStringOption(o=>o.setName('raison').setDescription('Raison')).toJSON(),
   new SlashCommandBuilder().setName('purge').setDescription('Vider le salon courant (X messages) et réinitialiser les systèmes').setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).addIntegerOption(o=>o.setName('nombre').setDescription('Nombre de messages à supprimer (1-100)').setRequired(true).setMinValue(1).setMaxValue(100)).toJSON(),
+  new SlashCommandBuilder().setName('dashboard').setDescription('Afficher le lien du dashboard BAG').toJSON(),
 ];
 
 // Déduplication par nom (éviter APPLICATION_COMMANDS_DUPLICATE_NAME)
