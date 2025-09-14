@@ -594,32 +594,14 @@ export default function CategoryPage() {
                 if (bgPrestigeRose) cards.backgrounds.prestigeRose = bgPrestigeRose;
                 await saveLevelsExtra({ cards, announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } } });
               }}>Confirmer et sauvegarder</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>{
-                // Reset preview fields to saved values from configs
-                const bgs = (configs?.levels?.cards?.backgrounds)||{};
-                setTplTitle('');
-                setTplBaseline('');
-                setTplLevelUp(String(configs?.levels?.announce?.levelUp?.template||''));
-                setTplRole(String(configs?.levels?.announce?.roleAward?.template||''));
-                setBgDefault(String(bgs.default||''));
-                setBgFemale(String(bgs.female||''));
-                setBgCertified(String(bgs.certified||''));
-                setBgPrestigeBlue(String(bgs.prestigeBlue||''));
-                setBgPrestigeRose(String(bgs.prestigeRose||''));
-              }}>Réinitialiser</button>
-              <button className="bg-red-500/20 border border-red-500/40 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
-                const ok = confirm('Réinitialiser la configuration Levels (fonds et templates) sur le bot ?');
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const ok = confirm('Réinitialiser les cartes (fonds et templates) sur le bot ?');
                 if (!ok) return;
                 const done = await resetLevels();
                 if (done) {
                   await fetchAll();
-                  const bgs = (configs?.levels?.cards?.backgrounds)||{};
-                  setTplTitle(''); setTplBaseline('');
-                  setTplLevelUp(String(configs?.levels?.announce?.levelUp?.template||''));
-                  setTplRole(String(configs?.levels?.announce?.roleAward?.template||''));
-                  setBgDefault(String(bgs.default||'')); setBgFemale(String(bgs.female||'')); setBgCertified(String(bgs.certified||'')); setBgPrestigeBlue(String(bgs.prestigeBlue||'')); setBgPrestigeRose(String(bgs.prestigeRose||''));
                 }
-              }}>Réinitialiser la configuration</button>
+              }}>Réinitialiser</button>
             </div>
             </>
             )}
