@@ -196,7 +196,7 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
-        {cat==='economie' && (
+        {cat==='economie' && (!view || view==='overview') && (
           <div className="space-y-3">
             <div className="text-white/70">Nom de la monnaie</div>
             <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={currencyName} onChange={e=>setCurrencyName(e.target.value)} />
@@ -206,6 +206,11 @@ export default function CategoryPage() {
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrency(currencyName); }}>Enregistrer nom</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrencySymbol(currencySymbol); }}>Enregistrer symbole</button>
             </div>
+          </div>
+        )}
+        {cat==='economie' && view==='actions' && (
+          <div className="space-y-3 text-white/80">
+            <div>Pour l’édition détaillée des actions, ouvrez la page Réglages (section Économie • Actions). Cette entrée redirige simplement vers l’UI existante.</div>
           </div>
         )}
         {cat==='confessions' && (
