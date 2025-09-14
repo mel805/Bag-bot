@@ -181,16 +181,34 @@ async function renderPrestigeCardBlueLandscape({
   xpSinceLevel = 0,
   xpRequiredForNext = 100,
   texts = {},
+  backgroundUrl,
 }) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Background
-  const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, '#0b0f14');
-  bg.addColorStop(1, '#070a0f');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
+  // Background image (optional) or blue gradient
+  let drewBg = false;
+  if (backgroundUrl) {
+    try {
+      const img = await loadImage(backgroundUrl);
+      const ir = img.width / (img.height || 1);
+      const cr = width / height;
+      let dw, dh, dx, dy;
+      if (ir > cr) { dh = height; dw = Math.ceil(dh * ir); dx = Math.floor((width - dw) / 2); dy = 0; }
+      else { dw = width; dh = Math.ceil(dw / ir); dx = 0; dy = Math.floor((height - dh) / 2); }
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.fillStyle = 'rgba(0,0,0,0.58)';
+      ctx.fillRect(0, 0, width, height);
+      drewBg = true;
+    } catch (_) {}
+  }
+  if (!drewBg) {
+    const bg = ctx.createLinearGradient(0, 0, 0, height);
+    bg.addColorStop(0, '#0b0f14');
+    bg.addColorStop(1, '#070a0f');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const vign = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/2.2, width/2, height/2, Math.max(width,height));
   vign.addColorStop(0, 'rgba(0,0,0,0)');

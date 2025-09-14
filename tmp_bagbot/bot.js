@@ -1029,6 +1029,7 @@ function startKeepAliveServer() {
             if (typeof parsed.query?.subtitle === 'string') texts.subtitle = String(parsed.query.subtitle);
             if (typeof parsed.query?.roleLine === 'string') texts.roleLine = String(parsed.query.roleLine).replace('{role}', roleName);
             if (typeof parsed.query?.baseline === 'string') texts.baseline = String(parsed.query.baseline);
+            const backgroundUrl = (typeof parsed.query?.bg === 'string') ? String(parsed.query.bg) : undefined;
 
             // Variant mapping
             const isCertified = variantRaw.includes('cert');
@@ -1037,14 +1038,13 @@ function startKeepAliveServer() {
             let png;
             if (isCertified) {
               const { renderLevelCardLandscape } = require('../src/level-landscape');
-              const backgroundUrl = (typeof parsed.query?.bg === 'string') ? String(parsed.query.bg) : undefined;
               png = await renderLevelCardLandscape({ memberName, level, roleName, isCertified: true, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
             } else if (isRose) {
               const { renderPrestigeCardRoseGoldLandscape } = require('../src/prestige-rose-gold-landscape');
-              png = await renderPrestigeCardRoseGoldLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts });
+              png = await renderPrestigeCardRoseGoldLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
             } else {
               const { renderPrestigeCardBlueLandscape } = require('../src/prestige-blue-landscape');
-              png = await renderPrestigeCardBlueLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts });
+              png = await renderPrestigeCardBlueLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
             }
             res.statusCode = 200;
             res.setHeader('Content-Type', 'image/png');
