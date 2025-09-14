@@ -16,16 +16,48 @@ const TITLES: Record<string, string> = {
 
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
-  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole } = useApi();
+  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard } = useApi();
   useEffect(() => { fetchAll(); fetchMeta(); }, []);
 
   const title = TITLES[cat] || cat;
   const [logChannelMsgs, setLogChannelMsgs] = useState('');
   const [autoKickRole, setAutoKickRole] = useState('');
+  const [currencyName, setCurrencyName] = useState('');
+  const [confessAllowReplies, setConfessAllowReplies] = useState(false);
+  const [confessSfw, setConfessSfw] = useState<string[]>([]);
+  const [confessNsfw, setConfessNsfw] = useState<string[]>([]);
+  const [tdSfw, setTdSfw] = useState<string[]>([]);
+  const [tdNsfw, setTdNsfw] = useState<string[]>([]);
+  const [xpMsg, setXpMsg] = useState(15);
+  const [xpVoice, setXpVoice] = useState(2);
+  const [levelBase, setLevelBase] = useState(100);
+  const [levelFactor, setLevelFactor] = useState(1.25);
+  const [autoThreadChannels, setAutoThreadChannels] = useState<string[]>([]);
+  const [autoThreadPolicy, setAutoThreadPolicy] = useState('new_messages');
+  const [autoThreadArchive, setAutoThreadArchive] = useState('1d');
+  const [countingChannels, setCountingChannels] = useState<string[]>([]);
+  const [disboardReminders, setDisboardReminders] = useState(false);
+  const [disboardChannel, setDisboardChannel] = useState('');
   useEffect(()=>{
     if (!configs) return;
     setLogChannelMsgs(String(configs.logs?.channels?.messages || ''));
     setAutoKickRole(String(configs.autokick?.roleId || ''));
+    setCurrencyName(String(configs.economy?.currency?.name || ''));
+    setConfessAllowReplies(Boolean(configs.confess?.allowReplies));
+    setConfessSfw(Array.isArray(configs.confess?.sfw?.channels) ? configs.confess.sfw.channels : []);
+    setConfessNsfw(Array.isArray(configs.confess?.nsfw?.channels) ? configs.confess.nsfw.channels : []);
+    setTdSfw(Array.isArray(configs.truthdare?.sfw?.channels) ? configs.truthdare.sfw.channels : []);
+    setTdNsfw(Array.isArray(configs.truthdare?.nsfw?.channels) ? configs.truthdare.nsfw.channels : []);
+    setXpMsg(Number(configs.levels?.xpPerMessage ?? 15));
+    setXpVoice(Number(configs.levels?.xpPerVoiceMinute ?? 2));
+    setLevelBase(Number(configs.levels?.levelCurve?.base ?? 100));
+    setLevelFactor(Number(configs.levels?.levelCurve?.factor ?? 1.25));
+    setAutoThreadChannels(Array.isArray(configs.autothread?.channels) ? configs.autothread.channels : []);
+    setAutoThreadPolicy(String(configs.autothread?.policy || 'new_messages'));
+    setAutoThreadArchive(String(configs.autothread?.archivePolicy || '1d'));
+    setCountingChannels(Array.isArray(configs.counting?.channels) ? configs.counting.channels : []);
+    setDisboardReminders(Boolean(configs.disboard?.remindersEnabled));
+    setDisboardChannel(String(configs.disboard?.remindChannelId || ''));
   }, [configs]);
 
   const channels = useMemo(()=> meta?.channels || [], [meta]);
@@ -55,6 +87,101 @@ export default function CategoryPage() {
               {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
             </select>
             <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoKickRole(autoKickRole); }}>Enregistrer</button>
+          </div>
+        )}
+        {cat==='economie' && (
+          <div className="space-y-3">
+            <div className="text-white/70">Nom de la monnaie</div>
+            <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={currencyName} onChange={e=>setCurrencyName(e.target.value)} />
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrency(currencyName); }}>Enregistrer</button>
+          </div>
+        )}
+        {cat==='confessions' && (
+          <div className="space-y-3">
+            <div className="text-white/70">Autoriser les réponses</div>
+            <label className="flex items-center gap-2 text-white/70">
+              <input type="checkbox" checked={confessAllowReplies} onChange={e=>setConfessAllowReplies(e.target.checked)} /> Autoriser
+            </label>
+            <div className="text-white/70">SFW: Salons</div>
+            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={confessSfw} onChange={e=>setConfessSfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+            </select>
+            <div className="text-white/70">NSFW: Salons</div>
+            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={confessNsfw} onChange={e=>setConfessNsfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+            </select>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfess(confessAllowReplies); }}>Enregistrer Réponses</button>
+          </div>
+        )}
+        {cat==='action-verite' && (
+          <div className="space-y-3">
+            <div className="text-white/70">SFW: Salons autorisés</div>
+            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdSfw} onChange={e=>setTdSfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+            </select>
+            <div className="text-white/70">NSFW: Salons autorisés</div>
+            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdNsfw} onChange={e=>setTdNsfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+            </select>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveTd(tdSfw, tdNsfw); }}>Enregistrer</button>
+          </div>
+        )}
+        {cat==='levels' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-white/70">XP par message<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpMsg} onChange={e=>setXpMsg(Number(e.target.value))} /></label>
+              <label className="text-white/70">XP par min vocal<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpVoice} onChange={e=>setXpVoice(Number(e.target.value))} /></label>
+              <label className="text-white/70">Courbe base<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelBase} onChange={e=>setLevelBase(Number(e.target.value))} /></label>
+              <label className="text-white/70">Courbe facteur<input type="number" step="0.01" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelFactor} onChange={e=>setLevelFactor(Number(e.target.value))} /></label>
+            </div>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
+          </div>
+        )}
+        {cat==='autothread' && (
+          <div className="space-y-3">
+            <div className="text-white/70">Salons</div>
+            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={autoThreadChannels} onChange={e=>setAutoThreadChannels(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+            </select>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-white/70">Politique
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={autoThreadPolicy} onChange={e=>setAutoThreadPolicy(e.target.value)}>
+                  <option value="new_messages">Nouveaux messages</option>
+                  <option value="manual">Manuel</option>
+                </select>
+              </label>
+              <label className="text-white/70">Archivage
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={autoThreadArchive} onChange={e=>setAutoThreadArchive(e.target.value)}>
+                  <option value="1h">1 heure</option>
+                  <option value="1d">1 jour</option>
+                  <option value="3d">3 jours</option>
+                  <option value="1w">1 semaine</option>
+                </select>
+              </label>
+            </div>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoThread(autoThreadChannels, autoThreadPolicy, autoThreadArchive); }}>Enregistrer</button>
+          </div>
+        )}
+        {cat==='counting' && (
+          <div className="space-y-3">
+            <div className="text-white/70">Salons activés</div>
+            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={countingChannels} onChange={e=>setCountingChannels(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+            </select>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCounting(countingChannels); }}>Enregistrer</button>
+          </div>
+        )}
+        {cat==='disboard' && (
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-white/70">
+              <input type="checkbox" checked={disboardReminders} onChange={e=>setDisboardReminders(e.target.checked)} /> Rappels activés
+            </label>
+            <div className="text-white/70">Salon de rappel</div>
+            <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={disboardChannel} onChange={e=>setDisboardChannel(e.target.value)}>
+              <option value="">—</option>
+              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+            </select>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
           </div>
         )}
       </div>

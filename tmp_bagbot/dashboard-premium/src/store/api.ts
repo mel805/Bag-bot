@@ -6,6 +6,9 @@ type Stats = {
   guildIconUrl?: string | null;
   memberCount: number;
   channels: number;
+  textChannelsCount?: number;
+  voiceChannelsCount?: number;
+  categoryCount?: number;
 };
 
 type Configs = any;

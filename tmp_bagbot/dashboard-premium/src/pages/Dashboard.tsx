@@ -12,7 +12,12 @@ export default function Dashboard() {
       <div className="bg-card/80 rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Temps réel</h3>
         <div className="text-white/80">Serveur: {stats?.guildName || '—'}</div>
-        <div className="text-white/60 text-sm">Membres: {stats?.memberCount ?? '—'} • Salons: {stats?.channels ?? '—'}</div>
+        <div className="text-white/60 text-sm">
+          Membres: {stats?.memberCount ?? '—'} • Salons: {stats?.channels ?? '—'}
+          {stats?.textChannelsCount !== undefined && (
+            <> — Texte: {stats.textChannelsCount} • Vocaux: {stats?.voiceChannelsCount ?? 0} • Catégories: {stats?.categoryCount ?? 0}</>
+          )}
+        </div>
       </div>
     </div>
   );
