@@ -16,7 +16,7 @@ const TITLES: Record<string, string> = {
 
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
-  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol } = useApi();
+  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64 } = useApi();
   useEffect(() => { fetchAll(); fetchMeta(); }, []);
 
   const title = TITLES[cat] || cat;
@@ -44,6 +44,20 @@ export default function CategoryPage() {
   const [xpVoice, setXpVoice] = useState(2);
   const [levelBase, setLevelBase] = useState(100);
   const [levelFactor, setLevelFactor] = useState(1.25);
+  // Added advanced levels state
+  const [xpMsgMin, setXpMsgMin] = useState<number|''>('');
+  const [xpMsgMax, setXpMsgMax] = useState<number|''>('');
+  const [xpVocMin, setXpVocMin] = useState<number|''>('');
+  const [xpVocMax, setXpVocMax] = useState<number|''>('');
+  const [msgCd, setMsgCd] = useState<number|''>('');
+  const [vocCd, setVocCd] = useState<number|''>('');
+  const [tplLevelUp, setTplLevelUp] = useState('');
+  const [tplRole, setTplRole] = useState('');
+  const [bgDefault, setBgDefault] = useState('');
+  const [bgFemale, setBgFemale] = useState('');
+  const [bgCertified, setBgCertified] = useState('');
+  const [bgPrestigeBlue, setBgPrestigeBlue] = useState('');
+  const [bgPrestigeRose, setBgPrestigeRose] = useState('');
   const [autoThreadChannels, setAutoThreadChannels] = useState<string[]>([]);
   const [autoThreadPolicy, setAutoThreadPolicy] = useState('new_messages');
   const [autoThreadArchive, setAutoThreadArchive] = useState('1d');
@@ -74,6 +88,20 @@ export default function CategoryPage() {
     setXpVoice(Number(configs.levels?.xpPerVoiceMinute ?? 2));
     setLevelBase(Number(configs.levels?.levelCurve?.base ?? 100));
     setLevelFactor(Number(configs.levels?.levelCurve?.factor ?? 1.25));
+    // populate advanced levels
+    setXpMsgMin(Number(configs.levels?.xpMessageMin ?? '') as any);
+    setXpMsgMax(Number(configs.levels?.xpMessageMax ?? '') as any);
+    setXpVocMin(Number(configs.levels?.xpVoiceMin ?? '') as any);
+    setXpVocMax(Number(configs.levels?.xpVoiceMax ?? '') as any);
+    setMsgCd(Number(configs.levels?.messageCooldownSec ?? '') as any);
+    setVocCd(Number(configs.levels?.voiceCooldownSec ?? '') as any);
+    setTplLevelUp(String(configs.levels?.announce?.levelUp?.template || ''));
+    setTplRole(String(configs.levels?.announce?.roleAward?.template || ''));
+    setBgDefault(String(configs.levels?.cards?.backgrounds?.default || ''));
+    setBgFemale(String(configs.levels?.cards?.backgrounds?.female || ''));
+    setBgCertified(String(configs.levels?.cards?.backgrounds?.certified || ''));
+    setBgPrestigeBlue(String(configs.levels?.cards?.backgrounds?.prestigeBlue || ''));
+    setBgPrestigeRose(String(configs.levels?.cards?.backgrounds?.prestigeRose || ''));
     setAutoThreadChannels(Array.isArray(configs.autothread?.channels) ? configs.autothread.channels : []);
     setAutoThreadPolicy(String(configs.autothread?.policy || 'new_messages'));
     setAutoThreadArchive(String(configs.autothread?.archivePolicy || '1d'));
@@ -204,24 +232,72 @@ export default function CategoryPage() {
               <label className="text-white/70">Courbe base<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelBase} onChange={e=>setLevelBase(Number(e.target.value))} /></label>
               <label className="text-white/70">Courbe facteur<input type="number" step="0.01" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelFactor} onChange={e=>setLevelFactor(Number(e.target.value))} /></label>
             </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <label className="text-white/70">Min/message<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpMsgMin as any} onChange={e=>setXpMsgMin(e.target.value===''?'':Number(e.target.value))} /></label>
+              <label className="text-white/70">Max/message<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpMsgMax as any} onChange={e=>setXpMsgMax(e.target.value===''?'':Number(e.target.value))} /></label>
+              <label className="text-white/70">Cooldown msg (s)<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={msgCd as any} onChange={e=>setMsgCd(e.target.value===''?'':Number(e.target.value))} /></label>
+              <label className="text-white/70">Min/vocal<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpVocMin as any} onChange={e=>setXpVocMin(e.target.value===''?'':Number(e.target.value))} /></label>
+              <label className="text-white/70">Max/vocal<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpVocMax as any} onChange={e=>setXpVocMax(e.target.value===''?'':Number(e.target.value))} /></label>
+              <label className="text-white/70">Cooldown vocal (s)<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={vocCd as any} onChange={e=>setVocCd(e.target.value===''?'':Number(e.target.value))} /></label>
+            </div>
             <div className="flex gap-2">
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(true, {}); }}>Activer</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(false, {}); }}>Désactiver</button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-white/70">Salon annonces niveau
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" onChange={async e=>{ await saveLevelsAdvanced(true, { levelUp: { channelId: e.target.value } }); }}>
-                  <option value="">—</option>
-                  {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
-                </select>
-              </label>
-              <label className="text-white/70">Salon annonces rôle
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" onChange={async e=>{ await saveLevelsAdvanced(true, { roleAward: { channelId: e.target.value } }); }}>
-                  <option value="">—</option>
-                  {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
-                </select>
-              </label>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
+              <div className="text-white/70 font-medium">Templates d'annonces</div>
+              <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2" rows={2} placeholder="Template level up" value={tplLevelUp} onChange={e=>setTplLevelUp(e.target.value)} />
+              <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2" rows={2} placeholder="Template récompense" value={tplRole} onChange={e=>setTplRole(e.target.value)} />
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
+              <div className="text-white/70 font-medium">Cartes (URL ou upload)</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="text-white/70">Fond par défaut
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgDefault} onChange={e=>setBgDefault(e.target.value)} />
+                  {bgDefault && (<img src={bgDefault} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgDefault(url); }; fr.readAsDataURL(f); }} />
+                </label>
+                <label className="text-white/70">Fond féminin
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgFemale} onChange={e=>setBgFemale(e.target.value)} />
+                  {bgFemale && (<img src={bgFemale} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgFemale(url); }; fr.readAsDataURL(f); }} />
+                </label>
+                <label className="text-white/70">Fond certifié
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgCertified} onChange={e=>setBgCertified(e.target.value)} />
+                  {bgCertified && (<img src={bgCertified} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgCertified(url); }; fr.readAsDataURL(f); }} />
+                </label>
+                <label className="text-white/70">Prestige bleu
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgPrestigeBlue} onChange={e=>setBgPrestigeBlue(e.target.value)} />
+                  {bgPrestigeBlue && (<img src={bgPrestigeBlue} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgPrestigeBlue(url); }; fr.readAsDataURL(f); }} />
+                </label>
+                <label className="text-white/70">Prestige rose
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgPrestigeRose} onChange={e=>setBgPrestigeRose(e.target.value)} />
+                  {bgPrestigeRose && (<img src={bgPrestigeRose} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgPrestigeRose(url); }; fr.readAsDataURL(f); }} />
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button className="bg-brand-cyan/20 border border-brand-cyan/40 rounded-xl px-3 py-2" onClick={async()=>{
+                const ok = confirm('Confirmer la sauvegarde des paramètres niveaux ?');
+                if (!ok) return;
+                const cards:any = { backgrounds: {} };
+                if (bgDefault) cards.backgrounds.default = bgDefault;
+                if (bgFemale) cards.backgrounds.female = bgFemale;
+                if (bgCertified) cards.backgrounds.certified = bgCertified;
+                if (bgPrestigeBlue) cards.backgrounds.prestigeBlue = bgPrestigeBlue;
+                if (bgPrestigeRose) cards.backgrounds.prestigeRose = bgPrestigeRose;
+                await saveLevelsExtra({
+                  xpMessageMin: xpMsgMin as any, xpMessageMax: xpMsgMax as any,
+                  xpVoiceMin: xpVocMin as any, xpVoiceMax: xpVocMax as any,
+                  messageCooldownSec: msgCd as any, voiceCooldownSec: vocCd as any,
+                  announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } },
+                  cards
+                });
+              }}>Confirmer et sauvegarder</button>
             </div>
           </div>
         )}

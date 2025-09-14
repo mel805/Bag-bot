@@ -601,6 +601,27 @@ function startKeepAliveServer() {
       } catch (_) { return false; }
     };
 
+    const dailyMessagesMap = new Map();
+    const todayKey = () => new Date().toISOString().slice(0,10);
+    function incrementDailyMessageLocal(gid) {
+      try {
+        const key = String(gid) + ':' + todayKey();
+        dailyMessagesMap.set(key, (dailyMessagesMap.get(key) || 0) + 1);
+      } catch (_) {}
+    }
+    async function getDailyMessagesLocal(gid) {
+      try {
+        const out = [];
+        const now = new Date();
+        for (let i=29; i>=0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()-i);
+          const k = String(gid) + ':' + d.toISOString().slice(0,10);
+          out.push({ date: d.toISOString().slice(0,10), count: dailyMessagesMap.get(k) || 0 });
+        }
+        return out;
+      } catch (_) { return []; }
+    }
+
     const server = http.createServer(async (req, res) => {
       try {
         const parsed = url.parse(req.url || '/', true);
@@ -668,7 +689,7 @@ function startKeepAliveServer() {
               uptimeSec: Math.floor(process.uptime()),
               memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
               timestamp: now,
-              dailyMessages: await (async () => { try { const { getDailyMessages } = require('./storage/jsonStore'); return await getDailyMessages(guildId); } catch (_) { return []; } })()
+              dailyMessages: await (async () => { try { const { getDailyMessages } = require('./storage/jsonStore'); return await getDailyMessages(guildId); } catch (_) { return await getDailyMessagesLocal(guildId); } })()
             };
             return sendJson(res, 200, stats);
           } catch (e) {
@@ -9651,7 +9672,7 @@ const ACTION_GIFS = {
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild) return;
-    try { const { incrementDailyMessage } = require('./storage/jsonStore'); incrementDailyMessage(message.guild.id); } catch (_) {}
+    try { const { incrementDailyMessage } = require('./storage/jsonStore'); incrementDailyMessage(message.guild.id); } catch (_) { try { incrementDailyMessageLocal(message.guild.id); } catch (_) {} }
     // Disboard bump detection
     try {
       const DISBOARD_ID = '302050872383242240';
