@@ -994,6 +994,28 @@ function startKeepAliveServer() {
                   const sym = String(data.currency.symbol).slice(0, 4);
                   next.currency = { ...(next.currency||{}), symbol: sym };
                 }
+                // Actions config/messages/gifs update
+                if (data && data.action && typeof data.action === 'string') {
+                  const key = String(data.action);
+                  next.actions = next.actions || { enabled: [], config: {}, messages: {}, gifs: {} };
+                  if (data.config && typeof data.config === 'object') {
+                    next.actions.config[key] = { ...(next.actions.config[key]||{}), ...data.config };
+                  }
+                  if (data.messages && typeof data.messages === 'object') {
+                    const m = next.actions.messages[key] || { success: [], fail: [] };
+                    if (Array.isArray(data.messages.success)) m.success = data.messages.success.map(String);
+                    if (Array.isArray(data.messages.fail)) m.fail = data.messages.fail.map(String);
+                    next.actions.messages[key] = m;
+                  }
+                  if (data.gifs && typeof data.gifs === 'object') {
+                    const g = next.actions.gifs || {};
+                    const cur = g[key] || { success: [], fail: [] };
+                    if (Array.isArray(data.gifs.success)) cur.success = data.gifs.success.map(String);
+                    if (Array.isArray(data.gifs.fail)) cur.fail = data.gifs.fail.map(String);
+                    g[key] = cur;
+                    next.actions.gifs = g;
+                  }
+                }
                 await updateEconomyConfig(guildId, next);
                 return sendJson(res, 200, { ok: true });
               } catch (e) {

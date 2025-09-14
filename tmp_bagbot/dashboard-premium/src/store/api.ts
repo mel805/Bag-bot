@@ -52,6 +52,7 @@ type ApiState = {
   saveConfessAdvanced: (logChannelId: string, threadNaming: 'normal'|'nsfw') => Promise<boolean>;
   saveLevelsAdvanced: (enabled: boolean, announce: { levelUp?: { enabled?: boolean; channelId?: string }; roleAward?: { enabled?: boolean; channelId?: string } }) => Promise<boolean>;
   saveCurrencySymbol: (symbol: string) => Promise<boolean>;
+  saveEconomyAction: (action: string, payload: Partial<{ config: any; messages: { success?: string[]; fail?: string[] }; gifs: { success?: string[]; fail?: string[] } }>) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -182,6 +183,12 @@ export const useApi = create<ApiState>((set, get) => ({
   , saveCurrencySymbol: async (symbol) => {
     try {
       const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ currency: { symbol } }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveEconomyAction: async (action, payload) => {
+    try {
+      const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, ...payload }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }

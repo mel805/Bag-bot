@@ -417,6 +417,19 @@ export default function CategoryPage() {
                 if (bgPrestigeRose) cards.backgrounds.prestigeRose = bgPrestigeRose;
                 await saveLevelsExtra({ cards, announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } } });
               }}>Confirmer et sauvegarder</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>{
+                // Reset preview fields to saved values from configs
+                const bgs = (configs?.levels?.cards?.backgrounds)||{};
+                setTplTitle('');
+                setTplBaseline('');
+                setTplLevelUp(String(configs?.levels?.announce?.levelUp?.template||''));
+                setTplRole(String(configs?.levels?.announce?.roleAward?.template||''));
+                setBgDefault(String(bgs.default||''));
+                setBgFemale(String(bgs.female||''));
+                setBgCertified(String(bgs.certified||''));
+                setBgPrestigeBlue(String(bgs.prestigeBlue||''));
+                setBgPrestigeRose(String(bgs.prestigeRose||''));
+              }}>Réinitialiser</button>
             </div>
             </>
             )}

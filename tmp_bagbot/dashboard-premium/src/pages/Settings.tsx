@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useApi } from '../store/api';
 
 export default function Settings() {
-  const { configs, fetchAll, saveCurrency, saveLogs, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard } = useApi();
+  const { configs, fetchAll, saveCurrency, saveLogs, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveEconomyAction } = useApi();
   const [currency, setCurrency] = useState('');
   const [logJoin, setLogJoin] = useState(false);
   const [logMsg, setLogMsg] = useState(false);
@@ -21,6 +21,17 @@ export default function Settings() {
   const [countingChannels, setCountingChannels] = useState('');
   const [disRem, setDisRem] = useState(false);
   const [disCh, setDisCh] = useState('');
+  // Economy Actions state
+  const [actKey, setActKey] = useState('work');
+  const [actMoneyMin, setActMoneyMin] = useState<number|''>('');
+  const [actMoneyMax, setActMoneyMax] = useState<number|''>('');
+  const [actKarma, setActKarma] = useState<'none'|'charm'|'perversion'>('none');
+  const [actKarmaDelta, setActKarmaDelta] = useState<number|''>('');
+  const [actCooldown, setActCooldown] = useState<number|''>('');
+  const [msgSuccess, setMsgSuccess] = useState('');
+  const [msgFail, setMsgFail] = useState('');
+  const [gifSuccess, setGifSuccess] = useState('');
+  const [gifFail, setGifFail] = useState('');
   useEffect(() => { fetchAll(); }, []);
   useEffect(() => {
     if (!configs) return;
@@ -42,6 +53,21 @@ export default function Settings() {
     setCountingChannels((configs.counting?.channels || []).join(','));
     setDisRem(!!configs.disboard?.remindersEnabled);
     setDisCh(String(configs.disboard?.remindChannelId || ''));
+    // prime defaults for selected action
+    try {
+      const c = configs.economy?.actions?.config?.[actKey] || {};
+      setActMoneyMin(Number.isFinite(c.moneyMin)?c.moneyMin:'');
+      setActMoneyMax(Number.isFinite(c.moneyMax)?c.moneyMax:'');
+      setActKarma(['none','charm','perversion'].includes(c.karma)?c.karma:'none');
+      setActKarmaDelta(Number.isFinite(c.karmaDelta)?c.karmaDelta:'');
+      setActCooldown(Number.isFinite(c.cooldown)?c.cooldown:'');
+      const m = configs.economy?.actions?.messages?.[actKey] || { success: [], fail: [] };
+      setMsgSuccess((m.success||[]).join('\n'));
+      setMsgFail((m.fail||[]).join('\n'));
+      const g = configs.economy?.actions?.gifs?.[actKey] || { success: [], fail: [] };
+      setGifSuccess((g.success||[]).join('\n'));
+      setGifFail((g.fail||[]).join('\n'));
+    } catch {}
   }, [configs]);
   return (
     <div className="space-y-6">
@@ -50,6 +76,65 @@ export default function Settings() {
         <div className="flex gap-2">
           <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={currency} onChange={e=>setCurrency(e.target.value)} />
           <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrency(currency); }}>Enregistrer</button>
+        </div>
+      </div>
+
+      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+        <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Économie • Actions</h3>
+        <div className="grid md:grid-cols-3 gap-3">
+          <label className="text-white/70">Action
+            <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>{ setActKey(e.target.value); if (configs) { try { const c=configs.economy?.actions?.config?.[e.target.value]||{}; setActMoneyMin(Number.isFinite(c.moneyMin)?c.moneyMin:''); setActMoneyMax(Number.isFinite(c.moneyMax)?c.moneyMax:''); setActKarma(['none','charm','perversion'].includes(c.karma)?c.karma:'none'); setActKarmaDelta(Number.isFinite(c.karmaDelta)?c.karmaDelta:''); setActCooldown(Number.isFinite(c.cooldown)?c.cooldown:''); const m=configs.economy?.actions?.messages?.[e.target.value]||{success:[],fail:[]}; setMsgSuccess((m.success||[]).join('\n')); setMsgFail((m.fail||[]).join('\n')); const g=configs.economy?.actions?.gifs?.[e.target.value]||{success:[],fail:[]}; setGifSuccess((g.success||[]).join('\n')); setGifFail((g.fail||[]).join('\n')); } catch {} } }}>
+              {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
+            </select>
+          </label>
+          <label className="text-white/70">Argent min
+            <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMin as any} onChange={e=>setActMoneyMin(e.target.value===''?'':Number(e.target.value))} />
+          </label>
+          <label className="text-white/70">Argent max
+            <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMax as any} onChange={e=>setActMoneyMax(e.target.value===''?'':Number(e.target.value))} />
+          </label>
+          <label className="text-white/70">Karma
+            <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarma} onChange={e=>setActKarma(e.target.value as any)}>
+              <option value="none">none</option>
+              <option value="charm">charm</option>
+              <option value="perversion">perversion</option>
+            </select>
+          </label>
+          <label className="text-white/70">Δ Karma
+            <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarmaDelta as any} onChange={e=>setActKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
+          </label>
+          <label className="text-white/70">Cooldown (s)
+            <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
+          </label>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3 mt-3">
+          <label className="text-white/70">Messages succès (1 par ligne)
+            <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={msgSuccess} onChange={e=>setMsgSuccess(e.target.value)} />
+          </label>
+          <label className="text-white/70">Messages échec (1 par ligne)
+            <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={msgFail} onChange={e=>setMsgFail(e.target.value)} />
+          </label>
+          <label className="text-white/70">GIF succès (1 URL par ligne)
+            <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifSuccess} onChange={e=>setGifSuccess(e.target.value)} />
+          </label>
+          <label className="text-white/70">GIF échec (1 URL par ligne)
+            <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
+          </label>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+            const payload:any = { action: actKey, config: {}, messages: {}, gifs: {} };
+            if (actMoneyMin !== '') payload.config.moneyMin = Number(actMoneyMin);
+            if (actMoneyMax !== '') payload.config.moneyMax = Number(actMoneyMax);
+            payload.config.karma = actKarma;
+            if (actKarmaDelta !== '') payload.config.karmaDelta = Number(actKarmaDelta);
+            if (actCooldown !== '') payload.config.cooldown = Number(actCooldown);
+            payload.messages.success = msgSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
+            payload.messages.fail = msgFail.split('\n').map(s=>s.trim()).filter(Boolean);
+            payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
+            payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
+            await saveEconomyAction(actKey, payload);
+          }}>Enregistrer l'action</button>
         </div>
       </div>
 
