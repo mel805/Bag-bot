@@ -3233,20 +3233,21 @@ function chooseCardBackgroundForMember(memberOrMention, levels) {
   const perMap = levels.cards?.perRoleBackgrounds || {};
   // If we have a member with roles, try per-role mapping first
   if (memberOrMention && memberOrMention.roles) {
-    for (const [rid, url] of Object.entries(perMap)) {
-      if (memberOrMention.roles.cache?.has(rid) && url) return url;
-    }
+    try {
+      for (const [rid, url] of Object.entries(perMap)) {
+        if (memberOrMention.roles.cache?.has(rid) && url) return url;
+      }
+    } catch (_) {}
   }
   // If no image configured, return null to trigger prestige default rendering
-  if (!memberOrMention || !memberOrMention.roles) return bgs.default || null;
+  if (!memberOrMention || !memberOrMention.roles) return bgs.default || '';
   const femaleIds = new Set(levels.cards?.femaleRoleIds || []);
   const certIds = new Set(levels.cards?.certifiedRoleIds || []);
   const hasFemale = memberOrMention.roles.cache?.some(r => femaleIds.has(r.id));
   const hasCert = memberOrMention.roles.cache?.some(r => certIds.has(r.id));
-  if (hasFemale && hasCert) return bgs.certified || bgs.female || bgs.default || null;
-  if (hasFemale) return bgs.female || bgs.default || null;
-  if (hasCert) return bgs.certified || bgs.default || null;
-  return bgs.default || null;
+  if (hasCert) return bgs.certified || bgs.prestigeBlue || bgs.default || '';
+  if (hasFemale) return bgs.female || bgs.prestigeRose || bgs.default || '';
+  return bgs.prestigeBlue || bgs.default || '';
 }
 
 function getLastRewardForLevel(levels, currentLevel) {
