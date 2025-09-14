@@ -252,8 +252,6 @@ export default function CategoryPage() {
             {(!view || view==='overview') && (
             <>
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-white/70">XP par message<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpMsg} onChange={e=>setXpMsg(Number(e.target.value))} /></label>
-              <label className="text-white/70">XP par min vocal<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpVoice} onChange={e=>setXpVoice(Number(e.target.value))} /></label>
               <label className="text-white/70">Courbe base<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelBase} onChange={e=>setLevelBase(Number(e.target.value))} /></label>
               <label className="text-white/70">Courbe facteur<input type="number" step="0.01" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelFactor} onChange={e=>setLevelFactor(Number(e.target.value))} /></label>
             </div>
@@ -280,21 +278,21 @@ export default function CategoryPage() {
                 <div>
                   <div className="text-white/60 text-sm mb-2">Actuelle</div>
                   <div className="grid grid-cols-1 gap-2">
-                    <img src={curBgDefault} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={curBgFemale} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={curBgCertified} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={curBgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={curBgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />
+                    {curBgDefault ? (<img src={curBgDefault} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgFemale ? (<img src={curBgFemale} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgCertified ? (<img src={curBgCertified} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgPrestigeBlue ? (<img src={curBgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgPrestigeRose ? (<img src={curBgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
                   </div>
                 </div>
                 <div>
                   <div className="text-white/60 text-sm mb-2">Prévisualisation</div>
                   <div className="grid grid-cols-1 gap-2">
-                    <img src={bgDefault} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={bgFemale} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={bgCertified} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={bgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />
-                    <img src={bgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />
+                    {bgDefault ? (<img src={bgDefault} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgFemale ? (<img src={bgFemale} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgCertified ? (<img src={bgCertified} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgPrestigeBlue ? (<img src={bgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgPrestigeRose ? (<img src={bgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
                   </div>
                 </div>
               </div>
