@@ -7,6 +7,7 @@ import ServerDetail from './pages/ServerDetail';
 import Reminders from './pages/Reminders';
 import Stats from './pages/Stats';
 import Settings from './pages/Settings';
+import CategoryPage from './pages/CategoryPage';
 
 export const router = createBrowserRouter([
   {
@@ -19,6 +20,8 @@ export const router = createBrowserRouter([
       { path: 'reminders', element: <Reminders /> },
       { path: 'stats', element: <Stats /> },
       { path: 'settings', element: <Settings /> }
+      ,{ path: 'config/:cat', element: <CategoryPage /> }
+      ,{ path: 'config/:cat/:view', element: <CategoryPage /> }
     ]
   }
 ]);

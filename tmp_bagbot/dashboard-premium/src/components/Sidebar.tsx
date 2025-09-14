@@ -12,6 +12,7 @@ function LinkItem({ to, children }: { to: string; children: React.ReactNode }) {
 
 export default function Sidebar() {
   const [openServers, setOpenServers] = useState(true);
+  const [openConfig, setOpenConfig] = useState(true);
   return (
     <aside className="bg-background/95 border-r border-white/10 px-4 py-4">
       <div className="flex items-center gap-3 mb-4">
@@ -45,6 +46,30 @@ export default function Sidebar() {
         <LinkItem to="/reminders">🛎️ Rappels</LinkItem>
         <LinkItem to="/stats">📈 Statistiques</LinkItem>
         <LinkItem to="/settings">⚙️ Paramètres</LinkItem>
+
+        <div className="rounded-xl border border-white/10 overflow-hidden">
+          <button className="w-full text-left px-3 py-2 hover:bg-white/5 flex items-center gap-2" onClick={()=>setOpenConfig(v=>!v)}>
+            <span className="text-white/80">🧩 Configuration</span>
+            <span className="ml-auto text-white/50">{openConfig ? '–' : '+'}</span>
+          </button>
+          <AnimatePresence initial={false}>
+            {openConfig && (
+              <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}} transition={{duration:0.2}} className="px-3 py-2">
+                <div className="space-y-1">
+                  <LinkItem to="/config/moderation/overview">🛡️ Modération</LinkItem>
+                  <LinkItem to="/config/levels/overview">🆙 Levels</LinkItem>
+                  <LinkItem to="/config/economie/overview">🪙 Économie</LinkItem>
+                  <LinkItem to="/config/action-verite/overview">🎲 Action/Vérité</LinkItem>
+                  <LinkItem to="/config/logs/overview">📜 Logs</LinkItem>
+                  <LinkItem to="/config/confessions/overview">🕊️ Confessions</LinkItem>
+                  <LinkItem to="/config/autothread/overview">🧵 AutoThread</LinkItem>
+                  <LinkItem to="/config/counting/overview">🔢 Comptage</LinkItem>
+                  <LinkItem to="/config/disboard/overview">📣 Disboard</LinkItem>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </nav>
     </aside>
   );
