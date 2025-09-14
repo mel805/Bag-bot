@@ -15,7 +15,8 @@ const COMMANDS_CACHE_FILE = path.join(__dirname, '../.commands-cache.json');
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
-const guildId = process.env.GUILD_ID;
+let guildId = process.env.GUILD_ID;
+if (process.env.FORCE_GUILD_ID) guildId = process.env.FORCE_GUILD_ID;
 
 if (!token || !clientId || !guildId) {
   console.error('Missing DISCORD_TOKEN, CLIENT_ID or GUILD_ID in environment');
