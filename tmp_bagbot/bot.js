@@ -642,6 +642,7 @@ function startKeepAliveServer() {
             const stats = {
               guildId,
               guildName: g?.name || null,
+              guildIconUrl: g?.iconURL ? g.iconURL({ size: 256 }) : null,
               memberCount: Number(g?.memberCount || 0),
               channels: Number(g?.channels?.cache?.size || 0),
               botUser: client.user ? { id: client.user.id, tag: client.user.tag } : null,

@@ -87,6 +87,7 @@
   function applyStats(d){
     if (!d) return;
     $('#guildName').textContent = d.guildName || d.guildId || '—';
+    if (d.guildIconUrl) { const img = $('#guildIcon'); if (img) img.src = d.guildIconUrl; }
     $('#memberCount').textContent = '👥 ' + (Number.isFinite(d.memberCount) ? d.memberCount : '—') + ' membres';
     $('#channelCount').textContent = '💬 ' + (Number.isFinite(d.channels) ? d.channels : '—') + ' salons';
     $('#uptime').textContent = '⏱ ' + formatUptime(d.uptimeSec || 0);
