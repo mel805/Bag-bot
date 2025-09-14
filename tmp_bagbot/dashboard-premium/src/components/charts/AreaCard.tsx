@@ -6,7 +6,7 @@ export default function AreaCard({ title, data }:{title:string; data:{x:string;y
   return (
     <div className="bg-card/80 rounded-xl border border-white/10 p-4">
       <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">{title}</h3>
-      <div className="h-48">
+      <div className="relative h-48">
         <ResponsiveContainer>
           <AreaChart data={data}>
             <defs>
