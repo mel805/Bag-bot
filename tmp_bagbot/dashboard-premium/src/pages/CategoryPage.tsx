@@ -292,7 +292,11 @@ export default function CategoryPage() {
                 </div>
                 <div>
                   <div className="text-white/60 text-sm mb-2">Prévisualisation</div>
-                  {(() => { const map:any={default:bgDefault,female:bgFemale,certified:bgCertified,prestigeBlue:bgPrestigeBlue,prestigeRose:bgPrestigeRose}; const u=String(map[cardKey]||''); return u? (<img src={u.startsWith('http')?u:(u.startsWith('/')?window.location.origin+u:u)} className="h-24 w-full object-cover rounded border border-white/10" />):(<div className="h-24 w-full rounded bg-white/5 border border-white/10" />); })()}
+                  {(() => {
+                    const style = cardKey==='certified' ? 'certified' : (cardKey==='female'?'female':'default');
+                    const url = `/api/levels/preview?style=${encodeURIComponent(style)}&memberName=${encodeURIComponent('Alyssa')}&level=${encodeURIComponent(38)}&roleName=${encodeURIComponent('Étoile du Serveur')}`;
+                    return (<img src={url} className="h-24 w-full object-cover rounded border border-white/10" />);
+                  })()}
                 </div>
               </div>
             </div>
@@ -323,6 +327,17 @@ export default function CategoryPage() {
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgPrestigeRose} onChange={e=>setBgPrestigeRose(e.target.value)} />
                   {bgPrestigeRose && (<img src={bgPrestigeRose.startsWith('http')?bgPrestigeRose:(bgPrestigeRose.startsWith('/')?window.location.origin+bgPrestigeRose:bgPrestigeRose)} className="mt-2 h-16 w-full object-cover rounded" />)}
                   <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgPrestigeRose(url); }; fr.readAsDataURL(f); }} />
+                </label>
+              </div>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
+              <div className="text-white/70 font-medium">Templates de texte</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="text-white/70">Template Annonce Niveau
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={tplLevelUp} onChange={e=>setTplLevelUp(e.target.value)} placeholder="vient de franchir un nouveau cap !" />
+                </label>
+                <label className="text-white/70">Template Annonce Rôle
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={tplRole} onChange={e=>setTplRole(e.target.value)} placeholder="Rôle obtenu : {role}" />
                 </label>
               </div>
             </div>
