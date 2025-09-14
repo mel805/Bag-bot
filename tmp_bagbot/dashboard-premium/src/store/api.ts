@@ -13,11 +13,13 @@ type Configs = any;
 type ApiState = {
   stats: Stats | null;
   configs: Configs | null;
+  meta: { channels: {id:string,name:string}[]; roles:{id:string,name:string}[]; guildIconUrl?: string|null } | null;
   loading: boolean;
   error: string | null;
   fetchAll: () => Promise<void>;
+  fetchMeta: () => Promise<void>;
   saveCurrency: (name: string) => Promise<boolean>;
-  saveLogs: (categories: Record<string, boolean>) => Promise<boolean>;
+  saveLogs: (categories: Record<string, boolean>, channels?: Record<string,string>) => Promise<boolean>;
   saveConfess: (allowReplies: boolean) => Promise<boolean>;
   saveTd: (sfw: string[], nsfw: string[]) => Promise<boolean>;
   saveLevels: (xpMsg: number, xpVoice: number, base: number, factor: number) => Promise<boolean>;
@@ -29,6 +31,7 @@ type ApiState = {
 export const useApi = create<ApiState>((set, get) => ({
   stats: null,
   configs: null,
+  meta: null,
   loading: false,
   error: null,
   fetchAll: async () => {
@@ -42,6 +45,12 @@ export const useApi = create<ApiState>((set, get) => ({
     } catch (e: any) {
       set({ error: String(e?.message || e), loading: false });
     }
+  },
+  fetchMeta: async () => {
+    try {
+      const m = await fetch('/api/meta').then(r=>r.json());
+      set({ meta: m });
+    } catch {}
   },
   saveCurrency: async (name: string) => {
     try {
@@ -57,9 +66,11 @@ export const useApi = create<ApiState>((set, get) => ({
       return false;
     }
   }
-  , saveLogs: async (categories) => {
+  , saveLogs: async (categories, channels) => {
     try {
-      const res = await fetch('/api/configs/logs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ categories }) });
+      const payload: any = { categories };
+      if (channels) payload.channels = channels;
+      const res = await fetch('/api/configs/logs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
