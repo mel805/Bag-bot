@@ -639,12 +639,28 @@ function startKeepAliveServer() {
             const g = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(()=>null);
             const now = Date.now();
             const mem = process.memoryUsage();
+            let channelsTotal = 0, textChannelsCount = 0, voiceChannelsCount = 0, categoryCount = 0;
+            try {
+              await g.channels.fetch().catch(()=>null);
+              channelsTotal = g?.channels?.cache?.size || 0;
+              g?.channels?.cache?.forEach(ch => {
+                try {
+                  if (ch?.isTextBased?.()) textChannelsCount++;
+                  // voice types
+                  if (ch?.type === 2 || ch?.type === 13) voiceChannelsCount++;
+                  if (ch?.type === 4) categoryCount++;
+                } catch(_) {}
+              });
+            } catch(_) {}
             const stats = {
               guildId,
               guildName: g?.name || null,
               guildIconUrl: g?.iconURL ? g.iconURL({ size: 256 }) : null,
               memberCount: Number(g?.memberCount || 0),
-              channels: Number(g?.channels?.cache?.size || 0),
+              channels: channelsTotal,
+              textChannelsCount,
+              voiceChannelsCount,
+              categoryCount,
               botUser: client.user ? { id: client.user.id, tag: client.user.tag } : null,
               uptimeSec: Math.floor(process.uptime()),
               memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
