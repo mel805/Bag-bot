@@ -29,6 +29,8 @@ export default function CategoryPage() {
   const [autoKickRole, setAutoKickRole] = useState('');
   const [autoKickEnabled, setAutoKickEnabled] = useState(false);
   const [autoKickDelay, setAutoKickDelay] = useState(0);
+  const autoKickHours = Math.round((autoKickDelay/3600000) * 100) / 100;
+  const autoKickDays = Math.round((autoKickDelay/86400000) * 100) / 100;
   const [currencyName, setCurrencyName] = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('');
   const [confessAllowReplies, setConfessAllowReplies] = useState(false);
@@ -122,8 +124,11 @@ export default function CategoryPage() {
             </select>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={autoKickEnabled} onChange={e=>setAutoKickEnabled(e.target.checked)} /> Activé</label>
-              <label className="text-white/70">Délai (ms)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={autoKickDelay} onChange={e=>setAutoKickDelay(Number(e.target.value))} />
+              <label className="text-white/70">Délai (heures)
+                <input type="number" step="0.25" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={autoKickHours} onChange={e=>{ const h = Number(e.target.value)||0; setAutoKickDelay(Math.max(0, Math.round(h*3600000))); }} />
+              </label>
+              <label className="text-white/70">Délai (jours)
+                <input type="number" step="0.25" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={autoKickDays} onChange={e=>{ const d = Number(e.target.value)||0; setAutoKickDelay(Math.max(0, Math.round(d*86400000))); }} />
               </label>
             </div>
             <div className="flex gap-2">

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 
 export default function AreaCard({ title, data }:{title:string; data:{x:string;y:number}[]}) {
+  const total = useMemo(()=> data.reduce((s,d)=>s + (Number(d.y)||0), 0), [data]);
   return (
     <div className="bg-card/80 rounded-xl border border-white/10 p-4">
       <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">{title}</h3>
@@ -20,6 +21,9 @@ export default function AreaCard({ title, data }:{title:string; data:{x:string;y
             <Area type="monotone" dataKey="y" stroke="#8b5cf6" fill="url(#g)" />
           </AreaChart>
         </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="text-white/80 text-lg font-semibold bg-black/20 rounded-full px-3 py-1">{total.toLocaleString('fr-FR')}</div>
+        </div>
       </div>
     </div>
   );

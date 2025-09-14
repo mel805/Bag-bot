@@ -843,6 +843,37 @@ function startKeepAliveServer() {
               if (data.levelCurve && Number.isFinite(Number(data.levelCurve.base)) && Number.isFinite(Number(data.levelCurve.factor))) {
                 next.levelCurve = { base: Math.max(1, Number(data.levelCurve.base)), factor: Math.max(1, Number(data.levelCurve.factor)) };
               }
+              if (Number.isFinite(Number(data.xpMessageMin))) next.xpMessageMin = Math.max(0, Number(data.xpMessageMin));
+              if (Number.isFinite(Number(data.xpMessageMax))) next.xpMessageMax = Math.max(0, Number(data.xpMessageMax));
+              if (Number.isFinite(Number(data.xpVoiceMin))) next.xpVoiceMin = Math.max(0, Number(data.xpVoiceMin));
+              if (Number.isFinite(Number(data.xpVoiceMax))) next.xpVoiceMax = Math.max(0, Number(data.xpVoiceMax));
+              if (Number.isFinite(Number(data.messageCooldownSec))) next.messageCooldownSec = Math.max(0, Number(data.messageCooldownSec));
+              if (Number.isFinite(Number(data.voiceCooldownSec))) next.voiceCooldownSec = Math.max(0, Number(data.voiceCooldownSec));
+              if (data.cards && typeof data.cards === 'object') {
+                const cards = { ...(curr.cards || {}) };
+                if (data.cards.backgrounds && typeof data.cards.backgrounds === 'object') {
+                  cards.backgrounds = { ...(cards.backgrounds || {}) };
+                  for (const k of ['default','female','certified','prestigeBlue','prestigeRose','logo']) {
+                    const v = data.cards.backgrounds[k];
+                    if (typeof v === 'string' && v.trim()) cards.backgrounds[k] = String(v).trim();
+                  }
+                }
+                next.cards = cards;
+              }
+              if (data.announce && typeof data.announce === 'object') {
+                const ann = { ...(curr.announce || {}) };
+                if (data.announce.levelUp && typeof data.announce.levelUp === 'object') {
+                  const lu = { ...(ann.levelUp || {}) };
+                  if (typeof data.announce.levelUp.template === 'string') lu.template = data.announce.levelUp.template;
+                  ann.levelUp = lu;
+                }
+                if (data.announce.roleAward && typeof data.announce.roleAward === 'object') {
+                  const ra = { ...(ann.roleAward || {}) };
+                  if (typeof data.announce.roleAward.template === 'string') ra.template = data.announce.roleAward.template;
+                  ann.roleAward = ra;
+                }
+                next.announce = ann;
+              }
               if (typeof data.enabled === 'boolean') next.enabled = data.enabled;
               if (data.announce && typeof data.announce === 'object') {
                 const ann = { ...(curr.announce || {}) };
