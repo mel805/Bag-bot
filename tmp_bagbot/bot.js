@@ -4424,6 +4424,42 @@ client.once(Events.ClientReady, async (readyClient) => {
   try {
     client.user.setPresence({ status: 'online', activities: [{ name: '/config | /backup | /restore', type: 0 }] });
   } catch (_) {}
+  // Ensure critical slash commands exist on the target guild (dashboard, punish options)
+  try {
+    const gId = String(process.env.GUILD_ID || '').trim();
+    if (gId && client?.application?.commands) {
+      const cmds = await client.application.commands.fetch({ guildId: gId }).catch(()=>null);
+      if (cmds) {
+        const wantDashboard = { name: 'dashboard', description: 'Afficher le lien du dashboard BAG', type: 1 };
+        const wantPunish = {
+          name: 'punish', description: 'Punition sexy (fessée, corde, etc.)', type: 1,
+          options: [
+            { type: 6, name: 'cible', description: 'Membre', required: true },
+            { type: 3, name: 'punition', description: 'Type de punition (ex: fessée, corde, paddle, bâillon)', required: false },
+            { type: 3, name: 'zone', description: 'Zone ciblée (ex: fesses, cuisses, mains, pieds)', required: false },
+          ]
+        };
+        const ensure = async (def) => {
+          try {
+            const existing = cmds.find(c => (c?.name || '') === def.name);
+            if (!existing) {
+              await client.application.commands.create(def, gId);
+              console.log('[CMD] created', def.name);
+            } else {
+              await client.application.commands.edit(existing.id, def, gId);
+              console.log('[CMD] updated', def.name);
+            }
+          } catch (e) {
+            console.warn('[CMD] ensure failed', def.name, e?.message || e);
+          }
+        };
+        await ensure(wantDashboard);
+        await ensure(wantPunish);
+      }
+    }
+  } catch (e) {
+    console.warn('[CMD] ensure error:', e?.message || e);
+  }
   // Diagnostic disabled per request
   // Boot persistance dès le départ et journaliser le mode choisi
   ensureStorageExists().then(()=>console.log('[bot] Storage initialized')).catch((e)=>console.warn('[bot] Storage init error:', e?.message||e));
