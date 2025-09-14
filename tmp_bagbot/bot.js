@@ -1012,6 +1012,26 @@ function startKeepAliveServer() {
                     const cur = g[key] || { success: [], fail: [] };
                     if (Array.isArray(data.gifs.success)) cur.success = data.gifs.success.map(String);
                     if (Array.isArray(data.gifs.fail)) cur.fail = data.gifs.fail.map(String);
+                    if (typeof data.gifs.primary === 'string') {
+                      next.actions.gifsPrimary = next.actions.gifsPrimary || {};
+                      next.actions.gifsPrimary[key] = String(data.gifs.primary);
+                    }
+                    // delete request might be nested or on root
+                    const delReq = data.gifs.delete || data.deleteGif || null;
+                    if (delReq && typeof delReq === 'object') {
+                      const t = delReq.type === 'fail' ? 'fail' : 'success';
+                      const u = String(delReq.url || '');
+                      cur[t] = (Array.isArray(cur[t]) ? cur[t] : []).filter((x) => String(x) !== u);
+                    }
+                    g[key] = cur;
+                    next.actions.gifs = g;
+                  }
+                  if (data.deleteGif && typeof data.deleteGif === 'object') {
+                    const g = next.actions.gifs || {};
+                    const cur = g[key] || { success: [], fail: [] };
+                    const t = data.deleteGif.type === 'fail' ? 'fail' : 'success';
+                    const u = String(data.deleteGif.url || '');
+                    cur[t] = (Array.isArray(cur[t]) ? cur[t] : []).filter((x) => String(x) !== u);
                     g[key] = cur;
                     next.actions.gifs = g;
                   }
