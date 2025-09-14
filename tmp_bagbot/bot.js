@@ -3376,7 +3376,10 @@ async function drawCard(backgroundUrl, title, lines, progressRatio, progressText
 function memberHasCertifiedRole(memberOrMention, levels) {
   try {
     const certIds = new Set(Array.isArray(levels?.cards?.certifiedRoleIds) ? levels.cards.certifiedRoleIds : []);
-    return Boolean(memberOrMention?.roles?.cache?.some(r => certIds.has(r.id)));
+    if (memberOrMention?.roles?.cache?.some(r => certIds.has(r.id))) return true;
+    // Fallback: detect by role name (ex: "Certifié", "Certified")
+    if (memberOrMention?.roles?.cache?.some(r => /certif/i.test(String(r.name || '')))) return true;
+    return false;
   } catch (_) { return false; }
 }
 
@@ -3718,6 +3721,7 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const lastReward = getLastRewardForLevel(levels, newLevel);
   const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  console.log('[Announce] RoleAward BG selection:', { userId: memberOrMention?.id, bg, roles: Array.from(memberOrMention?.roles?.cache?.keys?.()||[]) });
   const resolveBg = (u) => {
     try {
       if (!u) return undefined;
@@ -3834,6 +3838,8 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       texts.roleLine = String(levels.announce.roleAward.template).replace('{role}', roleName || '—');
       texts.congrats = 'Félicitations !';
     }
+    const resolvedBg = resolveBg(bg);
+    console.log('[Announce] RoleAward render (certified) using BG:', resolvedBg);
     renderLevelCardLandscape({
       memberName: name,
       level: 0,
@@ -3841,7 +3847,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
       isCertified: true,
       isRoleAward: true,
-      backgroundUrl: resolveBg(bg),
+      backgroundUrl: resolvedBg,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
@@ -3856,6 +3862,8 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       texts.roleLine = String(levels.announce.roleAward.template).replace('{role}', roleName || '—');
       texts.congrats = 'Félicitations !';
     }
+    const resolvedBg = resolveBg(bg);
+    console.log('[Announce] RoleAward render (female) using BG:', resolvedBg);
     renderPrestigeCardRoseGoldLandscape({
       memberName: name,
       level: 0,
@@ -3863,7 +3871,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       isRoleAward: true,
-      backgroundUrl: resolveBg(bg),
+      backgroundUrl: resolvedBg,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
@@ -3878,6 +3886,8 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       texts.roleLine = String(levels.announce.roleAward.template).replace('{role}', roleName || '—');
       texts.congrats = 'Félicitations !';
     }
+    const resolvedBg = resolveBg(bg);
+    console.log('[Announce] RoleAward render (blue) using BG:', resolvedBg);
     renderPrestigeCardBlueLandscape({
       memberName: name,
       level: 0,
@@ -3885,7 +3895,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
       isRoleAward: true,
-      backgroundUrl: resolveBg(bg),
+      backgroundUrl: resolvedBg,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
