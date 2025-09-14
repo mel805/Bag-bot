@@ -26,6 +26,7 @@ type ApiState = {
   saveAutoThread: (channels: string[], policy: string, archivePolicy: string) => Promise<boolean>;
   saveCounting: (channels: string[]) => Promise<boolean>;
   saveDisboard: (remindersEnabled: boolean, remindChannelId: string) => Promise<boolean>;
+  saveAutoKickRole: (roleId: string) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -107,6 +108,12 @@ export const useApi = create<ApiState>((set, get) => ({
   , saveDisboard: async (remindersEnabled, remindChannelId) => {
     try {
       const res = await fetch('/api/configs/disboard', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ remindersEnabled, remindChannelId }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveAutoKickRole: async (roleId) => {
+    try {
+      const res = await fetch('/api/configs/autokick', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ roleId }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
