@@ -53,6 +53,8 @@ export default function CategoryPage() {
   const [vocCd, setVocCd] = useState<number|''>('');
   const [tplLevelUp, setTplLevelUp] = useState('');
   const [tplRole, setTplRole] = useState('');
+  const [tplTitle, setTplTitle] = useState('');
+  const [tplBaseline, setTplBaseline] = useState('');
   const [bgDefault, setBgDefault] = useState('');
   const [bgFemale, setBgFemale] = useState('');
   const [bgCertified, setBgCertified] = useState('');
@@ -327,8 +329,10 @@ export default function CategoryPage() {
                     params.set('memberName', 'Alyssa');
                     params.set('level', String(38));
                     params.set('roleName', 'Étoile du Serveur');
+                    if (tplTitle) params.set('title', tplTitle);
                     if (tplLevelUp) params.set('subtitle', tplLevelUp);
                     if (tplRole) params.set('roleLine', tplRole);
+                    if (tplBaseline) params.set('baseline', tplBaseline);
                     // Live background override
                     const map:any={default:bgDefault,female:bgFemale,certified:bgCertified,rose:bgPrestigeRose,blue:bgPrestigeBlue,prestigeBlue:bgPrestigeBlue,prestigeRose:bgPrestigeRose};
                     const bgUrl = map[cardKey] || map[variant];
@@ -379,11 +383,17 @@ export default function CategoryPage() {
             <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
               <div className="text-white/70 font-medium">Templates de texte</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="text-white/70">Titre
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={tplTitle} onChange={e=>setTplTitle(e.target.value)} placeholder="ANNONCE DE PRESTIGE" />
+                </label>
                 <label className="text-white/70">Template Annonce Niveau
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={tplLevelUp} onChange={e=>setTplLevelUp(e.target.value)} placeholder="vient de franchir un nouveau cap !" />
                 </label>
                 <label className="text-white/70">Template Annonce Rôle
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={tplRole} onChange={e=>setTplRole(e.target.value)} placeholder="Rôle obtenu : {role}" />
+                </label>
+                <label className="text-white/70">Baseline
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={tplBaseline} onChange={e=>setTplBaseline(e.target.value)} placeholder="💎 CONTINUE TON ASCENSION… 💎" />
                 </label>
               </div>
             </div>
