@@ -3001,15 +3001,15 @@ async function buildLevelsGeneralRows(guild) {
   const xpVoiceRangeBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice_range').setLabel('XP Vocal min/max').setStyle(ButtonStyle.Primary);
   const cooldownsBtn = new ButtonBuilder().setCustomId('levels_set_cooldowns').setLabel('Cooldowns').setStyle(ButtonStyle.Secondary);
   const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Courbe').setStyle(ButtonStyle.Secondary);
-  const rowActions = new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextRangeBtn, xpVoiceRangeBtn, cooldownsBtn, curveBtn);
   const levelUpToggle = new ButtonBuilder().setCustomId('levels_announce_level_toggle').setLabel(levels.announce?.levelUp?.enabled ? 'Annonces Niveau: ON' : 'Annonces Niveau: OFF').setStyle(levels.announce?.levelUp?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const roleAwardToggle = new ButtonBuilder().setCustomId('levels_announce_role_toggle').setLabel(levels.announce?.roleAward?.enabled ? 'Annonces Rôle: ON' : 'Annonces Rôle: OFF').setStyle(levels.announce?.roleAward?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
-  const rowToggles = new ActionRowBuilder().addComponents(levelUpToggle, roleAwardToggle);
+  const rowActions1 = new ActionRowBuilder().addComponents(enableBtn, disableBtn, levelUpToggle, roleAwardToggle);
+  const rowActions2 = new ActionRowBuilder().addComponents(xpTextRangeBtn, xpVoiceRangeBtn, cooldownsBtn, curveBtn);
   const levelUpChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_level_channel').setPlaceholder('Salon annonces de niveau…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const roleAwardChannel = new ChannelSelectMenuBuilder().setCustomId('levels_announce_role_channel').setPlaceholder('Salon annonces de rôle…').setMinValues(1).setMaxValues(1).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
   const rowLevelUp = new ActionRowBuilder().addComponents(levelUpChannel);
   const rowRoleAward = new ActionRowBuilder().addComponents(roleAwardChannel);
-  return [nav, rowActions, rowToggles, rowLevelUp, rowRoleAward];
+  return [nav, rowActions1, rowActions2, rowLevelUp, rowRoleAward];
 }
 
 async function buildLevelsCardsRows(guild) {
