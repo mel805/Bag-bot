@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, NavLink } from 'react-router-dom';
 import { useApi } from '../store/api';
 
 const TITLES: Record<string, string> = {
@@ -226,6 +226,10 @@ export default function CategoryPage() {
         )}
         {cat==='levels' && (
           <div className="space-y-3">
+            <div className="flex gap-2">
+              <NavLink to="/config/levels/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Level</NavLink>
+              <NavLink to="/config/levels/cards" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Carte</NavLink>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-white/70">XP par message<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpMsg} onChange={e=>setXpMsg(Number(e.target.value))} /></label>
               <label className="text-white/70">XP par min vocal<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpVoice} onChange={e=>setXpVoice(Number(e.target.value))} /></label>
