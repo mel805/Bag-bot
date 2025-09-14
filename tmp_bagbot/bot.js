@@ -1114,6 +1114,45 @@ function startKeepAliveServer() {
           }
         }
 
+        // Proxy endpoint for images/videos to avoid hotlinking/CORS issues in dashboard previews
+        if (parsed.pathname === '/api/proxy' && req.method === 'GET') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          try {
+            const target = String(parsed.query?.url || '');
+            if (!/^https?:\/\//i.test(target)) return sendJson(res, 400, { error: 'invalid url' });
+            const maxBytes = 5 * 1024 * 1024; // 5MB
+            const { request } = target.startsWith('https://') ? require('https') : require('http');
+            const r = request(target, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (PreviewProxy)'
+              },
+              timeout: 4000,
+            }, (upstream) => {
+              const ctype = String(upstream.headers['content-type'] || 'application/octet-stream');
+              res.statusCode = 200;
+              res.setHeader('Content-Type', ctype);
+              let sent = 0;
+              upstream.on('data', (chunk) => {
+                sent += chunk.length;
+                if (sent > maxBytes) {
+                  try { upstream.destroy(); } catch (_) {}
+                  try { res.destroy(); } catch (_) {}
+                  return;
+                }
+                res.write(chunk);
+              });
+              upstream.on('end', () => res.end());
+              upstream.on('error', () => { try { res.destroy(); } catch (_) {} });
+            });
+            r.on('timeout', ()=>{ try { r.destroy(); } catch (_) {} try { res.destroy(); } catch (_) {} });
+            r.on('error', ()=>{ try { res.destroy(); } catch (_) {} });
+            r.end();
+          } catch (e) {
+            return sendJson(res, 500, { error: String(e?.message||e) });
+          }
+          return;
+        }
+
         // Upload base64 image -> /public/uploads
         if (parsed.pathname === '/api/uploadBase64' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
