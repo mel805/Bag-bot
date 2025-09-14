@@ -700,8 +700,13 @@ function startKeepAliveServer() {
             if (!g) return sendJson(res, 404, { error: 'guild not found' });
             await g.channels.fetch().catch(()=>null);
             await g.roles.fetch().catch(()=>null);
+            const allowedTypes = new Set([0, 5]); // GuildText, GuildAnnouncement
             const channels = Array.from(g.channels.cache.values())
-              .filter(ch => ch?.isTextBased?.())
+              .filter(ch => {
+                try {
+                  return allowedTypes.has(Number(ch?.type));
+                } catch (_) { return false; }
+              })
               .map(ch => ({ id: ch.id, name: ch.name || ch.id, type: ch.type }));
             const roles = Array.from(g.roles.cache.values()).map(r => ({ id: r.id, name: r.name }));
             return sendJson(res, 200, { channels, roles, guildIconUrl: g.iconURL?.({ size: 256 }) || null });

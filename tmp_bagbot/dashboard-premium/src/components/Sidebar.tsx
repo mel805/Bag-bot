@@ -56,13 +56,13 @@ export default function Sidebar() {
               <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}} transition={{duration:0.2}} className="px-3 py-2">
                 <div className="space-y-1">
                   <LinkItem to="/config/moderation/overview">🛡️ Modération</LinkItem>
-                  <LinkItem to="/config/levels/overview">🆙 Levels</LinkItem>
+                  <LinkItem to="/config/levels/overview">🆙 Niveaux</LinkItem>
                   <LinkItem to="/config/economie/overview">🪙 Économie</LinkItem>
                   <LinkItem to="/config/action-verite/overview">🎲 Action/Vérité</LinkItem>
-                  <LinkItem to="/config/logs/overview">📜 Logs</LinkItem>
+                  <LinkItem to="/config/logs/overview">📜 Journalisation</LinkItem>
                   <LinkItem to="/config/confessions/overview">🕊️ Confessions</LinkItem>
-                  <LinkItem to="/config/autothread/overview">🧵 AutoThread</LinkItem>
-                  <LinkItem to="/config/counting/overview">🔢 Comptage</LinkItem>
+                  <LinkItem to="/config/autothread/overview">🧵 Auto-threads</LinkItem>
+                  <LinkItem to="/config/counting/overview">🔢 Compteur</LinkItem>
                   <LinkItem to="/config/disboard/overview">📣 Disboard</LinkItem>
                 </div>
               </motion.div>

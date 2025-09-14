@@ -4,13 +4,13 @@ import { useApi } from '../store/api';
 
 const TITLES: Record<string, string> = {
   moderation: 'Modération',
-  levels: 'Levels',
+  levels: 'Niveaux',
   economie: 'Économie',
   'action-verite': 'Action / Vérité',
-  logs: 'Logs',
+  logs: 'Journalisation',
   confessions: 'Confessions',
-  autothread: 'AutoThread',
-  counting: 'Comptage',
+  autothread: 'Auto-threads',
+  counting: 'Compteur',
   disboard: 'Disboard'
 };
 
