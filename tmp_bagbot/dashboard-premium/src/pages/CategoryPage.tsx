@@ -58,6 +58,12 @@ export default function CategoryPage() {
   const [bgCertified, setBgCertified] = useState('');
   const [bgPrestigeBlue, setBgPrestigeBlue] = useState('');
   const [bgPrestigeRose, setBgPrestigeRose] = useState('');
+  // Current (saved) backgrounds for preview comparison
+  const [curBgDefault, setCurBgDefault] = useState('');
+  const [curBgFemale, setCurBgFemale] = useState('');
+  const [curBgCertified, setCurBgCertified] = useState('');
+  const [curBgPrestigeBlue, setCurBgPrestigeBlue] = useState('');
+  const [curBgPrestigeRose, setCurBgPrestigeRose] = useState('');
   const [autoThreadChannels, setAutoThreadChannels] = useState<string[]>([]);
   const [autoThreadPolicy, setAutoThreadPolicy] = useState('new_messages');
   const [autoThreadArchive, setAutoThreadArchive] = useState('1d');
@@ -88,20 +94,33 @@ export default function CategoryPage() {
     setXpVoice(Number(configs.levels?.xpPerVoiceMinute ?? 2));
     setLevelBase(Number(configs.levels?.levelCurve?.base ?? 100));
     setLevelFactor(Number(configs.levels?.levelCurve?.factor ?? 1.25));
-    // populate advanced levels
-    setXpMsgMin(Number(configs.levels?.xpMessageMin ?? '') as any);
-    setXpMsgMax(Number(configs.levels?.xpMessageMax ?? '') as any);
-    setXpVocMin(Number(configs.levels?.xpVoiceMin ?? '') as any);
-    setXpVocMax(Number(configs.levels?.xpVoiceMax ?? '') as any);
+    // populate advanced levels (fallbacks to existing settings)
+    const msgMin = configs.levels?.xpMessageMin;
+    const msgMax = configs.levels?.xpMessageMax;
+    const vocMin = configs.levels?.xpVoiceMin;
+    const vocMax = configs.levels?.xpVoiceMax;
+    const pm = Number(configs.levels?.xpPerMessage ?? 0) || 0;
+    const pv = Number(configs.levels?.xpPerVoiceMinute ?? 0) || 0;
+    setXpMsgMin((typeof msgMin === 'number') ? msgMin : (pm || ''));
+    setXpMsgMax((typeof msgMax === 'number') ? msgMax : (pm || ''));
+    setXpVocMin((typeof vocMin === 'number') ? vocMin : (pv || ''));
+    setXpVocMax((typeof vocMax === 'number') ? vocMax : (pv || ''));
     setMsgCd(Number(configs.levels?.messageCooldownSec ?? '') as any);
     setVocCd(Number(configs.levels?.voiceCooldownSec ?? '') as any);
     setTplLevelUp(String(configs.levels?.announce?.levelUp?.template || ''));
     setTplRole(String(configs.levels?.announce?.roleAward?.template || ''));
-    setBgDefault(String(configs.levels?.cards?.backgrounds?.default || ''));
-    setBgFemale(String(configs.levels?.cards?.backgrounds?.female || ''));
-    setBgCertified(String(configs.levels?.cards?.backgrounds?.certified || ''));
-    setBgPrestigeBlue(String(configs.levels?.cards?.backgrounds?.prestigeBlue || ''));
-    setBgPrestigeRose(String(configs.levels?.cards?.backgrounds?.prestigeRose || ''));
+    const bgs = configs.levels?.cards?.backgrounds || {};
+    setBgDefault(String(bgs.default || ''));
+    setBgFemale(String(bgs.female || ''));
+    setBgCertified(String(bgs.certified || ''));
+    setBgPrestigeBlue(String(bgs.prestigeBlue || ''));
+    setBgPrestigeRose(String(bgs.prestigeRose || ''));
+    // current saved versions
+    setCurBgDefault(String(bgs.default || ''));
+    setCurBgFemale(String(bgs.female || ''));
+    setCurBgCertified(String(bgs.certified || ''));
+    setCurBgPrestigeBlue(String(bgs.prestigeBlue || ''));
+    setCurBgPrestigeRose(String(bgs.prestigeRose || ''));
     setAutoThreadChannels(Array.isArray(configs.autothread?.channels) ? configs.autothread.channels : []);
     setAutoThreadPolicy(String(configs.autothread?.policy || 'new_messages'));
     setAutoThreadArchive(String(configs.autothread?.archivePolicy || '1d'));
@@ -230,6 +249,8 @@ export default function CategoryPage() {
               <NavLink to="/config/levels/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Level</NavLink>
               <NavLink to="/config/levels/cards" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Carte</NavLink>
             </div>
+            {(!view || view==='overview') && (
+            <>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-white/70">XP par message<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpMsg} onChange={e=>setXpMsg(Number(e.target.value))} /></label>
               <label className="text-white/70">XP par min vocal<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={xpVoice} onChange={e=>setXpVoice(Number(e.target.value))} /></label>
@@ -248,6 +269,35 @@ export default function CategoryPage() {
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(true, {}); }}>Activer</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(false, {}); }}>Désactiver</button>
+            </div>
+            </>
+            )}
+            {view==='cards' && (
+            <>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-4">
+              <div className="text-white/70 font-medium">Carte actuelle vs prévisualisation</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-white/60 text-sm mb-2">Actuelle</div>
+                  <div className="grid grid-cols-1 gap-2">
+                    <img src={curBgDefault} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={curBgFemale} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={curBgCertified} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={curBgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={curBgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-white/60 text-sm mb-2">Prévisualisation</div>
+                  <div className="grid grid-cols-1 gap-2">
+                    <img src={bgDefault} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={bgFemale} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={bgCertified} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={bgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />
+                    <img src={bgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
               <div className="text-white/70 font-medium">Templates d'annonces</div>
@@ -286,7 +336,7 @@ export default function CategoryPage() {
             </div>
             <div className="flex gap-2">
               <button className="bg-brand-cyan/20 border border-brand-cyan/40 rounded-xl px-3 py-2" onClick={async()=>{
-                const ok = confirm('Confirmer la sauvegarde des paramètres niveaux ?');
+                const ok = confirm('Confirmer la sauvegarde des cartes et templates ?');
                 if (!ok) return;
                 const cards:any = { backgrounds: {} };
                 if (bgDefault) cards.backgrounds.default = bgDefault;
@@ -294,15 +344,11 @@ export default function CategoryPage() {
                 if (bgCertified) cards.backgrounds.certified = bgCertified;
                 if (bgPrestigeBlue) cards.backgrounds.prestigeBlue = bgPrestigeBlue;
                 if (bgPrestigeRose) cards.backgrounds.prestigeRose = bgPrestigeRose;
-                await saveLevelsExtra({
-                  xpMessageMin: xpMsgMin as any, xpMessageMax: xpMsgMax as any,
-                  xpVoiceMin: xpVocMin as any, xpVoiceMax: xpVocMax as any,
-                  messageCooldownSec: msgCd as any, voiceCooldownSec: vocCd as any,
-                  announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } },
-                  cards
-                });
+                await saveLevelsExtra({ cards, announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } } });
               }}>Confirmer et sauvegarder</button>
             </div>
+            </>
+            )}
           </div>
         )}
         {cat==='autothread' && (
