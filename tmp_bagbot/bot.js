@@ -642,13 +642,16 @@ function startKeepAliveServer() {
             let channelsTotal = 0, textChannelsCount = 0, voiceChannelsCount = 0, categoryCount = 0;
             try {
               await g.channels.fetch().catch(()=>null);
-              channelsTotal = g?.channels?.cache?.size || 0;
+              const allowedCountTypes = new Set([0, 5, 2, 13, 4]); // text, announcement, voice, stage voice, category
+              const textTypes = new Set([0, 5]);
               g?.channels?.cache?.forEach(ch => {
                 try {
-                  if (ch?.isTextBased?.()) textChannelsCount++;
-                  // voice types
-                  if (ch?.type === 2 || ch?.type === 13) voiceChannelsCount++;
-                  if (ch?.type === 4) categoryCount++;
+                  const t = Number(ch?.type);
+                  if (!allowedCountTypes.has(t)) return; // exclude threads, forum, media, etc.
+                  channelsTotal++;
+                  if (textTypes.has(t)) textChannelsCount++;
+                  if (t === 2 || t === 13) voiceChannelsCount++;
+                  if (t === 4) categoryCount++;
                 } catch(_) {}
               });
             } catch(_) {}
