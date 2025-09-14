@@ -1006,6 +1006,34 @@ function startKeepAliveServer() {
           }
         }
 
+        // Upload base64 image -> /public/uploads
+        if (parsed.pathname === '/api/uploadBase64' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>5e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const filenameRaw = String(data.filename||'upload').replace(/[^a-zA-Z0-9._-]/g,'_');
+              const dataUrl = String(data.dataUrl||'');
+              const m = dataUrl.match(/^data:(image\/(png|jpeg|jpg|gif|webp));base64,(.+)$/i);
+              if (!m) return sendJson(res, 400, { error: 'invalid dataUrl' });
+              const ext = m[2].toLowerCase() === 'jpg' ? 'jpg' : m[2].toLowerCase();
+              const base64 = m[3];
+              const buf = Buffer.from(base64, 'base64');
+              const ts = Date.now();
+              const safeName = filenameRaw.replace(/\.[^.]+$/, '') + '-' + ts + '.' + ext;
+              const dir = path.join(PUBLIC_DIR, 'uploads');
+              try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+              const finalPath = path.join(dir, safeName);
+              fs.writeFileSync(finalPath, buf);
+              const urlPath = '/uploads/' + safeName;
+              return sendJson(res, 200, { url: urlPath });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
         // Static files
         const safeJoin = (base, target) => {
           const p = path.join(base, target);
