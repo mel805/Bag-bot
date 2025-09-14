@@ -64,6 +64,7 @@ export default function CategoryPage() {
   const [curBgCertified, setCurBgCertified] = useState('');
   const [curBgPrestigeBlue, setCurBgPrestigeBlue] = useState('');
   const [curBgPrestigeRose, setCurBgPrestigeRose] = useState('');
+  const [cardKey, setCardKey] = useState<'default'|'female'|'certified'|'prestigeBlue'|'prestigeRose'>('default');
   const [autoThreadChannels, setAutoThreadChannels] = useState<string[]>([]);
   const [autoThreadPolicy, setAutoThreadPolicy] = useState('new_messages');
   const [autoThreadArchive, setAutoThreadArchive] = useState('1d');
@@ -274,33 +275,26 @@ export default function CategoryPage() {
             <>
             <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-4">
               <div className="text-white/70 font-medium">Carte actuelle vs prévisualisation</div>
+              <div className="flex items-center gap-2">
+                <span className="text-white/60 text-sm">Carte:</span>
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={cardKey} onChange={e=>setCardKey(e.target.value as any)}>
+                  <option value="default">Défaut</option>
+                  <option value="female">Féminin</option>
+                  <option value="certified">Certifié</option>
+                  <option value="prestigeBlue">Prestige bleu</option>
+                  <option value="prestigeRose">Prestige rose</option>
+                </select>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-white/60 text-sm mb-2">Actuelle</div>
-                  <div className="grid grid-cols-1 gap-2">
-                    {curBgDefault ? (<img src={curBgDefault.startsWith('http')?curBgDefault:(curBgDefault.startsWith('/')?window.location.origin+curBgDefault:curBgDefault)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgFemale ? (<img src={curBgFemale.startsWith('http')?curBgFemale:(curBgFemale.startsWith('/')?window.location.origin+curBgFemale:curBgFemale)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgCertified ? (<img src={curBgCertified.startsWith('http')?curBgCertified:(curBgCertified.startsWith('/')?window.location.origin+curBgCertified:curBgCertified)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgPrestigeBlue ? (<img src={curBgPrestigeBlue.startsWith('http')?curBgPrestigeBlue:(curBgPrestigeBlue.startsWith('/')?window.location.origin+curBgPrestigeBlue:curBgPrestigeBlue)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgPrestigeRose ? (<img src={curBgPrestigeRose.startsWith('http')?curBgPrestigeRose:(curBgPrestigeRose.startsWith('/')?window.location.origin+curBgPrestigeRose:curBgPrestigeRose)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                  </div>
+                  {(() => { const curMap:any={default:curBgDefault,female:curBgFemale,certified:curBgCertified,prestigeBlue:curBgPrestigeBlue,prestigeRose:curBgPrestigeRose}; const u=String(curMap[cardKey]||''); return u? (<img src={u.startsWith('http')?u:(u.startsWith('/')?window.location.origin+u:u)} className="h-24 w-full object-cover rounded border border-white/10" />):(<div className="h-24 w-full rounded bg-white/5 border border-white/10" />); })()}
                 </div>
                 <div>
                   <div className="text-white/60 text-sm mb-2">Prévisualisation</div>
-                  <div className="grid grid-cols-1 gap-2">
-                    {bgDefault ? (<img src={bgDefault.startsWith('http')?bgDefault:(bgDefault.startsWith('/')?window.location.origin+bgDefault:bgDefault)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgFemale ? (<img src={bgFemale.startsWith('http')?bgFemale:(bgFemale.startsWith('/')?window.location.origin+bgFemale:bgFemale)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgCertified ? (<img src={bgCertified.startsWith('http')?bgCertified:(bgCertified.startsWith('/')?window.location.origin+bgCertified:bgCertified)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgPrestigeBlue ? (<img src={bgPrestigeBlue.startsWith('http')?bgPrestigeBlue:(bgPrestigeBlue.startsWith('/')?window.location.origin+bgPrestigeBlue:bgPrestigeBlue)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgPrestigeRose ? (<img src={bgPrestigeRose.startsWith('http')?bgPrestigeRose:(bgPrestigeRose.startsWith('/')?window.location.origin+bgPrestigeRose:bgPrestigeRose)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                  </div>
+                  {(() => { const map:any={default:bgDefault,female:bgFemale,certified:bgCertified,prestigeBlue:bgPrestigeBlue,prestigeRose:bgPrestigeRose}; const u=String(map[cardKey]||''); return u? (<img src={u.startsWith('http')?u:(u.startsWith('/')?window.location.origin+u:u)} className="h-24 w-full object-cover rounded border border-white/10" />):(<div className="h-24 w-full rounded bg-white/5 border border-white/10" />); })()}
                 </div>
               </div>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
-              <div className="text-white/70 font-medium">Templates d'annonces</div>
-              <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2" rows={2} placeholder="Template level up" value={tplLevelUp} onChange={e=>setTplLevelUp(e.target.value)} />
-              <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2" rows={2} placeholder="Template récompense" value={tplRole} onChange={e=>setTplRole(e.target.value)} />
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
               <div className="text-white/70 font-medium">Cartes (URL ou upload)</div>
@@ -342,16 +336,7 @@ export default function CategoryPage() {
                 if (bgCertified) cards.backgrounds.certified = bgCertified;
                 if (bgPrestigeBlue) cards.backgrounds.prestigeBlue = bgPrestigeBlue;
                 if (bgPrestigeRose) cards.backgrounds.prestigeRose = bgPrestigeRose;
-                await saveLevelsExtra({
-                  ...(typeof xpMsgMin === 'number' && isFinite(xpMsgMin) ? { xpMessageMin: xpMsgMin } : {}),
-                  ...(typeof xpMsgMax === 'number' && isFinite(xpMsgMax) ? { xpMessageMax: xpMsgMax } : {}),
-                  ...(typeof xpVocMin === 'number' && isFinite(xpVocMin) ? { xpVoiceMin: xpVocMin } : {}),
-                  ...(typeof xpVocMax === 'number' && isFinite(xpVocMax) ? { xpVoiceMax: xpVocMax } : {}),
-                  ...(typeof msgCd === 'number' && isFinite(msgCd) ? { messageCooldownSec: msgCd } : {}),
-                  ...(typeof vocCd === 'number' && isFinite(vocCd) ? { voiceCooldownSec: vocCd } : {}),
-                  announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } },
-                  cards
-                });
+                await saveLevelsExtra({ cards, announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } } });
               }}>Confirmer et sauvegarder</button>
             </div>
             </>
