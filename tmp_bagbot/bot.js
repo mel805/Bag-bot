@@ -2997,10 +2997,11 @@ async function buildLevelsGeneralRows(guild) {
   );
   const enableBtn = new ButtonBuilder().setCustomId('levels_enable').setLabel('Activer Levels').setStyle(ButtonStyle.Success).setDisabled(levels.enabled);
   const disableBtn = new ButtonBuilder().setCustomId('levels_disable').setLabel('Désactiver Levels').setStyle(ButtonStyle.Danger).setDisabled(!levels.enabled);
-  const xpTextBtn = new ButtonBuilder().setCustomId('levels_set_xp_text').setLabel('XP Texte').setStyle(ButtonStyle.Primary);
-  const xpVoiceBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice').setLabel('XP Vocal/min').setStyle(ButtonStyle.Primary);
+  const xpTextRangeBtn = new ButtonBuilder().setCustomId('levels_set_xp_text_range').setLabel('XP Texte min/max').setStyle(ButtonStyle.Primary);
+  const xpVoiceRangeBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice_range').setLabel('XP Vocal min/max').setStyle(ButtonStyle.Primary);
+  const cooldownsBtn = new ButtonBuilder().setCustomId('levels_set_cooldowns').setLabel('Cooldowns').setStyle(ButtonStyle.Secondary);
   const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Courbe').setStyle(ButtonStyle.Secondary);
-  const rowActions = new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextBtn, xpVoiceBtn, curveBtn);
+  const rowActions = new ActionRowBuilder().addComponents(enableBtn, disableBtn, xpTextRangeBtn, xpVoiceRangeBtn, cooldownsBtn, curveBtn);
   const levelUpToggle = new ButtonBuilder().setCustomId('levels_announce_level_toggle').setLabel(levels.announce?.levelUp?.enabled ? 'Annonces Niveau: ON' : 'Annonces Niveau: OFF').setStyle(levels.announce?.levelUp?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const roleAwardToggle = new ButtonBuilder().setCustomId('levels_announce_role_toggle').setLabel(levels.announce?.roleAward?.enabled ? 'Annonces Rôle: ON' : 'Annonces Rôle: OFF').setStyle(levels.announce?.roleAward?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const rowToggles = new ActionRowBuilder().addComponents(levelUpToggle, roleAwardToggle);
@@ -7615,18 +7616,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isButton() && interaction.customId === 'levels_set_xp_text') {
-      const modal = new ModalBuilder().setCustomId('levels_xp_text_modal').setTitle('XP par message (texte)');
-      const input = new TextInputBuilder().setCustomId('amount').setLabel('XP/message').setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(6).setPlaceholder('Ex: 10').setRequired(true);
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
+    if (interaction.isButton() && interaction.customId === 'levels_set_xp_text_range') {
+      const modal = new ModalBuilder().setCustomId('levels_xp_text_range_modal').setTitle('XP Texte — Min/Max');
+      const min = new TextInputBuilder().setCustomId('min').setLabel('Min/message').setStyle(TextInputStyle.Short).setPlaceholder('ex: 5').setRequired(false);
+      const max = new TextInputBuilder().setCustomId('max').setLabel('Max/message').setStyle(TextInputStyle.Short).setPlaceholder('ex: 15').setRequired(false);
+      modal.addComponents(new ActionRowBuilder().addComponents(min), new ActionRowBuilder().addComponents(max));
       await interaction.showModal(modal);
       return;
     }
 
-    if (interaction.isButton() && interaction.customId === 'levels_set_xp_voice') {
-      const modal = new ModalBuilder().setCustomId('levels_xp_voice_modal').setTitle('XP vocal par minute');
-      const input = new TextInputBuilder().setCustomId('amount').setLabel('XP/minute en vocal').setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(6).setPlaceholder('Ex: 5').setRequired(true);
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
+    if (interaction.isButton() && interaction.customId === 'levels_set_xp_voice_range') {
+      const modal = new ModalBuilder().setCustomId('levels_xp_voice_range_modal').setTitle('XP Vocal — Min/Max');
+      const min = new TextInputBuilder().setCustomId('min').setLabel('Min/vocal').setStyle(TextInputStyle.Short).setPlaceholder('ex: 2').setRequired(false);
+      const max = new TextInputBuilder().setCustomId('max').setLabel('Max/vocal').setStyle(TextInputStyle.Short).setPlaceholder('ex: 6').setRequired(false);
+      modal.addComponents(new ActionRowBuilder().addComponents(min), new ActionRowBuilder().addComponents(max));
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'levels_set_cooldowns') {
+      const modal = new ModalBuilder().setCustomId('levels_cooldowns_modal').setTitle('Cooldowns (secondes)');
+      const msg = new TextInputBuilder().setCustomId('msg').setLabel('Cooldown message (s)').setStyle(TextInputStyle.Short).setPlaceholder('ex: 30').setRequired(false);
+      const voc = new TextInputBuilder().setCustomId('voc').setLabel('Cooldown vocal (s)').setStyle(TextInputStyle.Short).setPlaceholder('ex: 60').setRequired(false);
+      modal.addComponents(new ActionRowBuilder().addComponents(msg), new ActionRowBuilder().addComponents(voc));
       await interaction.showModal(modal);
       return;
     }
@@ -7640,20 +7652,46 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_text_modal') {
-      const v = Number(interaction.fields.getTextInputValue('amount'));
-      if (!Number.isFinite(v) || v < 0) return interaction.reply({ content: 'Valeur invalide.', ephemeral: true });
+    if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_text_range_modal') {
+      const minStr = (interaction.fields.getTextInputValue('min')||'').trim();
+      const maxStr = (interaction.fields.getTextInputValue('max')||'').trim();
+      const patch = {};
+      const min = Number(minStr);
+      const max = Number(maxStr);
+      if (minStr !== '' && Number.isFinite(min) && min >= 0) patch['xpMessageMin'] = Math.round(min);
+      if (maxStr !== '' && Number.isFinite(max) && max >= 0) patch['xpMessageMax'] = Math.round(max);
+      if (Object.keys(patch).length === 0) return interaction.reply({ content: 'Aucune valeur fournie.', ephemeral: true });
       await interaction.deferReply({ ephemeral: true });
-      await updateLevelsConfig(interaction.guild.id, { xpPerMessage: Math.round(v) });
-      return interaction.editReply({ content: `✅ XP texte mis à jour: ${Math.round(v)} XP/message.` });
+      await updateLevelsConfig(interaction.guild.id, patch);
+      return interaction.editReply({ content: '✅ XP texte min/max mis à jour.' });
     }
 
-    if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_voice_modal') {
-      const v = Number(interaction.fields.getTextInputValue('amount'));
-      if (!Number.isFinite(v) || v < 0) return interaction.reply({ content: 'Valeur invalide.', ephemeral: true });
+    if (interaction.isModalSubmit() && interaction.customId === 'levels_xp_voice_range_modal') {
+      const minStr = (interaction.fields.getTextInputValue('min')||'').trim();
+      const maxStr = (interaction.fields.getTextInputValue('max')||'').trim();
+      const patch = {};
+      const min = Number(minStr);
+      const max = Number(maxStr);
+      if (minStr !== '' && Number.isFinite(min) && min >= 0) patch['xpVoiceMin'] = Math.round(min);
+      if (maxStr !== '' && Number.isFinite(max) && max >= 0) patch['xpVoiceMax'] = Math.round(max);
+      if (Object.keys(patch).length === 0) return interaction.reply({ content: 'Aucune valeur fournie.', ephemeral: true });
       await interaction.deferReply({ ephemeral: true });
-      await updateLevelsConfig(interaction.guild.id, { xpPerVoiceMinute: Math.round(v) });
-      return interaction.editReply({ content: `✅ XP vocal mis à jour: ${Math.round(v)} XP/min.` });
+      await updateLevelsConfig(interaction.guild.id, patch);
+      return interaction.editReply({ content: '✅ XP vocal min/max mis à jour.' });
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'levels_cooldowns_modal') {
+      const msgStr = (interaction.fields.getTextInputValue('msg')||'').trim();
+      const vocStr = (interaction.fields.getTextInputValue('voc')||'').trim();
+      const patch = {};
+      const m = Number(msgStr);
+      const v = Number(vocStr);
+      if (msgStr !== '' && Number.isFinite(m) && m >= 0) patch['messageCooldownSec'] = Math.round(m);
+      if (vocStr !== '' && Number.isFinite(v) && v >= 0) patch['voiceCooldownSec'] = Math.round(v);
+      if (Object.keys(patch).length === 0) return interaction.reply({ content: 'Aucune valeur fournie.', ephemeral: true });
+      await interaction.deferReply({ ephemeral: true });
+      await updateLevelsConfig(interaction.guild.id, patch);
+      return interaction.editReply({ content: '✅ Cooldowns mis à jour.' });
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'levels_curve_modal') {
