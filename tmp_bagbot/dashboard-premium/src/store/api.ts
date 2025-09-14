@@ -26,6 +26,8 @@ type ApiState = {
   saveConfess: (allowReplies: boolean) => Promise<boolean>;
   saveTd: (sfw: string[], nsfw: string[]) => Promise<boolean>;
   saveLevels: (xpMsg: number, xpVoice: number, base: number, factor: number) => Promise<boolean>;
+  saveLevelsExtra: (payload: Partial<{ xpMessageMin: number; xpMessageMax: number; xpVoiceMin: number; xpVoiceMax: number; messageCooldownSec: number; voiceCooldownSec: number; cards: { backgrounds?: Record<string,string> }; announce: { levelUp?: { template?: string }, roleAward?: { template?: string } } }>) => Promise<boolean>;
+  uploadBase64: (filename: string, dataUrl: string) => Promise<string|null>;
   saveAutoThread: (channels: string[], policy: string, archivePolicy: string) => Promise<boolean>;
   saveCounting: (channels: string[]) => Promise<boolean>;
   saveDisboard: (remindersEnabled: boolean, remindChannelId: string) => Promise<boolean>;
@@ -113,6 +115,18 @@ export const useApi = create<ApiState>((set, get) => ({
       const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ xpPerMessage: xpMsg, xpPerVoiceMinute: xpVoice, levelCurve:{ base, factor } }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
+  }
+  , saveLevelsExtra: async (payload) => {
+    try {
+      const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , uploadBase64: async (filename, dataUrl) => {
+    try {
+      const res = await fetch('/api/uploadBase64', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ filename, dataUrl }) });
+      if (!res.ok) return null; const j = await res.json(); return j.url || null;
+    } catch { return null; }
   }
   , saveLevelsAdvanced: async (enabled, announce) => {
     try {
