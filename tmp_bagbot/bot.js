@@ -667,7 +667,8 @@ function startKeepAliveServer() {
               botUser: client.user ? { id: client.user.id, tag: client.user.tag } : null,
               uptimeSec: Math.floor(process.uptime()),
               memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
-              timestamp: now
+              timestamp: now,
+              dailyMessages: await (async () => { try { const { getDailyMessages } = require('./storage/jsonStore'); return await getDailyMessages(guildId); } catch (_) { return []; } })()
             };
             return sendJson(res, 200, stats);
           } catch (e) {
@@ -9650,6 +9651,7 @@ const ACTION_GIFS = {
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild) return;
+    try { const { incrementDailyMessage } = require('./storage/jsonStore'); incrementDailyMessage(message.guild.id); } catch (_) {}
     // Disboard bump detection
     try {
       const DISBOARD_ID = '302050872383242240';
