@@ -190,7 +190,8 @@ async function renderPrestigeCardBlueLandscape({
   let drewBg = false;
   if (backgroundUrl) {
     try {
-      const img = await loadImage(backgroundUrl);
+      const src = backgroundUrl.startsWith('file://') ? backgroundUrl.slice(7) : backgroundUrl;
+      const img = await loadImage(src);
       const ir = img.width / (img.height || 1);
       const cr = width / height;
       let dw, dh, dx, dy;

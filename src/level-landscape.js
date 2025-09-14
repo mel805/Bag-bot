@@ -209,7 +209,8 @@ async function renderLevelCardLandscape({
   let bgDrawn = false;
   if (backgroundUrl && typeof backgroundUrl === 'string') {
     try {
-      const bgImg = await loadImage(backgroundUrl);
+      const src = backgroundUrl.startsWith('file://') ? backgroundUrl.slice(7) : backgroundUrl;
+      const bgImg = await loadImage(src);
       // cover
       const iw = bgImg.width || 1, ih = bgImg.height || 1;
       const ir = iw / ih;

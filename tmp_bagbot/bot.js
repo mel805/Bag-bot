@@ -1033,9 +1033,18 @@ function startKeepAliveServer() {
             let backgroundUrl;
             if (typeof parsed.query?.bg === 'string') {
               const rawBg = String(parsed.query.bg);
-              if (/^https?:\/\//i.test(rawBg)) backgroundUrl = rawBg;
-              else if (rawBg.startsWith('/')) backgroundUrl = path.join(PUBLIC_DIR, rawBg.replace(/^\/+/, ''));
-              else backgroundUrl = rawBg;
+              if (/^https?:\/\//i.test(rawBg)) {
+                backgroundUrl = rawBg;
+              } else if (rawBg.startsWith('/')) {
+                const abs = path.join(PUBLIC_DIR, rawBg.replace(/^\/+/, ''));
+                backgroundUrl = 'file://' + abs;
+              } else if (rawBg.startsWith('uploads/')) {
+                const abs = path.join(PUBLIC_DIR, rawBg);
+                backgroundUrl = 'file://' + abs;
+              } else {
+                // fallback: assume absolute fs path
+                backgroundUrl = rawBg.startsWith('file://') ? rawBg : ('file://' + rawBg);
+              }
             }
             const mode = String(parsed.query?.mode || 'level');
             const isRoleAwardPreview = (mode === 'role');
