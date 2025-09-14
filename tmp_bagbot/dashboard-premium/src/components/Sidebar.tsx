@@ -45,7 +45,6 @@ export default function Sidebar() {
 
         <LinkItem to="/reminders">🛎️ Rappels</LinkItem>
         <LinkItem to="/stats">📈 Statistiques</LinkItem>
-        <LinkItem to="/settings">⚙️ Paramètres</LinkItem>
 
         <div className="rounded-xl border border-white/10 overflow-hidden">
           <button className="w-full text-left px-3 py-2 hover:bg-white/5 flex items-center gap-2" onClick={()=>setOpenConfig(v=>!v)}>
