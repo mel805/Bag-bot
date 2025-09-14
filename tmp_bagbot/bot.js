@@ -8208,6 +8208,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const logoUrl = LEVEL_CARD_LOGO_URL || CERTIFIED_LOGO_URL || undefined;
         const isCertified = memberHasCertifiedRole(member, levels);
         const isFemale = memberHasFemaleRole(member, levels);
+        const bg = chooseCardBackgroundForMember(member, levels);
+        const resolveBg = (u) => {
+          try {
+            if (!u) return undefined;
+            if (/^https?:\/\//i.test(u)) return u;
+            if (String(u).startsWith('file://')) return u;
+            const PUBLIC_DIR2 = path2.resolve(__dirname, '../public');
+            if (String(u).startsWith('/')) return 'file://' + path2.join(PUBLIC_DIR2, String(u).replace(/^\/+/, ''));
+            if (String(u).startsWith('uploads/')) return 'file://' + path2.join(PUBLIC_DIR2, String(u));
+          } catch (_) {}
+          return undefined;
+        };
+        const texts = {};
+        if (levels?.announce?.levelUp?.template && String(levels.announce.levelUp.template).trim()) {
+          texts.subtitle = String(levels.announce.levelUp.template);
+        }
         
         // Calculer les informations de progression pour la barre circulaire
         const xpSinceLevel = stats.xpSinceLevel || 0;
@@ -8221,6 +8237,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             roleName: roleName || '—', 
             logoUrl, 
             isCertified: true,
+            backgroundUrl: resolveBg(bg),
+            texts,
             xpSinceLevel,
             xpRequiredForNext: xpRequiredForNextLevel
           });
@@ -8231,6 +8249,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             lastRole: roleName || '—',
             logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
             bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
+            backgroundUrl: resolveBg(bg),
+            texts,
             xpSinceLevel,
             xpRequiredForNext: xpRequiredForNextLevel
           });
@@ -8241,6 +8261,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             lastRole: roleName || '—',
             logoUrl: LEVEL_CARD_LOGO_URL || undefined,
             bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
+            backgroundUrl: resolveBg(bg),
+            texts,
             xpSinceLevel,
             xpRequiredForNext: xpRequiredForNextLevel
           });
