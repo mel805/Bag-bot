@@ -3656,6 +3656,7 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
       roleName: roleName || '—',
       logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
       isCertified: true,
+      backgroundUrl: bg || undefined,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
@@ -3675,6 +3676,7 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
       lastRole: roleName || '—',
       logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
+      backgroundUrl: bg || undefined,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
@@ -3694,6 +3696,7 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
       lastRole: roleName || '—',
       logoUrl: LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
+      backgroundUrl: bg || undefined,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
@@ -3735,6 +3738,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
       isCertified: true,
       isRoleAward: true,
+      backgroundUrl: chooseCardBackgroundForMember(memberOrMention, levels) || undefined,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
@@ -3756,6 +3760,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       isRoleAward: true,
+      backgroundUrl: chooseCardBackgroundForMember(memberOrMention, levels) || undefined,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
@@ -3777,6 +3782,7 @@ function maybeAnnounceRoleAward(guild, memberOrMention, levels, roleId) {
       logoUrl: LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
       isRoleAward: true,
+      backgroundUrl: chooseCardBackgroundForMember(memberOrMention, levels) || undefined,
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'role.png' }] }).catch(() => {});
