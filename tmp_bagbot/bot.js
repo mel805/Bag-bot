@@ -2295,6 +2295,35 @@ async function handleEconomyAction(interaction, actionKey) {
       msgText = texts[randInt(0, texts.length - 1)];
     }
   }
+  // Replace placeholders in msgText like {cible} and {zone}
+  try {
+    if (msgText && typeof msgText === 'string' && /\{(cible|zone|user|auteur)\}/i.test(msgText)) {
+      const actor = interaction.user;
+      let partner = null;
+      try {
+        partner = initialPartner || interaction.options.getUser('cible', false) || null;
+      } catch (_) { partner = null; }
+      let zoneValue = '';
+      try { zoneValue = String(interaction.options.getString('zone', false) || '').trim(); } catch (_) { zoneValue = ''; }
+      if (!zoneValue && /\{zone\}/i.test(msgText)) {
+        // Pick a default zone if not provided
+        const zones = ['dos','épaules','nuque','jambes','pieds','mains'];
+        zoneValue = zones[Math.floor(Math.random()*zones.length)];
+      }
+      const replacements = {
+        '{cible}': partner ? String(partner) : 'toi-même',
+        '{zone}': zoneValue || 'corps',
+        '{user}': String(actor || ''),
+        '{auteur}': String(actor || ''),
+      };
+      // Case-insensitive replace for known tokens
+      let out = msgText;
+      for (const [k, v] of Object.entries(replacements)) {
+        out = out.replace(new RegExp(k.replace(/[{}]/g, m=>`\\${m}`), 'gi'), v);
+      }
+      msgText = out;
+    }
+  } catch (_) {}
   // Special cases
   if (actionKey === 'give') {
     const cible = interaction.options.getUser('membre', true);
