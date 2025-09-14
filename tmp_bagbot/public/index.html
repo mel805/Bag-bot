@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BAG • Dashboard</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png" alt="BAG" />
+      <div class="brand-text">
+        <h1>BAG</h1>
+        <span>Dashboard</span>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-item active" data-view="overview">Aperçu</button>
+      <button class="nav-item" data-view="economy">Économie</button>
+      <button class="nav-item" data-view="truthdare">Action/Vérité</button>
+      <button class="nav-item" data-view="confess">Confessions</button>
+      <button class="nav-item" data-view="logs">Logs</button>
+      <button class="nav-item" data-view="levels">Levels</button>
+      <button class="nav-item" data-view="autothread">AutoThread</button>
+      <button class="nav-item" data-view="counting">Comptage</button>
+      <button class="nav-item" data-view="disboard">Disboard</button>
+    </nav>
+  </aside>
+  <main class="content">
+    <header class="topbar">
+      <div class="guild-info">
+        <h2 id="guildName">—</h2>
+        <div class="stats">
+          <span id="memberCount">—</span>
+          <span id="channelCount">—</span>
+          <span id="uptime">—</span>
+        </div>
+      </div>
+      <div class="auth">
+        <input id="dashKey" type="password" placeholder="Clé Dashboard (optionnel)" />
+        <button id="applyKey">Appliquer</button>
+      </div>
+    </header>
+    <section id="view-overview" class="view active">
+      <div class="cards">
+        <div class="card">
+          <h3>Mémoire</h3>
+          <div class="metric"><span id="memRss">—</span> RSS</div>
+          <div class="metric"><span id="memHeap">—</span> Heap</div>
+        </div>
+        <div class="card">
+          <h3>Bot</h3>
+          <div class="metric"><span id="botTag">—</span></div>
+          <div class="metric"><span id="botId">—</span></div>
+        </div>
+        <div class="card">
+          <h3>État</h3>
+          <div class="metric" id="wsState">WS: —</div>
+          <div class="metric" id="apiState">API: —</div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Configs (lecture seule)</h3>
+        <pre id="configs"></pre>
+      </div>
+    </section>
+    <section id="view-economy" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-truthdare" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-confess" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-logs" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-levels" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-autothread" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-counting" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-disboard" class="view"><div class="placeholder">À venir</div></section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

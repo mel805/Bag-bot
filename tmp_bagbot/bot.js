@@ -572,39 +572,190 @@ function startKeepAliveServer() {
   if (!port) return;
   try {
     const http = require('http');
-    const server = http.createServer((req, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
-      if (req.url === '/health') return res.end('OK');
-      if (req.url === '/backup') {
-        const token = process.env.BACKUP_TOKEN || '';
-        const auth = req.headers['authorization'] || '';
-        if (token && auth !== `Bearer ${token}`) { res.statusCode = 401; return res.end('Unauthorized'); }
-        try {
-          const { readConfig, paths } = require('./storage/jsonStore');
-          readConfig().then(async (cfg) => {
-            const text = JSON.stringify(cfg, null, 2);
+    const url = require('url');
+    const fs = require('fs');
+    const path = require('path');
+    const { WebSocketServer } = require('ws');
+
+    const DASHBOARD_KEY = String(process.env.DASHBOARD_KEY || '').trim();
+    const PUBLIC_DIR = path.resolve(__dirname, '../public');
+
+    const sendJson = (res, code, obj) => {
+      try {
+        res.statusCode = code;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(obj));
+      } catch (_) {
+        try { res.statusCode = 500; res.end('{}'); } catch (_) {}
+      }
+    };
+
+    const isAuthed = (req, parsed) => {
+      try {
+        if (!DASHBOARD_KEY) return true; // if not set, allow
+        const hdr = String(req.headers['authorization'] || '');
+        if (hdr === `Bearer ${DASHBOARD_KEY}`) return true;
+        const q = parsed?.query || {};
+        if (String(q.key || '') === DASHBOARD_KEY) return true;
+        return false;
+      } catch (_) { return false; }
+    };
+
+    const server = http.createServer(async (req, res) => {
+      try {
+        const parsed = url.parse(req.url || '/', true);
+        // Health
+        if (parsed.pathname === '/health') {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'text/plain');
+          return res.end('OK');
+        }
+
+        // Legacy backup endpoint (kept for compatibility)
+        if (parsed.pathname === '/backup') {
+          const token = process.env.BACKUP_TOKEN || '';
+          const auth = req.headers['authorization'] || '';
+          if (token && auth !== `Bearer ${token}`) { res.statusCode = 401; return res.end('Unauthorized'); }
+          try {
+            const { readConfig } = require('./storage/jsonStore');
+            const cfg = await readConfig();
             res.setHeader('Content-Type', 'application/json');
-            res.end(text);
-            // Log success to configured logs channel
+            res.end(JSON.stringify(cfg, null, 2));
             try {
               const g = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(()=>null);
               if (g) {
-                // Simuler les infos de backup pour HTTP (pas de données détaillées disponibles ici)
-                const httpInfo = { 
-                  storage: 'http', 
-                  local: { success: true }, 
-                  github: { success: false, configured: false, error: 'Non disponible via HTTP' },
-                  details: { timestamp: new Date().toISOString() }
-                };
+                const httpInfo = { storage: 'http', local: { success: true }, github: { success: false, configured: false, error: 'Non disponible via HTTP' }, details: { timestamp: new Date().toISOString() } };
                 await sendDetailedBackupLog(g, httpInfo, 'http', null);
               }
             } catch (_) {}
-          }).catch(() => { res.statusCode = 500; res.end('ERR'); });
-        } catch (_) { res.statusCode = 500; res.end('ERR'); }
-        return;
+            return;
+          } catch (_) { res.statusCode = 500; return res.end('ERR'); }
+        }
+
+        // APIs (protected if DASHBOARD_KEY is set)
+        if (parsed.pathname === '/api/stats') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          try {
+            const g = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(()=>null);
+            const now = Date.now();
+            const mem = process.memoryUsage();
+            const stats = {
+              guildId,
+              guildName: g?.name || null,
+              memberCount: Number(g?.memberCount || 0),
+              channels: Number(g?.channels?.cache?.size || 0),
+              botUser: client.user ? { id: client.user.id, tag: client.user.tag } : null,
+              uptimeSec: Math.floor(process.uptime()),
+              memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
+              timestamp: now
+            };
+            return sendJson(res, 200, stats);
+          } catch (e) {
+            return sendJson(res, 500, { error: String(e?.message || e) });
+          }
+        }
+
+        if (parsed.pathname === '/api/configs') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          try {
+            const { getEconomyConfig, getConfessConfig, getLogsConfig, getAutoKickConfig, getTruthDareConfig, getCountingConfig, getAutoThreadConfig, getLevelsConfig, getDisboardConfig } = require('./storage/jsonStore');
+            const [eco, confess, logs, ak, td, counting, autothread, levels, disboard] = await Promise.all([
+              getEconomyConfig(guildId),
+              getConfessConfig(guildId),
+              getLogsConfig(guildId),
+              getAutoKickConfig(guildId),
+              getTruthDareConfig(guildId),
+              getCountingConfig(guildId),
+              getAutoThreadConfig(guildId),
+              getLevelsConfig(guildId),
+              getDisboardConfig(guildId),
+            ]);
+            return sendJson(res, 200, { economy: eco, confess, logs, autokick: ak, truthdare: td, counting, autothread, levels, disboard });
+          } catch (e) {
+            return sendJson(res, 500, { error: String(e?.message || e) });
+          }
+        }
+
+        // Static files
+        const safeJoin = (base, target) => {
+          const p = path.join(base, target);
+          if (!p.startsWith(base)) return base; // prevent traversal
+          return p;
+        };
+        const filePathRaw = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '/index.html';
+        const filePath = safeJoin(PUBLIC_DIR, decodeURIComponent(filePathRaw));
+        fs.stat(filePath, (err, stat) => {
+          let finalPath = filePath;
+          if (err || !stat || !stat.isFile()) {
+            finalPath = path.join(PUBLIC_DIR, 'index.html');
+          }
+          fs.readFile(finalPath, (e2, buf) => {
+            if (e2) {
+              res.statusCode = 404;
+              res.setHeader('Content-Type', 'text/plain');
+              return res.end('Not found');
+            }
+            const ext = path.extname(finalPath).toLowerCase();
+            const ctype = ext === '.html' ? 'text/html; charset=utf-8'
+              : ext === '.css' ? 'text/css; charset=utf-8'
+              : ext === '.js' ? 'text/javascript; charset=utf-8'
+              : ext === '.json' ? 'application/json; charset=utf-8'
+              : ext === '.svg' ? 'image/svg+xml'
+              : ext === '.png' ? 'image/png'
+              : 'application/octet-stream';
+            res.statusCode = 200;
+            res.setHeader('Content-Type', ctype);
+            res.end(buf);
+          });
+        });
+      } catch (e) {
+        try { res.statusCode = 500; res.end('ERR'); } catch (_) {}
       }
-      return res.end('BAG bot running');
     });
+
+    // WebSocket for realtime stats
+    const wss = new WebSocketServer({ noServer: true });
+    const clients = new Set();
+    const authWs = (req) => {
+      try {
+        if (!DASHBOARD_KEY) return true;
+        const parsed = url.parse(req.url || '', true);
+        const q = parsed.query || {};
+        if (String(q.key || '') === DASHBOARD_KEY) return true;
+        return false;
+      } catch (_) { return false; }
+    };
+    server.on('upgrade', (req, socket, head) => {
+      if (!authWs(req)) { try { socket.destroy(); } catch (_) {} return; }
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        clients.add(ws);
+        ws.on('close', () => { clients.delete(ws); });
+      });
+    });
+
+    const pushStats = async () => {
+      if (clients.size === 0) return;
+      try {
+        const g = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(()=>null);
+        const mem = process.memoryUsage();
+        const payload = JSON.stringify({
+          t: 'stats',
+          d: {
+            guildId,
+            guildName: g?.name || null,
+            memberCount: Number(g?.memberCount || 0),
+            channels: Number(g?.channels?.cache?.size || 0),
+            botUser: client.user ? { id: client.user.id, tag: client.user.tag } : null,
+            uptimeSec: Math.floor(process.uptime()),
+            memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
+            ts: Date.now()
+          }
+        });
+        for (const ws of clients) { try { ws.send(payload); } catch (_) {} }
+      } catch (_) {}
+    };
+    setInterval(pushStats, 5000);
+
     server.listen(port, '0.0.0.0', () => {
       try { console.log(`[KeepAlive] listening on ${port}`); } catch (_) {}
     });
