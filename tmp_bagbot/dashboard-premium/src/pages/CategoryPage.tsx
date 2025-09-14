@@ -230,6 +230,7 @@ export default function CategoryPage() {
             <div className="flex gap-2">
               <NavLink to="/config/economie/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
               <NavLink to="/config/economie/actions" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
+              <NavLink to="/config/economie/gifs" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
             </div>
           </div>
         )}
@@ -306,6 +307,39 @@ export default function CategoryPage() {
                 payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
                 await saveEconomyAction(actKey, payload);
               }}>Enregistrer l'action</button>
+            </div>
+          </div>
+        )}
+        {cat==='economie' && view==='gifs' && (
+          <div className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="text-white/70">Action
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
+                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
+                </select>
+              </label>
+              <div className="text-white/60">Les GIFs de cette action s’appliquent côté bot pour les embeds/messages.</div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="text-white/70">GIF succès (1 URL par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-40" value={gifSuccess} onChange={e=>setGifSuccess(e.target.value)} />
+              </label>
+              <label className="text-white/70">GIF échec (1 URL par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-40" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
+              </label>
+            </div>
+            <div className="text-white/60 text-sm">Aperçu (premiers GIFs):</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,6).map((u,idx)=>(<img key={'gs2'+idx} src={u} className="w-full h-24 object-cover rounded border border-white/10"/>))}
+              {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,6).map((u,idx)=>(<img key={'gf2'+idx} src={u} className="w-full h-24 object-cover rounded border border-white/10"/>))}
+            </div>
+            <div className="mt-3">
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const payload:any = { action: actKey, gifs: {} };
+                payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
+                payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
+                await saveEconomyAction(actKey, payload);
+              }}>Enregistrer GIFs</button>
             </div>
           </div>
         )}
