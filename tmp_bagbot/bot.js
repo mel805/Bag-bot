@@ -676,6 +676,155 @@ function startKeepAliveServer() {
           }
         }
 
+        if (parsed.pathname === '/api/configs/logs' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body = '';
+          req.on('data', (c)=>{ body += c; if (body.length > 1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
+              const curr = await getLogsConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (data.categories && typeof data.categories === 'object') {
+                const allowed = ['joinleave','messages','threads','backup'];
+                const cats = {};
+                for (const k of allowed) cats[k] = Boolean(data.categories[k]);
+                next.categories = cats;
+              }
+              if (data.channels && typeof data.channels === 'object') {
+                const allowed = ['joinleave','messages','threads','backup'];
+                const ch = {};
+                for (const k of allowed) { const v = String(data.channels[k]||'').trim(); if (v) ch[k] = v; }
+                next.channels = { ...(curr.channels||{}), ...ch };
+              }
+              await updateLogsConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
+        if (parsed.pathname === '/api/configs/confess' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body = '';
+          req.on('data',(c)=>{ body += c; if (body.length > 1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getConfessConfig, updateConfessConfig } = require('./storage/jsonStore');
+              const curr = await getConfessConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (typeof data.allowReplies === 'boolean') next.allowReplies = data.allowReplies;
+              if (Array.isArray(data.nsfwChannels)) next.nsfw = { ...(next.nsfw||{}), channels: data.nsfwChannels.map(String) };
+              if (Array.isArray(data.sfwChannels)) next.sfw = { ...(next.sfw||{}), channels: data.sfwChannels.map(String) };
+              await updateConfessConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
+        if (parsed.pathname === '/api/configs/truthdare' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getTruthDareConfig, updateTruthDareConfig } = require('./storage/jsonStore');
+              const curr = await getTruthDareConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (Array.isArray(data.nsfwChannels)) next.nsfw = { ...(next.nsfw||{}), channels: data.nsfwChannels.map(String) };
+              if (Array.isArray(data.sfwChannels)) next.sfw = { ...(next.sfw||{}), channels: data.sfwChannels.map(String) };
+              // Reset rotation on TD changes
+              next.sfw = { ...(next.sfw||{}), rotation: { action: 0, verite: 0 } };
+              next.nsfw = { ...(next.nsfw||{}), rotation: { action: 0, verite: 0 } };
+              await updateTruthDareConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
+        if (parsed.pathname === '/api/configs/levels' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getLevelsConfig, updateLevelsConfig } = require('./storage/jsonStore');
+              const curr = await getLevelsConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (Number.isFinite(Number(data.xpPerMessage))) next.xpPerMessage = Math.max(0, Number(data.xpPerMessage));
+              if (Number.isFinite(Number(data.xpPerVoiceMinute))) next.xpPerVoiceMinute = Math.max(0, Number(data.xpPerVoiceMinute));
+              if (data.levelCurve && Number.isFinite(Number(data.levelCurve.base)) && Number.isFinite(Number(data.levelCurve.factor))) {
+                next.levelCurve = { base: Math.max(1, Number(data.levelCurve.base)), factor: Math.max(1, Number(data.levelCurve.factor)) };
+              }
+              await updateLevelsConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
+        if (parsed.pathname === '/api/configs/autothread' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getAutoThreadConfig, updateAutoThreadConfig } = require('./storage/jsonStore');
+              const curr = await getAutoThreadConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (Array.isArray(data.channels)) next.channels = data.channels.map(String);
+              if (typeof data.policy === 'string') next.policy = data.policy;
+              if (typeof data.archivePolicy === 'string') next.archivePolicy = data.archivePolicy;
+              await updateAutoThreadConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
+        if (parsed.pathname === '/api/configs/counting' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getCountingConfig, updateCountingConfig } = require('./storage/jsonStore');
+              const curr = await getCountingConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (Array.isArray(data.channels)) next.channels = data.channels.map(String);
+              await updateCountingConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
+        if (parsed.pathname === '/api/configs/disboard' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getDisboardConfig, updateDisboardConfig } = require('./storage/jsonStore');
+              const curr = await getDisboardConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (typeof data.remindersEnabled === 'boolean') next.remindersEnabled = data.remindersEnabled;
+              if (data.remindChannelId) next.remindChannelId = String(data.remindChannelId);
+              await updateDisboardConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
         if (parsed.pathname === '/api/configs/economy' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           try {

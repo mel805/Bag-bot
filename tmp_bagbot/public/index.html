@@ -26,12 +26,40 @@
         <button class="sub-item" data-subview="economy-currency">Devise</button>
       </div>
       <button class="nav-item" data-view="truthdare">Action/Vérité</button>
+      <div class="submenu" data-for="truthdare">
+        <button class="sub-item" data-subview="td-overview">Aperçu</button>
+        <button class="sub-item" data-subview="td-channels">Salons</button>
+      </div>
       <button class="nav-item" data-view="confess">Confessions</button>
+      <div class="submenu" data-for="confess">
+        <button class="sub-item" data-subview="confess-overview">Aperçu</button>
+        <button class="sub-item" data-subview="confess-settings">Paramètres</button>
+      </div>
       <button class="nav-item" data-view="logs">Logs</button>
+      <div class="submenu" data-for="logs">
+        <button class="sub-item" data-subview="logs-overview">Aperçu</button>
+        <button class="sub-item" data-subview="logs-settings">Paramètres</button>
+      </div>
       <button class="nav-item" data-view="levels">Levels</button>
+      <div class="submenu" data-for="levels">
+        <button class="sub-item" data-subview="levels-overview">Aperçu</button>
+        <button class="sub-item" data-subview="levels-settings">Paramètres</button>
+      </div>
       <button class="nav-item" data-view="autothread">AutoThread</button>
+      <div class="submenu" data-for="autothread">
+        <button class="sub-item" data-subview="autothread-overview">Aperçu</button>
+        <button class="sub-item" data-subview="autothread-settings">Paramètres</button>
+      </div>
       <button class="nav-item" data-view="counting">Comptage</button>
+      <div class="submenu" data-for="counting">
+        <button class="sub-item" data-subview="counting-overview">Aperçu</button>
+        <button class="sub-item" data-subview="counting-settings">Paramètres</button>
+      </div>
       <button class="nav-item" data-view="disboard">Disboard</button>
+      <div class="submenu" data-for="disboard">
+        <button class="sub-item" data-subview="disboard-overview">Aperçu</button>
+        <button class="sub-item" data-subview="disboard-settings">Paramètres</button>
+      </div>
     </nav>
   </aside>
   <main class="content">
@@ -90,13 +118,89 @@
         </div>
       </div>
     </section>
-    <section id="view-truthdare" class="view"><div class="placeholder">À venir</div></section>
-    <section id="view-confess" class="view"><div class="placeholder">À venir</div></section>
-    <section id="view-logs" class="view"><div class="placeholder">À venir</div></section>
-    <section id="view-levels" class="view"><div class="placeholder">À venir</div></section>
-    <section id="view-autothread" class="view"><div class="placeholder">À venir</div></section>
-    <section id="view-counting" class="view"><div class="placeholder">À venir</div></section>
-    <section id="view-disboard" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-truthdare" class="view">
+      <div class="slide" id="td-overview"><div class="placeholder">Aperçu TD (à venir)</div></div>
+      <div class="slide" id="td-channels">
+        <div class="panel">
+          <h3>Salons Action/Vérité</h3>
+          <div class="form-row">
+            <label>Salons SFW (IDs séparés par des virgules)</label>
+            <input id="tdSfwChannels" type="text" placeholder="123,456" />
+          </div>
+          <div class="form-row">
+            <label>Salons NSFW (IDs séparés par des virgules)</label>
+            <input id="tdNsfwChannels" type="text" placeholder="789,012" />
+          </div>
+          <div class="actions"><button id="saveTd">Enregistrer</button><span id="saveTdState" class="muted"></span></div>
+        </div>
+      </div>
+    </section>
+    <section id="view-confess" class="view">
+      <div class="slide" id="confess-overview"><div class="placeholder">Aperçu confessions (à venir)</div></div>
+      <div class="slide" id="confess-settings">
+        <div class="panel">
+          <h3>Paramètres Confessions</h3>
+          <div class="form-row"><label>Autoriser réponses</label><input id="confessAllowReplies" type="checkbox" /></div>
+          <div class="actions"><button id="saveConfess">Enregistrer</button><span id="saveConfessState" class="muted"></span></div>
+        </div>
+      </div>
+    </section>
+    <section id="view-logs" class="view">
+      <div class="slide" id="logs-overview"><div class="placeholder">Aperçu logs (à venir)</div></div>
+      <div class="slide" id="logs-settings">
+        <div class="panel">
+          <h3>Catégories de logs</h3>
+          <div class="form-row"><label><input type="checkbox" id="logJoinLeave" /> Entrées/Sorties</label></div>
+          <div class="form-row"><label><input type="checkbox" id="logMessages" /> Messages</label></div>
+          <div class="form-row"><label><input type="checkbox" id="logThreads" /> Fils</label></div>
+          <div class="form-row"><label><input type="checkbox" id="logBackup" /> Sauvegardes</label></div>
+          <div class="actions"><button id="saveLogs">Enregistrer</button><span id="saveLogsState" class="muted"></span></div>
+        </div>
+      </div>
+    </section>
+    <section id="view-levels" class="view">
+      <div class="slide" id="levels-overview"><div class="placeholder">Aperçu levels (à venir)</div></div>
+      <div class="slide" id="levels-settings">
+        <div class="panel">
+          <h3>XP</h3>
+          <div class="form-row"><label>XP par message</label><input id="xpPerMessage" type="text" placeholder="10" /></div>
+          <div class="form-row"><label>XP / minute vocal</label><input id="xpPerVoiceMinute" type="text" placeholder="5" /></div>
+          <div class="form-row"><label>Courbe: base</label><input id="levelBase" type="text" placeholder="100" /></div>
+          <div class="form-row"><label>Courbe: factor</label><input id="levelFactor" type="text" placeholder="1.2" /></div>
+          <div class="actions"><button id="saveLevels">Enregistrer</button><span id="saveLevelsState" class="muted"></span></div>
+        </div>
+      </div>
+    </section>
+    <section id="view-autothread" class="view">
+      <div class="slide" id="autothread-overview"><div class="placeholder">Aperçu autoThread (à venir)</div></div>
+      <div class="slide" id="autothread-settings">
+        <div class="panel"><h3>AutoThread</h3>
+          <div class="form-row"><label>Salons (IDs, virgules)</label><input id="atChannels" type="text" placeholder="123,456" /></div>
+          <div class="form-row"><label>Policy</label><input id="atPolicy" type="text" placeholder="always" /></div>
+          <div class="form-row"><label>Archivage</label><input id="atArchive" type="text" placeholder="1d" /></div>
+          <div class="actions"><button id="saveAT">Enregistrer</button><span id="saveATState" class="muted"></span></div>
+        </div>
+      </div>
+    </section>
+    <section id="view-counting" class="view">
+      <div class="slide" id="counting-overview"><div class="placeholder">Aperçu comptage (à venir)</div></div>
+      <div class="slide" id="counting-settings">
+        <div class="panel"><h3>Comptage</h3>
+          <div class="form-row"><label>Salons (IDs, virgules)</label><input id="countingChannels" type="text" placeholder="123,456" /></div>
+          <div class="actions"><button id="saveCounting">Enregistrer</button><span id="saveCountingState" class="muted"></span></div>
+        </div>
+      </div>
+    </section>
+    <section id="view-disboard" class="view">
+      <div class="slide" id="disboard-overview"><div class="placeholder">Aperçu Disboard (à venir)</div></div>
+      <div class="slide" id="disboard-settings">
+        <div class="panel"><h3>Disboard</h3>
+          <div class="form-row"><label><input id="disboardReminders" type="checkbox" /> Rappels automatiques</label></div>
+          <div class="form-row"><label>Salon rappel (ID)</label><input id="disboardChannel" type="text" placeholder="123" /></div>
+          <div class="actions"><button id="saveDisboard">Enregistrer</button><span id="saveDisboardState" class="muted"></span></div>
+        </div>
+      </div>
+    </section>
   </main>
   <script src="/app.js"></script>
 </body>
