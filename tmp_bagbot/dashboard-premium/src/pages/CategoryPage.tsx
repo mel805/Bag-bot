@@ -278,21 +278,21 @@ export default function CategoryPage() {
                 <div>
                   <div className="text-white/60 text-sm mb-2">Actuelle</div>
                   <div className="grid grid-cols-1 gap-2">
-                    {curBgDefault ? (<img src={curBgDefault} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgFemale ? (<img src={curBgFemale} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgCertified ? (<img src={curBgCertified} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgPrestigeBlue ? (<img src={curBgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {curBgPrestigeRose ? (<img src={curBgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgDefault ? (<img src={curBgDefault.startsWith('http')?curBgDefault:(curBgDefault.startsWith('/')?window.location.origin+curBgDefault:curBgDefault)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgFemale ? (<img src={curBgFemale.startsWith('http')?curBgFemale:(curBgFemale.startsWith('/')?window.location.origin+curBgFemale:curBgFemale)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgCertified ? (<img src={curBgCertified.startsWith('http')?curBgCertified:(curBgCertified.startsWith('/')?window.location.origin+curBgCertified:curBgCertified)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgPrestigeBlue ? (<img src={curBgPrestigeBlue.startsWith('http')?curBgPrestigeBlue:(curBgPrestigeBlue.startsWith('/')?window.location.origin+curBgPrestigeBlue:curBgPrestigeBlue)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {curBgPrestigeRose ? (<img src={curBgPrestigeRose.startsWith('http')?curBgPrestigeRose:(curBgPrestigeRose.startsWith('/')?window.location.origin+curBgPrestigeRose:curBgPrestigeRose)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
                   </div>
                 </div>
                 <div>
                   <div className="text-white/60 text-sm mb-2">Prévisualisation</div>
                   <div className="grid grid-cols-1 gap-2">
-                    {bgDefault ? (<img src={bgDefault} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgFemale ? (<img src={bgFemale} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgCertified ? (<img src={bgCertified} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgPrestigeBlue ? (<img src={bgPrestigeBlue} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
-                    {bgPrestigeRose ? (<img src={bgPrestigeRose} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgDefault ? (<img src={bgDefault.startsWith('http')?bgDefault:(bgDefault.startsWith('/')?window.location.origin+bgDefault:bgDefault)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgFemale ? (<img src={bgFemale.startsWith('http')?bgFemale:(bgFemale.startsWith('/')?window.location.origin+bgFemale:bgFemale)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgCertified ? (<img src={bgCertified.startsWith('http')?bgCertified:(bgCertified.startsWith('/')?window.location.origin+bgCertified:bgCertified)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgPrestigeBlue ? (<img src={bgPrestigeBlue.startsWith('http')?bgPrestigeBlue:(bgPrestigeBlue.startsWith('/')?window.location.origin+bgPrestigeBlue:bgPrestigeBlue)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
+                    {bgPrestigeRose ? (<img src={bgPrestigeRose.startsWith('http')?bgPrestigeRose:(bgPrestigeRose.startsWith('/')?window.location.origin+bgPrestigeRose:bgPrestigeRose)} className="h-20 w-full object-cover rounded border border-white/10" />) : (<div className="h-20 w-full rounded bg-white/5 border border-white/10" />)}
                   </div>
                 </div>
               </div>
@@ -307,27 +307,27 @@ export default function CategoryPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="text-white/70">Fond par défaut
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgDefault} onChange={e=>setBgDefault(e.target.value)} />
-                  {bgDefault && (<img src={bgDefault} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  {bgDefault && (<img src={bgDefault.startsWith('http')?bgDefault:(bgDefault.startsWith('/')?window.location.origin+bgDefault:bgDefault)} className="mt-2 h-16 w-full object-cover rounded" />)}
                   <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgDefault(url); }; fr.readAsDataURL(f); }} />
                 </label>
                 <label className="text-white/70">Fond féminin
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgFemale} onChange={e=>setBgFemale(e.target.value)} />
-                  {bgFemale && (<img src={bgFemale} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  {bgFemale && (<img src={bgFemale.startsWith('http')?bgFemale:(bgFemale.startsWith('/')?window.location.origin+bgFemale:bgFemale)} className="mt-2 h-16 w-full object-cover rounded" />)}
                   <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgFemale(url); }; fr.readAsDataURL(f); }} />
                 </label>
                 <label className="text-white/70">Fond certifié
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgCertified} onChange={e=>setBgCertified(e.target.value)} />
-                  {bgCertified && (<img src={bgCertified} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  {bgCertified && (<img src={bgCertified.startsWith('http')?bgCertified:(bgCertified.startsWith('/')?window.location.origin+bgCertified:bgCertified)} className="mt-2 h-16 w-full object-cover rounded" />)}
                   <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgCertified(url); }; fr.readAsDataURL(f); }} />
                 </label>
                 <label className="text-white/70">Prestige bleu
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgPrestigeBlue} onChange={e=>setBgPrestigeBlue(e.target.value)} />
-                  {bgPrestigeBlue && (<img src={bgPrestigeBlue} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  {bgPrestigeBlue && (<img src={bgPrestigeBlue.startsWith('http')?bgPrestigeBlue:(bgPrestigeBlue.startsWith('/')?window.location.origin+bgPrestigeBlue:bgPrestigeBlue)} className="mt-2 h-16 w-full object-cover rounded" />)}
                   <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgPrestigeBlue(url); }; fr.readAsDataURL(f); }} />
                 </label>
                 <label className="text-white/70">Prestige rose
                   <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={bgPrestigeRose} onChange={e=>setBgPrestigeRose(e.target.value)} />
-                  {bgPrestigeRose && (<img src={bgPrestigeRose} className="mt-2 h-16 w-full object-cover rounded" />)}
+                  {bgPrestigeRose && (<img src={bgPrestigeRose.startsWith('http')?bgPrestigeRose:(bgPrestigeRose.startsWith('/')?window.location.origin+bgPrestigeRose:bgPrestigeRose)} className="mt-2 h-16 w-full object-cover rounded" />)}
                   <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setBgPrestigeRose(url); }; fr.readAsDataURL(f); }} />
                 </label>
               </div>
@@ -342,7 +342,16 @@ export default function CategoryPage() {
                 if (bgCertified) cards.backgrounds.certified = bgCertified;
                 if (bgPrestigeBlue) cards.backgrounds.prestigeBlue = bgPrestigeBlue;
                 if (bgPrestigeRose) cards.backgrounds.prestigeRose = bgPrestigeRose;
-                await saveLevelsExtra({ cards, announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } } });
+                await saveLevelsExtra({
+                  ...(typeof xpMsgMin === 'number' && isFinite(xpMsgMin) ? { xpMessageMin: xpMsgMin } : {}),
+                  ...(typeof xpMsgMax === 'number' && isFinite(xpMsgMax) ? { xpMessageMax: xpMsgMax } : {}),
+                  ...(typeof xpVocMin === 'number' && isFinite(xpVocMin) ? { xpVoiceMin: xpVocMin } : {}),
+                  ...(typeof xpVocMax === 'number' && isFinite(xpVocMax) ? { xpVoiceMax: xpVocMax } : {}),
+                  ...(typeof msgCd === 'number' && isFinite(msgCd) ? { messageCooldownSec: msgCd } : {}),
+                  ...(typeof vocCd === 'number' && isFinite(vocCd) ? { voiceCooldownSec: vocCd } : {}),
+                  announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } },
+                  cards
+                });
               }}>Confirmer et sauvegarder</button>
             </div>
             </>
