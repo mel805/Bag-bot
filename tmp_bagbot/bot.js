@@ -1037,7 +1037,8 @@ function startKeepAliveServer() {
             let png;
             if (isCertified) {
               const { renderLevelCardLandscape } = require('../src/level-landscape');
-              png = await renderLevelCardLandscape({ memberName, level, roleName, isCertified: true, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts });
+              const backgroundUrl = (typeof parsed.query?.bg === 'string') ? String(parsed.query.bg) : undefined;
+              png = await renderLevelCardLandscape({ memberName, level, roleName, isCertified: true, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
             } else if (isRose) {
               const { renderPrestigeCardRoseGoldLandscape } = require('../src/prestige-rose-gold-landscape');
               png = await renderPrestigeCardRoseGoldLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts });

@@ -329,6 +329,10 @@ export default function CategoryPage() {
                     params.set('roleName', 'Étoile du Serveur');
                     if (tplLevelUp) params.set('subtitle', tplLevelUp);
                     if (tplRole) params.set('roleLine', tplRole);
+                    // Live background override
+                    const map:any={default:bgDefault,female:bgFemale,certified:bgCertified,rose:bgPrestigeRose,blue:bgPrestigeBlue,prestigeBlue:bgPrestigeBlue,prestigeRose:bgPrestigeRose};
+                    const bgUrl = map[cardKey] || map[variant];
+                    if (bgUrl) params.set('bg', bgUrl);
                     if (dashKey) params.set('key', dashKey);
                     // cache-bust on state changes
                     params.set('ts', String(Date.now()));

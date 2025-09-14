@@ -199,17 +199,38 @@ async function renderLevelCardLandscape({
   xpSinceLevel = 0,
   xpRequiredForNext = 100,
   texts = {},
+  backgroundUrl,
 }) {
   console.log('[LevelCard] Génération carte niveau:', { memberName, level, roleName, logoUrl, isCertified, isRoleAward });
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Fond noir luxe + vignette
-  const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, '#121212');
-  bg.addColorStop(1, '#0a0a0a');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
+  // Fond image (optionnel) ou dégradé noir luxe
+  let bgDrawn = false;
+  if (backgroundUrl && typeof backgroundUrl === 'string') {
+    try {
+      const bgImg = await loadImage(backgroundUrl);
+      // cover
+      const iw = bgImg.width || 1, ih = bgImg.height || 1;
+      const ir = iw / ih;
+      const cr = width / height;
+      let dw, dh, dx, dy;
+      if (ir > cr) { dh = height; dw = Math.ceil(dh * ir); dx = Math.floor((width - dw) / 2); dy = 0; }
+      else { dw = width; dh = Math.ceil(dw / ir); dx = 0; dy = Math.floor((height - dh) / 2); }
+      ctx.drawImage(bgImg, dx, dy, dw, dh);
+      // assombrir
+      ctx.fillStyle = 'rgba(0,0,0,0.58)';
+      ctx.fillRect(0, 0, width, height);
+      bgDrawn = true;
+    } catch (_) { /* fallback below */ }
+  }
+  if (!bgDrawn) {
+    const bg = ctx.createLinearGradient(0, 0, 0, height);
+    bg.addColorStop(0, '#121212');
+    bg.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const vign = ctx.createRadialGradient(width/2, height/2, Math.min(width, height)/3, width/2, height/2, Math.max(width, height));
   vign.addColorStop(0, 'rgba(0,0,0,0)');
