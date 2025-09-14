@@ -16,7 +16,7 @@ const TITLES: Record<string, string> = {
 
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
-  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64 } = useApi();
+  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64, saveEconomyAction } = useApi();
   useEffect(() => { fetchAll(); fetchMeta(); }, []);
 
   const title = TITLES[cat] || cat;
@@ -73,6 +73,17 @@ export default function CategoryPage() {
   const [countingChannels, setCountingChannels] = useState<string[]>([]);
   const [disboardReminders, setDisboardReminders] = useState(false);
   const [disboardChannel, setDisboardChannel] = useState('');
+  // Economy Actions state
+  const [actKey, setActKey] = useState('work');
+  const [actMoneyMin, setActMoneyMin] = useState<number|''>('');
+  const [actMoneyMax, setActMoneyMax] = useState<number|''>('');
+  const [actKarma, setActKarma] = useState<'none'|'charm'|'perversion'>('none');
+  const [actKarmaDelta, setActKarmaDelta] = useState<number|''>('');
+  const [actCooldown, setActCooldown] = useState<number|''>('');
+  const [msgSuccess, setMsgSuccess] = useState('');
+  const [msgFail, setMsgFail] = useState('');
+  const [gifSuccess, setGifSuccess] = useState('');
+  const [gifFail, setGifFail] = useState('');
   const dashKey = useMemo(() => {
     try {
       const urlKey = new URLSearchParams(window.location.search).get('key');
@@ -140,6 +151,24 @@ export default function CategoryPage() {
     setDisboardReminders(Boolean(configs.disboard?.remindersEnabled));
     setDisboardChannel(String(configs.disboard?.remindChannelId || ''));
   }, [configs]);
+  // Prime action fields when action key changes
+  useEffect(() => {
+    if (!configs) return;
+    try {
+      const c = configs.economy?.actions?.config?.[actKey] || {};
+      setActMoneyMin(Number.isFinite(c.moneyMin)?c.moneyMin:'');
+      setActMoneyMax(Number.isFinite(c.moneyMax)?c.moneyMax:'');
+      setActKarma(['none','charm','perversion'].includes(c.karma)?c.karma:'none');
+      setActKarmaDelta(Number.isFinite(c.karmaDelta)?c.karmaDelta:'');
+      setActCooldown(Number.isFinite(c.cooldown)?c.cooldown:'');
+      const m = configs.economy?.actions?.messages?.[actKey] || { success: [], fail: [] };
+      setMsgSuccess((m.success||[]).join('\n'));
+      setMsgFail((m.fail||[]).join('\n'));
+      const g = configs.economy?.actions?.gifs?.[actKey] || { success: [], fail: [] };
+      setGifSuccess((g.success||[]).join('\n'));
+      setGifFail((g.fail||[]).join('\n'));
+    } catch {}
+  }, [actKey, configs]);
 
   const channels = useMemo(()=> meta?.channels || [], [meta]);
   const roles = useMemo(()=> meta?.roles || [], [meta]);
@@ -196,6 +225,14 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
+        {cat==='economie' && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <NavLink to="/config/economie/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
+              <NavLink to="/config/economie/actions" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
+            </div>
+          </div>
+        )}
         {cat==='economie' && (!view || view==='overview') && (
           <div className="space-y-3">
             <div className="text-white/70">Nom de la monnaie</div>
@@ -209,8 +246,67 @@ export default function CategoryPage() {
           </div>
         )}
         {cat==='economie' && view==='actions' && (
-          <div className="space-y-3 text-white/80">
-            <div>Pour l’édition détaillée des actions, ouvrez la page Réglages (section Économie • Actions). Cette entrée redirige simplement vers l’UI existante.</div>
+          <div className="space-y-3">
+            <div className="grid md:grid-cols-3 gap-3">
+              <label className="text-white/70">Action
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
+                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Argent min
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMin as any} onChange={e=>setActMoneyMin(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Argent max
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMax as any} onChange={e=>setActMoneyMax(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Karma
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarma} onChange={e=>setActKarma(e.target.value as any)}>
+                  <option value="none">none</option>
+                  <option value="charm">charm</option>
+                  <option value="perversion">perversion</option>
+                </select>
+              </label>
+              <label className="text-white/70">Δ Karma
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarmaDelta as any} onChange={e=>setActKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Cooldown (s)
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3 mt-3">
+              <label className="text-white/70">Messages succès (1 par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={msgSuccess} onChange={e=>setMsgSuccess(e.target.value)} />
+              </label>
+              <label className="text-white/70">Messages échec (1 par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={msgFail} onChange={e=>setMsgFail(e.target.value)} />
+              </label>
+              <label className="text-white/70">GIF succès (1 URL par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifSuccess} onChange={e=>setGifSuccess(e.target.value)} />
+              </label>
+              <label className="text-white/70">GIF échec (1 URL par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
+              </label>
+            </div>
+            <div className="mt-2 text-white/60 text-sm">Prévisualisation GIFs (premières URL):</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,4).map((u,idx)=>(<img key={'gs'+idx} src={u} className="w-full h-24 object-cover rounded border border-white/10"/>))}
+              {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,4).map((u,idx)=>(<img key={'gf'+idx} src={u} className="w-full h-24 object-cover rounded border border-white/10"/>))}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const payload:any = { action: actKey, config: {}, messages: {}, gifs: {} };
+                if (actMoneyMin !== '') payload.config.moneyMin = Number(actMoneyMin);
+                if (actMoneyMax !== '') payload.config.moneyMax = Number(actMoneyMax);
+                payload.config.karma = actKarma;
+                if (actKarmaDelta !== '') payload.config.karmaDelta = Number(actKarmaDelta);
+                if (actCooldown !== '') payload.config.cooldown = Number(actCooldown);
+                payload.messages.success = msgSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
+                payload.messages.fail = msgFail.split('\n').map(s=>s.trim()).filter(Boolean);
+                payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
+                payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
+                await saveEconomyAction(actKey, payload);
+              }}>Enregistrer l'action</button>
+            </div>
           </div>
         )}
         {cat==='confessions' && (
