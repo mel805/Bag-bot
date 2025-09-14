@@ -16,7 +16,7 @@ type Configs = any;
 type ApiState = {
   stats: Stats | null;
   configs: Configs | null;
-  meta: { channels: {id:string,name:string}[]; roles:{id:string,name:string}[]; guildIconUrl?: string|null } | null;
+  meta: { channels: {id:string,name:string}[]; roles:{id:string,name:string}[]; guildIconUrl?: string|null; settings?: any } | null;
   loading: boolean;
   error: string | null;
   fetchAll: () => Promise<void>;

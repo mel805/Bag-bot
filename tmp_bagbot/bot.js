@@ -712,7 +712,21 @@ function startKeepAliveServer() {
               })
               .map(ch => ({ id: ch.id, name: ch.name || ch.id, type: ch.type }));
             const roles = Array.from(g.roles.cache.values()).map(r => ({ id: r.id, name: r.name }));
-            return sendJson(res, 200, { channels, roles, guildIconUrl: g.iconURL?.({ size: 256 }) || null });
+            // Guild settings snapshot
+            const guildSettings = {
+              afkChannelId: g.afkChannelId || null,
+              afkTimeout: g.afkTimeout || null,
+              defaultMessageNotifications: g.defaultMessageNotifications || null,
+              explicitContentFilter: g.explicitContentFilter || null,
+              premiumTier: g.premiumTier || null,
+              preferredLocale: g.preferredLocale || null,
+              features: Array.isArray(g.features) ? g.features : [],
+              rulesChannelId: g.rulesChannelId || null,
+              publicUpdatesChannelId: g.publicUpdatesChannelId || null,
+              systemChannelId: g.systemChannelId || null,
+              verificationLevel: g.verificationLevel || null
+            };
+            return sendJson(res, 200, { channels, roles, guildIconUrl: g.iconURL?.({ size: 256 }) || null, settings: guildSettings });
           } catch (e) {
             return sendJson(res, 500, { error: String(e?.message || e) });
           }
