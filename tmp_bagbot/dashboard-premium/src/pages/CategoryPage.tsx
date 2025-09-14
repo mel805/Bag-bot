@@ -304,15 +304,20 @@ export default function CategoryPage() {
                   <option value="certified">Certifié</option>
                   <option value="prestigeBlue">Prestige bleu</option>
                   <option value="prestigeRose">Prestige rose</option>
+                  <option value="role_default">Rôle (Défaut)</option>
+                  <option value="role_female">Rôle (Féminin)</option>
+                  <option value="role_certified">Rôle (Certifié)</option>
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-white/60 text-sm mb-2">Actuelle</div>
                   {(() => {
-                    const variant = (cardKey==='certified') ? 'certified' : (cardKey==='female' || cardKey==='prestigeRose') ? 'rose' : 'blue';
+                    const isRole = cardKey.startsWith('role_');
+                    const baseKey = isRole ? cardKey.replace('role_','') : cardKey;
+                    const variant = (baseKey==='certified') ? 'certified' : (baseKey==='female' || baseKey==='prestigeRose') ? 'rose' : 'blue';
                     const base = `/api/levels/preview?style=${encodeURIComponent(variant)}&memberName=${encodeURIComponent('Alyssa')}&level=${encodeURIComponent(38)}&roleName=${encodeURIComponent('Étoile du Serveur')}`;
-                    const url = dashKey ? (base + `&key=${encodeURIComponent(dashKey)}`) : base;
+                    const url = (dashKey ? (base + `&key=${encodeURIComponent(dashKey)}`) : base) + (isRole ? '&mode=role' : '');
                     return (
                       <div className="aspect-video w-full bg-white/5 border border-white/10 rounded-xl overflow-hidden">
                         <img src={url} className="w-full h-full object-contain" />
@@ -323,7 +328,9 @@ export default function CategoryPage() {
                 <div>
                   <div className="text-white/60 text-sm mb-2">Prévisualisation</div>
                   {(() => {
-                    const variant = (cardKey==='certified') ? 'certified' : (cardKey==='female' || cardKey==='prestigeRose') ? 'rose' : 'blue';
+                    const isRole = cardKey.startsWith('role_');
+                    const baseKey = isRole ? cardKey.replace('role_','') : cardKey;
+                    const variant = (baseKey==='certified') ? 'certified' : (baseKey==='female' || baseKey==='prestigeRose') ? 'rose' : 'blue';
                     const params = new URLSearchParams();
                     params.set('style', variant);
                     params.set('memberName', 'Alyssa');
@@ -335,9 +342,10 @@ export default function CategoryPage() {
                     if (tplBaseline) params.set('baseline', tplBaseline);
                     // Live background override
                     const map:any={default:bgDefault,female:bgFemale,certified:bgCertified,rose:bgPrestigeRose,blue:bgPrestigeBlue,prestigeBlue:bgPrestigeBlue,prestigeRose:bgPrestigeRose};
-                    const bgUrl = map[cardKey] || map[variant];
+                    const bgUrl = map[baseKey] || map[variant];
                     if (bgUrl) params.set('bg', bgUrl);
                     if (dashKey) params.set('key', dashKey);
+                    if (isRole) params.set('mode','role');
                     // cache-bust on state changes
                     params.set('ts', String(Date.now()));
                     const url = `/api/levels/preview?${params.toString()}`;

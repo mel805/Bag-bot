@@ -1029,7 +1029,16 @@ function startKeepAliveServer() {
             if (typeof parsed.query?.subtitle === 'string') texts.subtitle = String(parsed.query.subtitle);
             if (typeof parsed.query?.roleLine === 'string') texts.roleLine = String(parsed.query.roleLine).replace('{role}', roleName);
             if (typeof parsed.query?.baseline === 'string') texts.baseline = String(parsed.query.baseline);
-            const backgroundUrl = (typeof parsed.query?.bg === 'string') ? String(parsed.query.bg) : undefined;
+            // Background: support absolute URL, or local /uploads path mapped to PUBLIC_DIR
+            let backgroundUrl;
+            if (typeof parsed.query?.bg === 'string') {
+              const rawBg = String(parsed.query.bg);
+              if (/^https?:\/\//i.test(rawBg)) backgroundUrl = rawBg;
+              else if (rawBg.startsWith('/')) backgroundUrl = path.join(PUBLIC_DIR, rawBg.replace(/^\/+/, ''));
+              else backgroundUrl = rawBg;
+            }
+            const mode = String(parsed.query?.mode || 'level');
+            const isRoleAwardPreview = (mode === 'role');
 
             // Variant mapping
             const isCertified = variantRaw.includes('cert');
@@ -1038,13 +1047,13 @@ function startKeepAliveServer() {
             let png;
             if (isCertified) {
               const { renderLevelCardLandscape } = require('../src/level-landscape');
-              png = await renderLevelCardLandscape({ memberName, level, roleName, isCertified: true, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
+              png = await renderLevelCardLandscape({ memberName, level, roleName, isCertified: true, isRoleAward: isRoleAwardPreview, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
             } else if (isRose) {
               const { renderPrestigeCardRoseGoldLandscape } = require('../src/prestige-rose-gold-landscape');
-              png = await renderPrestigeCardRoseGoldLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
+              png = await renderPrestigeCardRoseGoldLandscape({ memberName, level, lastRole: roleName, isRoleAward: isRoleAwardPreview, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
             } else {
               const { renderPrestigeCardBlueLandscape } = require('../src/prestige-blue-landscape');
-              png = await renderPrestigeCardBlueLandscape({ memberName, level, lastRole: roleName, isRoleAward: false, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
+              png = await renderPrestigeCardBlueLandscape({ memberName, level, lastRole: roleName, isRoleAward: isRoleAwardPreview, xpSinceLevel: 0, xpRequiredForNext: 100, texts, backgroundUrl });
             }
             res.statusCode = 200;
             res.setHeader('Content-Type', 'image/png');
