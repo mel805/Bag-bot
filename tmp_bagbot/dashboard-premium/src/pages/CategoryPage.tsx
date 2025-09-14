@@ -84,6 +84,13 @@ export default function CategoryPage() {
   const [msgFail, setMsgFail] = useState('');
   const [gifSuccess, setGifSuccess] = useState('');
   const [gifFail, setGifFail] = useState('');
+  // Economy Karma tab state (success/fail deltas)
+  const [karmaSuccess, setKarmaSuccess] = useState<number|''>('');
+  const [karmaFail, setKarmaFail] = useState<number|''>('');
+  // Economy Partner tab state (shares)
+  const [partnerMoneyShare, setPartnerMoneyShare] = useState<number|''>('');
+  const [partnerKarmaShare, setPartnerKarmaShare] = useState<number|''>('');
+  const [partnerXpShare,   setPartnerXpShare]   = useState<number|''>('');
   const dashKey = useMemo(() => {
     try {
       const urlKey = new URLSearchParams(window.location.search).get('key');
@@ -167,6 +174,13 @@ export default function CategoryPage() {
       const g = configs.economy?.actions?.gifs?.[actKey] || { success: [], fail: [] };
       setGifSuccess((g.success||[]).join('\n'));
       setGifFail((g.fail||[]).join('\n'));
+      // Karma tab fields
+      setKarmaSuccess(Number.isFinite(c.successKarmaDelta)?c.successKarmaDelta:'');
+      setKarmaFail(Number.isFinite(c.failKarmaDelta)?c.failKarmaDelta:'');
+      // Partner tab fields
+      setPartnerMoneyShare(Number.isFinite(c.partnerMoneyShare)?c.partnerMoneyShare:'');
+      setPartnerKarmaShare(Number.isFinite(c.partnerKarmaShare)?c.partnerKarmaShare:'');
+      setPartnerXpShare(Number.isFinite(c.partnerXpShare)?c.partnerXpShare:'');
     } catch {}
   }, [actKey, configs]);
 
@@ -231,6 +245,8 @@ export default function CategoryPage() {
               <NavLink to="/config/economie/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
               <NavLink to="/config/economie/actions" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
               <NavLink to="/config/economie/gifs" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
+              <NavLink to="/config/economie/karma" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Karma</NavLink>
+              <NavLink to="/config/economie/partenaire" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Partenaire</NavLink>
             </div>
           </div>
         )}
@@ -655,6 +671,62 @@ export default function CategoryPage() {
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
             <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Disboard ?')) return; await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
+          </div>
+        )}
+        {cat==='economie' && view==='karma' && (
+          <div className="space-y-3">
+            <div className="grid md:grid-cols-3 gap-3">
+              <label className="text-white/70">Action
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
+                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Karma succès (Δ)
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={karmaSuccess as any} onChange={e=>setKarmaSuccess(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Karma échec (Δ)
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={karmaFail as any} onChange={e=>setKarmaFail(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+            </div>
+            <div>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const payload:any = { action: actKey, config: {} };
+                if (karmaSuccess !== '') payload.config.successKarmaDelta = Number(karmaSuccess);
+                if (karmaFail !== '') payload.config.failKarmaDelta = Number(karmaFail);
+                if(!confirm('Confirmer la sauvegarde karma ?')) return;
+                await saveEconomyAction(actKey, payload);
+              }}>Enregistrer karma</button>
+            </div>
+          </div>
+        )}
+        {cat==='economie' && view==='partenaire' && (
+          <div className="space-y-3">
+            <div className="grid md:grid-cols-4 gap-3">
+              <label className="text-white/70">Action
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
+                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Partenaire: % gains argent
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerMoneyShare as any} onChange={e=>setPartnerMoneyShare(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Partenaire: % karma
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerKarmaShare as any} onChange={e=>setPartnerKarmaShare(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Partenaire: % XP
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerXpShare as any} onChange={e=>setPartnerXpShare(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+            </div>
+            <div>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const payload:any = { action: actKey, config: {} };
+                if (partnerMoneyShare !== '') payload.config.partnerMoneyShare = Number(partnerMoneyShare);
+                if (partnerKarmaShare !== '') payload.config.partnerKarmaShare = Number(partnerKarmaShare);
+                if (partnerXpShare !== '') payload.config.partnerXpShare = Number(partnerXpShare);
+                if(!confirm('Confirmer la sauvegarde Partenaire ?')) return;
+                await saveEconomyAction(actKey, payload);
+              }}>Enregistrer Partenaire</button>
+            </div>
           </div>
         )}
       </div>
