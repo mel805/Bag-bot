@@ -21,6 +21,11 @@ export default function CategoryPage() {
 
   const title = TITLES[cat] || cat;
   const [logChannelMsgs, setLogChannelMsgs] = useState('');
+  const [logsEnabled, setLogsEnabled] = useState(false);
+  const [logsPseudo, setLogsPseudo] = useState(false);
+  const [logsEmoji, setLogsEmoji] = useState('📝');
+  const [logChannels, setLogChannels] = useState<{[k:string]:string}>({});
+  const [logCats, setLogCats] = useState<{[k:string]:boolean}>({});
   const [autoKickRole, setAutoKickRole] = useState('');
   const [autoKickEnabled, setAutoKickEnabled] = useState(false);
   const [autoKickDelay, setAutoKickDelay] = useState(0);
@@ -46,6 +51,11 @@ export default function CategoryPage() {
   useEffect(()=>{
     if (!configs) return;
     setLogChannelMsgs(String(configs.logs?.channels?.messages || ''));
+    setLogsEnabled(Boolean(configs.logs?.enabled));
+    setLogsPseudo(Boolean(configs.logs?.pseudo));
+    setLogsEmoji(String(configs.logs?.emoji || '📝'));
+    setLogChannels({ ...(configs.logs?.channels || {}) });
+    setLogCats({ ...(configs.logs?.categories || {}) });
     setAutoKickRole(String(configs.autokick?.roleId || ''));
     setAutoKickEnabled(Boolean(configs.autokick?.enabled));
     setAutoKickDelay(Number(configs.autokick?.delayMs || 0));
@@ -79,14 +89,28 @@ export default function CategoryPage() {
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">{title} — {view}</h3>
         {cat==='logs' && (
           <div className="space-y-3">
-            <div className="text-white/70">Sélectionner le salon pour Logs: Messages</div>
-            <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={logChannelMsgs} onChange={e=>setLogChannelMsgs(e.target.value)}>
-              <option value="">—</option>
-              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
-            </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
-              await saveLogs({ messages: true }, { messages: logChannelMsgs });
-            }}>Enregistrer</button>
+            <div className="grid grid-cols-3 gap-3">
+              <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={logsEnabled} onChange={e=>setLogsEnabled(e.target.checked)} /> Activé</label>
+              <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={logsPseudo} onChange={e=>setLogsPseudo(e.target.checked)} /> Pseudo</label>
+              <label className="text-white/70">Emoji
+                <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={logsEmoji} onChange={e=>setLogsEmoji(e.target.value)} />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {['joinleave','messages','threads','backup'].map(k => (
+                <div key={k} className="space-y-2">
+                  <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={Boolean(logCats[k])} onChange={e=>setLogCats(prev=>({ ...prev, [k]: e.target.checked }))} /> {k}</label>
+                  <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
+                    <option value="">—</option>
+                    {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer régalges</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLogs(logCats, logChannels); }}>Enregistrer catégories/salons</button>
+            </div>
           </div>
         )}
         {cat==='moderation' && (
