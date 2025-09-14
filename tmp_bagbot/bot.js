@@ -721,6 +721,8 @@ function startKeepAliveServer() {
               const curr = await getAutoKickConfig(guildId);
               const next = { ...(curr||{}) };
               if (data.roleId) next.roleId = String(data.roleId);
+              if (typeof data.enabled === 'boolean') next.enabled = data.enabled;
+              if (Number.isFinite(Number(data.delayMs))) next.delayMs = Math.max(0, Number(data.delayMs));
               await updateAutoKickConfig(guildId, next);
               return sendJson(res, 200, { ok: true });
             } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
@@ -738,6 +740,9 @@ function startKeepAliveServer() {
               const { getLogsConfig, updateLogsConfig } = require('./storage/jsonStore');
               const curr = await getLogsConfig(guildId);
               const next = { ...(curr||{}) };
+              if (typeof data.enabled === 'boolean') next.enabled = data.enabled;
+              if (typeof data.pseudo === 'boolean') next.pseudo = data.pseudo;
+              if (typeof data.emoji === 'string' && data.emoji.trim()) next.emoji = String(data.emoji).trim().slice(0, 4);
               if (data.categories && typeof data.categories === 'object') {
                 const allowed = ['joinleave','messages','threads','backup'];
                 const cats = {};
@@ -770,6 +775,8 @@ function startKeepAliveServer() {
               if (typeof data.allowReplies === 'boolean') next.allowReplies = data.allowReplies;
               if (Array.isArray(data.nsfwChannels)) next.nsfw = { ...(next.nsfw||{}), channels: data.nsfwChannels.map(String) };
               if (Array.isArray(data.sfwChannels)) next.sfw = { ...(next.sfw||{}), channels: data.sfwChannels.map(String) };
+              if (data.logChannelId) next.logChannelId = String(data.logChannelId);
+              if (typeof data.threadNaming === 'string' && (data.threadNaming === 'normal' || data.threadNaming === 'nsfw')) next.threadNaming = data.threadNaming;
               await updateConfessConfig(guildId, next);
               return sendJson(res, 200, { ok: true });
             } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
@@ -813,6 +820,23 @@ function startKeepAliveServer() {
               if (Number.isFinite(Number(data.xpPerVoiceMinute))) next.xpPerVoiceMinute = Math.max(0, Number(data.xpPerVoiceMinute));
               if (data.levelCurve && Number.isFinite(Number(data.levelCurve.base)) && Number.isFinite(Number(data.levelCurve.factor))) {
                 next.levelCurve = { base: Math.max(1, Number(data.levelCurve.base)), factor: Math.max(1, Number(data.levelCurve.factor)) };
+              }
+              if (typeof data.enabled === 'boolean') next.enabled = data.enabled;
+              if (data.announce && typeof data.announce === 'object') {
+                const ann = { ...(curr.announce || {}) };
+                if (data.announce.levelUp && typeof data.announce.levelUp === 'object') {
+                  const lu = { ...(ann.levelUp || {}) };
+                  if (typeof data.announce.levelUp.enabled === 'boolean') lu.enabled = data.announce.levelUp.enabled;
+                  if (data.announce.levelUp.channelId) lu.channelId = String(data.announce.levelUp.channelId);
+                  ann.levelUp = lu;
+                }
+                if (data.announce.roleAward && typeof data.announce.roleAward === 'object') {
+                  const ra = { ...(ann.roleAward || {}) };
+                  if (typeof data.announce.roleAward.enabled === 'boolean') ra.enabled = data.announce.roleAward.enabled;
+                  if (data.announce.roleAward.channelId) ra.channelId = String(data.announce.roleAward.channelId);
+                  ann.roleAward = ra;
+                }
+                next.announce = ann;
               }
               await updateLevelsConfig(guildId, next);
               return sendJson(res, 200, { ok: true });
@@ -890,6 +914,10 @@ function startKeepAliveServer() {
                 const next = { ...eco };
                 if (data && data.currency && typeof data.currency.name === 'string') {
                   next.currency = { ...(eco.currency||{}), name: String(data.currency.name).slice(0, 16) };
+                }
+                if (data && data.currency && typeof data.currency.symbol === 'string') {
+                  const sym = String(data.currency.symbol).slice(0, 4);
+                  next.currency = { ...(next.currency||{}), symbol: sym };
                 }
                 await updateEconomyConfig(guildId, next);
                 return sendJson(res, 200, { ok: true });

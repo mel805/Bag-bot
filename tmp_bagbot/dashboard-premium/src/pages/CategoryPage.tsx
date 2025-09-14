@@ -16,14 +16,19 @@ const TITLES: Record<string, string> = {
 
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
-  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard } = useApi();
+  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol } = useApi();
   useEffect(() => { fetchAll(); fetchMeta(); }, []);
 
   const title = TITLES[cat] || cat;
   const [logChannelMsgs, setLogChannelMsgs] = useState('');
   const [autoKickRole, setAutoKickRole] = useState('');
+  const [autoKickEnabled, setAutoKickEnabled] = useState(false);
+  const [autoKickDelay, setAutoKickDelay] = useState(0);
   const [currencyName, setCurrencyName] = useState('');
+  const [currencySymbol, setCurrencySymbol] = useState('');
   const [confessAllowReplies, setConfessAllowReplies] = useState(false);
+  const [confessLogChannel, setConfessLogChannel] = useState('');
+  const [confessThreadNaming, setConfessThreadNaming] = useState<'normal'|'nsfw'>('normal');
   const [confessSfw, setConfessSfw] = useState<string[]>([]);
   const [confessNsfw, setConfessNsfw] = useState<string[]>([]);
   const [tdSfw, setTdSfw] = useState<string[]>([]);
@@ -42,10 +47,15 @@ export default function CategoryPage() {
     if (!configs) return;
     setLogChannelMsgs(String(configs.logs?.channels?.messages || ''));
     setAutoKickRole(String(configs.autokick?.roleId || ''));
+    setAutoKickEnabled(Boolean(configs.autokick?.enabled));
+    setAutoKickDelay(Number(configs.autokick?.delayMs || 0));
     setCurrencyName(String(configs.economy?.currency?.name || ''));
+    setCurrencySymbol(String(configs.economy?.currency?.symbol || ''));
     setConfessAllowReplies(Boolean(configs.confess?.allowReplies));
     setConfessSfw(Array.isArray(configs.confess?.sfw?.channels) ? configs.confess.sfw.channels : []);
     setConfessNsfw(Array.isArray(configs.confess?.nsfw?.channels) ? configs.confess.nsfw.channels : []);
+    setConfessLogChannel(String(configs.confess?.logChannelId || ''));
+    setConfessThreadNaming((configs.confess?.threadNaming === 'nsfw' ? 'nsfw' : 'normal'));
     setTdSfw(Array.isArray(configs.truthdare?.sfw?.channels) ? configs.truthdare.sfw.channels : []);
     setTdNsfw(Array.isArray(configs.truthdare?.nsfw?.channels) ? configs.truthdare.nsfw.channels : []);
     setXpMsg(Number(configs.levels?.xpPerMessage ?? 15));
@@ -86,14 +96,28 @@ export default function CategoryPage() {
               <option value="">—</option>
               {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoKickRole(autoKickRole); }}>Enregistrer</button>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={autoKickEnabled} onChange={e=>setAutoKickEnabled(e.target.checked)} /> Activé</label>
+              <label className="text-white/70">Délai (ms)
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={autoKickDelay} onChange={e=>setAutoKickDelay(Number(e.target.value))} />
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoKickRole(autoKickRole); }}>Enregistrer rôle</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveAutoKickAdvanced(autoKickEnabled, autoKickDelay); }}>Enregistrer réglages</button>
+            </div>
           </div>
         )}
         {cat==='economie' && (
           <div className="space-y-3">
             <div className="text-white/70">Nom de la monnaie</div>
             <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={currencyName} onChange={e=>setCurrencyName(e.target.value)} />
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrency(currencyName); }}>Enregistrer</button>
+            <div className="text-white/70">Symbole</div>
+            <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-32" value={currencySymbol} onChange={e=>setCurrencySymbol(e.target.value)} />
+            <div className="flex gap-2">
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrency(currencyName); }}>Enregistrer nom</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCurrencySymbol(currencySymbol); }}>Enregistrer symbole</button>
+            </div>
           </div>
         )}
         {cat==='confessions' && (
@@ -110,7 +134,24 @@ export default function CategoryPage() {
             <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={confessNsfw} onChange={e=>setConfessNsfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfess(confessAllowReplies); }}>Enregistrer Réponses</button>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-white/70">Salon de logs
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={confessLogChannel} onChange={e=>setConfessLogChannel(e.target.value)}>
+                  <option value="">—</option>
+                  {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Nom de thread
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={confessThreadNaming} onChange={e=>setConfessThreadNaming(e.target.value as any)}>
+                  <option value="normal">Normal</option>
+                  <option value="nsfw">NSFW</option>
+                </select>
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfess(confessAllowReplies); }}>Enregistrer Réponses</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfessAdvanced(confessLogChannel, confessThreadNaming); }}>Enregistrer Avancé</button>
+            </div>
           </div>
         )}
         {cat==='action-verite' && (
@@ -134,7 +175,25 @@ export default function CategoryPage() {
               <label className="text-white/70">Courbe base<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelBase} onChange={e=>setLevelBase(Number(e.target.value))} /></label>
               <label className="text-white/70">Courbe facteur<input type="number" step="0.01" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={levelFactor} onChange={e=>setLevelFactor(Number(e.target.value))} /></label>
             </div>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
+            <div className="flex gap-2">
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(true, {}); }}>Activer</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(false, {}); }}>Désactiver</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-white/70">Salon annonces niveau
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" onChange={async e=>{ await saveLevelsAdvanced(true, { levelUp: { channelId: e.target.value } }); }}>
+                  <option value="">—</option>
+                  {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Salon annonces rôle
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" onChange={async e=>{ await saveLevelsAdvanced(true, { roleAward: { channelId: e.target.value } }); }}>
+                  <option value="">—</option>
+                  {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+              </label>
+            </div>
           </div>
         )}
         {cat==='autothread' && (

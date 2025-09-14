@@ -30,6 +30,11 @@ type ApiState = {
   saveCounting: (channels: string[]) => Promise<boolean>;
   saveDisboard: (remindersEnabled: boolean, remindChannelId: string) => Promise<boolean>;
   saveAutoKickRole: (roleId: string) => Promise<boolean>;
+  saveAutoKickAdvanced: (enabled: boolean, delayMs: number) => Promise<boolean>;
+  saveLogsAdvanced: (enabled: boolean, pseudo: boolean, emoji: string) => Promise<boolean>;
+  saveConfessAdvanced: (logChannelId: string, threadNaming: 'normal'|'nsfw') => Promise<boolean>;
+  saveLevelsAdvanced: (enabled: boolean, announce: { levelUp?: { enabled?: boolean; channelId?: string }; roleAward?: { enabled?: boolean; channelId?: string } }) => Promise<boolean>;
+  saveCurrencySymbol: (symbol: string) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -78,9 +83,22 @@ export const useApi = create<ApiState>((set, get) => ({
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
+  , saveLogsAdvanced: async (enabled, pseudo, emoji) => {
+    try {
+      const payload: any = { enabled, pseudo, emoji };
+      const res = await fetch('/api/configs/logs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
   , saveConfess: async (allowReplies) => {
     try {
       const res = await fetch('/api/configs/confess', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ allowReplies }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveConfessAdvanced: async (logChannelId, threadNaming) => {
+    try {
+      const res = await fetch('/api/configs/confess', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ logChannelId, threadNaming }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
@@ -93,6 +111,12 @@ export const useApi = create<ApiState>((set, get) => ({
   , saveLevels: async (xpMsg, xpVoice, base, factor) => {
     try {
       const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ xpPerMessage: xpMsg, xpPerVoiceMinute: xpVoice, levelCurve:{ base, factor } }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveLevelsAdvanced: async (enabled, announce) => {
+    try {
+      const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled, announce }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
@@ -117,6 +141,18 @@ export const useApi = create<ApiState>((set, get) => ({
   , saveAutoKickRole: async (roleId) => {
     try {
       const res = await fetch('/api/configs/autokick', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ roleId }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveAutoKickAdvanced: async (enabled, delayMs) => {
+    try {
+      const res = await fetch('/api/configs/autokick', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled, delayMs }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveCurrencySymbol: async (symbol) => {
+    try {
+      const res = await fetch('/api/configs/economy', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ currency: { symbol } }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
