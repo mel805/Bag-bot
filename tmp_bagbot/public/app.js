@@ -32,6 +32,11 @@
   function setActiveView(view){
     $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+    // toggle submenu visibility
+    $$('.submenu').forEach(s => s.style.display = (s.dataset.for === view ? 'block' : 'none'));
+    // default first slide
+    const slides = $$('#view-' + view + ' .slide');
+    slides.forEach((s,i) => s.style.display = i === 0 ? 'block' : 'none');
   }
 
   async function fetchJson(path){
@@ -98,6 +103,12 @@
   function initUI(){
     // Views
     $$('.nav-item').forEach(b => b.addEventListener('click', () => setActiveView(b.dataset.view)));
+    $$('.submenu .sub-item').forEach(b => b.addEventListener('click', () => {
+      const sub = b.dataset.subview;
+      const container = b.closest('.view');
+      if (!container) return;
+      container.querySelectorAll('.slide').forEach(s => s.style.display = (s.id === sub ? 'block' : 'none'));
+    }));
 
     // Auth key
     if (state.key) $('#dashKey').value = state.key;
@@ -106,6 +117,24 @@
       localStorage.setItem('dashKey', state.key);
       connectWs();
       loadConfigs();
+    });
+
+    // Save currency
+    $('#saveCurrency').addEventListener('click', async () => {
+      const name = $('#currencyName').value.trim();
+      $('#saveCurrencyState').textContent = '…';
+      try {
+        await fetch('/api/configs/economy' + (state.key ? ('?key=' + encodeURIComponent(state.key)) : ''), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(state.key ? { Authorization: 'Bearer ' + state.key } : {}) },
+          body: JSON.stringify({ currency: { name } })
+        });
+        $('#saveCurrencyState').textContent = 'Enregistré ✓';
+        setTimeout(()=> $('#saveCurrencyState').textContent = '', 1200);
+        loadConfigs();
+      } catch (_) {
+        $('#saveCurrencyState').textContent = 'Erreur';
+      }
     });
   }
 

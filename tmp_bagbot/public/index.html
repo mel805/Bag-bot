@@ -21,6 +21,10 @@
     <nav>
       <button class="nav-item active" data-view="overview">Aperçu</button>
       <button class="nav-item" data-view="economy">Économie</button>
+      <div class="submenu" data-for="economy">
+        <button class="sub-item" data-subview="economy-overview">Aperçu</button>
+        <button class="sub-item" data-subview="economy-currency">Devise</button>
+      </div>
       <button class="nav-item" data-view="truthdare">Action/Vérité</button>
       <button class="nav-item" data-view="confess">Confessions</button>
       <button class="nav-item" data-view="logs">Logs</button>
@@ -68,7 +72,24 @@
         <pre id="configs"></pre>
       </div>
     </section>
-    <section id="view-economy" class="view"><div class="placeholder">À venir</div></section>
+    <section id="view-economy" class="view">
+      <div class="slide" id="economy-overview">
+        <div class="placeholder">Aperçu économie (à venir)</div>
+      </div>
+      <div class="slide" id="economy-currency">
+        <div class="panel">
+          <h3>Devise</h3>
+          <div class="form-row">
+            <label>Nom de la devise</label>
+            <input id="currencyName" type="text" maxlength="16" placeholder="BAG$" />
+          </div>
+          <div class="actions">
+            <button id="saveCurrency">Enregistrer</button>
+            <span id="saveCurrencyState" class="muted"></span>
+          </div>
+        </div>
+      </div>
+    </section>
     <section id="view-truthdare" class="view"><div class="placeholder">À venir</div></section>
     <section id="view-confess" class="view"><div class="placeholder">À venir</div></section>
     <section id="view-logs" class="view"><div class="placeholder">À venir</div></section>

@@ -676,6 +676,32 @@ function startKeepAliveServer() {
           }
         }
 
+        if (parsed.pathname === '/api/configs/economy' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          try {
+            let body = '';
+            req.on('data', (chunk) => { body += chunk; if (body.length > 1e6) req.socket.destroy(); });
+            req.on('end', async () => {
+              try {
+                const data = JSON.parse(body || '{}');
+                const { updateEconomyConfig, getEconomyConfig } = require('./storage/jsonStore');
+                const eco = await getEconomyConfig(guildId);
+                const next = { ...eco };
+                if (data && data.currency && typeof data.currency.name === 'string') {
+                  next.currency = { ...(eco.currency||{}), name: String(data.currency.name).slice(0, 16) };
+                }
+                await updateEconomyConfig(guildId, next);
+                return sendJson(res, 200, { ok: true });
+              } catch (e) {
+                return sendJson(res, 400, { error: String(e?.message || e) });
+              }
+            });
+            return;
+          } catch (e) {
+            return sendJson(res, 500, { error: String(e?.message || e) });
+          }
+        }
+
         // Static files
         const safeJoin = (base, target) => {
           const p = path.join(base, target);
@@ -8059,6 +8085,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const { entriesCount } = await getBoutiqueEntriesCount(interaction.guild);
       const components = entriesCount > PAGE_SIZE ? [...rows, buildBoutiquePageRow(0, PAGE_SIZE, entriesCount)] : [...rows];
       return interaction.reply({ embeds: [embed], components, ephemeral: true });
+    }
+    // /dashboard → returns URL
+    if (interaction.isChatInputCommand() && interaction.commandName === 'dashboard') {
+      const host = process.env.DASHBOARD_HOST || null; // optional public host
+      const url = host ? (host.startsWith('http') ? host : ('https://' + host)) : `http://127.0.0.1:${Number(process.env.PORT||5000)}`;
+      const key = String(process.env.DASHBOARD_KEY || '').trim();
+      const link = key ? (url + `?key=${encodeURIComponent(key)}`) : url;
+      return interaction.reply({ content: `🔗 Dashboard: ${link}`, ephemeral: true });
     }
     if (interaction.isButton() && interaction.customId.startsWith('boutique_page:')) {
       const parts = interaction.customId.split(':');
