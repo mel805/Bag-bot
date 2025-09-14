@@ -1,5 +1,20 @@
 import { create } from 'zustand';
 
+// Helper to append auth key from URL/localStorage
+const DASHBOARD_KEY = (() => {
+  try {
+    const urlKey = new URLSearchParams(window.location.search).get('key');
+    const lsKey = localStorage.getItem('DASHBOARD_KEY');
+    const k = urlKey || lsKey || '';
+    if (k) localStorage.setItem('DASHBOARD_KEY', k);
+    return k;
+  } catch { return ''; }
+})();
+const withKey = (url: string) => {
+  if (!DASHBOARD_KEY) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(DASHBOARD_KEY);
+};
+
 type Stats = {
   guildId: string;
   guildName: string | null;
@@ -49,8 +64,8 @@ export const useApi = create<ApiState>((set, get) => ({
     try {
       set({ loading: true, error: null });
       const [s, c] = await Promise.all([
-        fetch('/api/stats').then(r => r.json()),
-        fetch('/api/configs').then(r => r.json()),
+        fetch(withKey('/api/stats')).then(r => r.json()),
+        fetch(withKey('/api/configs')).then(r => r.json()),
       ]);
       set({ stats: s, configs: c, loading: false });
     } catch (e: any) {
@@ -59,13 +74,13 @@ export const useApi = create<ApiState>((set, get) => ({
   },
   fetchMeta: async () => {
     try {
-      const m = await fetch('/api/meta').then(r=>r.json());
+      const m = await fetch(withKey('/api/meta')).then(r=>r.json());
       set({ meta: m });
     } catch {}
   },
   saveCurrency: async (name: string) => {
     try {
-      const res = await fetch('/api/configs/economy', {
+      const res = await fetch(withKey('/api/configs/economy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currency: { name } })
@@ -81,92 +96,92 @@ export const useApi = create<ApiState>((set, get) => ({
     try {
       const payload: any = { categories };
       if (channels) payload.channels = channels;
-      const res = await fetch('/api/configs/logs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const res = await fetch(withKey('/api/configs/logs'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveLogsAdvanced: async (enabled, pseudo, emoji) => {
     try {
       const payload: any = { enabled, pseudo, emoji };
-      const res = await fetch('/api/configs/logs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const res = await fetch(withKey('/api/configs/logs'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveConfess: async (allowReplies) => {
     try {
-      const res = await fetch('/api/configs/confess', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ allowReplies }) });
+      const res = await fetch(withKey('/api/configs/confess'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ allowReplies }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveConfessAdvanced: async (logChannelId, threadNaming) => {
     try {
-      const res = await fetch('/api/configs/confess', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ logChannelId, threadNaming }) });
+      const res = await fetch(withKey('/api/configs/confess'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ logChannelId, threadNaming }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveTd: async (sfw, nsfw) => {
     try {
-      const res = await fetch('/api/configs/truthdare', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sfwChannels: sfw, nsfwChannels: nsfw }) });
+      const res = await fetch(withKey('/api/configs/truthdare'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sfwChannels: sfw, nsfwChannels: nsfw }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveLevels: async (xpMsg, xpVoice, base, factor) => {
     try {
-      const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ xpPerMessage: xpMsg, xpPerVoiceMinute: xpVoice, levelCurve:{ base, factor } }) });
+      const res = await fetch(withKey('/api/configs/levels'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ xpPerMessage: xpMsg, xpPerVoiceMinute: xpVoice, levelCurve:{ base, factor } }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveLevelsExtra: async (payload) => {
     try {
-      const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const res = await fetch(withKey('/api/configs/levels'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , uploadBase64: async (filename, dataUrl) => {
     try {
-      const res = await fetch('/api/uploadBase64', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ filename, dataUrl }) });
+      const res = await fetch(withKey('/api/uploadBase64'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ filename, dataUrl }) });
       if (!res.ok) return null; const j = await res.json(); return j.url || null;
     } catch { return null; }
   }
   , saveLevelsAdvanced: async (enabled, announce) => {
     try {
-      const res = await fetch('/api/configs/levels', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled, announce }) });
+      const res = await fetch(withKey('/api/configs/levels'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled, announce }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveAutoThread: async (channels, policy, archivePolicy) => {
     try {
-      const res = await fetch('/api/configs/autothread', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ channels, policy, archivePolicy }) });
+      const res = await fetch(withKey('/api/configs/autothread'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ channels, policy, archivePolicy }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveCounting: async (channels) => {
     try {
-      const res = await fetch('/api/configs/counting', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ channels }) });
+      const res = await fetch(withKey('/api/configs/counting'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ channels }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveDisboard: async (remindersEnabled, remindChannelId) => {
     try {
-      const res = await fetch('/api/configs/disboard', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ remindersEnabled, remindChannelId }) });
+      const res = await fetch(withKey('/api/configs/disboard'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ remindersEnabled, remindChannelId }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveAutoKickRole: async (roleId) => {
     try {
-      const res = await fetch('/api/configs/autokick', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ roleId }) });
+      const res = await fetch(withKey('/api/configs/autokick'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ roleId }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveAutoKickAdvanced: async (enabled, delayMs) => {
     try {
-      const res = await fetch('/api/configs/autokick', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled, delayMs }) });
+      const res = await fetch(withKey('/api/configs/autokick'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled, delayMs }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
   , saveCurrencySymbol: async (symbol) => {
     try {
-      const res = await fetch('/api/configs/economy', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ currency: { symbol } }) });
+      const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ currency: { symbol } }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
