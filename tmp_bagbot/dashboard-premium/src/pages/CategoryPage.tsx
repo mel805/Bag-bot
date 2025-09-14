@@ -16,7 +16,7 @@ const TITLES: Record<string, string> = {
 
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
-  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64, saveEconomyAction } = useApi();
+  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64, saveEconomyAction, resetLevels } = useApi();
   useEffect(() => { fetchAll(); fetchMeta(); }, []);
 
   const title = TITLES[cat] || cat;
@@ -607,6 +607,19 @@ export default function CategoryPage() {
                 setBgPrestigeBlue(String(bgs.prestigeBlue||''));
                 setBgPrestigeRose(String(bgs.prestigeRose||''));
               }}>Réinitialiser</button>
+              <button className="bg-red-500/20 border border-red-500/40 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                const ok = confirm('Réinitialiser la configuration Levels (fonds et templates) sur le bot ?');
+                if (!ok) return;
+                const done = await resetLevels();
+                if (done) {
+                  await fetchAll();
+                  const bgs = (configs?.levels?.cards?.backgrounds)||{};
+                  setTplTitle(''); setTplBaseline('');
+                  setTplLevelUp(String(configs?.levels?.announce?.levelUp?.template||''));
+                  setTplRole(String(configs?.levels?.announce?.roleAward?.template||''));
+                  setBgDefault(String(bgs.default||'')); setBgFemale(String(bgs.female||'')); setBgCertified(String(bgs.certified||'')); setBgPrestigeBlue(String(bgs.prestigeBlue||'')); setBgPrestigeRose(String(bgs.prestigeRose||''));
+                }
+              }}>Réinitialiser la configuration</button>
             </div>
             </>
             )}

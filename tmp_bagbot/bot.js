@@ -920,6 +920,27 @@ function startKeepAliveServer() {
           return;
         }
 
+        // Reset Levels configuration (backgrounds and templates)
+        if (parsed.pathname === '/api/configs/levels/reset' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          try {
+            const { getLevelsConfig, updateLevelsConfig } = require('./storage/jsonStore');
+            const curr = await getLevelsConfig(guildId);
+            const next = { ...(curr||{}) };
+            // Reset backgrounds
+            next.cards = { ...(next.cards||{}) };
+            next.cards.backgrounds = { default:'', female:'', certified:'', prestigeBlue:'', prestigeRose:'' };
+            // Reset templates
+            next.announce = { ...(next.announce||{}) };
+            next.announce.levelUp = { ...(next.announce.levelUp||{}), template: '' };
+            next.announce.roleAward = { ...(next.announce.roleAward||{}), template: '' };
+            await updateLevelsConfig(guildId, next);
+            return sendJson(res, 200, { ok: true });
+          } catch (e) {
+            return sendJson(res, 500, { error: String(e?.message||e) });
+          }
+        }
+
         if (parsed.pathname === '/api/configs/autothread' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           let body='';
