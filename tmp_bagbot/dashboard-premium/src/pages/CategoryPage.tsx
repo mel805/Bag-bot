@@ -356,26 +356,24 @@ export default function CategoryPage() {
             </div>
             <div className="text-white/60 text-sm mt-2">Aperçu & suppression:</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
-                <div key={'gs2'+idx} className="relative group">
-                  <img src={`/api/proxy?url=${encodeURIComponent(u)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
+              {(() => { const sel = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean)[0]; return sel ? (
+                <div className="relative group">
+                  <img src={`/api/proxy?url=${encodeURIComponent(sel)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
                   <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={async()=>{
-                    // remove from UI
-                    setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
-                    // persist removal
-                    await saveEconomyAction(actKey, { gifs: { delete: { type: 'success', url: u } } as any });
+                    setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==sel).join('\n'));
+                    await saveEconomyAction(actKey, { gifs: { delete: { type: 'success', url: sel } } as any });
                   }}>Suppr</button>
                 </div>
-              ))}
-              {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
-                <div key={'gf2'+idx} className="relative group">
-                  <img src={`/api/proxy?url=${encodeURIComponent(u)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
+              ) : null; })()}
+              {(() => { const sel = gifFail.split('\n').map(s=>s.trim()).filter(Boolean)[0]; return sel ? (
+                <div className="relative group">
+                  <img src={`/api/proxy?url=${encodeURIComponent(sel)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
                   <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={async()=>{
-                    setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
-                    await saveEconomyAction(actKey, { gifs: { delete: { type: 'fail', url: u } } as any });
+                    setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==sel).join('\n'));
+                    await saveEconomyAction(actKey, { gifs: { delete: { type: 'fail', url: sel } } as any });
                   }}>Suppr</button>
                 </div>
-              ))}
+              ) : null; })()}
             </div>
             <div className="mt-3">
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{

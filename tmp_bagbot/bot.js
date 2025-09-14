@@ -3696,6 +3696,15 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
   const lastReward = getLastRewardForLevel(levels, newLevel);
   const roleName = lastReward ? (guild.roles.cache.get(lastReward.roleId)?.name || `Rôle ${lastReward.roleId}`) : null;
   const bg = chooseCardBackgroundForMember(memberOrMention, levels);
+  const resolveBg = (u) => {
+    try {
+      if (!u) return undefined;
+      if (/^https?:\/\//i.test(u)) return u;
+      if (String(u).startsWith('/')) return 'file://' + path.join(PUBLIC_DIR, String(u).replace(/^\/+/, ''));
+      if (String(u).startsWith('uploads/')) return 'file://' + path.join(PUBLIC_DIR, String(u));
+    } catch (_) {}
+    return undefined;
+  };
   const sub = [
     'Vient de franchir un nouveau cap !',
     `Niveau atteint : ${String(newLevel)}`,
@@ -3715,7 +3724,7 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
       roleName: roleName || '—',
       logoUrl: (CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined),
       isCertified: true,
-      backgroundUrl: bg || undefined,
+      backgroundUrl: resolveBg(bg),
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
@@ -3735,7 +3744,7 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
       lastRole: roleName || '—',
       logoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: CERTIFIED_LOGO_URL || LEVEL_CARD_LOGO_URL || undefined,
-      backgroundUrl: bg || undefined,
+      backgroundUrl: resolveBg(bg),
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
@@ -3755,7 +3764,7 @@ function maybeAnnounceLevelUp(guild, memberOrMention, levels, newLevel) {
       lastRole: roleName || '—',
       logoUrl: LEVEL_CARD_LOGO_URL || undefined,
       bgLogoUrl: LEVEL_CARD_LOGO_URL || undefined,
-      backgroundUrl: bg || undefined,
+      backgroundUrl: resolveBg(bg),
       texts,
     }).then((img) => {
       if (img) channel.send({ content: `${mention}`, files: [{ attachment: img, name: 'levelup.png' }] }).catch(() => {});
