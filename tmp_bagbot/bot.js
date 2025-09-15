@@ -1233,7 +1233,7 @@ function startKeepAliveServer() {
             const doRequest = (urlToFetch) => new Promise((resolve) => {
               const { request } = urlToFetch.startsWith('https://') ? require('https') : require('http');
               const r = request(urlToFetch, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (PreviewProxy)' },
+                headers: { 'User-Agent': 'Mozilla/5.0 (PreviewProxy)', 'Referer': 'https://discord.com', 'Accept': 'image/*,video/*;q=0.9,*/*;q=0.8' },
                 timeout: 5000,
               }, (upstream) => resolve(upstream));
               r.on('timeout', ()=>resolve(null));
@@ -1249,8 +1249,14 @@ function startKeepAliveServer() {
               upstream.setEncoding('utf8');
               upstream.on('data', (chunk) => { html += chunk; if (html.length > 500000) { try { upstream.destroy(); } catch(_) {} } });
               await new Promise((r)=>{ upstream.on('end', r); upstream.on('error', r); });
-              const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
-              const direct = m && m[1] ? m[1] : null;
+              // Prefer og:video when available (often mp4 for GIFs hosts)
+              let direct = null;
+              const mv = html.match(/<meta[^>]+property=["']og:video["'][^>]+content=["']([^"']+)["']/i);
+              if (mv && mv[1]) direct = mv[1];
+              if (!direct) {
+                const mi = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+                if (mi && mi[1]) direct = mi[1];
+              }
               if (direct) upstream = await doRequest(direct);
               if (!upstream) return sendJson(res, 502, { error: 'resolve failed' });
               ctype = String(upstream.headers['content-type'] || '');
