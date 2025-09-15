@@ -753,6 +753,35 @@ function startKeepAliveServer() {
           }
         }
 
+        // Defaults for economy action (zones + messages) for dashboard prefill
+        if (parsed.pathname === '/api/economy/action-defaults') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          try {
+            const actionKey = String(parsed.query?.action || '').trim() || 'work';
+            const { getEconomyConfig } = require('./storage/jsonStore');
+            const eco = await getEconomyConfig(guildId);
+            const messages = (eco?.actions?.messages || {})[actionKey] || { success: [], fail: [] };
+            let zones = [];
+            const fromCfg = eco?.actions?.config?.[actionKey]?.zones;
+            if (Array.isArray(fromCfg) && fromCfg.length) zones = fromCfg.map(String);
+            if (!zones.length) {
+              const fallback = {
+                lick: ['seins','chatte','cul','oreille','ventre','bite'],
+                suck: ['bite','téton','oreille'],
+                nibble: ['cou','lèvres','épaule','lobe'],
+                caress: ['sein','fesses','corps','jambes','bite','pied','nuque','épaule'],
+                touche: ['sein','fesses','corps','jambes','bite','pied','nuque','épaule'],
+                tickle: ['côtes','pieds','nuque','ventre','aisselles'],
+                kiss: ['lèvres','joue','cou','front']
+              };
+              zones = fallback[actionKey] || [];
+            }
+            return sendJson(res, 200, { zones, success: messages.success || [], fail: messages.fail || [] });
+          } catch (e) {
+            return sendJson(res, 500, { error: String(e?.message || e) });
+          }
+        }
+
         if (parsed.pathname === '/api/configs/autokick' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           let body='';

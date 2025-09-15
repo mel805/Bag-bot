@@ -882,26 +882,34 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
   const [action, setAction] = React.useState<string>(actKey || 'caress');
   const [zones, setZones] = React.useState<string[]>([]);
   const [zoneMsgs, setZoneMsgs] = React.useState<Record<string, { success: string; fail: string }>>({});
+  const [loading, setLoading] = React.useState(false);
   React.useEffect(()=>{ setAction(actKey); }, [actKey]);
   React.useEffect(()=>{
-    const c = (configs?.economy?.actions?.config||{})[action] || {};
-    const m = (configs?.economy?.actions?.messages||{})[action] || { success: [], fail: [] };
-    const zs: string[] = Array.isArray(c.zones) ? c.zones : [];
-    setZones(zs);
-    const byZone: Record<string, { success: string; fail: string }> = {};
-    for (const z of zs) {
-      const allS = Array.isArray(m.success) ? m.success : [];
-      const allF = Array.isArray(m.fail) ? m.fail : [];
-      const sFiltered = allS.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
-      const fFiltered = allF.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
-      // If no specific lines, fallback to generic lines for visibility
-      const s = (sFiltered.length ? sFiltered : allS).join('\n');
-      const f = (fFiltered.length ? fFiltered : allF).join('\n');
-      byZone[z] = { success: s, fail: f };
-    }
-    if (!byZone['(général)']) byZone['(général)'] = { success: (m.success||[]).join('\n'), fail: (m.fail||[]).join('\n') };
-    setZoneMsgs(byZone);
-  }, [action, configs]);
+    (async () => {
+      try {
+        setLoading(true);
+        const key = (()=>{ try { return new URLSearchParams(window.location.search).get('key') || localStorage.getItem('DASHBOARD_KEY') || ''; } catch { return ''; } })();
+        const res = await fetch(`/api/economy/action-defaults?action=${encodeURIComponent(action)}${key?`&key=${encodeURIComponent(key)}`:''}`);
+        const d = await res.json();
+        const zs: string[] = Array.isArray(d.zones) ? d.zones : [];
+        setZones(zs);
+        const m = { success: Array.isArray(d.success)?d.success:[], fail: Array.isArray(d.fail)?d.fail:[] };
+        const byZone: Record<string, { success: string; fail: string }> = {};
+        for (const z of zs) {
+          const allS = m.success;
+          const allF = m.fail;
+          const sFiltered = allS.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
+          const fFiltered = allF.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
+          const s = (sFiltered.length ? sFiltered : allS).join('\n');
+          const f = (fFiltered.length ? fFiltered : allF).join('\n');
+          byZone[z] = { success: s, fail: f };
+        }
+        if (!byZone['(général)']) byZone['(général)'] = { success: m.success.join('\n'), fail: m.fail.join('\n') };
+        setZoneMsgs(byZone);
+      } catch {}
+      finally { setLoading(false); }
+    })();
+  }, [action]);
   const addZone = () => {
     const name = prompt('Nom de la nouvelle zone (ex: nuque) ?')?.trim();
     if (!name) return;
@@ -952,6 +960,7 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
         <div className="flex items-end"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={addZone}>Ajouter une zone</button></div>
       </div>
       <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
+        {loading && (<div className="text-white/60 text-sm">Chargement…</div>)}
         {!zones.length && (
           <div className="text-white/60 text-sm">Aucune zone. Utilisez "Ajouter une zone".</div>
         )}
