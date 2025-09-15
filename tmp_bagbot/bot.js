@@ -757,12 +757,17 @@ function startKeepAliveServer() {
         if (parsed.pathname === '/api/economy/action-defaults') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           try {
-            const actionKey = String(parsed.query?.action || '').trim() || 'work';
+            const rawAction = String(parsed.query?.action || '').trim() || 'work';
+            const normalizeActionKey = (k) => {
+              const map = { 'embrasser':'kiss','lécher':'lick','lecher':'lick','sucer':'suck','mordre':'nibble','caresser':'caress','chatouiller':'tickle','séduire':'seduce','seduire':'seduce','flirter':'flirt','touche':'touche' };
+              return map[String(k)] || String(k);
+            };
+            const actionKey = normalizeActionKey(rawAction);
             const { getEconomyConfig } = require('./storage/jsonStore');
             const eco = await getEconomyConfig(guildId);
-            const messages = (eco?.actions?.messages || {})[actionKey] || { success: [], fail: [] };
+            const messages = (eco?.actions?.messages || {})[actionKey] || (eco?.actions?.messages || {})[rawAction] || { success: [], fail: [] };
             let zones = [];
-            const fromCfg = eco?.actions?.config?.[actionKey]?.zones;
+            const fromCfg = eco?.actions?.config?.[actionKey]?.zones || eco?.actions?.config?.[rawAction]?.zones;
             if (Array.isArray(fromCfg) && fromCfg.length) zones = fromCfg.map(String);
             if (!zones.length) {
               const fallback = {
