@@ -3165,10 +3165,23 @@ async function buildLevelsGeneralRows(guild) {
   );
   const enableBtn = new ButtonBuilder().setCustomId('levels_enable').setLabel('Activer Levels').setStyle(ButtonStyle.Success).setDisabled(levels.enabled);
   const disableBtn = new ButtonBuilder().setCustomId('levels_disable').setLabel('Désactiver Levels').setStyle(ButtonStyle.Danger).setDisabled(!levels.enabled);
-  const xpTextRangeBtn = new ButtonBuilder().setCustomId('levels_set_xp_text_range').setLabel('XP Texte min/max').setStyle(ButtonStyle.Primary);
-  const xpVoiceRangeBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice_range').setLabel('XP Vocal min/max').setStyle(ButtonStyle.Primary);
-  const cooldownsBtn = new ButtonBuilder().setCustomId('levels_set_cooldowns').setLabel('Cooldowns').setStyle(ButtonStyle.Secondary);
-  const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel('Courbe').setStyle(ButtonStyle.Secondary);
+  const hasTxtMin = Number.isFinite(levels.xpMessageMin);
+  const hasTxtMax = Number.isFinite(levels.xpMessageMax);
+  const txtLabel = (hasTxtMin || hasTxtMax)
+    ? `XP Texte ${hasTxtMin ? levels.xpMessageMin : '—'}/${hasTxtMax ? levels.xpMessageMax : '—'}`
+    : `XP Texte ${Number(levels.xpPerMessage || 0)}`;
+  const xpTextRangeBtn = new ButtonBuilder().setCustomId('levels_set_xp_text_range').setLabel(txtLabel).setStyle(ButtonStyle.Primary);
+  const hasVocMin = Number.isFinite(levels.xpVoiceMin);
+  const hasVocMax = Number.isFinite(levels.xpVoiceMax);
+  const vocLabel = (hasVocMin || hasVocMax)
+    ? `XP Vocal ${hasVocMin ? levels.xpVoiceMin : '—'}/${hasVocMax ? levels.xpVoiceMax : '—'}`
+    : `XP Vocal/min ${Number(levels.xpPerVoiceMinute || 0)}`;
+  const xpVoiceRangeBtn = new ButtonBuilder().setCustomId('levels_set_xp_voice_range').setLabel(vocLabel).setStyle(ButtonStyle.Primary);
+  const cdMsg = Number.isFinite(levels.messageCooldownSec) ? `${levels.messageCooldownSec}s` : '—';
+  const cdVoc = Number.isFinite(levels.voiceCooldownSec) ? `${levels.voiceCooldownSec}s` : '—';
+  const cooldownsBtn = new ButtonBuilder().setCustomId('levels_set_cooldowns').setLabel(`Cooldowns msg/voc ${cdMsg}/${cdVoc}`).setStyle(ButtonStyle.Secondary);
+  const base = levels?.levelCurve?.base; const factor = levels?.levelCurve?.factor;
+  const curveBtn = new ButtonBuilder().setCustomId('levels_set_curve').setLabel(`Courbe b=${base||'—'} f=${factor||'—'}`).setStyle(ButtonStyle.Secondary);
   const levelUpToggle = new ButtonBuilder().setCustomId('levels_announce_level_toggle').setLabel(levels.announce?.levelUp?.enabled ? 'Annonces Niveau: ON' : 'Annonces Niveau: OFF').setStyle(levels.announce?.levelUp?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const roleAwardToggle = new ButtonBuilder().setCustomId('levels_announce_role_toggle').setLabel(levels.announce?.roleAward?.enabled ? 'Annonces Rôle: ON' : 'Annonces Rôle: OFF').setStyle(levels.announce?.roleAward?.enabled ? ButtonStyle.Success : ButtonStyle.Secondary);
   const rowActions1 = new ActionRowBuilder().addComponents(enableBtn, disableBtn, levelUpToggle, roleAwardToggle);
