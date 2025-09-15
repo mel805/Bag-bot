@@ -850,6 +850,62 @@ function startKeepAliveServer() {
           return;
         }
 
+        // Truth/Dare prompts management
+        if (parsed.pathname === '/api/truthdare/prompts/add' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const mode = (String(data.mode||'sfw').toLowerCase()==='nsfw') ? 'nsfw' : 'sfw';
+              const type = (String(data.type||'action').toLowerCase()==='verite') ? 'verite' : 'action';
+              const texts = Array.isArray(data.texts) ? data.texts.map((t)=>String(t)) : [];
+              if (!texts.length) return sendJson(res, 400, { error: 'no texts' });
+              const { addTdPrompts } = require('./storage/jsonStore');
+              await addTdPrompts(guildId, type, texts, mode);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+        if (parsed.pathname === '/api/truthdare/prompts/delete' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const mode = (String(data.mode||'sfw').toLowerCase()==='nsfw') ? 'nsfw' : 'sfw';
+              const ids = Array.isArray(data.ids) ? data.ids.map((n)=>Number(n)).filter((n)=>Number.isFinite(n)) : [];
+              if (!ids.length) return sendJson(res, 400, { error: 'no ids' });
+              const { deleteTdPrompts } = require('./storage/jsonStore');
+              await deleteTdPrompts(guildId, ids, mode);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+        if (parsed.pathname === '/api/truthdare/prompts/edit' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const mode = (String(data.mode||'sfw').toLowerCase()==='nsfw') ? 'nsfw' : 'sfw';
+              const id = Number(data.id);
+              const text = String(data.text||'');
+              if (!Number.isFinite(id) || !text) return sendJson(res, 400, { error: 'invalid id/text' });
+              const { editTdPrompt } = require('./storage/jsonStore');
+              const rec = await editTdPrompt(guildId, id, text, mode);
+              if (!rec) return sendJson(res, 404, { error: 'not found' });
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+
         if (parsed.pathname === '/api/configs/levels' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           let body='';

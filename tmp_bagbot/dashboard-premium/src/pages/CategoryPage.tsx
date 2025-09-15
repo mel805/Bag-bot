@@ -14,6 +14,44 @@ const TITLES: Record<string, string> = {
   disboard: 'Disboard'
 };
 
+function RewardsEditor() {
+  const { configs, fetchAll } = useApi();
+  const { saveEconomyRewards } = useApi.getState() as any;
+  const [msgMin, setMsgMin] = useState<number|''>('');
+  const [msgMax, setMsgMax] = useState<number|''>('');
+  const [vocMin, setVocMin] = useState<number|''>('');
+  const [vocMax, setVocMax] = useState<number|''>('');
+  useEffect(()=>{
+    setMsgMin(Number.isFinite(configs?.economy?.rewards?.message?.min) ? configs.economy.rewards.message.min : '');
+    setMsgMax(Number.isFinite(configs?.economy?.rewards?.message?.max) ? configs.economy.rewards.message.max : '');
+    setVocMin(Number.isFinite(configs?.economy?.rewards?.voice?.min) ? configs.economy.rewards.voice.min : '');
+    setVocMax(Number.isFinite(configs?.economy?.rewards?.voice?.max) ? configs.economy.rewards.voice.max : '');
+  }, [configs]);
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <label className="text-white/70">Argent texte min
+          <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={msgMin as any} onChange={e=>setMsgMin(e.target.value===''?'':Number(e.target.value))} />
+        </label>
+        <label className="text-white/70">Argent texte max
+          <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={msgMax as any} onChange={e=>setMsgMax(e.target.value===''?'':Number(e.target.value))} />
+        </label>
+        <label className="text-white/70">Argent vocal min
+          <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={vocMin as any} onChange={e=>setVocMin(e.target.value===''?'':Number(e.target.value))} />
+        </label>
+        <label className="text-white/70">Argent vocal max
+          <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={vocMax as any} onChange={e=>setVocMax(e.target.value===''?'':Number(e.target.value))} />
+        </label>
+      </div>
+      <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+        if(!confirm('Confirmer la sauvegarde des récompenses ?')) return;
+        const ok = await saveEconomyRewards(msgMin, msgMax, vocMin, vocMax);
+        if (ok) await fetchAll();
+      }}>Enregistrer récompenses</button>
+    </div>
+  );
+}
+
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
   const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64, saveEconomyAction, saveEconomyRewards, resetLevels } = useApi();
@@ -90,7 +128,6 @@ export default function CategoryPage() {
   const [failMoneyMax, setFailMoneyMax] = useState<number|''>('');
   const [partnerMoneyShare, setPartnerMoneyShare] = useState<number|''>('');
   const [partnerKarmaShare, setPartnerKarmaShare] = useState<number|''>('');
-
   const dashKey = useMemo(() => {
     try {
       const urlKey = new URLSearchParams(window.location.search).get('key');
@@ -258,43 +295,7 @@ export default function CategoryPage() {
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le symbole de la devise ?')) return; await saveCurrencySymbol(currencySymbol); }}>Enregistrer symbole</button>
             </div>
             <div className="mt-4 text-white/70 font-medium">Récompenses argent</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <label className="text-white/70">Argent texte min
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={(configs?.economy?.rewards?.message?.min ?? '') as any} onChange={e=>{
-                  const v = e.target.value; const cur = Number.isFinite(Number(v))?Number(v):''; (configs as any); }} onBlur={()=>{}} />
-              </label>
-              <label className="text-white/70">Argent texte max
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={(configs?.economy?.rewards?.message?.max ?? '') as any} onChange={e=>{}} onBlur={()=>{}} />
-              </label>
-              <label className="text-white/70">Argent vocal min
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={(configs?.economy?.rewards?.voice?.min ?? '') as any} onChange={e=>{}} onBlur={()=>{}} />
-              </label>
-              <label className="text-white/70">Argent vocal max
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={(configs?.economy?.rewards?.voice?.max ?? '') as any} onChange={e=>{}} onBlur={()=>{}} />
-              </label>
-            </div>
-            {/* For simplicity, values are saved via a modal confirm using prompts */}
-            <div>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
-                const cur = configs?.economy?.rewards || {};
-                const msgMin = prompt('Argent texte min', String(cur?.message?.min ?? ''));
-                if (msgMin === null) return;
-                const msgMax = prompt('Argent texte max', String(cur?.message?.max ?? ''));
-                if (msgMax === null) return;
-                const vocMin = prompt('Argent vocal min', String(cur?.voice?.min ?? ''));
-                if (vocMin === null) return;
-                const vocMax = prompt('Argent vocal max', String(cur?.voice?.max ?? ''));
-                if (vocMax === null) return;
-                const mm = msgMin.trim()===''?'':Number(msgMin);
-                const MM = msgMax.trim()===''?'':Number(msgMax);
-                const vm = vocMin.trim()===''?'':Number(vocMin);
-                const vM = vocMax.trim()===''?'':Number(vocMax);
-                if(!confirm('Confirmer la sauvegarde des récompenses ?')) return;
-                // @ts-ignore saveEconomyRewards exists in store
-                const ok = await (useApi.getState().saveEconomyRewards as any)(mm, MM, vm, vM);
-                if (ok) await fetchAll();
-              }}>Enregistrer récompenses</button>
-            </div>
+            <RewardsEditor />
           </div>
         )}
         {cat==='economie' && view==='actions' && (

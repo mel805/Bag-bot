@@ -55,6 +55,9 @@ type ApiState = {
   saveEconomyAction: (action: string, payload: Partial<{ config: any; messages: { success?: string[]; fail?: string[] }; gifs: { success?: string[]; fail?: string[] } }>) => Promise<boolean>;
   saveEconomyRewards: (messageMin: number|'', messageMax: number|'', voiceMin: number|'', voiceMax: number|'') => Promise<boolean>;
   resetLevels: () => Promise<boolean>;
+  addTdPrompts: (mode: 'sfw'|'nsfw', type: 'action'|'verite', lines: string[]) => Promise<boolean>;
+  deleteTdPrompts: (mode: 'sfw'|'nsfw', ids: number[]) => Promise<boolean>;
+  editTdPrompt: (mode: 'sfw'|'nsfw', id: number, text: string) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -210,6 +213,24 @@ export const useApi = create<ApiState>((set, get) => ({
   , resetLevels: async () => {
     try {
       const res = await fetch(withKey('/api/configs/levels/reset'), { method:'POST' });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , addTdPrompts: async (mode, type, lines) => {
+    try {
+      const res = await fetch(withKey('/api/truthdare/prompts/add'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode, type, texts: lines }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , deleteTdPrompts: async (mode, ids) => {
+    try {
+      const res = await fetch(withKey('/api/truthdare/prompts/delete'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode, ids }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , editTdPrompt: async (mode, id, text) => {
+    try {
+      const res = await fetch(withKey('/api/truthdare/prompts/edit'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode, id, text }) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
