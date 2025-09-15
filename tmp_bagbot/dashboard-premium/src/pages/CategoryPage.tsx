@@ -925,14 +925,18 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
     const general = zoneMsgs['(général)'] || { success: '', fail: '' };
     const success: string[] = general.success.split('\n').map(s=>s.trim()).filter(Boolean);
     const fail: string[] = general.fail.split('\n').map(s=>s.trim()).filter(Boolean);
+    const messagesPerZone: any = {};
     for (const z of zones) {
       const b = zoneMsgs[z] || { success: '', fail: '' };
-      const ss = b.success.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>s.replace('{zone}', z));
-      const ff = b.fail.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>s.replace('{zone}', z));
+      const ssRaw = b.success.split('\n').map(s=>s.trim()).filter(Boolean);
+      const ffRaw = b.fail.split('\n').map(s=>s.trim()).filter(Boolean);
+      messagesPerZone[z.toLowerCase()] = { success: ssRaw, fail: ffRaw };
+      const ss = ssRaw.map(s=>s.replace('{zone}', z));
+      const ff = ffRaw.map(s=>s.replace('{zone}', z));
       success.push(...ss);
       fail.push(...ff);
     }
-    const payload: any = { action, config: { zones }, messages: { success, fail } };
+    const payload: any = { action, config: { zones }, messages: { success, fail }, messagesPerZone };
     if (!confirm('Enregistrer zones et phrases pour cette action ?')) return;
     const ok = await saveEconomyAction(action, payload);
     if (ok) await fetchAll();

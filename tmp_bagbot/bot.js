@@ -1172,6 +1172,18 @@ function startKeepAliveServer() {
                     if (Array.isArray(data.messages.fail)) m.fail = data.messages.fail.map(String);
                     next.actions.messages[key] = m;
                   }
+                  // Support messages per zone for fine-grained phrases
+                  if (data.messagesPerZone && typeof data.messagesPerZone === 'object') {
+                    next.actions.messagesPerZone = next.actions.messagesPerZone || {};
+                    const perZones = {};
+                    for (const [zoneName, mm] of Object.entries(data.messagesPerZone)) {
+                      if (!mm || typeof mm !== 'object') continue;
+                      const s = Array.isArray(mm.success) ? mm.success.map(String) : [];
+                      const f = Array.isArray(mm.fail) ? mm.fail.map(String) : [];
+                      perZones[String(zoneName).toLowerCase()] = { success: s, fail: f };
+                    }
+                    next.actions.messagesPerZone[key] = perZones;
+                  }
                   if (data.gifs && typeof data.gifs === 'object') {
                     const g = next.actions.gifs || {};
                     const cur = g[key] || { success: [], fail: [] };
