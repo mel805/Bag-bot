@@ -480,12 +480,7 @@ export default function CategoryPage() {
               </label>
             </div>
             <div className="grid md:grid-cols-2 gap-3 mt-3">
-              <label className="text-white/70">GIF succès (1 URL par ligne)
-                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifSuccess} onChange={e=>setGifSuccess(e.target.value)} />
-              </label>
-              <label className="text-white/70">GIF échec (1 URL par ligne)
-                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
-              </label>
+              {/* GIF URLs moved to GIFs tab; no inputs here */}
             </div>
             <div className="mt-3 flex gap-2">
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
@@ -503,10 +498,7 @@ export default function CategoryPage() {
                 if (failMoneyMax !== '') payload.config.failMoneyMax = Number(failMoneyMax);
                 if (partnerMoneyShare !== '') payload.config.partnerMoneyShare = Number(partnerMoneyShare);
                 if (partnerKarmaShare !== '') payload.config.partnerKarmaShare = Number(partnerKarmaShare);
-                payload.messages.success = msgSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
-                payload.messages.fail = msgFail.split('\n').map(s=>s.trim()).filter(Boolean);
-                payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
-                payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
+                // messages and gifs are managed in dedicated tabs
                 if(!confirm('Confirmer la sauvegarde de cette action ?')) return;
                 await saveEconomyAction(actKey, payload);
               }}>Enregistrer l'action</button>
