@@ -51,6 +51,7 @@ function getZonesFromConfig() {
 }
 const ZONES_BY_ACTION = getZonesFromConfig();
 const DEFAULT_KISS_ZONES = ['lèvres','joue','cou','front'];
+const DEFAULT_TOUCHE_ZONES = ['seins','fesses','corps','jambes','bite','pied','nuque','épaule'];
 const toChoices = (arr) => (arr||[]).slice(0,25).map(z => ({ name: String(z).slice(0,100), value: String(z).toLowerCase() }));
 
 // Cache des commandes pour éviter les déploiements inutiles
@@ -238,18 +239,12 @@ let commands = [
     .setName('touche')
     .setDescription('Toucher sensuellement un(e) membre (NSFW)')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
-    .addStringOption(o=>o.setName('zone').setDescription('Zone (optionnel)').setRequired(false)
-      .addChoices(
-        { name: 'Seins', value: 'seins' },
-        { name: 'Fesses', value: 'fesses' },
-        { name: 'Corps', value: 'corps' },
-        { name: 'Jambes', value: 'jambes' },
-        { name: 'Bite', value: 'bite' },
-        { name: 'Pied', value: 'pied' },
-        { name: 'Nuque', value: 'nuque' },
-        { name: 'Épaule', value: 'épaule' }
-      )
-    )
+    .addStringOption(o=>{
+      const zones = ZONES_BY_ACTION.touche && ZONES_BY_ACTION.touche.length ? ZONES_BY_ACTION.touche : DEFAULT_TOUCHE_ZONES;
+      const builder = o.setName('zone').setDescription('Zone (optionnel)').setRequired(false);
+      toChoices(zones).forEach(c => builder.addChoices(c));
+      return builder;
+    })
     .toJSON(),
   new SlashCommandBuilder()
     .setName('reveiller')
