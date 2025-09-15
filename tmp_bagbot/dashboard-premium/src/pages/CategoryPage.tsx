@@ -282,8 +282,9 @@ export default function CategoryPage() {
       setPartnerMoneyShare(Number.isFinite(c.partnerMoneyShare)?c.partnerMoneyShare:'');
       setPartnerKarmaShare(Number.isFinite(c.partnerKarmaShare)?c.partnerKarmaShare:'');
       // Auto-prefill defaults (messages/zones) if missing
-      const needMessages = (!Array.isArray(m.success) || m.success.length===0) || (!Array.isArray(m.fail) || m.fail.length===0);
-      const needZones = (!Array.isArray(c.zones) || c.zones.length===0);
+      const uiMsgsEmpty = (!msgSuccess && !msgFail);
+      const needMessages = uiMsgsEmpty || (!Array.isArray(m.success) || m.success.length===0) || (!Array.isArray(m.fail) || m.fail.length===0);
+      const needZones = (!Array.isArray(c.zones) || c.zones.length===0) || !actZones;
       if (needMessages || needZones) {
         const key = (()=>{ try { return new URLSearchParams(window.location.search).get('key') || localStorage.getItem('DASHBOARD_KEY') || ''; } catch { return ''; } })();
         const url = `/api/economy/action-defaults?action=${encodeURIComponent(actKey)}${key?`&key=${encodeURIComponent(key)}`:''}`;

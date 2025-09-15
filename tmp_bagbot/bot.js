@@ -1244,9 +1244,11 @@ function startKeepAliveServer() {
               const r = request(urlToFetch, {
                 headers: {
                   'User-Agent': 'Mozilla/5.0 (PreviewProxy)',
-                  'Referer': referer,
+                  'Referer': 'https://discord.com',
+                  'Origin': 'https://discord.com',
                   'Accept': 'image/*,video/*;q=0.9,*/*;q=0.8',
-                  'Accept-Language': 'en-US,en;q=0.8,fr;q=0.7'
+                  'Accept-Language': 'en-US,en;q=0.8,fr;q=0.7',
+                  'Range': 'bytes=0-'
                 },
                 timeout: 7000,
               }, (upstream) => resolve(upstream));
