@@ -15,18 +15,16 @@ try {
 // Charger zones dynamiques depuis la config
 function getZonesFromConfig() {
   try {
-    // Charger la config économie la plus récente
-    let cfgMerged = {};
+    // Charger la config économie + éventuel override zones généré par le bot
     const ecoPath1 = path.join(__dirname, 'data', 'config.json');
     const ecoPath2 = path.join(__dirname, 'data', 'economy.json');
-    let rawCfgLocal = {};
-    if (fs.existsSync(ecoPath1)) rawCfgLocal = JSON.parse(fs.readFileSync(ecoPath1, 'utf8')||'{}');
+    const zonesOverridePath = path.join(__dirname, 'data', 'zones-override.json');
+    let cfgMerged = {};
+    if (fs.existsSync(ecoPath1)) cfgMerged = JSON.parse(fs.readFileSync(ecoPath1, 'utf8')||'{}');
     if (fs.existsSync(ecoPath2)) {
-      // Certaines installations séparent economy.json
       const ecoOnly = JSON.parse(fs.readFileSync(ecoPath2, 'utf8')||'{}');
-      rawCfgLocal.economy = ecoOnly;
+      cfgMerged.economy = ecoOnly;
     }
-    cfgMerged = rawCfgLocal;
     const eco = cfgMerged.economy || {};
     const acts = eco.actions || {};
     const conf = acts.config || {};
@@ -38,7 +36,7 @@ function getZonesFromConfig() {
       }
       return [];
     };
-    return {
+    let zones = {
       kiss: pickMulti(['kiss','embrasser']),
       touche: pickMulti(['touche']),
       caress: pickMulti(['caress','caresser']),
@@ -47,6 +45,14 @@ function getZonesFromConfig() {
       nibble: pickMulti(['nibble','mordre']),
       tickle: pickMulti(['tickle','chatouiller']),
     };
+    // Appliquer override si présent (source unique de vérité créée par le bot à chaque save)
+    if (fs.existsSync(zonesOverridePath)) {
+      try {
+        const over = JSON.parse(fs.readFileSync(zonesOverridePath,'utf8')||'{}');
+        zones = { ...zones, ...over };
+      } catch (_) {}
+    }
+    return zones;
   } catch (_) { return { kiss: [], touche: [], caress: [], lick: [], suck: [], nibble: [], tickle: [] }; }
 }
 const ZONES_BY_ACTION = getZonesFromConfig();

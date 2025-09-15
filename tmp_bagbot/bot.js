@@ -1197,7 +1197,26 @@ function startKeepAliveServer() {
                   }
                 }
                 await updateEconomyConfig(guildId, next);
-                try { console.log('[Dashboard->Bot] Action saved:', data.action, 'zones:', Array.isArray(next.actions?.config?.[data.action]?.zones) ? next.actions.config[data.action].zones.length : 0); } catch (_) {}
+                try {
+                  console.log('[Dashboard->Bot] Action saved:', data.action, 'zones:', Array.isArray(next.actions?.config?.[data.action]?.zones) ? next.actions.config[data.action].zones.length : 0);
+                  const fs = require('fs');
+                  const path = require('path');
+                  const conf = (next.actions && next.actions.config) ? next.actions.config : {};
+                  const normalizeActionKey = (k) => {
+                    const map = { 'embrasser':'kiss','lécher':'lick','lecher':'lick','sucer':'suck','mordre':'nibble','caresser':'caress','chatouiller':'tickle','séduire':'seduce','seduire':'seduce','flirter':'flirt','touche':'touche' };
+                    return map[String(k)] || String(k);
+                  };
+                  const zonesMap = {};
+                  for (const [ak, av] of Object.entries(conf)) {
+                    if (av && Array.isArray(av.zones) && av.zones.length) {
+                      const norm = normalizeActionKey(ak);
+                      zonesMap[norm] = av.zones.map(String);
+                    }
+                  }
+                  const outDir = path.join(__dirname, 'data');
+                  try { fs.mkdirSync(outDir, { recursive: true }); } catch (_) {}
+                  fs.writeFileSync(path.join(outDir, 'zones-override.json'), JSON.stringify(zonesMap, null, 2));
+                } catch (_) {}
                 try {
                   if (data && data.action && data.config && Array.isArray(data.config.zones)) {
                     const cp = require('child_process');
