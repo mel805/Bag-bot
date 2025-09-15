@@ -1814,6 +1814,18 @@ async function handleEconomyAction(interaction, actionKey) {
   const gifs = ((eco.actions?.gifs || {})[actionKey]) || { success: [], fail: [] };
   const msgSet = ((eco.actions?.messages || {})[actionKey]) || { success: [], fail: [] };
   let msgText = null;
+  // Phrases par zone si disponibles
+  try {
+    const zoneArg = String(interaction.options.getString('zone', false) || '').trim().toLowerCase();
+    if (zoneArg) {
+      const per = (eco.actions?.messagesPerZone || {})[actionKey] || {};
+      const set = per[zoneArg];
+      if (set) {
+        const arr = success ? (Array.isArray(set.success) ? set.success : []) : (Array.isArray(set.fail) ? set.fail : []);
+        if (arr.length) msgText = arr[Math.floor(Math.random()*arr.length)];
+      }
+    }
+  } catch (_) {}
   const successRate = Number(conf.successRate ?? 1);
   const success = Math.random() < successRate;
   // XP config
