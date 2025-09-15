@@ -1236,7 +1236,7 @@ function startKeepAliveServer() {
             const target = String(parsed.query?.url || '');
             const wantMeta = String(parsed.query?.meta || '') === '1';
             if (!/^https?:\/\//i.test(target)) return sendJson(res, 400, { error: 'invalid url' });
-            const maxBytes = 5 * 1024 * 1024; // 5MB for images
+            let maxBytes = 5 * 1024 * 1024; // 5MB for images
             const doRequest = (urlToFetch) => new Promise((resolve) => {
               const { request } = urlToFetch.startsWith('https://') ? require('https') : require('http');
               let referer = 'https://discord.com';
@@ -1339,7 +1339,14 @@ function startKeepAliveServer() {
               if (!upstream) return sendJson(res, 502, { error: 'resolve failed' });
               ctype = String(upstream.headers['content-type'] || '');
             }
-            // Stream to client; cap images to 5MB to avoid abuse
+            // Heuristic: if Discord CDN or GIF, allow larger cap
+            try {
+              const host = new URL(normTarget).hostname;
+              if (/discordapp\.(com|net)$/i.test(host) || /^image\/gif/i.test(ctype)) {
+                maxBytes = 25 * 1024 * 1024;
+              }
+            } catch (_) {}
+            // Stream to client; cap images to avoid abuse
             res.statusCode = Number(upstream.statusCode || 200);
             res.setHeader('Content-Type', ctype || 'application/octet-stream');
             const passHeaders = ['content-length','accept-ranges','content-range','cache-control'];

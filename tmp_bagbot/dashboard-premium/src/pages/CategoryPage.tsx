@@ -417,6 +417,7 @@ export default function CategoryPage() {
             <div className="flex gap-2">
               <NavLink to="/config/economie/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
               <NavLink to="/config/economie/actions" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
+              <NavLink to="/config/economie/phrases-zones" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Phrases zones</NavLink>
               <NavLink to="/config/economie/gifs" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
             </div>
           </div>
@@ -462,9 +463,6 @@ export default function CategoryPage() {
               <label className="text-white/70">Cooldown (s)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
               </label>
-              <label className="text-white/70 md:col-span-3">Zones (séparées par une virgule)
-                <input type="text" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actZones} onChange={e=>setActZones(e.target.value)} placeholder="ex: cou, épaules, nuque" />
-              </label>
               <label className="text-white/70">Δ Karma (échec)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
               </label>
@@ -482,12 +480,6 @@ export default function CategoryPage() {
               </label>
             </div>
             <div className="grid md:grid-cols-2 gap-3 mt-3">
-              <label className="text-white/70">Messages succès (1 par ligne)
-                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={msgSuccess} onChange={e=>setMsgSuccess(e.target.value)} />
-              </label>
-              <label className="text-white/70">Messages échec (1 par ligne)
-                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={msgFail} onChange={e=>setMsgFail(e.target.value)} />
-              </label>
               <label className="text-white/70">GIF succès (1 URL par ligne)
                 <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifSuccess} onChange={e=>setGifSuccess(e.target.value)} />
               </label>
@@ -879,6 +871,89 @@ function GifPreview({ url, onDelete }: { url: string; onDelete: () => void }) {
         <img src={src} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
       )}
       <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={onDelete}>Suppr</button>
+    </div>
+  );
+}
+
+function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsList: string[] }) {
+  const { configs, fetchAll } = useApi();
+  const { saveEconomyAction } = useApi.getState() as any;
+  const [action, setAction] = React.useState<string>(actKey || 'caress');
+  const [zones, setZones] = React.useState<string[]>([]);
+  const [zoneMsgs, setZoneMsgs] = React.useState<Record<string, { success: string; fail: string }>>({});
+  React.useEffect(()=>{ setAction(actKey); }, [actKey]);
+  React.useEffect(()=>{
+    const c = (configs?.economy?.actions?.config||{})[action] || {};
+    const m = (configs?.economy?.actions?.messages||{})[action] || { success: [], fail: [] };
+    const zs: string[] = Array.isArray(c.zones) ? c.zones : [];
+    setZones(zs);
+    const byZone: Record<string, { success: string; fail: string }> = {};
+    for (const z of zs) {
+      const s = (Array.isArray(m.success) ? m.success.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase())) : []).join('\n');
+      const f = (Array.isArray(m.fail) ? m.fail.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase())) : []).join('\n');
+      byZone[z] = { success: s, fail: f };
+    }
+    if (!byZone['(général)']) byZone['(général)'] = { success: (m.success||[]).join('\n'), fail: (m.fail||[]).join('\n') };
+    setZoneMsgs(byZone);
+  }, [action, configs]);
+  const addZone = () => {
+    const name = prompt('Nom de la nouvelle zone (ex: nuque) ?')?.trim();
+    if (!name) return;
+    if (zones.includes(name)) return alert('Cette zone existe déjà.');
+    setZones(prev=>[...prev, name]);
+    setZoneMsgs(prev=>({ ...prev, [name]: { success: '', fail: '' } }));
+  };
+  const removeZone = (z: string) => {
+    setZones(prev=>prev.filter(x=>x!==z));
+    setZoneMsgs(prev=>{ const c = { ...prev }; delete c[z]; return c; });
+  };
+  const saveAll = async () => {
+    const general = zoneMsgs['(général)'] || { success: '', fail: '' };
+    const success: string[] = general.success.split('\n').map(s=>s.trim()).filter(Boolean);
+    const fail: string[] = general.fail.split('\n').map(s=>s.trim()).filter(Boolean);
+    for (const z of zones) {
+      const b = zoneMsgs[z] || { success: '', fail: '' };
+      const ss = b.success.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>s.replace('{zone}', z));
+      const ff = b.fail.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>s.replace('{zone}', z));
+      success.push(...ss);
+      fail.push(...ff);
+    }
+    const payload: any = { action, config: { zones }, messages: { success, fail } };
+    if (!confirm('Enregistrer zones et phrases pour cette action ?')) return;
+    const ok = await saveEconomyAction(action, payload);
+    if (ok) await fetchAll();
+  };
+  return (
+    <div className="space-y-3">
+      <div className="grid md:grid-cols-3 gap-3">
+        <label className="text-white/70">Action
+          <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={action} onChange={e=>setAction(e.target.value)}>
+            {actionsList.map(k => (<option key={k} value={k}>{k}</option>))}
+          </select>
+        </label>
+        <div className="flex items-end"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={addZone}>Ajouter une zone</button></div>
+      </div>
+      <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
+        {Object.keys(zoneMsgs).map((z)=> (
+          <div key={z} className="border border-white/10 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="text-white/80 font-medium">{z}</div>
+              {z !== '(général)' && (
+                <button className="ml-auto text-red-300 bg-red-500/20 border border-red-500/30 rounded px-2 py-1 text-xs" onClick={()=>removeZone(z)}>Supprimer</button>
+              )}
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="text-white/70">Succès (1 par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-28" value={zoneMsgs[z]?.success||''} onChange={e=>setZoneMsgs(prev=>({ ...prev, [z]: { ...(prev[z]||{fail:''}), success: e.target.value } }))} />
+              </label>
+              <label className="text-white/70">Échec (1 par ligne)
+                <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-28" value={zoneMsgs[z]?.fail||''} onChange={e=>setZoneMsgs(prev=>({ ...prev, [z]: { ...(prev[z]||{success:''}), fail: e.target.value } }))} />
+              </label>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={saveAll}>Enregistrer</button></div>
     </div>
   );
 }
