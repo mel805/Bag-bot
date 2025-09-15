@@ -926,17 +926,32 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
     const ok = await saveEconomyAction(action, payload);
     if (ok) await fetchAll();
   };
+  // Fallback actions list if parent-provided list is empty
+  const localActionsList = React.useMemo(()=>{
+    if (actionsList && actionsList.length) return actionsList;
+    try {
+      const a = (configs?.economy?.actions)||{};
+      const set = new Set<string>();
+      Object.keys(a.config||{}).forEach(k=>set.add(k));
+      Object.keys(a.messages||{}).forEach(k=>set.add(k));
+      Object.keys(a.gifs||{}).forEach(k=>set.add(k));
+      return Array.from(set).sort();
+    } catch { return []; }
+  }, [actionsList, configs]);
   return (
     <div className="space-y-3">
       <div className="grid md:grid-cols-3 gap-3">
         <label className="text-white/70">Action
           <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={action} onChange={e=>setAction(e.target.value)}>
-            {actionsList.map(k => (<option key={k} value={k}>{k}</option>))}
+            {localActionsList.map(k => (<option key={k} value={k}>{k}</option>))}
           </select>
         </label>
         <div className="flex items-end"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={addZone}>Ajouter une zone</button></div>
       </div>
       <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
+        {!zones.length && (
+          <div className="text-white/60 text-sm">Aucune zone. Utilisez "Ajouter une zone".</div>
+        )}
         {Object.keys(zoneMsgs).map((z)=> (
           <div key={z} className="border border-white/10 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-2">
