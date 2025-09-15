@@ -180,6 +180,7 @@ export default function CategoryPage() {
   const [actKarma, setActKarma] = useState<'none'|'charm'|'perversion'>('none');
   const [actKarmaDelta, setActKarmaDelta] = useState<number|''>('');
   const [actCooldown, setActCooldown] = useState<number|''>('');
+  const [actSuccessRate, setActSuccessRate] = useState<number|''>('');
   const [msgSuccess, setMsgSuccess] = useState('');
   const [msgFail, setMsgFail] = useState('');
   const [gifSuccess, setGifSuccess] = useState('');
@@ -277,6 +278,7 @@ export default function CategoryPage() {
       setActKarma(['none','charm','perversion'].includes(c.karma)?c.karma:'none');
       setActKarmaDelta(Number.isFinite(c.karmaDelta)?c.karmaDelta:'');
       setActCooldown(Number.isFinite(c.cooldown)?c.cooldown:'');
+      setActSuccessRate(Number.isFinite(c.successRate)?c.successRate:'');
       setActZones(Array.isArray(c.zones) ? c.zones.join(', ') : '');
       const m = configs.economy?.actions?.messages?.[actKey] || { success: [], fail: [] };
       setMsgSuccess((m.success||[]).join('\n'));
@@ -463,6 +465,9 @@ export default function CategoryPage() {
               <label className="text-white/70">Cooldown (s)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
               </label>
+              <label className="text-white/70">Taux de succès (0-1)
+                <input type="number" step="0.01" min="0" max="1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actSuccessRate as any} onChange={e=>setActSuccessRate(e.target.value===''?'':Number(e.target.value))} />
+              </label>
               <label className="text-white/70">Δ Karma (échec)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
               </label>
@@ -490,6 +495,7 @@ export default function CategoryPage() {
                 payload.config.karma = actKarma;
                 if (actKarmaDelta !== '') payload.config.karmaDelta = Number(actKarmaDelta);
                 if (actCooldown !== '') payload.config.cooldown = Number(actCooldown);
+                if (actSuccessRate !== '') payload.config.successRate = Math.max(0, Math.min(1, Number(actSuccessRate)));
                 // zones
                 const z = actZones.split(',').map(s=>s.trim()).filter(Boolean);
                 if (z.length) payload.config.zones = z;
@@ -881,8 +887,13 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
     setZones(zs);
     const byZone: Record<string, { success: string; fail: string }> = {};
     for (const z of zs) {
-      const s = (Array.isArray(m.success) ? m.success.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase())) : []).join('\n');
-      const f = (Array.isArray(m.fail) ? m.fail.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase())) : []).join('\n');
+      const allS = Array.isArray(m.success) ? m.success : [];
+      const allF = Array.isArray(m.fail) ? m.fail : [];
+      const sFiltered = allS.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
+      const fFiltered = allF.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
+      // If no specific lines, fallback to generic lines for visibility
+      const s = (sFiltered.length ? sFiltered : allS).join('\n');
+      const f = (fFiltered.length ? fFiltered : allF).join('\n');
       byZone[z] = { success: s, fail: f };
     }
     if (!byZone['(général)']) byZone['(général)'] = { success: (m.success||[]).join('\n'), fail: (m.fail||[]).join('\n') };
