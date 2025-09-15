@@ -16,9 +16,9 @@ try {
 function getZonesFromConfig() {
   try {
     // Charger la config économie + éventuel override zones généré par le bot
-    const ecoPath1 = path.join(__dirname, 'data', 'config.json');
-    const ecoPath2 = path.join(__dirname, 'data', 'economy.json');
-    const zonesOverridePath = path.join(__dirname, 'data', 'zones-override.json');
+    const ecoPath1 = path.join(__dirname, '..', 'data', 'config.json');
+    const ecoPath2 = path.join(__dirname, '..', 'data', 'economy.json');
+    const zonesOverridePath = path.join(__dirname, '..', 'data', 'zones-override.json');
     let cfgMerged = {};
     if (fs.existsSync(ecoPath1)) cfgMerged = JSON.parse(fs.readFileSync(ecoPath1, 'utf8')||'{}');
     if (fs.existsSync(ecoPath2)) {
