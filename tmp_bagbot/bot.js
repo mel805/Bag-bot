@@ -1223,7 +1223,7 @@ function startKeepAliveServer() {
                   fs.writeFileSync(path.join(outDir, 'zones-override.json'), JSON.stringify(zonesMap, null, 2));
                 } catch (_) {}
                 try {
-                  if (data && data.action && data.config && Array.isArray(data.config.zones)) {
+                  if (data && data.action && (data.messages || data.messagesPerZone || (data.config && Array.isArray(data.config.zones)))) {
                     const cp = require('child_process');
                     const path = require('path');
                     const deployPath = path.join(__dirname, 'deploy-commands.js');
