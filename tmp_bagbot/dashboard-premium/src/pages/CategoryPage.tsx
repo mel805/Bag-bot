@@ -354,7 +354,7 @@ export default function CategoryPage() {
               <button className="text-white/60 text-sm underline" onClick={()=>setLogsCollapsed(v=>!v)}>{logsCollapsed ? 'Déployer' : 'Réduire'}</button>
             </div>
             <div className="space-y-2">
-              {['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites','booster','tickets'].map((k)=>{
+              {['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'].map((k)=>{
                 const collapsed = logsCollapsed;
                 const actionsOptions: Record<string,string[]> = {
                   joinleave: ['join','leave'],
@@ -369,9 +369,7 @@ export default function CategoryPage() {
                   roles: ['create','delete','update','member_role_add','member_role_remove'],
                   emojis: ['create','delete','update'],
                   members: ['nickname'],
-                  invites: ['create','delete'],
-                  booster: ['enable','disable','config'],
-                  tickets: ['open','close','claim','transfer','panel','config']
+                  invites: ['create','delete']
                 };
                 const selectedActs = (configs?.logs?.actions?.[k] || []) as string[];
                 return (
@@ -640,7 +638,7 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
-        {cat==='action-verite' && (
+        {(cat==='action-verite') && (
           <div className="space-y-3">
             <div className="flex gap-2">
               <NavLink to="/config/action-verite/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Salons</NavLink>
@@ -662,6 +660,16 @@ export default function CategoryPage() {
             )}
             {view==='sfw' && (<TdPromptsEditor mode="sfw" />)}
             {view==='nsfw' && (<TdPromptsEditor mode="nsfw" />)}
+          </div>
+        )}
+        {(cat==='tickets') && (
+          <div className="space-y-3">
+            <div className="text-white/70">Configuration Tickets (déjà gérée côté bot). Ajouts UI détaillés à venir.</div>
+          </div>
+        )}
+        {(cat==='booster') && (
+          <div className="space-y-3">
+            <div className="text-white/70">Configuration Booster (déjà gérée côté bot). Ajouts UI détaillés à venir.</div>
           </div>
         )}
         {cat==='levels' && (
