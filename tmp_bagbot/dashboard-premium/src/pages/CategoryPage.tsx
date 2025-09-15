@@ -419,7 +419,6 @@ export default function CategoryPage() {
             <div className="flex gap-2">
               <NavLink to={`/config/${cat}/overview`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
               <NavLink to={`/config/${cat}/actions`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
-              <NavLink to={`/config/${cat}/phrases-zones`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Phrases zones</NavLink>
               <NavLink to={`/config/${cat}/gifs`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
             </div>
           </div>
@@ -555,9 +554,7 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
-        {(cat==='economie' || cat==='economy') && view==='phrases-zones' && (
-          <PhrasesZonesEditor actKey={actKey} actionsList={actionsList} />
-        )}
+        {/* Phrases zones tab removed */}
         {cat==='confessions' && (
           <div className="space-y-3">
             <div className="text-white/70">Autoriser les réponses</div>
