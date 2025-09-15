@@ -1135,7 +1135,22 @@ function startKeepAliveServer() {
                 }
                 // Actions config/messages/gifs update
                 if (data && data.action && typeof data.action === 'string') {
-                  const key = String(data.action);
+                  const normalizeActionKey = (k) => {
+                    const map = {
+                      'embrasser': 'kiss',
+                      'lécher': 'lick',
+                      'lecher': 'lick',
+                      'sucer': 'suck',
+                      'mordre': 'nibble',
+                      'caresser': 'caress',
+                      'chatouiller': 'tickle',
+                      'séduire': 'seduce',
+                      'seduire': 'seduce',
+                      'flirter': 'flirt'
+                    };
+                    return map[String(k)] || String(k);
+                  };
+                  const key = normalizeActionKey(String(data.action));
                   next.actions = next.actions || { enabled: [], config: {}, messages: {}, gifs: {} };
                   if (data.config && typeof data.config === 'object') {
                     const prev = next.actions.config[key] || {};

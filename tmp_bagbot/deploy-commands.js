@@ -15,10 +15,19 @@ try {
 // Charger zones dynamiques depuis la config
 function getZonesFromConfig() {
   try {
-    const dataPath = path.join(__dirname, 'data', 'config.json');
-    const raw = fs.readFileSync(dataPath, 'utf8');
-    const cfg = JSON.parse(raw||'{}');
-    const eco = cfg.economy || {};
+    // Charger la config économie la plus récente
+    let cfgMerged = {};
+    const ecoPath1 = path.join(__dirname, 'data', 'config.json');
+    const ecoPath2 = path.join(__dirname, 'data', 'economy.json');
+    let rawCfgLocal = {};
+    if (fs.existsSync(ecoPath1)) rawCfgLocal = JSON.parse(fs.readFileSync(ecoPath1, 'utf8')||'{}');
+    if (fs.existsSync(ecoPath2)) {
+      // Certaines installations séparent economy.json
+      const ecoOnly = JSON.parse(fs.readFileSync(ecoPath2, 'utf8')||'{}');
+      rawCfgLocal.economy = ecoOnly;
+    }
+    cfgMerged = rawCfgLocal;
+    const eco = cfgMerged.economy || {};
     const acts = eco.actions || {};
     const conf = acts.config || {};
     const pick = (k) => Array.isArray(conf[k]?.zones) ? conf[k].zones : [];
@@ -430,7 +439,9 @@ const uniqueCommands = Array.from(uniqueMap.values()).filter(c => !['action_touc
 // Fonction pour vérifier si les commandes ont changé
 function shouldDeployCommands() {
   try {
-    const commandsHash = crypto.createHash('md5').update(JSON.stringify(uniqueCommands)).digest('hex');
+    // Toujours redéployer si des zones ont changé
+    const zoneSig = JSON.stringify(ZONES_BY_ACTION);
+    const commandsHash = crypto.createHash('md5').update(JSON.stringify(uniqueCommands) + '::' + zoneSig).digest('hex');
     const cache = JSON.parse(fs.readFileSync(COMMANDS_CACHE_FILE, 'utf8'));
     
     // Vérifier si le hash a changé ou si le cache est trop ancien (24h)
