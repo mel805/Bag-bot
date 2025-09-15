@@ -978,7 +978,6 @@ function startKeepAliveServer() {
           });
           return;
         }
-
         if (parsed.pathname === '/api/configs/disboard' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           let body='';
@@ -1014,6 +1013,25 @@ function startKeepAliveServer() {
                 if (data && data.currency && typeof data.currency.symbol === 'string') {
                   const sym = String(data.currency.symbol).slice(0, 4);
                   next.currency = { ...(next.currency||{}), symbol: sym };
+                }
+                // Rewards message/voice min/max update
+                if (data && data.rewards && typeof data.rewards === 'object') {
+                  next.rewards = { ...(next.rewards||{}) };
+                  if (data.rewards.message && typeof data.rewards.message === 'object') {
+                    const r = { ...(next.rewards.message||{}) };
+                    if (Number.isFinite(Number(data.rewards.message.min))) r.min = Math.max(0, Number(data.rewards.message.min));
+                    if (Number.isFinite(Number(data.rewards.message.max))) r.max = Math.max(0, Number(data.rewards.message.max));
+                    if (typeof r.enabled !== 'boolean') r.enabled = true;
+                    next.rewards.message = r;
+                  }
+                  if (data.rewards.voice && typeof data.rewards.voice === 'object') {
+                    const r = { ...(next.rewards.voice||{}) };
+                    if (Number.isFinite(Number(data.rewards.voice.min))) r.min = Math.max(0, Number(data.rewards.voice.min));
+                    if (Number.isFinite(Number(data.rewards.voice.max))) r.max = Math.max(0, Number(data.rewards.voice.max));
+                    if (typeof r.enabled !== 'boolean') r.enabled = true;
+                    if (!Number.isFinite(Number(r.intervalMinutes))) r.intervalMinutes = 5;
+                    next.rewards.voice = r;
+                  }
                 }
                 // Actions config/messages/gifs update
                 if (data && data.action && typeof data.action === 'string') {
@@ -1404,7 +1422,6 @@ function buildTruthDarePromptEmbed(mode, type, text, displayNumber) {
     .setFooter({ text: footerText, iconURL: THEME_FOOTER_ICON });
   return embed;
 }
-
 async function handleEconomyAction(interaction, actionKey) {
   // Track this interaction for monitoring - trackInteraction untrackInteraction
   trackInteraction(interaction, `economy-${actionKey}`);
@@ -4681,7 +4698,6 @@ async function buildTicketsRows(guild, submenu) {
   rows.push(new ActionRowBuilder().addComponents(catSelectAccess));
   return rows;
 }
-
 function actionKeyToLabel(key) {
   const map = {
     daily: 'quotidien',
@@ -5179,7 +5195,6 @@ client.once(Events.ClientReady, async (readyClient) => {
       console.error('[Monitor] Error checking stuck interactions:', error);
     }
   }, 5 * 60 * 1000);
-
   // Backup heartbeat: persist current state and log every 30 minutes
   setInterval(async () => {
     try {
@@ -6149,7 +6164,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.channel.send({ embeds: [embed], files: __banner ? [__banner] : [] }).catch(()=>{});
       return;
     }
-
     // Gestion des boutons de restauration
     if (interaction.isButton() && interaction.customId === 'restore_auto') {
       const member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
@@ -7586,7 +7600,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
     }
-
     if (interaction.isButton() && (interaction.customId === 'autokick_enable' || interaction.customId === 'autokick_disable')) {
       const enable = interaction.customId === 'autokick_enable';
       if (enable) {
@@ -9001,7 +9014,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({ embeds: [view.embed], components: view.rows, files: view.files });
       return;
     }
-
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('couleur_final_select:')) {
       const [, targetType, targetId, category] = interaction.customId.split(':');
       const colorHex = interaction.values[0];
@@ -10353,7 +10365,6 @@ async function buildShopRows(guild) {
   const removeRow = new ActionRowBuilder().addComponents(remove);
   return [controls, removeRow];
 }
-
 let SUITE_EMOJI = '💞';
 
 // Palettes de couleurs pour la commande /couleur

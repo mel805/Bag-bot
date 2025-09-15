@@ -53,6 +53,7 @@ type ApiState = {
   saveLevelsAdvanced: (enabled: boolean, announce: { levelUp?: { enabled?: boolean; channelId?: string }; roleAward?: { enabled?: boolean; channelId?: string } }) => Promise<boolean>;
   saveCurrencySymbol: (symbol: string) => Promise<boolean>;
   saveEconomyAction: (action: string, payload: Partial<{ config: any; messages: { success?: string[]; fail?: string[] }; gifs: { success?: string[]; fail?: string[] } }>) => Promise<boolean>;
+  saveEconomyRewards: (messageMin: number|'', messageMax: number|'', voiceMin: number|'', voiceMax: number|'') => Promise<boolean>;
   resetLevels: () => Promise<boolean>;
 };
 
@@ -190,6 +191,19 @@ export const useApi = create<ApiState>((set, get) => ({
   , saveEconomyAction: async (action, payload) => {
     try {
       const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, ...payload }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveEconomyRewards: async (messageMin, messageMax, voiceMin, voiceMax) => {
+    try {
+      const payload:any = { rewards: {} };
+      payload.rewards.message = {};
+      if (messageMin !== '') payload.rewards.message.min = Number(messageMin);
+      if (messageMax !== '') payload.rewards.message.max = Number(messageMax);
+      payload.rewards.voice = {};
+      if (voiceMin !== '') payload.rewards.voice.min = Number(voiceMin);
+      if (voiceMax !== '') payload.rewards.voice.max = Number(voiceMax);
+      const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
