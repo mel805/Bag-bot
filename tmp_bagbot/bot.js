@@ -1230,36 +1230,48 @@ function startKeepAliveServer() {
             const target = String(parsed.query?.url || '');
             if (!/^https?:\/\//i.test(target)) return sendJson(res, 400, { error: 'invalid url' });
             const maxBytes = 5 * 1024 * 1024; // 5MB
-            const { request } = target.startsWith('https://') ? require('https') : require('http');
-            const r = request(target, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (PreviewProxy)'
-              },
-              timeout: 4000,
-            }, (upstream) => {
-              const ctype = String(upstream.headers['content-type'] || 'application/octet-stream');
-              res.statusCode = 200;
-              res.setHeader('Content-Type', ctype);
-              let sent = 0;
-              upstream.on('data', (chunk) => {
-                sent += chunk.length;
-                if (sent > maxBytes) {
-                  try { upstream.destroy(); } catch (_) {}
-                  try { res.destroy(); } catch (_) {}
-                  return;
-                }
-                res.write(chunk);
-              });
-              upstream.on('end', () => res.end());
-              upstream.on('error', () => { try { res.destroy(); } catch (_) {} });
+            const doRequest = (urlToFetch) => new Promise((resolve) => {
+              const { request } = urlToFetch.startsWith('https://') ? require('https') : require('http');
+              const r = request(urlToFetch, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (PreviewProxy)' },
+                timeout: 5000,
+              }, (upstream) => resolve(upstream));
+              r.on('timeout', ()=>resolve(null));
+              r.on('error', ()=>resolve(null));
+              r.end();
             });
-            r.on('timeout', ()=>{ try { r.destroy(); } catch (_) {} try { res.destroy(); } catch (_) {} });
-            r.on('error', ()=>{ try { res.destroy(); } catch (_) {} });
-            r.end();
+            let upstream = await doRequest(target);
+            if (!upstream) return sendJson(res, 504, { error: 'upstream timeout' });
+            let ctype = String(upstream.headers['content-type'] || '');
+            // If not an image, try to resolve og:image for known hosts
+            if (!/^image\//i.test(ctype)) {
+              let html = '';
+              upstream.setEncoding('utf8');
+              upstream.on('data', (chunk) => { html += chunk; if (html.length > 500000) { try { upstream.destroy(); } catch(_) {} } });
+              await new Promise((r)=>{ upstream.on('end', r); upstream.on('error', r); });
+              const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+              const direct = m && m[1] ? m[1] : null;
+              if (direct) upstream = await doRequest(direct);
+              if (!upstream) return sendJson(res, 502, { error: 'resolve failed' });
+              ctype = String(upstream.headers['content-type'] || '');
+            }
+            res.statusCode = 200;
+            res.setHeader('Content-Type', ctype || 'application/octet-stream');
+            let sent = 0;
+            upstream.on('data', (chunk) => {
+              sent += chunk.length;
+              if (sent > maxBytes) {
+                try { upstream.destroy(); } catch (_) {}
+                try { res.destroy(); } catch (_) {}
+                return;
+              }
+              res.write(chunk);
+            });
+            upstream.on('end', () => res.end());
+            upstream.on('error', () => { try { res.destroy(); } catch (_) {} });
           } catch (e) {
             return sendJson(res, 500, { error: String(e?.message||e) });
           }
-          return;
         }
 
         // Upload base64 image -> /public/uploads
