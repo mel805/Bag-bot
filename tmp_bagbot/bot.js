@@ -565,7 +565,6 @@ async function sendDetailedRestoreLog(guild, result, method, user) {
     console.error('[RestoreLog] Erreur envoi log:', error.message);
   }
 }
-
 // Keepalive HTTP server for Render Web Services (bind PORT)
 function startKeepAliveServer() {
   const port = Number(process.env.PORT || 0);
@@ -802,7 +801,12 @@ function startKeepAliveServer() {
               if (data.emojis && typeof data.emojis === 'object') {
                 next.emojis = { ...(next.emojis||{}) };
                 for (const [k, v] of Object.entries(data.emojis)) {
-                  if (typeof v === 'string' && v.trim()) next.emojis[k] = String(v).trim().slice(0, 8);
+                  const s = typeof v === 'string' ? v : '';
+                  if (s.trim() === '') {
+                    try { delete next.emojis[k]; } catch (_) {}
+                  } else {
+                    next.emojis[k] = s.trim().slice(0, 8);
+                  }
                 }
               }
               if (data.actions && typeof data.actions === 'object') {
@@ -1153,7 +1157,6 @@ function startKeepAliveServer() {
             return sendJson(res, 500, { error: String(e?.message || e) });
           }
         }
-
         // Preview rendered level card as PNG
         if (parsed.pathname === '/api/levels/preview' && req.method === 'GET') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
@@ -4005,7 +4008,6 @@ function memberMention(userId) {
 async function fetchMember(guild, userId) {
   return guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
 }
-
 function pickThemeColorForGuild(guild) {
   const palette = [0x1e88e5, 0xec407a, 0x26a69a, 0x8e24aa, 0xff7043];
   const id = String(guild?.id || '0');
@@ -8571,7 +8573,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.isButton() && interaction.customId.startsWith('economy_gifs_add:')) {
       const parts = interaction.customId.split(':');
-      const kind = parts[1]; // success | fail
+      const kind = parts[1];
       const key = parts[2];
       const modal = new ModalBuilder().setCustomId(`economy_gifs_add_modal:${kind}:${key}`).setTitle(`Ajouter GIFs ${kind} — ${actionKeyToLabel(key)}`);
       const input = new TextInputBuilder().setCustomId('urls').setLabel('URLs (une par ligne)').setStyle(TextInputStyle.Paragraph).setRequired(true).setPlaceholder('https://...gif\nhttps://...gif');
@@ -9185,7 +9187,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({ embeds: [view.embed], components: view.rows, files: view.files });
       return;
     }
-
     // Retour à la sélection de catégorie
     if (interaction.isButton() && interaction.customId.startsWith('couleur_back_to_category:')) {
       const [, targetType, targetId] = interaction.customId.split(':');

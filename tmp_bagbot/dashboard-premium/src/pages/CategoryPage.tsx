@@ -297,9 +297,15 @@ export default function CategoryPage() {
                 <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={logsEmoji} onChange={e=>setLogsEmoji(e.target.value)} />
               </label>
             </div>
-            <div className="text-white/70 mt-2">Catégories</div>
+            <div className="flex items-center justify-between">
+              <div className="text-white/70 mt-2">Catégories</div>
+              <button className="text-white/60 text-sm underline" onClick={()=>{
+                const curr = (window as any).__logsCollapsed || false; (window as any).__logsCollapsed = !curr; (setLogCats as any)({ ...logCats });
+              }}>{(window as any).__logsCollapsed ? 'Déployer' : 'Réduire'}</button>
+            </div>
             <div className="space-y-2">
               {['joinleave','messages','threads','backup','moderation','economy'].map((k)=>{
+                const collapsed = Boolean((window as any).__logsCollapsed);
                 const actionsOptions: Record<string,string[]> = {
                   joinleave: ['join','leave'],
                   messages: ['delete','edit'],
@@ -310,21 +316,27 @@ export default function CategoryPage() {
                 };
                 const selectedActs = (configs?.logs?.actions?.[k] || []) as string[];
                 return (
-                  <div key={k} className="grid md:grid-cols-5 gap-2 items-center">
+                  <div key={k} className={`grid ${collapsed ? 'md:grid-cols-2' : 'md:grid-cols-5'} gap-2 items-center`}>
                     <div className="text-white/70">{k}</div>
-                    <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={Boolean(logCats[k])} onChange={e=>setLogCats(prev=>({ ...prev, [k]: e.target.checked }))} /> ON</label>
-                    <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
-                      <option value="">—</option>
-                      {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
-                    </select>
+                    {!collapsed && (
+                      <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={Boolean(logCats[k])} onChange={e=>setLogCats(prev=>({ ...prev, [k]: e.target.checked }))} /> ON</label>
+                    )}
+                    {!collapsed && (
+                      <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
+                        <option value="">—</option>
+                        {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                      </select>
+                    )}
                     <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="Emoji (ex: 🔔)" value={(configs?.logs?.emojis?.[k] || '')} onChange={e=>{
                       const v = e.target.value; const next = { ...(configs?.logs?.emojis||{}) }; (next as any)[k] = v; (configs as any).logs = { ...(configs as any).logs, emojis: next }; setLogCats(prev=>({ ...prev })); }} />
-                    <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={selectedActs} onChange={e=>{
-                      const vals = Array.from(e.target.selectedOptions).map(o=>o.value);
-                      const next = { ...(configs?.logs?.actions||{}) }; (next as any)[k] = vals; (configs as any).logs = { ...(configs as any).logs, actions: next }; setLogCats(prev=>({ ...prev }));
-                    }}>
-                      {(actionsOptions[k]||[]).map(a => (<option key={a} value={a}>{a}</option>))}
-                    </select>
+                    {!collapsed && (
+                      <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={selectedActs} onChange={e=>{
+                        const vals = Array.from(e.target.selectedOptions).map(o=>o.value);
+                        const next = { ...(configs?.logs?.actions||{}) }; (next as any)[k] = vals; (configs as any).logs = { ...(configs as any).logs, actions: next }; setLogCats(prev=>({ ...prev }));
+                      }}>
+                        {(actionsOptions[k]||[]).map(a => (<option key={a} value={a}>{a}</option>))}
+                      </select>
+                    )}
                   </div>
                 );
               })}
