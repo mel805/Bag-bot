@@ -788,16 +788,23 @@ function startKeepAliveServer() {
               if (typeof data.pseudo === 'boolean') next.pseudo = data.pseudo;
               if (typeof data.emoji === 'string' && data.emoji.trim()) next.emoji = String(data.emoji).trim().slice(0, 4);
               if (data.categories && typeof data.categories === 'object') {
-                const allowed = ['joinleave','messages','threads','backup'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy'];
                 const cats = {};
                 for (const k of allowed) cats[k] = Boolean(data.categories[k]);
-                next.categories = cats;
+                next.categories = { ...(next.categories||{}), ...cats };
               }
               if (data.channels && typeof data.channels === 'object') {
-                const allowed = ['joinleave','messages','threads','backup'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy'];
                 const ch = {};
                 for (const k of allowed) { const v = String(data.channels[k]||'').trim(); if (v) ch[k] = v; }
                 next.channels = { ...(curr.channels||{}), ...ch };
+              }
+              if (data.emojis && typeof data.emojis === 'object') {
+                // per-category emoji mapping
+                next.emojis = { ...(next.emojis||{}) };
+                for (const [k, v] of Object.entries(data.emojis)) {
+                  if (typeof v === 'string' && v.trim()) next.emojis[k] = String(v).trim().slice(0, 8);
+                }
               }
               await updateLogsConfig(guildId, next);
               return sendJson(res, 200, { ok: true });
@@ -975,7 +982,6 @@ function startKeepAliveServer() {
           });
           return;
         }
-
         // Reset Levels configuration (backgrounds and templates)
         if (parsed.pathname === '/api/configs/levels/reset' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
@@ -1460,7 +1466,6 @@ function sanitizePromptText(raw) {
     return String(raw || '');
   }
 }
-
 function buildTruthDarePromptEmbed(mode, type, text, displayNumber) {
   const isNsfw = String(mode||'').toLowerCase() === 'nsfw';
   const footerText = isNsfw ? 'BAG • Premium' : 'BAG • Pro';
@@ -10422,7 +10427,6 @@ async function buildShopRows(guild) {
   return [controls, removeRow];
 }
 let SUITE_EMOJI = '💞';
-
 // Palettes de couleurs pour la commande /couleur
 const COLOR_PALETTES = {
   pastel: [

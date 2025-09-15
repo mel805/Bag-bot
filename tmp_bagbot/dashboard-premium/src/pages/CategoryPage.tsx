@@ -293,24 +293,36 @@ export default function CategoryPage() {
             <div className="grid grid-cols-3 gap-3">
               <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={logsEnabled} onChange={e=>setLogsEnabled(e.target.checked)} /> Activé</label>
               <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={logsPseudo} onChange={e=>setLogsPseudo(e.target.checked)} /> Pseudo</label>
-              <label className="text-white/70">Emoji
+              <label className="text-white/70">Emoji global
                 <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={logsEmoji} onChange={e=>setLogsEmoji(e.target.value)} />
               </label>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {['joinleave','messages','threads','backup'].map(k => (
-                <div key={k} className="space-y-2">
-                  <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={Boolean(logCats[k])} onChange={e=>setLogCats(prev=>({ ...prev, [k]: e.target.checked }))} /> {k}</label>
-                  <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
-                    <option value="">—</option>
-                    {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
-                  </select>
-                </div>
-              ))}
+            <div className="text-white/70 mt-2">Catégories</div>
+            <div className="space-y-2">
+              {['joinleave','messages','threads','backup','moderation','economy'].map((k)=>{
+                return (
+                  <div key={k} className="grid md:grid-cols-4 gap-2 items-center">
+                    <div className="text-white/70">{k}</div>
+                    <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={Boolean(logCats[k])} onChange={e=>setLogCats(prev=>({ ...prev, [k]: e.target.checked }))} /> ON</label>
+                    <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
+                      <option value="">—</option>
+                      {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                    </select>
+                    <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="Emoji (ex: 🔔)" value={(configs?.logs?.emojis?.[k] || '')} onChange={e=>{
+                      const v = e.target.value; const next = { ...(configs?.logs?.emojis||{}) }; (next as any)[k] = v; (configs as any).logs = { ...(configs as any).logs, emojis: next }; setLogCats(prev=>({ ...prev })); }} />
+                  </div>
+                );
+              })}
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des réglages de logs ?')) return; await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer régalges</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des catégories/salons de logs ?')) return; await saveLogs(logCats, logChannels); }}>Enregistrer catégories/salons</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des réglages de logs ?')) return; await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer global</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const emojis:any = configs?.logs?.emojis || {};
+                if(!confirm('Confirmer la sauvegarde des catégories, salons et emojis ?')) return;
+                // @ts-ignore saveLogsPerCat exists
+                const ok = await (useApi.getState().saveLogsPerCat as any)(logCats, logChannels, emojis);
+                if (ok) await fetchAll();
+              }}>Enregistrer catégories/salons/emojis</button>
             </div>
           </div>
         )}
