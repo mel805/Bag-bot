@@ -414,17 +414,17 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
-        {cat==='economie' && (
+        {(cat==='economie' || cat==='economy') && (
           <div className="space-y-3">
             <div className="flex gap-2">
-              <NavLink to="/config/economie/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
-              <NavLink to="/config/economie/actions" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
-              <NavLink to="/config/economie/phrases-zones" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Phrases zones</NavLink>
-              <NavLink to="/config/economie/gifs" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
+              <NavLink to={`/config/${cat}/overview`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
+              <NavLink to={`/config/${cat}/actions`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
+              <NavLink to={`/config/${cat}/phrases-zones`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Phrases zones</NavLink>
+              <NavLink to={`/config/${cat}/gifs`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
             </div>
           </div>
         )}
-        {cat==='economie' && (!view || view==='overview') && (
+        {(cat==='economie' || cat==='economy') && (!view || view==='overview') && (
           <div className="space-y-3">
             <div className="text-white/70">Nom de la monnaie</div>
             <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={currencyName} onChange={e=>setCurrencyName(e.target.value)} />
@@ -438,7 +438,7 @@ export default function CategoryPage() {
             <RewardsEditor />
           </div>
         )}
-        {cat==='economie' && view==='actions' && (
+        {(cat==='economie' || cat==='economy') && view==='actions' && (
           <div className="space-y-3">
             <div className="grid md:grid-cols-3 gap-3">
               <label className="text-white/70">Action
@@ -511,7 +511,7 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
-        {cat==='economie' && view==='gifs' && (
+        {(cat==='economie' || cat==='economy') && view==='gifs' && (
           <div className="space-y-3">
             <div className="grid md:grid-cols-2 gap-3">
               <label className="text-white/70">Action
@@ -554,6 +554,9 @@ export default function CategoryPage() {
               }}>Enregistrer GIFs</button>
             </div>
           </div>
+        )}
+        {(cat==='economie' || cat==='economy') && view==='phrases-zones' && (
+          <PhrasesZonesEditor actKey={actKey} actionsList={actionsList} />
         )}
         {cat==='confessions' && (
           <div className="space-y-3">
