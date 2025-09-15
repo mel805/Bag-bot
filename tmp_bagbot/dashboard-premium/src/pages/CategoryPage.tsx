@@ -261,6 +261,15 @@ export default function CategoryPage() {
   // Prime action fields when action key changes
   useEffect(() => {
     if (!configs) return;
+    // pick first action if current key not present
+    try {
+      const a = (configs.economy?.actions)||{};
+      const exists = (a.config && actKey in a.config) || (a.messages && actKey in a.messages) || (a.gifs && actKey in a.gifs);
+      if (!exists) {
+        const keys = Array.from(new Set([...(Object.keys(a.config||{})), ...(Object.keys(a.messages||{})), ...(Object.keys(a.gifs||{}))]));
+        if (keys.length) setActKey(keys[0]);
+      }
+    } catch {}
     try {
       const c = configs.economy?.actions?.config?.[actKey] || {};
       setActMoneyMin(Number.isFinite(c.moneyMin)?c.moneyMin:'');
@@ -303,6 +312,14 @@ export default function CategoryPage() {
 
   const channels = useMemo(()=> meta?.channels || [], [meta]);
   const roles = useMemo(()=> meta?.roles || [], [meta]);
+  const actionsList = useMemo(()=>{
+    const a = (configs?.economy?.actions)||{};
+    const set = new Set<string>();
+    Object.keys(a.config||{}).forEach(k=>set.add(k));
+    Object.keys(a.messages||{}).forEach(k=>set.add(k));
+    Object.keys(a.gifs||{}).forEach(k=>set.add(k));
+    return Array.from(set).sort();
+  }, [configs]);
 
   return (
     <div className="space-y-4">
@@ -423,7 +440,7 @@ export default function CategoryPage() {
             <div className="grid md:grid-cols-3 gap-3">
               <label className="text-white/70">Action
                 <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
-                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
+                  {actionsList.map(k => (<option key={k} value={k}>{k}</option>))}
                 </select>
               </label>
               <label className="text-white/70">Argent min (succès)
@@ -509,7 +526,7 @@ export default function CategoryPage() {
             <div className="grid md:grid-cols-2 gap-3">
               <label className="text-white/70">Action
                 <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
-                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
+                  {actionsList.map(k => (<option key={k} value={k}>{k}</option>))}
                 </select>
               </label>
             </div>
