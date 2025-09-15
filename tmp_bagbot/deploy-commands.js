@@ -447,9 +447,8 @@ const uniqueCommands = Array.from(uniqueMap.values()).filter(c => !['action_touc
 // Fonction pour vérifier si les commandes ont changé
 function shouldDeployCommands() {
   try {
-    // Toujours redéployer si des zones ont changé
-    const zoneSig = JSON.stringify(ZONES_BY_ACTION);
-    const commandsHash = crypto.createHash('md5').update(JSON.stringify(uniqueCommands) + '::' + zoneSig).digest('hex');
+    // Toujours redéployer: ignorer le cache volontairement pendant la phase de correction
+    const commandsHash = crypto.createHash('md5').update(String(Date.now())).digest('hex');
     const cache = JSON.parse(fs.readFileSync(COMMANDS_CACHE_FILE, 'utf8'));
     
     // Vérifier si le hash a changé ou si le cache est trop ancien (24h)
