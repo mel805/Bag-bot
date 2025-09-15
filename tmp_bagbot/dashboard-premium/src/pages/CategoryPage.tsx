@@ -190,6 +190,7 @@ export default function CategoryPage() {
   const [failMoneyMax, setFailMoneyMax] = useState<number|''>('');
   const [partnerMoneyShare, setPartnerMoneyShare] = useState<number|''>('');
   const [partnerKarmaShare, setPartnerKarmaShare] = useState<number|''>('');
+  const [actZones, setActZones] = useState<string>('');
   const dashKey = useMemo(() => {
     try {
       const urlKey = new URLSearchParams(window.location.search).get('key');
@@ -267,6 +268,7 @@ export default function CategoryPage() {
       setActKarma(['none','charm','perversion'].includes(c.karma)?c.karma:'none');
       setActKarmaDelta(Number.isFinite(c.karmaDelta)?c.karmaDelta:'');
       setActCooldown(Number.isFinite(c.cooldown)?c.cooldown:'');
+      setActZones(Array.isArray(c.zones) ? c.zones.join(', ') : '');
       const m = configs.economy?.actions?.messages?.[actKey] || { success: [], fail: [] };
       setMsgSuccess((m.success||[]).join('\n'));
       setMsgFail((m.fail||[]).join('\n'));
@@ -291,12 +293,7 @@ export default function CategoryPage() {
               if ((!m.success || m.success.length===0) && Array.isArray(d.success) && d.success.length) setMsgSuccess(d.success.join('\n'));
               if ((!m.fail || m.fail.length===0) && Array.isArray(d.fail) && d.fail.length) setMsgFail(d.fail.join('\n'));
             }
-            if (needZones && Array.isArray(d.zones) && d.zones.length) {
-              (configs as any).economy.actions = (configs as any).economy.actions || { config: {} };
-              (configs as any).economy.actions.config[actKey] = { ...((configs as any).economy.actions.config[actKey]||{}), zones: d.zones };
-              // trigger rerender
-              setActCooldown(v=>v);
-            }
+            if (needZones && Array.isArray(d.zones) && d.zones.length) setActZones(d.zones.join(', '));
           } catch {}
         }).catch(()=>{});
       }
@@ -448,13 +445,7 @@ export default function CategoryPage() {
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
               </label>
               <label className="text-white/70 md:col-span-3">Zones (séparées par une virgule)
-                <input type="text" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(((configs?.economy?.actions?.config||{})[actKey]?.zones||[]).join(', '))} onChange={e=>{
-                  const raw = e.target.value;
-                  const arr = raw.split(',').map(s=>s.trim()).filter(Boolean);
-                  // ephemeral local update by mutating configs clone
-                  try { (configs as any).economy.actions.config[actKey] = { ...((configs as any).economy.actions.config[actKey]||{}), zones: arr }; } catch {}
-                  setActCooldown(actCooldown);
-                }} placeholder="ex: cou, épaules, nuque" />
+                <input type="text" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actZones} onChange={e=>setActZones(e.target.value)} placeholder="ex: cou, épaules, nuque" />
               </label>
               <label className="text-white/70">Δ Karma (échec)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
@@ -495,10 +486,8 @@ export default function CategoryPage() {
                 if (actKarmaDelta !== '') payload.config.karmaDelta = Number(actKarmaDelta);
                 if (actCooldown !== '') payload.config.cooldown = Number(actCooldown);
                 // zones
-                try {
-                  const z = ((configs?.economy?.actions?.config||{})[actKey]?.zones)||[];
-                  if (Array.isArray(z)) payload.config.zones = z;
-                } catch {}
+                const z = actZones.split(',').map(s=>s.trim()).filter(Boolean);
+                if (z.length) payload.config.zones = z;
                 if (failKarmaDelta !== '') payload.config.failKarmaDelta = Number(failKarmaDelta);
                 if (failMoneyMin !== '') payload.config.failMoneyMin = Number(failMoneyMin);
                 if (failMoneyMax !== '') payload.config.failMoneyMax = Number(failMoneyMax);

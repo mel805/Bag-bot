@@ -1276,8 +1276,11 @@ function startKeepAliveServer() {
             let normTarget = target;
             try {
               const uo = new URL(target);
-              if (uo.hostname === 'media.discordapp.net' && uo.pathname.includes('/attachments/')) {
+              const isDiscordCdn = (uo.hostname === 'media.discordapp.net' || uo.hostname === 'cdn.discordapp.com');
+              if (isDiscordCdn && uo.pathname.includes('/attachments/')) {
+                // Use canonical CDN host and strip query params (avoid expired tokens like ex/is/hm)
                 uo.hostname = 'cdn.discordapp.com';
+                uo.search = '';
                 normTarget = uo.toString();
               }
             } catch(_) {}
