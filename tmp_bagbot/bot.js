@@ -763,9 +763,41 @@ function startKeepAliveServer() {
               return map[String(k)] || String(k);
             };
             const actionKey = normalizeActionKey(rawAction);
+            const defaultMessages = (ak) => {
+              switch (ak) {
+                case 'wine':
+                  return {
+                    success: [
+                      'Tu partages un verre de vin avec {cible}, moment de détente et de complicité.',
+                      'Vin partagé avec {cible}, ambiance chaleureuse et conviviale.',
+                      'Vous trinquez ensemble, {cible} et toi, moment de convivialité.'
+                    ],
+                    fail: [
+                      'Tu tentes de partager un verre avec {cible}, mais il/elle préfère autre chose.',
+                      'Vin refusé par {cible}, l\'ambiance n\'y est pas.'
+                    ]
+                  };
+                case 'kiss':
+                  return {
+                    success: [
+                      'Tu embrasses {cible} avec passion, les lèvres se rencontrent dans un baiser brûlant.',
+                      'Baiser tendre avec {cible}, l\'émotion monte entre vous.'
+                    ],
+                    fail: [
+                      'Tu tentes d\'embrasser {cible}, mais il/elle détourne la tête.',
+                      'Baiser refusé par {cible}, l\'ambiance n\'est pas au rendez-vous.'
+                    ]
+                  };
+                default:
+                  return { success: [], fail: [] };
+              }
+            };
             const { getEconomyConfig } = require('./storage/jsonStore');
             const eco = await getEconomyConfig(guildId);
-            const messages = (eco?.actions?.messages || {})[actionKey] || (eco?.actions?.messages || {})[rawAction] || { success: [], fail: [] };
+            let messages = (eco?.actions?.messages || {})[actionKey] || (eco?.actions?.messages || {})[rawAction] || { success: [], fail: [] };
+            if ((!messages.success || !messages.success.length) && (!messages.fail || !messages.fail.length)) {
+              messages = defaultMessages(actionKey);
+            }
             let zones = [];
             const fromCfg = eco?.actions?.config?.[actionKey]?.zones || eco?.actions?.config?.[rawAction]?.zones;
             if (Array.isArray(fromCfg) && fromCfg.length) zones = fromCfg.map(String);
