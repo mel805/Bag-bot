@@ -853,13 +853,13 @@ function startKeepAliveServer() {
               if (typeof data.pseudo === 'boolean') next.pseudo = data.pseudo;
               if (typeof data.emoji === 'string' && data.emoji.trim()) next.emoji = String(data.emoji).trim().slice(0, 4);
               if (data.categories && typeof data.categories === 'object') {
-                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'];
                 const cats = {};
                 for (const k of allowed) cats[k] = Boolean(data.categories[k]);
                 next.categories = { ...(next.categories||{}), ...cats };
               }
               if (data.channels && typeof data.channels === 'object') {
-                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'];
                 const ch = {};
                 for (const k of allowed) { const v = String(data.channels[k]||'').trim(); if (v) ch[k] = v; }
                 next.channels = { ...(curr.channels||{}), ...ch };
@@ -881,6 +881,14 @@ function startKeepAliveServer() {
                 for (const [k, arr] of Object.entries(data.actions)) {
                   if (Array.isArray(arr)) next.actions[k] = arr.map(x=>String(x)).slice(0, 50);
                 }
+              }
+              if (data.filters && typeof data.filters === 'object') {
+                next.filters = next.filters || {};
+                if (typeof data.filters.ignoreBots === 'boolean') next.filters.ignoreBots = data.filters.ignoreBots;
+                if (Array.isArray(data.filters.ignoreUsers)) next.filters.ignoreUsers = data.filters.ignoreUsers.map(String).slice(0, 200);
+                if (Array.isArray(data.filters.ignoreChannels)) next.filters.ignoreChannels = data.filters.ignoreChannels.map(String).slice(0, 200);
+                if (Array.isArray(data.filters.ignoreRoles)) next.filters.ignoreRoles = data.filters.ignoreRoles.map(String).slice(0, 200);
+                if (typeof data.filters.format === 'string') next.filters.format = data.filters.format === 'compact' ? 'compact' : 'detailed';
               }
               await updateLogsConfig(guildId, next);
               return sendJson(res, 200, { ok: true });
@@ -3290,6 +3298,9 @@ async function sendLog(guild, categoryKey, embed) {
     const channelId = (cfg.channels && cfg.channels[categoryKey]) || cfg.channelId;
     // Pour la catégorie 'backup', envoyer même si la catégorie est désactivée, si un canal est configuré
     if (categoryKey !== 'backup' && !cfg?.categories?.[categoryKey]) return;
+    // Filtres
+    const fmt = cfg?.filters?.format || 'detailed';
+    try { if (fmt === 'compact') embed.setFooter(null).setTimestamp(null); } catch (_) {}
     if (!channelId) return;
     let ch = guild.channels.cache.get(channelId);
     if (!ch) { try { ch = await guild.channels.fetch(channelId).catch(()=>null); } catch (_) { ch = null; } }
