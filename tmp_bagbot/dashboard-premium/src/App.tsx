@@ -6,7 +6,13 @@ import Topbar from './components/Topbar';
 export default function App() {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`min-h-screen grid ${open ? 'grid-cols-[260px_1fr]' : 'grid-cols-[64px_1fr]'} transition-[grid-template-columns] duration-200`}>
+    <div className={`relative min-h-screen grid ${open ? 'grid-cols-[260px_1fr]' : 'grid-cols-[64px_1fr]'} transition-[grid-template-columns] duration-200`}>
+      {!open && (
+        <div
+          className="absolute left-0 top-0 bottom-0 w-2 z-50"
+          onMouseEnter={()=>setOpen(true)}
+        />
+      )}
       <div onMouseEnter={()=>setOpen(true)} onMouseLeave={()=>setOpen(false)} onFocus={()=>setOpen(true)} tabIndex={0}>
         <Sidebar collapsed={!open} onToggle={()=>setOpen(v=>!v)} />
       </div>
