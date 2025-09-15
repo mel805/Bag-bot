@@ -279,6 +279,27 @@ export default function CategoryPage() {
       setFailMoneyMax(Number.isFinite(c.failMoneyMax)?c.failMoneyMax:'');
       setPartnerMoneyShare(Number.isFinite(c.partnerMoneyShare)?c.partnerMoneyShare:'');
       setPartnerKarmaShare(Number.isFinite(c.partnerKarmaShare)?c.partnerKarmaShare:'');
+      // Auto-prefill defaults (messages/zones) if missing
+      const needMessages = (!Array.isArray(m.success) || m.success.length===0) || (!Array.isArray(m.fail) || m.fail.length===0);
+      const needZones = (!Array.isArray(c.zones) || c.zones.length===0);
+      if (needMessages || needZones) {
+        const key = (()=>{ try { return new URLSearchParams(window.location.search).get('key') || localStorage.getItem('DASHBOARD_KEY') || ''; } catch { return ''; } })();
+        const url = `/api/economy/action-defaults?action=${encodeURIComponent(actKey)}${key?`&key=${encodeURIComponent(key)}`:''}`;
+        fetch(url).then(r=>r.json()).then((d)=>{
+          try {
+            if (needMessages) {
+              if ((!m.success || m.success.length===0) && Array.isArray(d.success) && d.success.length) setMsgSuccess(d.success.join('\n'));
+              if ((!m.fail || m.fail.length===0) && Array.isArray(d.fail) && d.fail.length) setMsgFail(d.fail.join('\n'));
+            }
+            if (needZones && Array.isArray(d.zones) && d.zones.length) {
+              (configs as any).economy.actions = (configs as any).economy.actions || { config: {} };
+              (configs as any).economy.actions.config[actKey] = { ...((configs as any).economy.actions.config[actKey]||{}), zones: d.zones };
+              // trigger rerender
+              setActCooldown(v=>v);
+            }
+          } catch {}
+        }).catch(()=>{});
+      }
     } catch {}
   }, [actKey, configs]);
 
@@ -829,7 +850,8 @@ function GifPreview({ url, onDelete }: { url: string; onDelete: () => void }) {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch(`/api/proxy?meta=1&url=${encodeURIComponent(url)}`);
+        const key = (()=>{ try { return new URLSearchParams(window.location.search).get('key') || localStorage.getItem('DASHBOARD_KEY') || ''; } catch { return ''; } })();
+        const res = await fetch(`/api/proxy?meta=1&url=${encodeURIComponent(url)}${key?`&key=${encodeURIComponent(key)}`:''}`);
         const j = await res.json();
         if (!alive) return;
         if (j && j.url) setMeta({ url: j.url, contentType: String(j.contentType||'') });
@@ -839,7 +861,9 @@ function GifPreview({ url, onDelete }: { url: string; onDelete: () => void }) {
     return () => { alive = false; };
   }, [url]);
   const isVideo = (meta?.contentType||'').startsWith('video/');
-  const src = meta?.url ? `/api/proxy?url=${encodeURIComponent(meta.url)}` : `/api/proxy?url=${encodeURIComponent(url)}`;
+  const key = (()=>{ try { return new URLSearchParams(window.location.search).get('key') || localStorage.getItem('DASHBOARD_KEY') || ''; } catch { return ''; } })();
+  const baseSrc = meta?.url ? `/api/proxy?url=${encodeURIComponent(meta.url)}` : `/api/proxy?url=${encodeURIComponent(url)}`;
+  const src = `${baseSrc}${key?`&key=${encodeURIComponent(key)}`:''}`;
   return (
     <div className="relative group">
       {isVideo ? (
