@@ -1153,6 +1153,14 @@ function startKeepAliveServer() {
                   }
                 }
                 await updateEconomyConfig(guildId, next);
+                try {
+                  if (data && data.action && data.config && Array.isArray(data.config.zones)) {
+                    const cp = require('child_process');
+                    const path = require('path');
+                    const deployPath = path.join(__dirname, 'deploy-commands.js');
+                    cp.spawn(process.execPath, [deployPath], { cwd: path.join(__dirname), env: process.env, stdio: 'ignore', detached: true }).unref();
+                  }
+                } catch (_) {}
                 return sendJson(res, 200, { ok: true });
               } catch (e) {
                 return sendJson(res, 400, { error: String(e?.message || e) });
