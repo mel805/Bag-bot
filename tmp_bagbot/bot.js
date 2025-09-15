@@ -2217,12 +2217,15 @@ async function handleEconomyAction(interaction, actionKey) {
       }
     }
   }
-  // Only set msgText from config if it hasn't been set by special action logic (like tromper/orgie)
-  if (!msgText) {
-    msgText = success
-      ? (Array.isArray(msgSet.success) && msgSet.success.length ? msgSet.success[Math.floor(Math.random()*msgSet.success.length)] : null)
-      : (Array.isArray(msgSet.fail) && msgSet.fail.length ? msgSet.fail[Math.floor(Math.random()*msgSet.fail.length)] : null);
-  }
+  // Préférence aux messages configurés si disponibles; sinon, garder les textes spéciaux
+  try {
+    const candidates = success ? (Array.isArray(msgSet.success) ? msgSet.success : []) : (Array.isArray(msgSet.fail) ? msgSet.fail : []);
+    if (candidates.length) {
+      msgText = candidates[Math.floor(Math.random() * candidates.length)] || msgText;
+    } else if (!msgText) {
+      msgText = null; // gardera le flux spécial plus bas
+    }
+  } catch (_) {}
   // Keep 'orgasme' simple: use curated short phrases matching the intent
   if (actionKey === 'kiss') {
     const partner = interaction.options.getUser('cible', false);
