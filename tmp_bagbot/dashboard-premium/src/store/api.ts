@@ -38,7 +38,13 @@ type ApiState = {
   fetchMeta: () => Promise<void>;
   saveCurrency: (name: string) => Promise<boolean>;
   saveLogs: (categories: Record<string, boolean>, channels?: Record<string,string>) => Promise<boolean>;
-  saveLogsPerCat: (categories: Record<string, boolean>, channels: Record<string,string>, emojis: Record<string,string>, actions: Record<string,string[]>) => Promise<boolean>;
+  saveLogsPerCat: (
+    categories: Record<string, boolean>,
+    channels: Record<string,string>,
+    emojis: Record<string,string>,
+    actions: Record<string,string[]>,
+    filters?: { ignoreBots?: boolean; ignoreUsers?: string[]; ignoreChannels?: string[]; ignoreRoles?: string[]; format?: 'compact'|'detailed' }
+  ) => Promise<boolean>;
   saveConfess: (allowReplies: boolean) => Promise<boolean>;
   saveTd: (sfw: string[], nsfw: string[]) => Promise<boolean>;
   saveLevels: (xpMsg: number, xpVoice: number, base: number, factor: number) => Promise<boolean>;
@@ -49,7 +55,7 @@ type ApiState = {
   saveDisboard: (remindersEnabled: boolean, remindChannelId: string) => Promise<boolean>;
   saveAutoKickRole: (roleId: string) => Promise<boolean>;
   saveAutoKickAdvanced: (enabled: boolean, delayMs: number) => Promise<boolean>;
-  saveLogsAdvanced: (enabled: boolean, pseudo: boolean, emoji: string) => Promise<boolean>;
+  saveLogsAdvanced: (enabled: boolean, pseudo: boolean, emoji: string, detail?: boolean) => Promise<boolean>;
   saveConfessAdvanced: (logChannelId: string, threadNaming: 'normal'|'nsfw') => Promise<boolean>;
   saveLevelsAdvanced: (enabled: boolean, announce: { levelUp?: { enabled?: boolean; channelId?: string }; roleAward?: { enabled?: boolean; channelId?: string } }) => Promise<boolean>;
   saveCurrencySymbol: (symbol: string) => Promise<boolean>;
@@ -107,16 +113,27 @@ export const useApi = create<ApiState>((set, get) => ({
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
-  , saveLogsPerCat: async (categories, channels, emojis, actions) => {
+  , saveLogsPerCat: async (categories, channels, emojis, actions, filters) => {
     try {
       const payload: any = { categories, channels, emojis, actions };
+      if (filters) {
+        // support both detail boolean and format string for backend compatibility
+        if (filters.format) payload.format = filters.format;
+        payload.filters = {
+          ignoreBots: Boolean(filters.ignoreBots),
+          ignoreUsers: Array.isArray(filters.ignoreUsers) ? filters.ignoreUsers : [],
+          ignoreChannels: Array.isArray(filters.ignoreChannels) ? filters.ignoreChannels : [],
+          ignoreRoles: Array.isArray(filters.ignoreRoles) ? filters.ignoreRoles : []
+        };
+      }
       const res = await fetch(withKey('/api/configs/logs'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
-  , saveLogsAdvanced: async (enabled, pseudo, emoji) => {
+  , saveLogsAdvanced: async (enabled, pseudo, emoji, detail) => {
     try {
       const payload: any = { enabled, pseudo, emoji };
+      if (typeof detail === 'boolean') payload.detail = detail;
       const res = await fetch(withKey('/api/configs/logs'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }

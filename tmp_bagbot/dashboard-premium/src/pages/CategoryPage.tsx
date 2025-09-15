@@ -126,6 +126,12 @@ export default function CategoryPage() {
   const [logChannels, setLogChannels] = useState<{[k:string]:string}>({});
   const [logCats, setLogCats] = useState<{[k:string]:boolean}>({});
   const [logsCollapsed, setLogsCollapsed] = useState(false);
+  // Logs filters & format
+  const [logsIgnoreBots, setLogsIgnoreBots] = useState(false);
+  const [logsIgnoreUsersText, setLogsIgnoreUsersText] = useState('');
+  const [logsIgnoreChannels, setLogsIgnoreChannels] = useState<string[]>([]);
+  const [logsIgnoreRoles, setLogsIgnoreRoles] = useState<string[]>([]);
+  const [logsFormat, setLogsFormat] = useState<'compact'|'detailed'>('detailed');
   const [autoKickRole, setAutoKickRole] = useState('');
   const [autoKickEnabled, setAutoKickEnabled] = useState(false);
   const [autoKickDelay, setAutoKickDelay] = useState(0);
@@ -209,6 +215,13 @@ export default function CategoryPage() {
     setLogsEmoji(String(configs.logs?.emoji || '📝'));
     setLogChannels({ ...(configs.logs?.channels || {}) });
     setLogCats({ ...(configs.logs?.categories || {}) });
+    // Filters & format
+    const f = configs.logs?.filters || {};
+    setLogsIgnoreBots(Boolean(f.ignoreBots));
+    setLogsIgnoreChannels(Array.isArray(f.ignoreChannels) ? f.ignoreChannels : []);
+    setLogsIgnoreRoles(Array.isArray(f.ignoreRoles) ? f.ignoreRoles : []);
+    setLogsIgnoreUsersText(Array.isArray(f.ignoreUsers) ? (f.ignoreUsers as string[]).join(', ') : '');
+    setLogsFormat((f.format === 'compact') ? 'compact' : 'detailed');
     setAutoKickRole(String(configs.autokick?.roleId || ''));
     setAutoKickEnabled(Boolean(configs.autokick?.enabled));
     setAutoKickDelay(Number(configs.autokick?.delayMs || 0));
@@ -341,7 +354,7 @@ export default function CategoryPage() {
               <button className="text-white/60 text-sm underline" onClick={()=>setLogsCollapsed(v=>!v)}>{logsCollapsed ? 'Déployer' : 'Réduire'}</button>
             </div>
             <div className="space-y-2">
-              {['joinleave','messages','threads','backup','moderation','economy','voice','boosts'].map((k)=>{
+              {['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'].map((k)=>{
                 const collapsed = logsCollapsed;
                 const actionsOptions: Record<string,string[]> = {
                   joinleave: ['join','leave'],
@@ -351,7 +364,12 @@ export default function CategoryPage() {
                   moderation: ['ban','unban','kick','mute','unmute','warn','purge','massban','masskick'],
                   economy: ['work','fish','give','steal','shop','daily'],
                   voice: ['join','leave','move'],
-                  boosts: ['boost','unboost']
+                  boosts: ['boost','unboost'],
+                  channels: ['create','delete','update'],
+                  roles: ['create','delete','update','member_role_add','member_role_remove'],
+                  emojis: ['create','delete','update'],
+                  members: ['nickname'],
+                  invites: ['create','delete']
                 };
                 const selectedActs = (configs?.logs?.actions?.[k] || []) as string[];
                 return (
@@ -380,13 +398,44 @@ export default function CategoryPage() {
                 );
               })}
             </div>
+            <div className="mt-4 space-y-3">
+              <div className="text-white/70 font-medium">Filtres & format</div>
+              <div className="grid md:grid-cols-3 gap-3">
+                <label className="text-white/70 flex items-center gap-2">
+                  <input type="checkbox" checked={logsIgnoreBots} onChange={e=>setLogsIgnoreBots(e.target.checked)} /> Ignorer les bots
+                </label>
+                <label className="text-white/70">Format
+                  <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={logsFormat} onChange={e=>setLogsFormat(e.target.value as any)}>
+                    <option value="detailed">détaillé</option>
+                    <option value="compact">compact</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid md:grid-cols-3 gap-3">
+                <label className="text-white/70">Ignorer salons
+                  <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={logsIgnoreChannels} onChange={e=>setLogsIgnoreChannels(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+                    {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                  </select>
+                </label>
+                <label className="text-white/70">Ignorer rôles
+                  <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={logsIgnoreRoles} onChange={e=>setLogsIgnoreRoles(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+                    {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
+                  </select>
+                </label>
+                <label className="text-white/70">Ignorer utilisateurs (IDs séparés par , ou \n)
+                  <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-20" value={logsIgnoreUsersText} onChange={e=>setLogsIgnoreUsersText(e.target.value)} />
+                </label>
+              </div>
+            </div>
             <div className="flex gap-2">
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des réglages de logs ?')) return; await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer global</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const emojis:any = configs?.logs?.emojis || {};
                 const actions:any = configs?.logs?.actions || {};
                 if(!confirm('Confirmer la sauvegarde des catégories, salons, emojis et actions ?')) return;
-                const ok = await (useApi.getState().saveLogsPerCat as any)(logCats, logChannels, emojis, actions);
+                const ignoreUsers = logsIgnoreUsersText.split(/[,\n\s]+/g).map(s=>s.trim()).filter(Boolean);
+                const filters = { ignoreBots: logsIgnoreBots, ignoreUsers, ignoreChannels: logsIgnoreChannels, ignoreRoles: logsIgnoreRoles, format: logsFormat };
+                const ok = await (useApi.getState().saveLogsPerCat as any)(logCats, logChannels, emojis, actions, filters);
                 if (ok) await fetchAll();
               }}>Enregistrer</button>
             </div>
@@ -531,7 +580,7 @@ export default function CategoryPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
                 <GifPreview key={'gs'+idx} url={u} onDelete={()=>{
-                  setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
+                  setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter((x:string)=>x!==u).join('\n'));
                 }} />
               ))}
             </div>
@@ -539,7 +588,7 @@ export default function CategoryPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
                 <GifPreview key={'gf'+idx} url={u} onDelete={()=>{
-                  setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
+                  setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter((x:string)=>x!==u).join('\n'));
                 }} />
               ))}
             </div>
@@ -895,8 +944,8 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
         for (const z of zs) {
           const allS = m.success;
           const allF = m.fail;
-          const sFiltered = allS.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
-          const fFiltered = allF.filter(x=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
+          const sFiltered = (allS as string[]).filter((x:string)=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
+          const fFiltered = (allF as string[]).filter((x:string)=>x.includes('{zone}') || x.toLowerCase().includes(z.toLowerCase()));
           const s = (sFiltered.length ? sFiltered : allS).join('\n');
           const f = (fFiltered.length ? fFiltered : allF).join('\n');
           byZone[z] = { success: s, fail: f };
@@ -915,7 +964,7 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
     setZoneMsgs(prev=>({ ...prev, [name]: { success: '', fail: '' } }));
   };
   const removeZone = (z: string) => {
-    setZones(prev=>prev.filter(x=>x!==z));
+    setZones(prev=>prev.filter((x:string)=>x!==z));
     setZoneMsgs(prev=>{ const c = { ...prev }; delete c[z]; return c; });
   };
   const saveAll = async () => {
