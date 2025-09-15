@@ -52,6 +52,67 @@ function RewardsEditor() {
   );
 }
 
+function TdPromptsEditor({ mode }: { mode: 'sfw'|'nsfw' }) {
+  const { configs, fetchAll, addTdPrompts, deleteTdPrompts, editTdPrompt } = useApi();
+  const prompts = useMemo(() => (configs?.truthdare?.[mode]?.prompts || []), [configs, mode]);
+  const [newType, setNewType] = useState<'action'|'verite'>('action');
+  const [newLines, setNewLines] = useState('');
+  const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [editMap, setEditMap] = useState<Record<number, string>>({});
+  useEffect(()=>{ setSelected({}); setEditMap({}); }, [mode]);
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-3 items-end">
+        <label className="flex-1 text-white/70">Nouveaux prompts ({mode.toUpperCase()}) — 1 par ligne
+          <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={newLines} onChange={e=>setNewLines(e.target.value)} />
+        </label>
+        <label className="text-white/70">Type
+          <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={newType} onChange={e=>setNewType(e.target.value as any)}>
+            <option value="action">Action</option>
+            <option value="verite">Vérité</option>
+          </select>
+        </label>
+        <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+          const lines = newLines.split('\n').map(s=>s.trim()).filter(Boolean);
+          if (!lines.length) return;
+          if(!confirm('Ajouter ces prompts ?')) return;
+          const ok = await addTdPrompts(mode, newType, lines);
+          if (ok) { setNewLines(''); await fetchAll(); }
+        }}>Ajouter</button>
+      </div>
+      <div className="text-white/70">Prompts existants ({prompts.length})</div>
+      <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
+        {prompts.map((p:any)=>{
+          const val = editMap[p.id] ?? p.text;
+          return (
+            <div key={p.id} className="grid grid-cols-12 gap-2 items-center">
+              <div className="col-span-1 text-white/60 text-sm">#{p.id}</div>
+              <div className="col-span-2"><span className="inline-block text-xs px-2 py-1 rounded bg-white/10 text-white/70">{p.type}</span></div>
+              <div className="col-span-7"><input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={val} onChange={e=>setEditMap(prev=>({ ...prev, [p.id]: e.target.value }))} /></div>
+              <div className="col-span-1 flex justify-center"><input type="checkbox" checked={!!selected[p.id]} onChange={e=>setSelected(prev=>({ ...prev, [p.id]: e.target.checked }))} /></div>
+              <div className="col-span-1"><button className="bg-white/5 border border-white/10 rounded-xl px-2 py-2 w-full" onClick={async()=>{
+                const text = (editMap[p.id] ?? p.text).trim();
+                if (!text || text === p.text) return;
+                const ok = await editTdPrompt(mode, p.id, text);
+                if (ok) await fetchAll();
+              }}>💾</button></div>
+            </div>
+          );
+        })}
+      </div>
+      <div>
+        <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+          const ids = Object.entries(selected).filter(([,v])=>v).map(([k])=>Number(k)).filter(n=>Number.isFinite(n));
+          if (!ids.length) return;
+          if(!confirm(`Supprimer ${ids.length} prompt(s) ?`)) return;
+          const ok = await deleteTdPrompts(mode, ids);
+          if (ok) await fetchAll();
+        }}>Supprimer sélection</button>
+      </div>
+    </div>
+  );
+}
+
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
   const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64, saveEconomyAction, saveEconomyRewards, resetLevels } = useApi();
@@ -442,15 +503,26 @@ export default function CategoryPage() {
         )}
         {cat==='action-verite' && (
           <div className="space-y-3">
-            <div className="text-white/70">SFW: Salons autorisés</div>
-            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdSfw} onChange={e=>setTdSfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
-              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
-            </select>
-            <div className="text-white/70">NSFW: Salons autorisés</div>
-            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdNsfw} onChange={e=>setTdNsfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
-              {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
-            </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Action/Vérité ?')) return; await saveTd(tdSfw, tdNsfw); }}>Enregistrer</button>
+            <div className="flex gap-2">
+              <NavLink to="/config/action-verite/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Salons</NavLink>
+              <NavLink to="/config/action-verite/sfw" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Prompts SFW</NavLink>
+              <NavLink to="/config/action-verite/nsfw" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Prompts NSFW</NavLink>
+            </div>
+            {(!view || view==='overview') && (
+              <>
+                <div className="text-white/70">SFW: Salons autorisés</div>
+                <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdSfw} onChange={e=>setTdSfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+                  {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+                <div className="text-white/70 mt-2">NSFW: Salons autorisés</div>
+                <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdNsfw} onChange={e=>setTdNsfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+                  {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+                <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 mt-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Action/Vérité ?')) return; await saveTd(tdSfw, tdNsfw); }}>Enregistrer</button>
+              </>
+            )}
+            {view==='sfw' && (<TdPromptsEditor mode="sfw" />)}
+            {view==='nsfw' && (<TdPromptsEditor mode="nsfw" />)}
           </div>
         )}
         {cat==='levels' && (
