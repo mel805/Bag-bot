@@ -787,13 +787,13 @@ function startKeepAliveServer() {
               if (typeof data.pseudo === 'boolean') next.pseudo = data.pseudo;
               if (typeof data.emoji === 'string' && data.emoji.trim()) next.emoji = String(data.emoji).trim().slice(0, 4);
               if (data.categories && typeof data.categories === 'object') {
-                const allowed = ['joinleave','messages','threads','backup','moderation','economy'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts'];
                 const cats = {};
                 for (const k of allowed) cats[k] = Boolean(data.categories[k]);
                 next.categories = { ...(next.categories||{}), ...cats };
               }
               if (data.channels && typeof data.channels === 'object') {
-                const allowed = ['joinleave','messages','threads','backup','moderation','economy'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts'];
                 const ch = {};
                 for (const k of allowed) { const v = String(data.channels[k]||'').trim(); if (v) ch[k] = v; }
                 next.channels = { ...(curr.channels||{}), ...ch };
@@ -3307,7 +3307,6 @@ async function buildLevelsCardsRows(guild) {
   const rowButtons = new ActionRowBuilder().addComponents(bgDefaultBtn, bgFemaleBtn, bgCertifiedBtn);
   return [nav, rowFemale, rowCert, rowButtons];
 }
-
 async function buildLevelsRewardsRows(guild) {
   const levels = await getLevelsConfig(guild.id);
   const nav = new ActionRowBuilder().addComponents(
@@ -3802,7 +3801,6 @@ async function drawCertifiedCard(options) {
     return canvas.toBuffer('image/png');
   } catch (_) { return null; }
 }
-
 function memberDisplayName(guild, memberOrMention, userIdFallback) {
   if (memberOrMention && memberOrMention.user) {
     return memberOrMention.nickname || memberOrMention.user.username;
@@ -5372,6 +5370,41 @@ client.once(Events.ClientReady, async (readyClient) => {
       console.error('[Karma Reset] Global error:', error.message);
     }
   }, 60 * 1000); // Check every minute
+
+  // Logs: register listeners for voice and boosts categories
+  client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+    try {
+      const guild = newState.guild || oldState.guild;
+      const cfg = await getLogsConfig(guild.id);
+      if (!cfg.categories?.voice) return;
+      if (!oldState.channelId && newState.channel) {
+        const embed = await buildVoiceLogEmbed(guild, 'a rejoint', newState.member || `<@${newState.id}>`, newState.channel);
+        await sendLog(guild, 'voice', embed);
+      } else if (oldState.channel && !newState.channelId) {
+        const embed = await buildVoiceLogEmbed(guild, 'a quitté', oldState.member || `<@${oldState.id}>`, oldState.channel);
+        await sendLog(guild, 'voice', embed);
+      } else if (oldState.channelId !== newState.channelId && newState.channel) {
+        const embed = await buildVoiceLogEmbed(guild, 'a changé de salon', newState.member || `<@${newState.id}>`, newState.channel);
+        await sendLog(guild, 'voice', embed);
+      }
+    } catch (_) {}
+  });
+  client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    try {
+      const guild = newMember.guild;
+      const cfg = await getLogsConfig(guild.id);
+      if (!cfg.categories?.boosts) return;
+      const before = Boolean(oldMember?.premiumSince || oldMember?.premiumSinceTimestamp);
+      const after = Boolean(newMember?.premiumSince || newMember?.premiumSinceTimestamp);
+      if (!before && after) {
+        const embed = await buildBoostLogEmbed(guild, newMember, 'a boosté');
+        await sendLog(guild, 'boosts', embed);
+      } else if (before && !after) {
+        const embed = await buildBoostLogEmbed(guild, newMember, 'a arrêté de booster');
+        await sendLog(guild, 'boosts', embed);
+      }
+    } catch (_) {}
+  });
 });
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
