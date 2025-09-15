@@ -2291,7 +2291,7 @@ async function handleEconomyAction(interaction, actionKey) {
     }
   } catch (_) {}
   // Keep 'orgasme' simple: use curated short phrases matching the intent
-  if (actionKey === 'kiss') {
+  if (actionKey === 'kiss' && !msgText) {
     const partner = interaction.options.getUser('cible', false);
     if (success) {
       const texts = [

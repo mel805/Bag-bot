@@ -123,12 +123,6 @@ let commands = [
     .setName('embrasser')
     .setDescription('Embrasser pour gagner du charme')
     .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
-    .addStringOption(o=>{
-      const zones = ZONES_BY_ACTION.kiss && ZONES_BY_ACTION.kiss.length ? ZONES_BY_ACTION.kiss : DEFAULT_KISS_ZONES;
-      const builder = o.setName('zone').setDescription('Zone (optionnel)').setRequired(false);
-      toChoices(zones).forEach(c => builder.addChoices(c));
-      return builder;
-    })
     .toJSON(),
   new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('séduire').setDescription('Séduire pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
