@@ -1182,6 +1182,7 @@ function startKeepAliveServer() {
                   }
                 }
                 await updateEconomyConfig(guildId, next);
+                try { console.log('[Dashboard->Bot] Action saved:', data.action, 'zones:', Array.isArray(next.actions?.config?.[data.action]?.zones) ? next.actions.config[data.action].zones.length : 0); } catch (_) {}
                 try {
                   if (data && data.action && data.config && Array.isArray(data.config.zones)) {
                     const cp = require('child_process');
