@@ -354,7 +354,7 @@ export default function CategoryPage() {
               <button className="text-white/60 text-sm underline" onClick={()=>setLogsCollapsed(v=>!v)}>{logsCollapsed ? 'Déployer' : 'Réduire'}</button>
             </div>
             <div className="space-y-2">
-              {['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'].map((k)=>{
+              {['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites','booster','tickets'].map((k)=>{
                 const collapsed = logsCollapsed;
                 const actionsOptions: Record<string,string[]> = {
                   joinleave: ['join','leave'],
@@ -369,7 +369,9 @@ export default function CategoryPage() {
                   roles: ['create','delete','update','member_role_add','member_role_remove'],
                   emojis: ['create','delete','update'],
                   members: ['nickname'],
-                  invites: ['create','delete']
+                  invites: ['create','delete'],
+                  booster: ['enable','disable','config'],
+                  tickets: ['open','close','claim','transfer','panel','config']
                 };
                 const selectedActs = (configs?.logs?.actions?.[k] || []) as string[];
                 return (

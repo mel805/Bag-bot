@@ -853,13 +853,13 @@ function startKeepAliveServer() {
               if (typeof data.pseudo === 'boolean') next.pseudo = data.pseudo;
               if (typeof data.emoji === 'string' && data.emoji.trim()) next.emoji = String(data.emoji).trim().slice(0, 4);
               if (data.categories && typeof data.categories === 'object') {
-                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites','tickets','booster'];
                 const cats = {};
                 for (const k of allowed) cats[k] = Boolean(data.categories[k]);
                 next.categories = { ...(next.categories||{}), ...cats };
               }
               if (data.channels && typeof data.channels === 'object') {
-                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'];
+                const allowed = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites','tickets','booster'];
                 const ch = {};
                 for (const k of allowed) { const v = String(data.channels[k]||'').trim(); if (v) ch[k] = v; }
                 next.channels = { ...(curr.channels||{}), ...ch };
@@ -3310,6 +3310,25 @@ async function sendLog(guild, categoryKey, embed) {
   } catch (_) {}
 }
 
+// Centralized filter check for logs
+function shouldSkipLogByFilters(cfg, context) {
+  try {
+    const f = cfg?.filters || {};
+    if (!f) return false;
+    const userId = String(context?.userId || '')
+      .trim();
+    const isBot = Boolean(context?.isBot);
+    const channelId = String(context?.channelId || '')
+      .trim();
+    const roleIds = Array.isArray(context?.roleIds) ? context.roleIds.map(String) : [];
+    if (f.ignoreBots && isBot) return true;
+    if (Array.isArray(f.ignoreUsers) && userId && f.ignoreUsers.includes(userId)) return true;
+    if (Array.isArray(f.ignoreChannels) && channelId && f.ignoreChannels.includes(channelId)) return true;
+    if (Array.isArray(f.ignoreRoles) && roleIds.length && roleIds.some((rid) => f.ignoreRoles.includes(rid))) return true;
+    return false;
+  } catch (_) { return false; }
+}
+
 function xpRequiredForNext(level, curve) {
   const required = Math.round(curve.base * Math.pow(curve.factor, Math.max(0, level)));
   return Math.max(1, required);
@@ -5318,6 +5337,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     try { if (!msg.guild) return; } catch (_) { return; }
     const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageDelete evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
     if (!cfg.categories?.messages) return;
+    if (shouldSkipLogByFilters(cfg, { userId: msg.author?.id, isBot: msg.author?.bot, channelId: msg.channelId, roleIds: msg.member ? Array.from(msg.member.roles.cache.keys()) : [] })) return;
     const author = msg.author || (msg.partial ? null : null);
     const content = msg.partial ? '(partiel)' : (msg.content || '—');
     const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['messages']) || cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }, { name:'Message ID', value: String(msg.id) }]);
@@ -5332,26 +5352,29 @@ client.once(Events.ClientReady, async (readyClient) => {
     const after = msg?.partial ? '(partiel)' : (msg?.content || '—');
     const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageUpdate evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
     if (!cfg.categories?.messages) return;
+    if (shouldSkipLogByFilters(cfg, { userId: msg.author?.id, isBot: msg.author?.bot, channelId: msg.channelId, roleIds: msg.member ? Array.from(msg.member.roles.cache.keys()) : [] })) return;
     const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['messages']) || cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
   // Removed MessageCreate logging per user request
   client.on(Events.ThreadCreate, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.categories?.threads) return;
+    if (shouldSkipLogByFilters(cfg, { channelId: thread.parentId })) return;
     const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['threads']) || cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
   client.on(Events.ThreadDelete, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.categories?.threads) return;
+    if (shouldSkipLogByFilters(cfg, { channelId: thread.parentId })) return;
     const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['threads']) || cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
   // Channels
-  client.on(Events.ChannelCreate, async (ch) => { try { const cfg = await getLogsConfig(ch.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('create')) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon créé`).setDescription(`${ch} (${ch.name||ch.id})`); await sendLog(ch.guild,'channels',e);}catch(_){} });
-  client.on(Events.ChannelDelete, async (ch) => { try { const cfg = await getLogsConfig(ch.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('delete')) return; const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon supprimé`).setDescription(`${ch.name||ch.id}`); await sendLog(ch.guild,'channels',e);}catch(_){} });
-  client.on(Events.ChannelUpdate, async (oldCh, newCh) => { try { const cfg = await getLogsConfig(newCh.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('update')) return; const e=new EmbedBuilder().setColor(0xdddd55).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon modifié`).setDescription(`${oldCh.name||oldCh.id} → ${newCh.name||newCh.id}`); await sendLog(newCh.guild,'channels',e);}catch(_){} });
+  client.on(Events.ChannelCreate, async (ch) => { try { const cfg = await getLogsConfig(ch.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('create')) return; if (shouldSkipLogByFilters(cfg, { channelId: ch.parentId })) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon créé`).setDescription(`${ch} (${ch.name||ch.id})`); await sendLog(ch.guild,'channels',e);}catch(_){} });
+  client.on(Events.ChannelDelete, async (ch) => { try { const cfg = await getLogsConfig(ch.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('delete')) return; if (shouldSkipLogByFilters(cfg, { channelId: ch.parentId })) return; const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon supprimé`).setDescription(`${ch.name||ch.id}`); await sendLog(ch.guild,'channels',e);}catch(_){} });
+  client.on(Events.ChannelUpdate, async (oldCh, newCh) => { try { const cfg = await getLogsConfig(newCh.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('update')) return; if (shouldSkipLogByFilters(cfg, { channelId: newCh.parentId })) return; const e=new EmbedBuilder().setColor(0xdddd55).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon modifié`).setDescription(`${oldCh.name||oldCh.id} → ${newCh.name||newCh.id}`); await sendLog(newCh.guild,'channels',e);}catch(_){} });
   // Roles
-  client.on(Events.GuildRoleCreate, async (role) => { try { const cfg = await getLogsConfig(role.guild.id); if (!cfg.categories?.roles) return; const acts=(cfg.actions?.roles||[]); if (acts.length && !acts.includes('create')) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle créé`).setDescription(`${role.name}`); await sendLog(role.guild,'roles',e);}catch(_){} });
+  client.on(Events.GuildRoleCreate, async (role) => { try { const cfg = await getLogsConfig(role.guild.id); if (!cfg.categories?.roles) return; const acts=(cfg.actions?.roles||[]); if (acts.length && !acts.includes('create')) return; if (shouldSkipLogByFilters(cfg, { })) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle créé`).setDescription(`${role.name}`); await sendLog(role.guild,'roles',e);}catch(_){} });
   client.on(Events.GuildRoleDelete, async (role) => { try { const cfg = await getLogsConfig(role.guild.id); if (!cfg.categories?.roles) return; const acts=(cfg.actions?.roles||[]); if (acts.length && !acts.includes('delete')) return; const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle supprimé`).setDescription(`${role.name}`); await sendLog(role.guild,'roles',e);}catch(_){} });
   client.on(Events.GuildRoleUpdate, async (oldRole, newRole) => { try { const cfg = await getLogsConfig(newRole.guild.id); if (!cfg.categories?.roles) return; const acts=(cfg.actions?.roles||[]); if (acts.length && !acts.includes('update')) return; const e=new EmbedBuilder().setColor(0xdddd55).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle modifié`).setDescription(`${oldRole.name} → ${newRole.name}`); await sendLog(newRole.guild,'roles',e);}catch(_){} });
   // Emojis
@@ -5360,13 +5383,13 @@ client.once(Events.ClientReady, async (readyClient) => {
   client.on(Events.GuildEmojiUpdate, async (oldEmoji, newEmoji) => { try { const cfg = await getLogsConfig(newEmoji.guild.id); if (!cfg.categories?.emojis) return; const acts=(cfg.actions?.emojis||[]); if (acts.length && !acts.includes('update')) return; const e=new EmbedBuilder().setColor(0xdddd55).setTitle(`${(cfg.emojis&&cfg.emojis['emojis'])||cfg.emoji} Emoji modifié`).setDescription(`${oldEmoji.name} → ${newEmoji.name}`); await sendLog(newEmoji.guild,'emojis',e);}catch(_){} });
   // Members nickname/roles
   client.on(Events.GuildMemberUpdate, async (oldM, newM) => { try { const cfg = await getLogsConfig(newM.guild.id); if (!cfg.categories?.members && !cfg.categories?.roles) return; // nickname
-    if (cfg.categories?.members) { const acts=(cfg.actions?.members||[]); if (!acts.length || acts.includes('nickname')) { if (oldM.nickname !== newM.nickname) { const e=new EmbedBuilder().setColor(0xddddff).setTitle(`${(cfg.emojis&&cfg.emojis['members'])||cfg.emoji} Surnom modifié`).setDescription(`${oldM.user} : ${oldM.nickname||'—'} → ${newM.nickname||'—'}`); await sendLog(newM.guild,'members',e);} } }
+    if (cfg.categories?.members) { const acts=(cfg.actions?.members||[]); if (!acts.length || acts.includes('nickname')) { if (oldM.nickname !== newM.nickname) { if (shouldSkipLogByFilters(cfg, { userId: newM.user?.id, isBot: newM.user?.bot, roleIds: Array.from(newM.roles.cache.keys()) })) return; const e=new EmbedBuilder().setColor(0xddddff).setTitle(`${(cfg.emojis&&cfg.emojis['members'])||cfg.emoji} Surnom modifié`).setDescription(`${oldM.user} : ${oldM.nickname||'—'} → ${newM.nickname||'—'}`); await sendLog(newM.guild,'members',e);} } }
     // role add/remove
-    if (cfg.categories?.roles) { const acts=(cfg.actions?.roles||[]); const oldSet=new Set(oldM.roles.cache.map(r=>r.id)); const newSet=new Set(newM.roles.cache.map(r=>r.id)); for (const id of newSet) if (!oldSet.has(id) && (!acts.length || acts.includes('member_role_add'))) { const role=newM.guild.roles.cache.get(id); const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle attribué`).setDescription(`${newM.user} + ${role}`); await sendLog(newM.guild,'roles',e);} for (const id of oldSet) if (!newSet.has(id) && (!acts.length || acts.includes('member_role_remove'))) { const role=newM.guild.roles.cache.get(id); const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle retiré`).setDescription(`${newM.user} − ${role}`); await sendLog(newM.guild,'roles',e);} }
+    if (cfg.categories?.roles) { const acts=(cfg.actions?.roles||[]); const oldSet=new Set(oldM.roles.cache.map(r=>r.id)); const newSet=new Set(newM.roles.cache.map(r=>r.id)); for (const id of newSet) if (!oldSet.has(id) && (!acts.length || acts.includes('member_role_add'))) { if (shouldSkipLogByFilters(cfg, { userId: newM.user?.id, isBot: newM.user?.bot, roleIds: Array.from(newM.roles.cache.keys()) })) continue; const role=newM.guild.roles.cache.get(id); const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle attribué`).setDescription(`${newM.user} + ${role}`); await sendLog(newM.guild,'roles',e);} for (const id of oldSet) if (!newSet.has(id) && (!acts.length || acts.includes('member_role_remove'))) { if (shouldSkipLogByFilters(cfg, { userId: newM.user?.id, isBot: newM.user?.bot, roleIds: Array.from(newM.roles.cache.keys()) })) continue; const role=newM.guild.roles.cache.get(id); const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle retiré`).setDescription(`${newM.user} − ${role}`); await sendLog(newM.guild,'roles',e);} }
   } catch(_){} });
   // Invites
-  client.on(Events.InviteCreate, async (invite) => { try { const cfg = await getLogsConfig(invite.guild.id); if (!cfg.categories?.invites) return; const acts=(cfg.actions?.invites||[]); if (acts.length && !acts.includes('create')) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['invites'])||cfg.emoji} Invitation créée`).setDescription(`Code: ${invite.code} • Salon: ${invite.channel}`); await sendLog(invite.guild,'invites',e);}catch(_){} });
-  client.on(Events.InviteDelete, async (invite) => { try { const cfg = await getLogsConfig(invite.guild.id); if (!cfg.categories?.invites) return; const acts=(cfg.actions?.invites||[]); if (acts.length && !acts.includes('delete')) return; const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['invites'])||cfg.emoji} Invitation supprimée`).setDescription(`Code: ${invite.code}`); await sendLog(invite.guild,'invites',e);}catch(_){} });
+  client.on(Events.InviteCreate, async (invite) => { try { const cfg = await getLogsConfig(invite.guild.id); if (!cfg.categories?.invites) return; const acts=(cfg.actions?.invites||[]); if (acts.length && !acts.includes('create')) return; if (shouldSkipLogByFilters(cfg, { userId: invite.inviterId, channelId: invite.channelId })) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['invites'])||cfg.emoji} Invitation créée`).setDescription(`Code: ${invite.code} • Salon: ${invite.channel}`); await sendLog(invite.guild,'invites',e);}catch(_){} });
+  client.on(Events.InviteDelete, async (invite) => { try { const cfg = await getLogsConfig(invite.guild.id); if (!cfg.categories?.invites) return; const acts=(cfg.actions?.invites||[]); if (acts.length && !acts.includes('delete')) return; if (shouldSkipLogByFilters(cfg, { channelId: invite.channelId })) return; const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['invites'])||cfg.emoji} Invitation supprimée`).setDescription(`Code: ${invite.code}`); await sendLog(invite.guild,'invites',e);}catch(_){} });
   // Note: Le message de bienvenue des suites privées est maintenant envoyé directement
   // lors de la création dans la logique d'achat pour éviter les problèmes de timing
   // Suites cleanup every 5 minutes

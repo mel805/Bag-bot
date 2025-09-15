@@ -1317,16 +1317,53 @@ function ensureDisboardShape(g) {
 
 function ensureLogsShape(g) {
   if (!g.logs || typeof g.logs !== 'object') {
-    g.logs = { enabled: false, channelId: '', pseudo: true, emoji: '📝', categories: { moderation: true, voice: true, economy: true, boosts: true, threads: true, joinleave: true, messages: true, backup: true }, channels: { moderation: '', voice: '', economy: '', boosts: '', threads: '', joinleave: '', messages: '', backup: '' } };
+    g.logs = {
+      enabled: false,
+      channelId: '',
+      pseudo: true,
+      emoji: '📝',
+      categories: {
+        moderation: true,
+        voice: true,
+        economy: true,
+        boosts: true,
+        threads: true,
+        joinleave: true,
+        messages: true,
+        backup: true,
+        channels: false,
+        roles: false,
+        emojis: false,
+        members: false,
+        invites: false,
+        tickets: false
+      },
+      channels: {
+        moderation: '',
+        voice: '',
+        economy: '',
+        boosts: '',
+        threads: '',
+        joinleave: '',
+        messages: '',
+        backup: '',
+        channels: '',
+        roles: '',
+        emojis: '',
+        members: '',
+        invites: '',
+        tickets: ''
+      }
+    };
   } else {
     if (typeof g.logs.enabled !== 'boolean') g.logs.enabled = false;
     if (typeof g.logs.channelId !== 'string') g.logs.channelId = '';
     if (typeof g.logs.pseudo !== 'boolean') g.logs.pseudo = true;
     if (typeof g.logs.emoji !== 'string' || !g.logs.emoji) g.logs.emoji = '📝';
     if (!g.logs.categories || typeof g.logs.categories !== 'object') g.logs.categories = { moderation: true, voice: true, economy: true, boosts: true, threads: true, joinleave: true, messages: true, backup: true };
-    for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages','backup']) if (typeof g.logs.categories[k] !== 'boolean') g.logs.categories[k] = true;
+    for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages','backup','channels','roles','emojis','members','invites','tickets']) if (typeof g.logs.categories[k] !== 'boolean') g.logs.categories[k] = (['moderation','voice','economy','boosts','threads','joinleave','messages','backup'].includes(k));
     if (!g.logs.channels || typeof g.logs.channels !== 'object') g.logs.channels = { moderation: '', voice: '', economy: '', boosts: '', threads: '', joinleave: '', messages: '', backup: '' };
-    for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages','backup']) if (typeof g.logs.channels[k] !== 'string') g.logs.channels[k] = '';
+    for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages','backup','channels','roles','emojis','members','invites','tickets']) if (typeof g.logs.channels[k] !== 'string') g.logs.channels[k] = '';
   }
 }
 
