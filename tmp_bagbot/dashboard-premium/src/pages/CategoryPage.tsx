@@ -84,13 +84,13 @@ export default function CategoryPage() {
   const [msgFail, setMsgFail] = useState('');
   const [gifSuccess, setGifSuccess] = useState('');
   const [gifFail, setGifFail] = useState('');
-  // Economy Karma tab state (success/fail deltas)
-  const [karmaSuccess, setKarmaSuccess] = useState<number|''>('');
-  const [karmaFail, setKarmaFail] = useState<number|''>('');
-  // Economy Partner tab state (shares)
+  // New fields merged into Actions
+  const [failKarmaDelta, setFailKarmaDelta] = useState<number|''>('');
+  const [failMoneyMin, setFailMoneyMin] = useState<number|''>('');
+  const [failMoneyMax, setFailMoneyMax] = useState<number|''>('');
   const [partnerMoneyShare, setPartnerMoneyShare] = useState<number|''>('');
   const [partnerKarmaShare, setPartnerKarmaShare] = useState<number|''>('');
-  const [partnerXpShare,   setPartnerXpShare]   = useState<number|''>('');
+
   const dashKey = useMemo(() => {
     try {
       const urlKey = new URLSearchParams(window.location.search).get('key');
@@ -174,13 +174,12 @@ export default function CategoryPage() {
       const g = configs.economy?.actions?.gifs?.[actKey] || { success: [], fail: [] };
       setGifSuccess((g.success||[]).join('\n'));
       setGifFail((g.fail||[]).join('\n'));
-      // Karma tab fields
-      setKarmaSuccess(Number.isFinite(c.successKarmaDelta)?c.successKarmaDelta:'');
-      setKarmaFail(Number.isFinite(c.failKarmaDelta)?c.failKarmaDelta:'');
-      // Partner tab fields
+      // New merged fields
+      setFailKarmaDelta(Number.isFinite(c.failKarmaDelta)?c.failKarmaDelta:'');
+      setFailMoneyMin(Number.isFinite(c.failMoneyMin)?c.failMoneyMin:'');
+      setFailMoneyMax(Number.isFinite(c.failMoneyMax)?c.failMoneyMax:'');
       setPartnerMoneyShare(Number.isFinite(c.partnerMoneyShare)?c.partnerMoneyShare:'');
       setPartnerKarmaShare(Number.isFinite(c.partnerKarmaShare)?c.partnerKarmaShare:'');
-      setPartnerXpShare(Number.isFinite(c.partnerXpShare)?c.partnerXpShare:'');
     } catch {}
   }, [actKey, configs]);
 
@@ -245,8 +244,6 @@ export default function CategoryPage() {
               <NavLink to="/config/economie/overview" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
               <NavLink to="/config/economie/actions" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
               <NavLink to="/config/economie/gifs" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
-              <NavLink to="/config/economie/karma" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Karma</NavLink>
-              <NavLink to="/config/economie/partenaire" className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Partenaire</NavLink>
             </div>
           </div>
         )}
@@ -270,24 +267,39 @@ export default function CategoryPage() {
                   {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
                 </select>
               </label>
-              <label className="text-white/70">Argent min
+              <label className="text-white/70">Argent min (succès)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMin as any} onChange={e=>setActMoneyMin(e.target.value===''?'':Number(e.target.value))} />
               </label>
-              <label className="text-white/70">Argent max
+              <label className="text-white/70">Argent max (succès)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMax as any} onChange={e=>setActMoneyMax(e.target.value===''?'':Number(e.target.value))} />
               </label>
-              <label className="text-white/70">Karma
+              <label className="text-white/70">Karma (type)
                 <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarma} onChange={e=>setActKarma(e.target.value as any)}>
                   <option value="none">none</option>
                   <option value="charm">charm</option>
                   <option value="perversion">perversion</option>
                 </select>
               </label>
-              <label className="text-white/70">Δ Karma
+              <label className="text-white/70">Δ Karma (succès)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarmaDelta as any} onChange={e=>setActKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
               </label>
               <label className="text-white/70">Cooldown (s)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Δ Karma (échec)
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Argent min (échec)
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMin as any} onChange={e=>setFailMoneyMin(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Argent max (échec)
+                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMax as any} onChange={e=>setFailMoneyMax(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">% gains partenaire (argent)
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerMoneyShare as any} onChange={e=>setPartnerMoneyShare(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">% karma partenaire
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerKarmaShare as any} onChange={e=>setPartnerKarmaShare(e.target.value===''?'':Number(e.target.value))} />
               </label>
             </div>
             <div className="grid md:grid-cols-2 gap-3 mt-3">
@@ -304,11 +316,6 @@ export default function CategoryPage() {
                 <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
               </label>
             </div>
-            <div className="mt-2 text-white/60 text-sm">Prévisualisation GIFs (premières URL):</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,4).map((u,idx)=>(<img key={'gs'+idx} src={u} className="w-full h-24 object-cover rounded border border-white/10"/>))}
-              {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,4).map((u,idx)=>(<img key={'gf'+idx} src={u} className="w-full h-24 object-cover rounded border border-white/10"/>))}
-            </div>
             <div className="mt-3 flex gap-2">
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const payload:any = { action: actKey, config: {}, messages: {}, gifs: {} };
@@ -317,6 +324,11 @@ export default function CategoryPage() {
                 payload.config.karma = actKarma;
                 if (actKarmaDelta !== '') payload.config.karmaDelta = Number(actKarmaDelta);
                 if (actCooldown !== '') payload.config.cooldown = Number(actCooldown);
+                if (failKarmaDelta !== '') payload.config.failKarmaDelta = Number(failKarmaDelta);
+                if (failMoneyMin !== '') payload.config.failMoneyMin = Number(failMoneyMin);
+                if (failMoneyMax !== '') payload.config.failMoneyMax = Number(failMoneyMax);
+                if (partnerMoneyShare !== '') payload.config.partnerMoneyShare = Number(partnerMoneyShare);
+                if (partnerKarmaShare !== '') payload.config.partnerKarmaShare = Number(partnerKarmaShare);
                 payload.messages.success = msgSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
                 payload.messages.fail = msgFail.split('\n').map(s=>s.trim()).filter(Boolean);
                 payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
@@ -335,7 +347,6 @@ export default function CategoryPage() {
                   {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
                 </select>
               </label>
-              <div className="text-white/60">Les GIFs de cette action s’appliquent côté bot pour les embeds/messages.</div>
             </div>
             <div className="grid md:grid-cols-2 gap-3">
               <label className="text-white/70">GIF succès (1 URL par ligne)
@@ -344,53 +355,6 @@ export default function CategoryPage() {
               <label className="text-white/70">GIF échec (1 URL par ligne)
                 <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-40" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
               </label>
-            </div>
-            <div className="text-white/60 text-sm">GIF principal (embed):</div>
-            <div className="grid md:grid-cols-2 gap-3">
-              <label className="text-white/70">Sélection GIF principal (succès)
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" onChange={e=>{
-                  const v = e.target.value; if (!v) return;
-                  // Move selected as first in success list for preview; saving définira primary côté bot
-                  const list = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
-                  const next = [v, ...list.filter(u=>u!==v)];
-                  setGifSuccess(next.join('\n'));
-                }}>
-                  <option value="">—</option>
-                  {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).map((u,idx)=>(<option key={'ps'+idx} value={u}>{u}</option>))}
-                </select>
-              </label>
-              <label className="text-white/70">Sélection GIF principal (échec)
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" onChange={e=>{
-                  const v = e.target.value; if (!v) return;
-                  const list = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
-                  const next = [v, ...list.filter(u=>u!==v)];
-                  setGifFail(next.join('\n'));
-                }}>
-                  <option value="">—</option>
-                  {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).map((u,idx)=>(<option key={'pf'+idx} value={u}>{u}</option>))}
-                </select>
-              </label>
-            </div>
-            <div className="text-white/60 text-sm mt-2">Aperçu & suppression:</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {(() => { const sel = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean)[0]; return sel ? (
-                <div className="relative group">
-                  <img src={`/api/proxy?url=${encodeURIComponent(sel)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
-                  <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={async()=>{
-                    setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==sel).join('\n'));
-                    await saveEconomyAction(actKey, { gifs: { delete: { type: 'success', url: sel } } as any });
-                  }}>Suppr</button>
-                </div>
-              ) : null; })()}
-              {(() => { const sel = gifFail.split('\n').map(s=>s.trim()).filter(Boolean)[0]; return sel ? (
-                <div className="relative group">
-                  <img src={`/api/proxy?url=${encodeURIComponent(sel)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
-                  <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={async()=>{
-                    setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==sel).join('\n'));
-                    await saveEconomyAction(actKey, { gifs: { delete: { type: 'fail', url: sel } } as any });
-                  }}>Suppr</button>
-                </div>
-              ) : null; })()}
             </div>
             <div className="mt-3">
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
@@ -671,62 +635,6 @@ export default function CategoryPage() {
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
             <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Disboard ?')) return; await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
-          </div>
-        )}
-        {cat==='economie' && view==='karma' && (
-          <div className="space-y-3">
-            <div className="grid md:grid-cols-3 gap-3">
-              <label className="text-white/70">Action
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
-                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
-                </select>
-              </label>
-              <label className="text-white/70">Karma succès (Δ)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={karmaSuccess as any} onChange={e=>setKarmaSuccess(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Karma échec (Δ)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={karmaFail as any} onChange={e=>setKarmaFail(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-            </div>
-            <div>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
-                const payload:any = { action: actKey, config: {} };
-                if (karmaSuccess !== '') payload.config.successKarmaDelta = Number(karmaSuccess);
-                if (karmaFail !== '') payload.config.failKarmaDelta = Number(karmaFail);
-                if(!confirm('Confirmer la sauvegarde karma ?')) return;
-                await saveEconomyAction(actKey, payload);
-              }}>Enregistrer karma</button>
-            </div>
-          </div>
-        )}
-        {cat==='economie' && view==='partenaire' && (
-          <div className="space-y-3">
-            <div className="grid md:grid-cols-4 gap-3">
-              <label className="text-white/70">Action
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
-                  {(Object.keys(configs?.economy?.actions?.config||{})).map(k => (<option key={k} value={k}>{k}</option>))}
-                </select>
-              </label>
-              <label className="text-white/70">Partenaire: % gains argent
-                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerMoneyShare as any} onChange={e=>setPartnerMoneyShare(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Partenaire: % karma
-                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerKarmaShare as any} onChange={e=>setPartnerKarmaShare(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Partenaire: % XP
-                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerXpShare as any} onChange={e=>setPartnerXpShare(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-            </div>
-            <div>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
-                const payload:any = { action: actKey, config: {} };
-                if (partnerMoneyShare !== '') payload.config.partnerMoneyShare = Number(partnerMoneyShare);
-                if (partnerKarmaShare !== '') payload.config.partnerKarmaShare = Number(partnerKarmaShare);
-                if (partnerXpShare !== '') payload.config.partnerXpShare = Number(partnerXpShare);
-                if(!confirm('Confirmer la sauvegarde Partenaire ?')) return;
-                await saveEconomyAction(actKey, payload);
-              }}>Enregistrer Partenaire</button>
-            </div>
           </div>
         )}
       </div>

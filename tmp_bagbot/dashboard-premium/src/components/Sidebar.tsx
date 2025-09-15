@@ -59,8 +59,6 @@ export default function Sidebar() {
                   <LinkItem to="/config/levels/overview">🆙 Niveaux</LinkItem>
                   <LinkItem to="/config/economie/overview">🪙 Économie</LinkItem>
                   <LinkItem to="/config/economie/actions">⚙️ Économie • Actions</LinkItem>
-                  <LinkItem to="/config/economie/karma">✨ Économie • Karma</LinkItem>
-                  <LinkItem to="/config/economie/partenaire">🤝 Économie • Partenaire</LinkItem>
                   <LinkItem to="/config/action-verite/overview">🎲 Action/Vérité</LinkItem>
                   <LinkItem to="/config/logs/overview">📜 Journalisation</LinkItem>
                   <LinkItem to="/config/confessions/overview">🕊️ Confessions</LinkItem>
