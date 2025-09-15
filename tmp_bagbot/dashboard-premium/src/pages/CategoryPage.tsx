@@ -426,6 +426,15 @@ export default function CategoryPage() {
               <label className="text-white/70">Cooldown (s)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
               </label>
+              <label className="text-white/70 md:col-span-3">Zones (séparées par une virgule)
+                <input type="text" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(((configs?.economy?.actions?.config||{})[actKey]?.zones||[]).join(', '))} onChange={e=>{
+                  const raw = e.target.value;
+                  const arr = raw.split(',').map(s=>s.trim()).filter(Boolean);
+                  // ephemeral local update by mutating configs clone
+                  try { (configs as any).economy.actions.config[actKey] = { ...((configs as any).economy.actions.config[actKey]||{}), zones: arr }; } catch {}
+                  setActCooldown(actCooldown);
+                }} placeholder="ex: cou, épaules, nuque" />
+              </label>
               <label className="text-white/70">Δ Karma (échec)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
               </label>
@@ -464,6 +473,11 @@ export default function CategoryPage() {
                 payload.config.karma = actKarma;
                 if (actKarmaDelta !== '') payload.config.karmaDelta = Number(actKarmaDelta);
                 if (actCooldown !== '') payload.config.cooldown = Number(actCooldown);
+                // zones
+                try {
+                  const z = ((configs?.economy?.actions?.config||{})[actKey]?.zones)||[];
+                  if (Array.isArray(z)) payload.config.zones = z;
+                } catch {}
                 if (failKarmaDelta !== '') payload.config.failKarmaDelta = Number(failKarmaDelta);
                 if (failMoneyMin !== '') payload.config.failMoneyMin = Number(failMoneyMin);
                 if (failMoneyMax !== '') payload.config.failMoneyMax = Number(failMoneyMax);

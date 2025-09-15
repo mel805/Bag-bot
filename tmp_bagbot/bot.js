@@ -1109,7 +1109,13 @@ function startKeepAliveServer() {
                   const key = String(data.action);
                   next.actions = next.actions || { enabled: [], config: {}, messages: {}, gifs: {} };
                   if (data.config && typeof data.config === 'object') {
-                    next.actions.config[key] = { ...(next.actions.config[key]||{}), ...data.config };
+                    const prev = next.actions.config[key] || {};
+                    const merged = { ...prev, ...data.config };
+                    // sanitize zones if present
+                    if (Array.isArray(merged.zones)) {
+                      merged.zones = merged.zones.map(s=>String(s).trim()).filter(Boolean).slice(0, 50);
+                    }
+                    next.actions.config[key] = merged;
                   }
                   if (data.messages && typeof data.messages === 'object') {
                     const m = next.actions.messages[key] || { success: [], fail: [] };
@@ -1266,9 +1272,18 @@ function startKeepAliveServer() {
               }
               return current;
             };
-            let upstream = await doRequest(target);
+            // Normalize Discord URLs: media.discordapp.net -> cdn.discordapp.com when possible
+            let normTarget = target;
+            try {
+              const uo = new URL(target);
+              if (uo.hostname === 'media.discordapp.net' && uo.pathname.includes('/attachments/')) {
+                uo.hostname = 'cdn.discordapp.com';
+                normTarget = uo.toString();
+              }
+            } catch(_) {}
+            let upstream = await doRequest(normTarget);
             if (!upstream) return sendJson(res, 504, { error: 'upstream timeout' });
-            upstream = await followRedirect(upstream, target);
+            upstream = await followRedirect(upstream, normTarget);
             if (!upstream) return sendJson(res, 504, { error: 'upstream timeout' });
             let ctype = String(upstream.headers['content-type'] || '');
 
@@ -1294,10 +1309,10 @@ function startKeepAliveServer() {
                     return sendJson(res, 200, { url: direct, contentType: ctype });
                   }
                 }
-                return sendJson(res, 200, { url: target, contentType: '' });
+                return sendJson(res, 200, { url: normTarget, contentType: '' });
               } else {
                 try { upstream.destroy(); } catch (_) {}
-                return sendJson(res, 200, { url: target, contentType: ctype });
+                return sendJson(res, 200, { url: normTarget, contentType: ctype });
               }
             }
 
@@ -1405,7 +1420,6 @@ function startKeepAliveServer() {
         try { res.statusCode = 500; res.end('ERR'); } catch (_) {}
       }
     });
-
     // WebSocket for realtime stats
     const wss = new WebSocketServer({ noServer: true });
     const clients = new Set();
@@ -2828,7 +2842,8 @@ async function handleEconomyAction(interaction, actionKey) {
       try { zoneValue = String(interaction.options.getString('zone', false) || '').trim(); } catch (_) { zoneValue = ''; }
       if (!zoneValue && /\{zone\}/i.test(msgText)) {
         // Pick a default zone if not provided
-        const zones = ['dos','épaules','nuque','jambes','pieds','mains'];
+        const cfgZones = Array.isArray(conf?.zones) ? conf.zones : null;
+        const zones = (cfgZones && cfgZones.length) ? cfgZones : ['dos','épaules','nuque','jambes','pieds','mains'];
         zoneValue = zones[Math.floor(Math.random()*zones.length)];
       }
       const replacements = {
@@ -3256,7 +3271,6 @@ function buildStaffActionRow() {
     );
   return new ActionRowBuilder().addComponents(select);
 }
-
 function buildStaffAddRows() {
   const addSelect = new RoleSelectMenuBuilder()
     .setCustomId('staff_add_roles')
@@ -4205,7 +4219,6 @@ function buildEconomyMenuSelect(selectedPage) {
     );
   return new ActionRowBuilder().addComponents(menu);
 }
-
 async function buildEconomyMenuRows(guild, page) {
   try {
     // Validate guild parameter
@@ -9882,7 +9895,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true
       });
     }
-    
     if (interaction.isButton() && interaction.customId.startsWith('suite_list_')) {
       const ownerId = interaction.customId.split('_')[2];
       if (interaction.user.id !== ownerId) {
@@ -9937,7 +9949,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const eco = await getEconomyConfig(interaction.guild.id);
       const suiteInfo = eco.suites?.active?.[ownerId];
       if (!suiteInfo) {
-        return interaction.reply({ content: '❌ Suite privée introuvable ou expirée.', ephemeral: true });
+        return interaction.reply({ content: '❌ Suite privée introufable ou expirée.', ephemeral: true });
       }
       
       const targetUserId = interaction.values[0];
@@ -10669,7 +10681,6 @@ function clampPaletteOffset(total, offset, limit) {
   if (offset > last) return last;
   return Math.floor(offset / limit) * limit;
 }
-
 function buildColorSelectView(targetType, targetId, category, offset = 0) {
   const colorsAll = COLOR_PALETTES[category] || [];
   const limit = 15;
