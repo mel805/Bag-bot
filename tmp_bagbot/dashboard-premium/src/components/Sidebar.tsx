@@ -10,21 +10,6 @@ function LinkItem({ to, children }: { to: string; children: React.ReactNode }) {
   );
 }
 
-function CatEmojiRow() {
-  // Try to read live emojis from global state injected by the app (configs)
-  const fallback: Record<string,string> = { joinleave:'👋', messages:'📝', threads:'🧵', backup:'💾', moderation:'⚖️', economy:'🪙', voice:'🗣️', boosts:'🚀' };
-  let emojis: Record<string,string> = fallback;
-  try { const cfgs: any = (window as any).__CONFIGS__ || {}; const e = cfgs.logs?.emojis || {}; emojis = { ...fallback, ...e }; } catch(_) {}
-  const order = ['joinleave','messages','threads','backup','moderation','economy','voice','boosts'];
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-1 px-1">
-      {order.map(k => (
-        <span key={k} title={k} className="text-lg leading-none">{emojis[k] || fallback[k]}</span>
-      ))}
-    </div>
-  );
-}
-
 export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; onToggle?: () => void }) {
   const [openServers, setOpenServers] = useState(true);
   const [openConfig, setOpenConfig] = useState(true);
@@ -55,9 +40,18 @@ export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: b
             <NavLink to="/" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Accueil">🏠</NavLink>
             <NavLink to="/reminders" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Rappels">🛎️</NavLink>
             <NavLink to="/stats" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Stats">📈</NavLink>
-            <CatEmojiRow />
-            <NavLink to="/config/logs/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Logs">📜</NavLink>
+            <div className="h-px w-8 bg-white/10 my-1" />
+            {/* Même emojis que les catégories visibles quand la sidebar est déployée */}
+            <NavLink to="/config/moderation/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Modération">🛡️</NavLink>
+            <NavLink to="/config/levels/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Niveaux">🆙</NavLink>
             <NavLink to="/config/economie/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Économie">🪙</NavLink>
+            <NavLink to="/config/economie/actions" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Économie • Actions">⚙️</NavLink>
+            <NavLink to="/config/action-verite/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Action/Vérité">🎲</NavLink>
+            <NavLink to="/config/logs/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Journalisation">📜</NavLink>
+            <NavLink to="/config/confessions/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Confessions">🕊️</NavLink>
+            <NavLink to="/config/autothread/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Auto-threads">🧵</NavLink>
+            <NavLink to="/config/counting/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Compteur">🔢</NavLink>
+            <NavLink to="/config/disboard/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Disboard">📣</NavLink>
           </div>
         ) : (
           <>
