@@ -10,6 +10,31 @@ try {
   console.log('[register] DATA_DIR:', paths.DATA_DIR, 'CONFIG_PATH:', paths.CONFIG_PATH);
 } catch (_) {}
 
+// Charger zones dynamiques depuis la config
+function getZonesFromConfig() {
+  try {
+    const dataPath = path.join(__dirname, 'data', 'config.json');
+    const raw = fs.readFileSync(dataPath, 'utf8');
+    const cfg = JSON.parse(raw||'{}');
+    const eco = cfg.economy || {};
+    const acts = eco.actions || {};
+    const conf = acts.config || {};
+    const pick = (k) => Array.isArray(conf[k]?.zones) ? conf[k].zones : [];
+    return {
+      kiss: pick('kiss'),
+      touche: pick('touche'),
+      caress: pick('caress'),
+      lick: pick('lick'),
+      suck: pick('suck'),
+      nibble: pick('nibble'),
+      tickle: pick('tickle'),
+    };
+  } catch (_) { return { kiss: [], touche: [], caress: [], lick: [], suck: [], nibble: [], tickle: [] }; }
+}
+const ZONES_BY_ACTION = getZonesFromConfig();
+const DEFAULT_KISS_ZONES = ['lèvres','joue','cou','front'];
+const toChoices = (arr) => (arr||[]).slice(0,25).map(z => ({ name: String(z).slice(0,100), value: String(z).toLowerCase() }));
+
 // Cache des commandes pour éviter les déploiements inutiles
 const COMMANDS_CACHE_FILE = path.join(__dirname, '../.commands-cache.json');
 
@@ -69,6 +94,18 @@ let commands = [
   
   new SlashCommandBuilder().setName('voler').setDescription('Tenter de voler un membre').addUserOption(o=>o.setName('membre').setDescription('Cible').setRequired(true)).toJSON(),
   new SlashCommandBuilder().setName('embrasser').setDescription('Embrasser pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
+  // Version avec zone optionnelle basée sur config
+  new SlashCommandBuilder()
+    .setName('embrasser')
+    .setDescription('Embrasser pour gagner du charme')
+    .addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false))
+    .addStringOption(o=>{
+      const zones = ZONES_BY_ACTION.kiss && ZONES_BY_ACTION.kiss.length ? ZONES_BY_ACTION.kiss : DEFAULT_KISS_ZONES;
+      const builder = o.setName('zone').setDescription('Zone (optionnel)').setRequired(false);
+      toChoices(zones).forEach(c => builder.addChoices(c));
+      return builder;
+    })
+    .toJSON(),
   new SlashCommandBuilder().setName('flirter').setDescription('Flirter pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('séduire').setDescription('Séduire pour gagner du charme').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
   new SlashCommandBuilder().setName('fuck').setDescription('Action perverse 😈').addUserOption(o=>o.setName('cible').setDescription('Membre (optionnel)').setRequired(false)).toJSON(),
