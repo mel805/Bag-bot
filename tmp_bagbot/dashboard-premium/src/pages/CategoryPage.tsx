@@ -494,7 +494,7 @@ export default function CategoryPage() {
                 <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-40" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
               </label>
             </div>
-            <div className="text-white/60 text-sm">Aperçu GIFs:</div>
+            <div className="text-white/70 font-medium mt-2">Aperçu GIFs — Succès</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
                 <div key={'gs'+idx} className="relative group">
@@ -504,6 +504,9 @@ export default function CategoryPage() {
                   }}>Suppr</button>
                 </div>
               ))}
+            </div>
+            <div className="text-white/70 font-medium mt-2">Aperçu GIFs — Échec</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
                 <div key={'gf'+idx} className="relative group">
                   <img src={`/api/proxy?url=${encodeURIComponent(u)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
