@@ -125,6 +125,7 @@ export default function CategoryPage() {
   const [logsEmoji, setLogsEmoji] = useState('📝');
   const [logChannels, setLogChannels] = useState<{[k:string]:string}>({});
   const [logCats, setLogCats] = useState<{[k:string]:boolean}>({});
+  const [logsCollapsed, setLogsCollapsed] = useState(false);
   const [autoKickRole, setAutoKickRole] = useState('');
   const [autoKickEnabled, setAutoKickEnabled] = useState(false);
   const [autoKickDelay, setAutoKickDelay] = useState(0);
@@ -299,13 +300,11 @@ export default function CategoryPage() {
             </div>
             <div className="flex items-center justify-between">
               <div className="text-white/70 mt-2">Catégories</div>
-              <button className="text-white/60 text-sm underline" onClick={()=>{
-                const curr = (window as any).__logsCollapsed || false; (window as any).__logsCollapsed = !curr; (setLogCats as any)({ ...logCats });
-              }}>{(window as any).__logsCollapsed ? 'Déployer' : 'Réduire'}</button>
+              <button className="text-white/60 text-sm underline" onClick={()=>setLogsCollapsed(v=>!v)}>{logsCollapsed ? 'Déployer' : 'Réduire'}</button>
             </div>
             <div className="space-y-2">
               {['joinleave','messages','threads','backup','moderation','economy'].map((k)=>{
-                const collapsed = Boolean((window as any).__logsCollapsed);
+                const collapsed = logsCollapsed;
                 const actionsOptions: Record<string,string[]> = {
                   joinleave: ['join','leave'],
                   messages: ['delete','edit'],

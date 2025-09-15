@@ -16,7 +16,11 @@ export default function Sidebar() {
   return (
     <aside className="bg-background/95 border-r border-white/10 px-4 py-4">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-violet to-brand-cyan" />
+        <img
+          src="https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68c8f09a&is=68c79f1a&hm=5eb6483a9302bf1b12c608c5caf45d39d3f1b60883ef7e31180f35fdb70002e9&"
+          alt="Logo"
+          className="w-9 h-9 rounded-lg object-cover"
+        />
         <div>
           <div className="text-white font-semibold leading-tight">Dashboard</div>
           <div className="text-xs text-white/60">Premium</div>
