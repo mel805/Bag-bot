@@ -3,3 +3,10 @@
 @tailwind utilities;
 
 * { box-sizing: border-box; }
+
+body {
+  background-image: url('https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68c8f09a&is=68c79f1a&hm=5eb6483a9302bf1b12c608c5caf45d39d3f1b60883ef7e31180f35fdb70002e9&');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}

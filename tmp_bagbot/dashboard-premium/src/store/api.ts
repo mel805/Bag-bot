@@ -38,7 +38,7 @@ type ApiState = {
   fetchMeta: () => Promise<void>;
   saveCurrency: (name: string) => Promise<boolean>;
   saveLogs: (categories: Record<string, boolean>, channels?: Record<string,string>) => Promise<boolean>;
-  saveLogsPerCat: (categories: Record<string, boolean>, channels: Record<string,string>, emojis: Record<string,string>) => Promise<boolean>;
+  saveLogsPerCat: (categories: Record<string, boolean>, channels: Record<string,string>, emojis: Record<string,string>, actions: Record<string,string[]>) => Promise<boolean>;
   saveConfess: (allowReplies: boolean) => Promise<boolean>;
   saveTd: (sfw: string[], nsfw: string[]) => Promise<boolean>;
   saveLevels: (xpMsg: number, xpVoice: number, base: number, factor: number) => Promise<boolean>;
@@ -107,9 +107,9 @@ export const useApi = create<ApiState>((set, get) => ({
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
-  , saveLogsPerCat: async (categories, channels, emojis) => {
+  , saveLogsPerCat: async (categories, channels, emojis, actions) => {
     try {
-      const payload: any = { categories, channels, emojis };
+      const payload: any = { categories, channels, emojis, actions };
       const res = await fetch(withKey('/api/configs/logs'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }

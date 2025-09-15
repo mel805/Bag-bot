@@ -800,10 +800,16 @@ function startKeepAliveServer() {
                 next.channels = { ...(curr.channels||{}), ...ch };
               }
               if (data.emojis && typeof data.emojis === 'object') {
-                // per-category emoji mapping
                 next.emojis = { ...(next.emojis||{}) };
                 for (const [k, v] of Object.entries(data.emojis)) {
                   if (typeof v === 'string' && v.trim()) next.emojis[k] = String(v).trim().slice(0, 8);
+                }
+              }
+              if (data.actions && typeof data.actions === 'object') {
+                // per-category actions filter arrays
+                next.actions = { ...(next.actions||{}) };
+                for (const [k, arr] of Object.entries(data.actions)) {
+                  if (Array.isArray(arr)) next.actions[k] = arr.map(x=>String(x)).slice(0, 50);
                 }
               }
               await updateLogsConfig(guildId, next);

@@ -300,8 +300,17 @@ export default function CategoryPage() {
             <div className="text-white/70 mt-2">Catégories</div>
             <div className="space-y-2">
               {['joinleave','messages','threads','backup','moderation','economy'].map((k)=>{
+                const actionsOptions: Record<string,string[]> = {
+                  joinleave: ['join','leave'],
+                  messages: ['delete','edit'],
+                  threads: ['create','delete'],
+                  backup: ['backup','restore'],
+                  moderation: ['ban','unban','kick','mute','unmute','warn','purge','massban','masskick'],
+                  economy: ['work','fish','give','steal','shop','daily']
+                };
+                const selectedActs = (configs?.logs?.actions?.[k] || []) as string[];
                 return (
-                  <div key={k} className="grid md:grid-cols-4 gap-2 items-center">
+                  <div key={k} className="grid md:grid-cols-5 gap-2 items-center">
                     <div className="text-white/70">{k}</div>
                     <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={Boolean(logCats[k])} onChange={e=>setLogCats(prev=>({ ...prev, [k]: e.target.checked }))} /> ON</label>
                     <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
@@ -310,6 +319,12 @@ export default function CategoryPage() {
                     </select>
                     <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="Emoji (ex: 🔔)" value={(configs?.logs?.emojis?.[k] || '')} onChange={e=>{
                       const v = e.target.value; const next = { ...(configs?.logs?.emojis||{}) }; (next as any)[k] = v; (configs as any).logs = { ...(configs as any).logs, emojis: next }; setLogCats(prev=>({ ...prev })); }} />
+                    <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={selectedActs} onChange={e=>{
+                      const vals = Array.from(e.target.selectedOptions).map(o=>o.value);
+                      const next = { ...(configs?.logs?.actions||{}) }; (next as any)[k] = vals; (configs as any).logs = { ...(configs as any).logs, actions: next }; setLogCats(prev=>({ ...prev }));
+                    }}>
+                      {(actionsOptions[k]||[]).map(a => (<option key={a} value={a}>{a}</option>))}
+                    </select>
                   </div>
                 );
               })}
@@ -318,11 +333,11 @@ export default function CategoryPage() {
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des réglages de logs ?')) return; await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer global</button>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const emojis:any = configs?.logs?.emojis || {};
-                if(!confirm('Confirmer la sauvegarde des catégories, salons et emojis ?')) return;
-                // @ts-ignore saveLogsPerCat exists
-                const ok = await (useApi.getState().saveLogsPerCat as any)(logCats, logChannels, emojis);
+                const actions:any = configs?.logs?.actions || {};
+                if(!confirm('Confirmer la sauvegarde des catégories, salons, emojis et actions ?')) return;
+                const ok = await (useApi.getState().saveLogsPerCat as any)(logCats, logChannels, emojis, actions);
                 if (ok) await fetchAll();
-              }}>Enregistrer catégories/salons/emojis</button>
+              }}>Enregistrer</button>
             </div>
           </div>
         )}
