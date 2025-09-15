@@ -2,7 +2,9 @@ const { REST, Routes, PermissionFlagsBits, SlashCommandBuilder } = require('disc
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-require('dotenv').config({ override: true, path: path.resolve(__dirname, '../.env') });
+// Load env from repo root first; fallback to parent
+try { require('dotenv').config({ override: true, path: path.resolve(__dirname, '.env') }); } catch (_) {}
+try { if (!process.env.DISCORD_TOKEN) require('dotenv').config({ override: true, path: path.resolve(__dirname, '../.env') }); } catch (_) {}
 
 // Log a brief storage mode hint on registration too
 try {
