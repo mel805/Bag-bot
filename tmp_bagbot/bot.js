@@ -912,7 +912,6 @@ function startKeepAliveServer() {
           });
           return;
         }
-
         if (parsed.pathname === '/api/configs/levels' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           let body='';
@@ -1409,7 +1408,6 @@ async function isStaffMember(guild, member) {
   // Fallback: use Discord permissions for moderation
   return member?.permissions?.has?.(PermissionsBitField.Flags.ModerateMembers) || false;
 }
-
 function buildModEmbed(title, description, extras) {
   const embed = new EmbedBuilder()
     .setColor(THEME_COLOR_ACCENT)
@@ -4990,12 +4988,12 @@ client.once(Events.ClientReady, async (readyClient) => {
   // Logs: register listeners
   client.on(Events.GuildMemberAdd, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
-    const embed = buildModEmbed(`${cfg.emoji} Arrivée`, `${m.user} a rejoint le serveur.`, []);
+    const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['joinleave']) || cfg.emoji} Arrivée`, `${m.user} a rejoint le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
   });
   client.on(Events.GuildMemberRemove, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
-    const embed = buildModEmbed(`${cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
+    const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['joinleave']) || cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
   });
   // Tickets: auto-close when member leaves
@@ -5065,7 +5063,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     if (!cfg.categories?.messages) return;
     const author = msg.author || (msg.partial ? null : null);
     const content = msg.partial ? '(partiel)' : (msg.content || '—');
-    const embed = buildModEmbed(`${cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }, { name:'Message ID', value: String(msg.id) }]);
+    const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['messages']) || cfg.emoji} Message supprimé`, `Salon: <#${msg.channelId}>`, [{ name:'Auteur', value: author ? `${author} (${author.id})` : 'Inconnu' }, { name:'Contenu', value: content }, { name:'Message ID', value: String(msg.id) }]);
     await sendLog(msg.guild, 'messages', embed);
   });
   client.on(Events.MessageUpdate, async (oldMsg, newMsg) => {
@@ -5077,18 +5075,18 @@ client.once(Events.ClientReady, async (readyClient) => {
     const after = msg?.partial ? '(partiel)' : (msg?.content || '—');
     const cfg = await getLogsConfig(msg.guild.id); try { console.log('[Logs] MessageUpdate evt', { g: msg.guild.id, cat: cfg.categories?.messages, ch: (cfg.channels?.messages||cfg.channelId)||null }); } catch (_) {}
     if (!cfg.categories?.messages) return;
-    const embed = buildModEmbed(`${cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
+    const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['messages']) || cfg.emoji} Message modifié`, `Salon: <#${msg.channelId}>`, [ { name:'Auteur', value: msg.author ? `${msg.author} (${msg.author.id})` : 'Inconnu' }, { name:'Avant', value: before }, { name:'Après', value: after }, { name:'Message ID', value: String(msg.id) } ]);
     await sendLog(msg.guild, 'messages', embed);
   });
   // Removed MessageCreate logging per user request
   client.on(Events.ThreadCreate, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.categories?.threads) return;
-    const embed = buildModEmbed(`${cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
+    const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['threads']) || cfg.emoji} Thread créé`, `Fil: <#${thread.id}> dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
   client.on(Events.ThreadDelete, async (thread) => {
     if (!thread.guild) return; const cfg = await getLogsConfig(thread.guild.id); if (!cfg.categories?.threads) return;
-    const embed = buildModEmbed(`${cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
+    const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['threads']) || cfg.emoji} Thread supprimé`, `Fil: ${thread.id} dans <#${thread.parentId}>`, []);
     await sendLog(thread.guild, 'threads', embed);
   });
   // Note: Le message de bienvenue des suites privées est maintenant envoyé directement
@@ -9325,7 +9323,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await interaction.reply({ embeds: [embed] });
           // log moderation
           const cfg = await getLogsConfig(interaction.guild.id);
-          const log = buildModEmbed(`${cfg.emoji} Modération • Ban`, `${user} banni par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          const log = buildModEmbed(`${(cfg.emojis&&cfg.emojis['moderation']) || cfg.emoji} Modération • Ban`, `${user} banni par ${interaction.user}`, [{ name:'Raison', value: reason }]);
           await sendLog(interaction.guild, 'moderation', log);
           return;
         }
@@ -9336,7 +9334,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const embed = buildModEmbed('Unban', `Utilisateur <@${userId}> débanni.`, [{ name:'Raison', value: reason }]);
           await interaction.reply({ embeds: [embed] });
           const cfg = await getLogsConfig(interaction.guild.id);
-          const log = buildModEmbed(`${cfg.emoji} Modération • Unban`, `<@${userId}> débanni par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          const log = buildModEmbed(`${(cfg.emojis&&cfg.emojis['moderation']) || cfg.emoji} Modération • Unban`, `<@${userId}> débanni par ${interaction.user}`, [{ name:'Raison', value: reason }]);
           await sendLog(interaction.guild, 'moderation', log);
           return;
         }
@@ -9349,7 +9347,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const embed = buildModEmbed('Kick', `${user} a été expulsé.`, [{ name:'Raison', value: reason }]);
           await interaction.reply({ embeds: [embed] });
           const cfg = await getLogsConfig(interaction.guild.id);
-          const log = buildModEmbed(`${cfg.emoji} Modération • Kick`, `${user} expulsé par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          const log = buildModEmbed(`${(cfg.emojis&&cfg.emojis['moderation']) || cfg.emoji} Modération • Kick`, `${user} expulsé par ${interaction.user}`, [{ name:'Raison', value: reason }]);
           await sendLog(interaction.guild, 'moderation', log);
           return;
         }
@@ -9364,7 +9362,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const embed = buildModEmbed('Mute', `${user} a été réduit au silence.`, [{ name:'Durée', value: `${minutes} min`, inline:true }, { name:'Raison', value: reason, inline:true }]);
           await interaction.reply({ embeds: [embed] });
           const cfg = await getLogsConfig(interaction.guild.id);
-          const log = buildModEmbed(`${cfg.emoji} Modération • Mute`, `${user} muet par ${interaction.user}`, [{ name:'Durée', value: `${minutes} min` }, { name:'Raison', value: reason }]);
+          const log = buildModEmbed(`${(cfg.emojis&&cfg.emojis['moderation']) || cfg.emoji} Modération • Mute`, `${user} muet par ${interaction.user}`, [{ name:'Durée', value: `${minutes} min` }, { name:'Raison', value: reason }]);
           await sendLog(interaction.guild, 'moderation', log);
           return;
         }
@@ -9377,14 +9375,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const embed = buildModEmbed('Unmute', `${user} a retrouvé la parole.`, [{ name:'Raison', value: reason }]);
           await interaction.reply({ embeds: [embed] });
           const cfg = await getLogsConfig(interaction.guild.id);
-          const log = buildModEmbed(`${cfg.emoji} Modération • Unmute`, `${user} unmute par ${interaction.user}`, [{ name:'Raison', value: reason }]);
+          const log = buildModEmbed(`${(cfg.emojis&&cfg.emojis['moderation']) || cfg.emoji} Modération • Unmute`, `${user} unmute par ${interaction.user}`, [{ name:'Raison', value: reason }]);
           await sendLog(interaction.guild, 'moderation', log);
           return;
         }
         if (cmd === 'warn') {
           const user = interaction.options.getUser('membre', true);
           const reason = interaction.options.getString('raison', true);
-          try { const { addWarn, getWarns } = require('./storage/jsonStore'); await addWarn(interaction.guild.id, user.id, { by: interaction.user.id, reason }); const list = await getWarns(interaction.guild.id, user.id); const embed = buildModEmbed('Warn', `${user} a reçu un avertissement.`, [{ name:'Raison', value: reason }, { name:'Total avertissements', value: String(list.length) }]); await interaction.reply({ embeds: [embed] }); const cfg = await getLogsConfig(interaction.guild.id); const log = buildModEmbed(`${cfg.emoji} Modération • Warn`, `${user} averti par ${interaction.user}`, [{ name:'Raison', value: reason }, { name:'Total', value: String(list.length) }]); await sendLog(interaction.guild, 'moderation', log); return; } catch (_) { return interaction.reply({ content:'Échec du warn.', ephemeral:true }); }
+          try { const { addWarn, getWarns } = require('./storage/jsonStore'); await addWarn(interaction.guild.id, user.id, { by: interaction.user.id, reason }); const list = await getWarns(interaction.guild.id, user.id); const embed = buildModEmbed('Warn', `${user} a reçu un avertissement.`, [{ name:'Raison', value: reason }, { name:'Total avertissements', value: String(list.length) }]); await interaction.reply({ embeds: [embed] }); const cfg = await getLogsConfig(interaction.guild.id); const log = buildModEmbed(`${(cfg.emojis&&cfg.emojis['moderation']) || cfg.emoji} Modération • Warn`, `${user} averti par ${interaction.user}`, [{ name:'Raison', value: reason }, { name:'Total', value: String(list.length) }]); await sendLog(interaction.guild, 'moderation', log); return; } catch (_) { return interaction.reply({ content:'Échec du warn.', ephemeral:true }); }
         }
         if (cmd === 'masskick' || cmd === 'massban') {
           try { if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true }); } catch (_) {}
