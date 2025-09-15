@@ -499,23 +499,17 @@ export default function CategoryPage() {
             <div className="text-white/70 font-medium mt-2">Aperçu GIFs — Succès</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
-                <div key={'gs'+idx} className="relative group">
-                  <img src={`/api/proxy?url=${encodeURIComponent(u)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
-                  <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={async()=>{
-                    setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
-                  }}>Suppr</button>
-                </div>
+                <GifPreview key={'gs'+idx} url={u} onDelete={()=>{
+                  setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
+                }} />
               ))}
             </div>
             <div className="text-white/70 font-medium mt-2">Aperçu GIFs — Échec</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
-                <div key={'gf'+idx} className="relative group">
-                  <img src={`/api/proxy?url=${encodeURIComponent(u)}`} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
-                  <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={async()=>{
-                    setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
-                  }}>Suppr</button>
-                </div>
+                <GifPreview key={'gf'+idx} url={u} onDelete={()=>{
+                  setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter(x=>x!==u).join('\n'));
+                }} />
               ))}
             </div>
             <div className="mt-3">
@@ -811,6 +805,35 @@ export default function CategoryPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function GifPreview({ url, onDelete }: { url: string; onDelete: () => void }) {
+  const [meta, setMeta] = React.useState<{ url: string; contentType: string }|null>(null);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/proxy?meta=1&url=${encodeURIComponent(url)}`);
+        const j = await res.json();
+        if (!alive) return;
+        if (j && j.url) setMeta({ url: j.url, contentType: String(j.contentType||'') });
+        else setMeta({ url, contentType: '' });
+      } catch { setMeta({ url, contentType: '' }); }
+    })();
+    return () => { alive = false; };
+  }, [url]);
+  const isVideo = (meta?.contentType||'').startsWith('video/');
+  const src = meta?.url ? `/api/proxy?url=${encodeURIComponent(meta.url)}` : `/api/proxy?url=${encodeURIComponent(url)}`;
+  return (
+    <div className="relative group">
+      {isVideo ? (
+        <video src={src} className="w-full h-24 object-cover rounded border border-white/10" autoPlay loop muted playsInline />
+      ) : (
+        <img src={src} className="w-full h-24 object-cover rounded border border-white/10" onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.opacity='0.3'; }} />
+      )}
+      <button className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100" onClick={onDelete}>Suppr</button>
     </div>
   );
 }

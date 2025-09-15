@@ -1228,23 +1228,81 @@ function startKeepAliveServer() {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           try {
             const target = String(parsed.query?.url || '');
+            const wantMeta = String(parsed.query?.meta || '') === '1';
             if (!/^https?:\/\//i.test(target)) return sendJson(res, 400, { error: 'invalid url' });
-            const maxBytes = 5 * 1024 * 1024; // 5MB
+            const maxBytes = 5 * 1024 * 1024; // 5MB for images
             const doRequest = (urlToFetch) => new Promise((resolve) => {
               const { request } = urlToFetch.startsWith('https://') ? require('https') : require('http');
+              let referer = 'https://discord.com';
+              try { referer = new URL(urlToFetch).origin; } catch (_) {}
               const r = request(urlToFetch, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (PreviewProxy)', 'Referer': 'https://discord.com', 'Accept': 'image/*,video/*;q=0.9,*/*;q=0.8' },
-                timeout: 5000,
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (PreviewProxy)',
+                  'Referer': referer,
+                  'Accept': 'image/*,video/*;q=0.9,*/*;q=0.8',
+                  'Accept-Language': 'en-US,en;q=0.8,fr;q=0.7'
+                },
+                timeout: 7000,
               }, (upstream) => resolve(upstream));
               r.on('timeout', ()=>resolve(null));
               r.on('error', ()=>resolve(null));
               r.end();
             });
+            const followRedirect = async (resp, baseUrl) => {
+              let current = resp;
+              let url = baseUrl;
+              for (let i = 0; i < 3; i++) {
+                const code = Number(current?.statusCode || 0);
+                const loc = current?.headers && (current.headers['location'] || current.headers['Location']);
+                if (code >= 300 && code < 400 && loc) {
+                  try { current.destroy(); } catch (_) {}
+                  const nextUrl = new URL(String(loc), url).toString();
+                  url = nextUrl;
+                  current = await doRequest(nextUrl);
+                  if (!current) break;
+                } else {
+                  break;
+                }
+              }
+              return current;
+            };
             let upstream = await doRequest(target);
             if (!upstream) return sendJson(res, 504, { error: 'upstream timeout' });
+            upstream = await followRedirect(upstream, target);
+            if (!upstream) return sendJson(res, 504, { error: 'upstream timeout' });
             let ctype = String(upstream.headers['content-type'] || '');
-            // If not an image, try to resolve og:image for known hosts
-            if (!/^image\//i.test(ctype)) {
+
+            // If meta requested, possibly resolve to og meta and return type/url
+            if (wantMeta) {
+              if (!/^image\//i.test(ctype) && !/^video\//i.test(ctype)) {
+                let html = '';
+                upstream.setEncoding('utf8');
+                upstream.on('data', (chunk) => { html += chunk; if (html.length > 500000) { try { upstream.destroy(); } catch(_) {} } });
+                await new Promise((r)=>{ upstream.on('end', r); upstream.on('error', r); });
+                let direct = null;
+                const mv = html.match(/<meta[^>]+property=["']og:video["'][^>]+content=["']([^"']+)["']/i);
+                if (mv && mv[1]) direct = mv[1];
+                if (!direct) {
+                  const mi = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+                  if (mi && mi[1]) direct = mi[1];
+                }
+                if (direct) {
+                  const up2 = await doRequest(direct);
+                  if (up2) {
+                    ctype = String(up2.headers['content-type'] || '');
+                    try { up2.destroy(); } catch (_) {}
+                    return sendJson(res, 200, { url: direct, contentType: ctype });
+                  }
+                }
+                return sendJson(res, 200, { url: target, contentType: '' });
+              } else {
+                try { upstream.destroy(); } catch (_) {}
+                return sendJson(res, 200, { url: target, contentType: ctype });
+              }
+            }
+
+            // If not image or video, try to resolve og meta to get direct asset
+            if (!/^image\//i.test(ctype) && !/^video\//i.test(ctype)) {
               let html = '';
               upstream.setEncoding('utf8');
               upstream.on('data', (chunk) => { html += chunk; if (html.length > 500000) { try { upstream.destroy(); } catch(_) {} } });
@@ -1261,12 +1319,15 @@ function startKeepAliveServer() {
               if (!upstream) return sendJson(res, 502, { error: 'resolve failed' });
               ctype = String(upstream.headers['content-type'] || '');
             }
-            res.statusCode = 200;
+            // Stream to client; cap images to 5MB to avoid abuse
+            res.statusCode = Number(upstream.statusCode || 200);
             res.setHeader('Content-Type', ctype || 'application/octet-stream');
+            const passHeaders = ['content-length','accept-ranges','content-range','cache-control'];
+            for (const h of passHeaders) { const v = upstream.headers[h]; if (v) try { res.setHeader(h, v); } catch (_) {} }
             let sent = 0;
             upstream.on('data', (chunk) => {
               sent += chunk.length;
-              if (sent > maxBytes) {
+              if (/^image\//i.test(ctype) && sent > maxBytes) {
                 try { upstream.destroy(); } catch (_) {}
                 try { res.destroy(); } catch (_) {}
                 return;
