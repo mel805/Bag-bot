@@ -1218,7 +1218,7 @@ function startKeepAliveServer() {
                       zonesMap[norm] = av.zones.map(String);
                     }
                   }
-                  const outDir = path.join(__dirname, 'data');
+                  const outDir = path.join(__dirname, '..', 'data');
                   try { fs.mkdirSync(outDir, { recursive: true }); } catch (_) {}
                   fs.writeFileSync(path.join(outDir, 'zones-override.json'), JSON.stringify(zonesMap, null, 2));
                 } catch (_) {}
