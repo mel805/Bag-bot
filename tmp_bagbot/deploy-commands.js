@@ -31,14 +31,21 @@ function getZonesFromConfig() {
     const acts = eco.actions || {};
     const conf = acts.config || {};
     const pick = (k) => Array.isArray(conf[k]?.zones) ? conf[k].zones : [];
+    const pickMulti = (keys) => {
+      for (const kk of keys) {
+        const z = pick(kk);
+        if (z && z.length) return z;
+      }
+      return [];
+    };
     return {
-      kiss: pick('kiss'),
-      touche: pick('touche'),
-      caress: pick('caress'),
-      lick: pick('lick'),
-      suck: pick('suck'),
-      nibble: pick('nibble'),
-      tickle: pick('tickle'),
+      kiss: pickMulti(['kiss','embrasser']),
+      touche: pickMulti(['touche']),
+      caress: pickMulti(['caress','caresser']),
+      lick: pickMulti(['lick','lécher','lecher']),
+      suck: pickMulti(['suck','sucer']),
+      nibble: pickMulti(['nibble','mordre']),
+      tickle: pickMulti(['tickle','chatouiller']),
     };
   } catch (_) { return { kiss: [], touche: [], caress: [], lick: [], suck: [], nibble: [], tickle: [] }; }
 }
