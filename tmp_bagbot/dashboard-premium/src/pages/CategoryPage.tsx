@@ -193,6 +193,7 @@ export default function CategoryPage() {
   const [ticketsNamingPattern, setTicketsNamingPattern] = useState('');
   const [ticketsCertifiedRoleId, setTicketsCertifiedRoleId] = useState('');
   const [ticketCats, setTicketCats] = useState<any[]>([]);
+  const [ticketsBannerUrl, setTicketsBannerUrl] = useState('');
   // Booster state
   const [boosterEnabled, setBoosterEnabled] = useState(false);
   const [boosterTextXp, setBoosterTextXp] = useState<number|''>('');
@@ -306,6 +307,7 @@ export default function CategoryPage() {
       setTicketsNamingPattern(String(t.naming?.customPattern||''));
       setTicketsCertifiedRoleId(String(t.certifiedRoleId||''));
       setTicketCats(Array.isArray(t.categories)?t.categories:[]);
+      setTicketsBannerUrl(String(t.bannerUrl||''));
     } catch {}
     // Booster populate
     try {
@@ -766,6 +768,26 @@ export default function CategoryPage() {
               </label>
             </div>
             <div className="text-white/70 font-medium mt-2">Catégories de tickets</div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="text-white/70">Image en bas (URL)
+                <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="https://..." value={ticketsBannerUrl} onChange={e=>setTicketsBannerUrl(e.target.value)} />
+              </label>
+              <div className="text-white/70">Aperçu panneau</div>
+              <div className="md:col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
+                <div className="text-white font-semibold mb-1">{ticketsPanelTitle || '🎫 Ouvrir un ticket'}</div>
+                <div className="text-white/80 mb-2">{ticketsPanelText || 'Choisissez une catégorie pour créer un ticket. Un membre du staff vous assistera.'}</div>
+                <div className="grid md:grid-cols-3 gap-2">
+                  {ticketCats.slice(0,6).map((c,i)=>(
+                    <div key={i} className="bg-white/5 border border-white/10 rounded p-2 text-white/80 truncate">{(c.emoji||'🎟️')+' '+(c.label||'Catégorie')}</div>
+                  ))}
+                </div>
+                {ticketsBannerUrl && (
+                  <div className="mt-3">
+                    <img src={ticketsBannerUrl} className="w-full h-32 object-cover rounded border border-white/10" />
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="space-y-2">
               {ticketCats.map((c, idx)=> (
                 <div key={idx} className="grid md:grid-cols-3 gap-2 items-end border border-white/10 rounded-lg p-2">
@@ -815,6 +837,7 @@ export default function CategoryPage() {
                   certifiedRoleId: ticketsCertifiedRoleId,
                   categories: ticketCats
                 };
+                if (ticketsBannerUrl) payload.bannerUrl = ticketsBannerUrl;
                 if (!confirm('Confirmer la sauvegarde des tickets ?')) return;
                 const ok = await saveTickets(payload);
                 if (ok) await fetchAll();

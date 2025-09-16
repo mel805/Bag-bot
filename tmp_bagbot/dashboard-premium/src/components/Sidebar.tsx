@@ -45,6 +45,7 @@ export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: b
             <NavLink to="/config/moderation/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Modération">🛡️</NavLink>
             <NavLink to="/config/levels/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Niveaux">🆙</NavLink>
             <NavLink to="/config/economie/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Économie">🪙</NavLink>
+            <NavLink to="/config/booster/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Booster">🚀</NavLink>
             <NavLink to="/config/economie/actions" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Économie • Actions">⚙️</NavLink>
             <NavLink to="/config/action-verite/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Action/Vérité">🎲</NavLink>
             <NavLink to="/config/logs/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Journalisation">📜</NavLink>
@@ -90,7 +91,9 @@ export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: b
                       <LinkItem to="/config/levels/overview">🆙 Niveaux</LinkItem>
                       <LinkItem to="/config/economie/overview">🪙 Économie</LinkItem>
                       <LinkItem to="/config/economie/actions">⚙️ Économie • Actions</LinkItem>
+                      <LinkItem to="/config/booster/overview">🚀 Booster</LinkItem>
                       <LinkItem to="/config/action-verite/overview">🎲 Action/Vérité</LinkItem>
+                      <LinkItem to="/config/tickets/overview">🎫 Tickets</LinkItem>
                       <LinkItem to="/config/tickets/overview">🎫 Tickets</LinkItem>
                       <LinkItem to="/config/booster/overview">🚀 Booster</LinkItem>
                       <LinkItem to="/config/logs/overview">📜 Journalisation</LinkItem>

@@ -1189,6 +1189,8 @@ function ensureTicketsShape(g) {
   if (typeof t.naming.customPattern !== 'string') t.naming.customPattern = '';
   // Certified role configuration
   if (typeof t.certifiedRoleId !== 'string') t.certifiedRoleId = '';
+  // Ticket panel banner url (overrides local bag2.png)
+  if (typeof t.bannerUrl !== 'string') t.bannerUrl = '';
 }
 
 async function getTicketsConfig(guildId) {

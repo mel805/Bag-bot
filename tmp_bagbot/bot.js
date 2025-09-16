@@ -373,7 +373,16 @@ function findTicketBannerPath() {
   return null;
 }
 const TICKET_BANNER_PATH = findTicketBannerPath();
-function maybeAttachTicketBanner(embed) {
+async function maybeAttachTicketBanner(embed) {
+  try {
+    const { getTicketsConfig } = require('./storage/jsonStore');
+    const cfg = await getTicketsConfig(guildId);
+    const url = String(cfg?.bannerUrl || '').trim();
+    if (url) {
+      try { if (embed && typeof embed.setImage === 'function') embed.setImage(url); } catch (_) {}
+      return null;
+    }
+  } catch (_) {}
   if (!TICKET_BANNER_PATH) return null;
   try {
     const fs = require('fs');
@@ -1159,6 +1168,7 @@ function startKeepAliveServer() {
               if (typeof data.panelChannelId === 'string') next.panelChannelId = String(data.panelChannelId);
               if (typeof data.pingStaffOnOpen === 'boolean') next.pingStaffOnOpen = data.pingStaffOnOpen;
               if (typeof data.transcriptChannelId === 'string') next.transcriptChannelId = String(data.transcriptChannelId);
+              if (typeof data.bannerUrl === 'string') next.bannerUrl = String(data.bannerUrl);
               if (data.transcript && typeof data.transcript === 'object' && typeof data.transcript.style === 'string') next.transcript = { ...(next.transcript||{}), style: ['pro','premium','classic'].includes(data.transcript.style)?data.transcript.style:'pro' };
               if (data.naming && typeof data.naming === 'object') {
                 const m = String(data.naming.mode||'ticket_num');
