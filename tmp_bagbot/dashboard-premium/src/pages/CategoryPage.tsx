@@ -495,7 +495,9 @@ export default function CategoryPage() {
           </div>
         )}
         {(cat==='economie' || cat==='economy') && view==='boutique' && (
-          <SuitesEditor />
+          <div className="space-y-3">
+            <SuitesEditor />
+          </div>
         )}
         {cat==='moderation' && (
           <div className="space-y-3">
