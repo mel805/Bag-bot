@@ -31,12 +31,18 @@
   @apply rounded-2xl border border-white/10 p-4 backdrop-blur;
   background-color: rgba(239, 68, 68, 0.18);
 }
+.panel, .panel * { color: #0b0b0b !important; }
+.panel ::placeholder { color: rgba(0,0,0,0.55) !important; }
+
 .subcard {
   @apply rounded-lg border border-white/10 p-2;
   background-color: rgba(239, 68, 68, 0.18);
 }
+.subcard, .subcard * { color: #0b0b0b !important; }
+.subcard ::placeholder { color: rgba(0,0,0,0.55) !important; }
 .panel-header {
-  @apply flex items-center gap-2 mb-2 text-white/80;
+  @apply flex items-center gap-2 mb-2;
+  color: #0b0b0b !important;
 }
 .panel-grid {
   @apply grid md:grid-cols-2 gap-3;

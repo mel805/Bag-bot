@@ -66,15 +66,15 @@ function TdPromptsEditor({ mode }: { mode: 'sfw'|'nsfw' }) {
     <div className="space-y-3">
       <div className="flex gap-3 items-end">
         <label className="flex-1 text-white/70">Nouveaux prompts ({mode.toUpperCase()}) — 1 par ligne
-          <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={newLines} onChange={e=>setNewLines(e.target.value)} />
+          <textarea className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full h-32" value={newLines} onChange={e=>setNewLines(e.target.value)} />
         </label>
         <label className="text-white/70">Type
-          <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={newType} onChange={e=>setNewType(e.target.value as any)}>
+          <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={newType} onChange={e=>setNewType(e.target.value as any)}>
             <option value="action">Action</option>
             <option value="verite">Vérité</option>
           </select>
         </label>
-        <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+        <button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
           const lines = newLines.split('\n').map(s=>s.trim()).filter(Boolean);
           if (!lines.length) return;
           if(!confirm('Ajouter ces prompts ?')) return;
@@ -399,7 +399,7 @@ export default function CategoryPage() {
               <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={logsEnabled} onChange={e=>setLogsEnabled(e.target.checked)} /> Activé</label>
               <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={logsPseudo} onChange={e=>setLogsPseudo(e.target.checked)} /> Pseudo</label>
               <label className="text-white/70">Emoji global
-                <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={logsEmoji} onChange={e=>setLogsEmoji(e.target.value)} />
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={logsEmoji} onChange={e=>setLogsEmoji(e.target.value)} />
               </label>
             </div>
             <div className="flex items-center justify-between">
@@ -432,15 +432,15 @@ export default function CategoryPage() {
                       <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={Boolean(logCats[k])} onChange={e=>setLogCats(prev=>({ ...prev, [k]: e.target.checked }))} /> ON</label>
                     )}
                     {!collapsed && (
-                      <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
+                      <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={String(logChannels[k]||'')} onChange={e=>setLogChannels(prev=>({ ...prev, [k]: e.target.value }))}>
                         <option value="">—</option>
                         {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
                       </select>
                     )}
-                    <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="Emoji (ex: 🔔)" value={(configs?.logs?.emojis?.[k] || '')} onChange={e=>{
+                    <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="Emoji (ex: 🔔)" value={(configs?.logs?.emojis?.[k] || '')} onChange={e=>{
                       const v = e.target.value; const next = { ...(configs?.logs?.emojis||{}) }; (next as any)[k] = v; (configs as any).logs = { ...(configs as any).logs, emojis: next }; setLogCats(prev=>({ ...prev })); }} />
                     {!collapsed && (
-                      <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={selectedActs} onChange={e=>{
+                      <select multiple className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={selectedActs} onChange={e=>{
                         const vals = Array.from(e.target.selectedOptions).map(o=>o.value);
                         const next = { ...(configs?.logs?.actions||{}) }; (next as any)[k] = vals; (configs as any).logs = { ...(configs as any).logs, actions: next }; setLogCats(prev=>({ ...prev }));
                       }}>
@@ -569,19 +569,19 @@ export default function CategoryPage() {
                 </div>
                 <div className="panel-grid">
                   <label className="text-white/70">Argent min (succès)
-                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMin as any} onChange={e=>setActMoneyMin(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMin as any} onChange={e=>setActMoneyMin(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                   <label className="text-white/70">Argent max (succès)
-                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMax as any} onChange={e=>setActMoneyMax(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMax as any} onChange={e=>setActMoneyMax(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                   <label className="text-white/70">Argent min (échec)
-                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMin as any} onChange={e=>setFailMoneyMin(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMin as any} onChange={e=>setFailMoneyMin(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                   <label className="text-white/70">Argent max (échec)
-                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMax as any} onChange={e=>setFailMoneyMax(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMax as any} onChange={e=>setFailMoneyMax(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                   <label className="text-white/70">% gains partenaire (argent)
-                    <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerMoneyShare as any} onChange={e=>setPartnerMoneyShare(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" step="0.1" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerMoneyShare as any} onChange={e=>setPartnerMoneyShare(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                 </div>
               </div>
@@ -591,20 +591,20 @@ export default function CategoryPage() {
                 </div>
                 <div className="panel-grid">
                   <label className="text-white/70">Karma (type)
-                    <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarma} onChange={e=>setActKarma(e.target.value as any)}>
+                    <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarma} onChange={e=>setActKarma(e.target.value as any)}>
                       <option value="none">none</option>
                       <option value="charm">charm</option>
                       <option value="perversion">perversion</option>
                     </select>
                   </label>
                   <label className="text-white/70">Δ Karma (succès)
-                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarmaDelta as any} onChange={e=>setActKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarmaDelta as any} onChange={e=>setActKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                   <label className="text-white/70">Δ Karma (échec)
-                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                   <label className="text-white/70">% karma partenaire
-                    <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerKarmaShare as any} onChange={e=>setPartnerKarmaShare(e.target.value===''?'':Number(e.target.value))} />
+                    <input type="number" step="0.1" className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerKarmaShare as any} onChange={e=>setPartnerKarmaShare(e.target.value===''?'':Number(e.target.value))} />
                   </label>
                 </div>
               </div>
@@ -1162,7 +1162,7 @@ function ShopEditor() {
     setRoles(Array.isArray(eco.shop?.roles)? eco.shop.roles : []);
   }, [configs]);
   const saveShop = async (nextItems: any[], nextRoles: any[]) => {
-    // Le backend /api/configs/economy n’a pas encore un payload direct shop; on l’encode dans actions.config spécial "shop_config"
+    // Le backend /api/configs/economy n'a pas encore un payload direct shop; on l'encode dans actions.config spécial "shop_config"
     const payload:any = { action: 'shop_config', config: { items: nextItems, roles: nextRoles } };
     await saveEconomyAction('shop_config', payload);
     await fetchAll();
