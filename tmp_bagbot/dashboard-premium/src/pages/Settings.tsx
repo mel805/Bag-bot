@@ -174,7 +174,7 @@ export default function Settings() {
 
       <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Levels</h3>
-        <div className="grid md:grid-cols-4 gap-3">
+        <div className="grid md:grid-cols-4 gap-3 subcard">
           <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={xpMsg} onChange={e=>setXpMsg(Number(e.target.value||0))} placeholder="XP/msg" />
           <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={xpVoice} onChange={e=>setXpVoice(Number(e.target.value||0))} placeholder="XP/min" />
           <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={lvlBase} onChange={e=>setLvlBase(Number(e.target.value||100))} placeholder="Base" />
@@ -185,7 +185,7 @@ export default function Settings() {
 
       <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">AutoThread</h3>
-        <div className="grid md:grid-cols-3 gap-3">
+        <div className="grid md:grid-cols-3 gap-3 subcard">
           <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={atChannels} onChange={e=>setAtChannels(e.target.value)} placeholder="IDs séparés par virgule" />
           <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={atPolicy} onChange={e=>setAtPolicy(e.target.value)} placeholder="Policy" />
           <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={atArchive} onChange={e=>setAtArchive(e.target.value)} placeholder="Archivage" />
@@ -195,13 +195,13 @@ export default function Settings() {
 
       <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Comptage</h3>
-        <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={countingChannels} onChange={e=>setCountingChannels(e.target.value)} placeholder="IDs (virgules)" />
+        <div className="subcard"><input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={countingChannels} onChange={e=>setCountingChannels(e.target.value)} placeholder="IDs (virgules)" /></div>
         <div className="mt-3"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveCounting(countingChannels.split(',').map(s=>s.trim()).filter(Boolean)); }}>Enregistrer</button></div>
       </div>
 
       <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Disboard</h3>
-        <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid md:grid-cols-2 gap-3 subcard">
           <label className="flex items-center gap-2"><input type="checkbox" checked={disRem} onChange={e=>setDisRem(e.target.checked)} /> Rappels automatiques</label>
           <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={disCh} onChange={e=>setDisCh(e.target.value)} placeholder="Salon rappel (ID)" />
         </div>

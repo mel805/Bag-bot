@@ -822,7 +822,7 @@ export default function CategoryPage() {
                 <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const dataUrl=String(fr.result||''); if (!dataUrl.startsWith('data:')) { alert('Fichier invalide.'); return; } const url=await uploadBase64(f.name, dataUrl); if (url) { setTicketsBannerUrl(url); /* auto-save banner */ const payload:any = { bannerUrl: url }; await saveTickets(payload); } else alert('Échec de l\'upload de l\'image.'); }; fr.readAsDataURL(f); }} />
               </label>
               <div className="text-white/70">Aperçu panneau</div>
-              <div className="md:col-span-2 bg-transparent border border-white/10 rounded-xl p-3">
+              <div className="md:col-span-2 subcard">
                 <div className="text-white font-semibold mb-1">{ticketsPanelTitle || '🎫 Ouvrir un ticket'}</div>
                 <div className="text-white/80 mb-2">{ticketsPanelText || 'Choisissez une catégorie pour créer un ticket. Un membre du staff vous assistera.'}</div>
                 <div className="grid md:grid-cols-3 gap-2">
@@ -974,7 +974,7 @@ export default function CategoryPage() {
             )}
             {view==='cards' && (
             <>
-            <div className="bg-transparent border border-white/10 rounded-xl p-3 space-y-4">
+            <div className="subcard space-y-4">
               <div className="text-white/70 font-medium">Carte actuelle vs prévisualisation</div>
               <div className="flex items-center gap-2">
                 <span className="text-white/60 text-sm">Carte:</span>
@@ -999,7 +999,7 @@ export default function CategoryPage() {
                     const base = `/api/levels/preview?style=${encodeURIComponent(variant)}&memberName=${encodeURIComponent('Alyssa')}&level=${encodeURIComponent(38)}&roleName=${encodeURIComponent('Étoile du Serveur')}`;
                     const url = (dashKey ? (base + `&key=${encodeURIComponent(dashKey)}`) : base) + (isRole ? '&mode=role' : '');
                     return (
-                      <div className="aspect-video w-full bg-transparent border border-white/10 rounded-xl overflow-hidden">
+                      <div className="aspect-video w-full subcard p-0 overflow-hidden">
                         <img src={url} className="w-full h-full object-contain" />
                       </div>
                     );
@@ -1030,7 +1030,7 @@ export default function CategoryPage() {
                     params.set('ts', String(Date.now()));
                     const url = `/api/levels/preview?${params.toString()}`;
                     return (
-                      <div className="aspect-video w-full bg-transparent border border-white/10 rounded-xl overflow-hidden">
+                      <div className="aspect-video w-full subcard p-0 overflow-hidden">
                         <img src={url} className="w-full h-full object-contain" />
                       </div>
                     );
@@ -1038,7 +1038,7 @@ export default function CategoryPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-transparent border border-white/10 rounded-xl p-3 space-y-3">
+            <div className="subcard space-y-3">
               <div className="text-white/70 font-medium">Cartes (URL ou upload)</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="text-white/70">Fond par défaut
@@ -1068,7 +1068,7 @@ export default function CategoryPage() {
                 </label>
               </div>
             </div>
-            <div className="bg-transparent border border-white/10 rounded-xl p-3 space-y-3">
+            <div className="subcard space-y-3">
               <div className="text-white/70 font-medium">Templates de texte</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="text-white/70">Titre
