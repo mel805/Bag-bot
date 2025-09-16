@@ -13,11 +13,19 @@ export default function Dashboard() {
       try {
         const s = await fetch('/api/stats').then(r=>r.json()).catch(()=>null);
         if (s && Array.isArray(s.dailyMessages) && s.dailyMessages.length) {
-          const next = s.dailyMessages.map((d: any) => ({ x: d.date?.slice(5) || '', y: Number(d.count||0) }));
+          const next = s.dailyMessages
+            .slice()
+            .sort((a:any,b:any)=> String(a.date).localeCompare(String(b.date)))
+            .slice(-30)
+            .map((d: any) => ({ x: d.date?.slice(5) || '', y: Number(d.count||0) }));
           setPoints(next);
         }
         if (s && Array.isArray(s.dailyMembers) && s.dailyMembers.length) {
-          const nextM = s.dailyMembers.map((d: any) => ({ x: d.date?.slice(5) || '', y: Number(d.count||0) }));
+          const nextM = s.dailyMembers
+            .slice()
+            .sort((a:any,b:any)=> String(a.date).localeCompare(String(b.date)))
+            .slice(-30)
+            .map((d: any) => ({ x: d.date?.slice(5) || '', y: Number(d.count||0) }));
           setMembers(nextM);
         }
       } catch {}

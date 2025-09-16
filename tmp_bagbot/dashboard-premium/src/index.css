@@ -29,16 +29,18 @@
 /* Panel grouping */
 .panel {
   @apply rounded-2xl border border-white/10 p-4 backdrop-blur;
-  background-color: rgba(239, 68, 68, 0.18);
-  border-color: rgba(255, 215, 0, 0.8);
+  background-color: rgba(239, 68, 68, 0.28);
+  border-color: rgba(255, 215, 0, 0.9);
+  border-width: 2px;
 }
 .panel, .panel * { color: #ffffff !important; }
 .panel ::placeholder { color: rgba(255,255,255,0.75) !important; }
 
 .subcard {
   @apply rounded-lg border border-white/10 p-2;
-  background-color: rgba(239, 68, 68, 0.18);
-  border-color: rgba(255, 215, 0, 0.8);
+  background-color: rgba(239, 68, 68, 0.28);
+  border-color: rgba(255, 215, 0, 0.9);
+  border-width: 2px;
 }
 .subcard, .subcard * { color: #ffffff !important; }
 .subcard ::placeholder { color: rgba(255,255,255,0.75) !important; }
