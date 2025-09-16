@@ -28,7 +28,7 @@
 
 /* Panel grouping */
 .panel {
-  @apply rounded-2xl border border-white/10 p-4 bg-white/5;
+  @apply rounded-2xl border border-white/10 p-4 bg-transparent;
 }
 .panel-header {
   @apply flex items-center gap-2 mb-2 text-white/80;

@@ -542,18 +542,23 @@ export default function CategoryPage() {
         )}
         {(cat==='economie' || cat==='economy') && view==='actions' && (
           <div className="space-y-3">
-            <div className="grid md:grid-cols-3 gap-3">
-              <label className="text-white/70">Action
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
-                  {actionsList.map(k => (<option key={k} value={k}>{k}</option>))}
-                </select>
-              </label>
-              <label className="text-white/70">Cooldown (s)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Taux de succès (0-1)
-                <input type="number" step="0.01" min="0" max="1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actSuccessRate as any} onChange={e=>setActSuccessRate(e.target.value===''?'':Number(e.target.value))} />
-              </label>
+            <div className="panel">
+              <div className="panel-header">
+                <span className="pill pill-primary">Général</span>
+              </div>
+              <div className="panel-grid">
+                <label className="text-white/70">Action
+                  <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKey} onChange={e=>setActKey(e.target.value)}>
+                    {actionsList.map(k => (<option key={k} value={k}>{k}</option>))}
+                  </select>
+                </label>
+                <label className="text-white/70">Cooldown (s)
+                  <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
+                </label>
+                <label className="text-white/70">Taux de succès (0-1)
+                  <input type="number" step="0.01" min="0" max="1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actSuccessRate as any} onChange={e=>setActSuccessRate(e.target.value===''?'':Number(e.target.value))} />
+                </label>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-3">
