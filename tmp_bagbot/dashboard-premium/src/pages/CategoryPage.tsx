@@ -548,43 +548,60 @@ export default function CategoryPage() {
                   {actionsList.map(k => (<option key={k} value={k}>{k}</option>))}
                 </select>
               </label>
-              <label className="text-white/70">Argent min (succès)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMin as any} onChange={e=>setActMoneyMin(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Argent max (succès)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMax as any} onChange={e=>setActMoneyMax(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Karma (type)
-                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarma} onChange={e=>setActKarma(e.target.value as any)}>
-                  <option value="none">none</option>
-                  <option value="charm">charm</option>
-                  <option value="perversion">perversion</option>
-                </select>
-              </label>
-              <label className="text-white/70">Δ Karma (succès)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarmaDelta as any} onChange={e=>setActKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
-              </label>
               <label className="text-white/70">Cooldown (s)
                 <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actCooldown as any} onChange={e=>setActCooldown(e.target.value===''?'':Number(e.target.value))} />
               </label>
               <label className="text-white/70">Taux de succès (0-1)
                 <input type="number" step="0.01" min="0" max="1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actSuccessRate as any} onChange={e=>setActSuccessRate(e.target.value===''?'':Number(e.target.value))} />
               </label>
-              <label className="text-white/70">Δ Karma (échec)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Argent min (échec)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMin as any} onChange={e=>setFailMoneyMin(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">Argent max (échec)
-                <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMax as any} onChange={e=>setFailMoneyMax(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">% gains partenaire (argent)
-                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerMoneyShare as any} onChange={e=>setPartnerMoneyShare(e.target.value===''?'':Number(e.target.value))} />
-              </label>
-              <label className="text-white/70">% karma partenaire
-                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerKarmaShare as any} onChange={e=>setPartnerKarmaShare(e.target.value===''?'':Number(e.target.value))} />
-              </label>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              <div className="panel">
+                <div className="panel-header">
+                  <span className="pill pill-accent">Argent</span>
+                </div>
+                <div className="panel-grid">
+                  <label className="text-white/70">Argent min (succès)
+                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMin as any} onChange={e=>setActMoneyMin(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                  <label className="text-white/70">Argent max (succès)
+                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actMoneyMax as any} onChange={e=>setActMoneyMax(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                  <label className="text-white/70">Argent min (échec)
+                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMin as any} onChange={e=>setFailMoneyMin(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                  <label className="text-white/70">Argent max (échec)
+                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failMoneyMax as any} onChange={e=>setFailMoneyMax(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                  <label className="text-white/70">% gains partenaire (argent)
+                    <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerMoneyShare as any} onChange={e=>setPartnerMoneyShare(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                </div>
+              </div>
+              <div className="panel">
+                <div className="panel-header">
+                  <span className="pill pill-primary">Karma</span>
+                </div>
+                <div className="panel-grid">
+                  <label className="text-white/70">Karma (type)
+                    <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarma} onChange={e=>setActKarma(e.target.value as any)}>
+                      <option value="none">none</option>
+                      <option value="charm">charm</option>
+                      <option value="perversion">perversion</option>
+                    </select>
+                  </label>
+                  <label className="text-white/70">Δ Karma (succès)
+                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={actKarmaDelta as any} onChange={e=>setActKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                  <label className="text-white/70">Δ Karma (échec)
+                    <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={failKarmaDelta as any} onChange={e=>setFailKarmaDelta(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                  <label className="text-white/70">% karma partenaire
+                    <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={partnerKarmaShare as any} onChange={e=>setPartnerKarmaShare(e.target.value===''?'':Number(e.target.value))} />
+                  </label>
+                </div>
+              </div>
             </div>
             <div className="grid md:grid-cols-2 gap-3 mt-3">
               {/* GIF URLs moved to GIFs tab; no inputs here */}
