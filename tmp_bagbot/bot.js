@@ -6601,7 +6601,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const channelName = (prefix + baseName).slice(0, 90);
       const ch = await interaction.guild.channels.create({ name: channelName, parent: parent?.id, type: ChannelType.GuildText, topic: `Ticket ${channelName} • ${interaction.user.tag} • ${cat.label}` }).catch(()=>null);
       if (!ch) return interaction.editReply({ content: 'Impossible de créer le ticket.' });
-      await ch.permissionOverwrites?.create?.(interaction.user.id, { ViewChannel: true, SendMessages: true }).catch(()=>{});
+      await ch.permissionOverwrites?.create?.(interaction.user.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }).catch(()=>{});
+      // Ensure bot can send embeds/buttons inside ticket channel
+      try { await ch.permissionOverwrites?.create?.(interaction.client.user.id, { ViewChannel: true, SendMessages: true, EmbedLinks: true, AttachFiles: true, ReadMessageHistory: true, AddReactions: true }); } catch (_) {}
       try {
         const staffIds = await getGuildStaffRoleIds(interaction.guild.id);
         for (const rid of staffIds) {
