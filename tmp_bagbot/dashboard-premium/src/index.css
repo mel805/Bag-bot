@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theming refinements */
+:root {
+  --brand-primary: #7c3aed; /* violet-600 */
+  --brand-accent: #06b6d4; /* cyan-500 */
+  --brand-surface: rgba(16, 18, 24, 0.8);
+}
+
+.bg-card { background: var(--brand-surface); }
+.card {
+  @apply rounded-xl border border-white/10 bg-card p-4;
+}
+.section-title {
+  @apply text-white/80 font-semibold mb-1;
+}
+.pill {
+  @apply inline-block px-2 py-1 rounded-full text-xs border;
+}
+.pill-primary {
+  @apply border-purple-400/40 text-purple-200 bg-purple-500/10;
+}
+.pill-accent {
+  @apply border-cyan-400/40 text-cyan-200 bg-cyan-500/10;
+}
+
+/* Panel grouping */
+.panel {
+  @apply rounded-2xl border border-white/10 p-4 bg-white/5;
+}
+.panel-header {
+  @apply flex items-center gap-2 mb-2 text-white/80;
+}
+.panel-grid {
+  @apply grid md:grid-cols-2 gap-3;
+}
+
 * { box-sizing: border-box; }
 
 body {

@@ -46,8 +46,8 @@ export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: b
             <NavLink to="/config/levels/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Niveaux">🆙</NavLink>
             <NavLink to="/config/economie/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Économie">🪙</NavLink>
             <NavLink to="/config/booster/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Booster">🚀</NavLink>
-            <NavLink to="/config/economie/actions" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Économie • Actions">⚙️</NavLink>
             <NavLink to="/config/action-verite/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Action/Vérité">🎲</NavLink>
+            <NavLink to="/config/tickets/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Tickets">🎫</NavLink>
             <NavLink to="/config/logs/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Journalisation">📜</NavLink>
             <NavLink to="/config/confessions/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Confessions">🕊️</NavLink>
             <NavLink to="/config/autothread/overview" onClick={openSidebar} className={({isActive})=>`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 ${isActive?'bg-white/10':''}`} title="Auto-threads">🧵</NavLink>
@@ -94,8 +94,6 @@ export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: b
                       <LinkItem to="/config/booster/overview">🚀 Booster</LinkItem>
                       <LinkItem to="/config/action-verite/overview">🎲 Action/Vérité</LinkItem>
                       <LinkItem to="/config/tickets/overview">🎫 Tickets</LinkItem>
-                      <LinkItem to="/config/tickets/overview">🎫 Tickets</LinkItem>
-                      <LinkItem to="/config/booster/overview">🚀 Booster</LinkItem>
                       <LinkItem to="/config/logs/overview">📜 Journalisation</LinkItem>
                       <LinkItem to="/config/confessions/overview">🕊️ Confessions</LinkItem>
                       <LinkItem to="/config/autothread/overview">🧵 Auto-threads</LinkItem>
