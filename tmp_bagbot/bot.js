@@ -1591,7 +1591,7 @@ function startKeepAliveServer() {
               const data = JSON.parse(body||'{}');
               const filenameRaw = String(data.filename||'upload').replace(/[^a-zA-Z0-9._-]/g,'_');
               const dataUrl = String(data.dataUrl||'');
-              const m = dataUrl.match(/^data:((image\/[a-zA-Z0-9.+-]+)|(video\/(mp4|webm|ogg)));base64,(.+)$/i);
+              const m = dataUrl.match(/^data:(image\/[^;]+|video\/[^;]+);base64,(.+)$/i);
               if (!m) return sendJson(res, 400, { error: 'invalid dataUrl' });
               const mime = m[1].toLowerCase();
               let ext = 'bin';
@@ -1600,9 +1600,11 @@ function startKeepAliveServer() {
                 ext = (mt === 'jpeg') ? 'jpg' : mt;
               } else if (mime.startsWith('video/')) {
                 const mt = mime.split('/')[1];
-                ext = (mt === 'ogg') ? 'ogv' : mt;
+                if (mt === 'ogg') ext = 'ogv';
+                else if (mt === 'quicktime') ext = 'mov';
+                else ext = mt;
               }
-              const base64 = m[5];
+              const base64 = m[2];
               const buf = Buffer.from(base64, 'base64');
               const ts = Date.now();
               const safeName = filenameRaw.replace(/\.[^.]+$/, '') + '-' + ts + '.' + ext;
