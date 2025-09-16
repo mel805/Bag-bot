@@ -1221,6 +1221,7 @@ async function addTicketCategory(guildId, category) {
     description: String(category.description || ''),
     staffPingRoleIds: Array.isArray(category.staffPingRoleIds) ? category.staffPingRoleIds.map(String) : [],
     extraViewerRoleIds: Array.isArray(category.extraViewerRoleIds) ? category.extraViewerRoleIds.map(String) : [],
+    bannerUrl: typeof category.bannerUrl === 'string' ? category.bannerUrl : ''
   };
   if (!Array.isArray(t.categories)) t.categories = [];
   // Avoid duplicate keys

@@ -375,11 +375,11 @@ function findTicketBannerPath() {
   return null;
 }
 const TICKET_BANNER_PATH = findTicketBannerPath();
-async function maybeAttachTicketBanner(embed) {
+async function maybeAttachTicketBanner(embed, categoryBannerUrl) {
   try {
     const { getTicketsConfig } = require('./storage/jsonStore');
     const cfg = await getTicketsConfig(guildId);
-    const url = String(cfg?.bannerUrl || '').trim();
+    const url = String(categoryBannerUrl || cfg?.bannerUrl || '').trim();
     if (url) {
       if (url.startsWith('/')) {
         // Attach local file and set embed image to attachment
@@ -1192,7 +1192,7 @@ function startKeepAliveServer() {
                 next.naming = { ...(next.naming||{}), mode: ['ticket_num','member_num','category_num','custom','numeric','date_num'].includes(m)?m:'ticket_num', customPattern: String(data.naming.customPattern||'') };
               }
               if (typeof data.certifiedRoleId === 'string') next.certifiedRoleId = String(data.certifiedRoleId);
-              if (Array.isArray(data.categories)) next.categories = data.categories.map((c)=>({ key: String(c.key||''), label: String(c.label||''), emoji: String(c.emoji||''), description: String(c.description||''), color: String(c.color||''), staffPingRoleIds: Array.isArray(c.staffPingRoleIds)?c.staffPingRoleIds.map(String):[], extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds)?c.extraViewerRoleIds.map(String):[] }));
+              if (Array.isArray(data.categories)) next.categories = data.categories.map((c)=>({ key: String(c.key||''), label: String(c.label||''), emoji: String(c.emoji||''), description: String(c.description||''), color: String(c.color||''), staffPingRoleIds: Array.isArray(c.staffPingRoleIds)?c.staffPingRoleIds.map(String):[], extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds)?c.extraViewerRoleIds.map(String):[], bannerUrl: typeof c.bannerUrl === 'string' ? c.bannerUrl : '' }));
               // If bannerUrl is a remote http(s) URL, fetch and store under /public/uploads and replace by local path
               try {
                 const raw = String(data.bannerUrl || next.bannerUrl || '').trim();
@@ -6389,7 +6389,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!opts.length) return interaction.editReply({ content: 'Ajoutez au moins une catégorie de ticket.' });
       select.addOptions(...opts);
       const row = new ActionRowBuilder().addComponents(select);
-      const __banner = await maybeAttachTicketBanner(embed);
+      const __banner = await maybeAttachTicketBanner(embed, cat.bannerUrl);
       const msg = await panelChannel.send({ embeds: [embed], components: [row], files: __banner ? [__banner] : [] }).catch(()=>null);
       if (!msg) return interaction.editReply({ content: 'Impossible d\'envoyer le panneau.' });
       await updateTicketsConfig(interaction.guild.id, { panelMessageId: msg.id });
