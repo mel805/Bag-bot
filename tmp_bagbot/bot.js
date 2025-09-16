@@ -1177,6 +1177,26 @@ function startKeepAliveServer() {
               if (typeof data.certifiedRoleId === 'string') next.certifiedRoleId = String(data.certifiedRoleId);
               if (Array.isArray(data.categories)) next.categories = data.categories.map((c)=>({ key: String(c.key||''), label: String(c.label||''), emoji: String(c.emoji||''), description: String(c.description||''), color: String(c.color||''), staffPingRoleIds: Array.isArray(c.staffPingRoleIds)?c.staffPingRoleIds.map(String):[], extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds)?c.extraViewerRoleIds.map(String):[] }));
               await updateTicketsConfig(guildId, next);
+              // If panel channel is set, post/update panel
+              try {
+                const g = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(()=>null);
+                const ch = next.panelChannelId ? (g?.channels?.cache?.get(next.panelChannelId) || await g?.channels?.fetch?.(next.panelChannelId).catch(()=>null)) : null;
+                if (ch && ch.isTextBased?.()) {
+                  const embed = new EmbedBuilder()
+                    .setTitle(next.panelTitle || '🎫 Ouvrir un ticket')
+                    .setDescription(next.panelText || 'Choisissez une catégorie pour créer un ticket. Un membre du staff vous assistera.')
+                    .setColor(THEME_COLOR_PRIMARY)
+                    .setTimestamp(new Date());
+                  const cats = Array.isArray(next.categories) ? next.categories : [];
+                  const select = new StringSelectMenuBuilder().setCustomId('ticket_open').setPlaceholder('Sélectionnez une catégorie…').setMinValues(1).setMaxValues(1).addOptions(cats.slice(0,25).map(c=>({ label: String(c.label||c.key||'Catégorie').slice(0,100), value: String(c.key||'cat'), description: String(c.description||'').slice(0,100), emoji: String(c.emoji||'')||undefined })));
+                  const row = new ActionRowBuilder().addComponents(select);
+                  const __banner = await maybeAttachTicketBanner(embed);
+                  const sent = await ch.send({ embeds: [embed], components: [row], files: __banner ? [__banner] : [] }).catch(()=>null);
+                  if (sent && sent.id) {
+                    await updateTicketsConfig(guildId, { panelMessageId: sent.id });
+                  }
+                }
+              } catch (_) {}
               return sendJson(res, 200, { ok: true });
             } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
           });
@@ -1565,16 +1585,24 @@ function startKeepAliveServer() {
         if (parsed.pathname === '/api/uploadBase64' && req.method === 'POST') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           let body='';
-          req.on('data',(c)=>{ body += c; if (body.length>5e6) req.socket.destroy(); });
+          req.on('data',(c)=>{ body += c; if (body.length>25e6) req.socket.destroy(); });
           req.on('end', async ()=>{
             try {
               const data = JSON.parse(body||'{}');
               const filenameRaw = String(data.filename||'upload').replace(/[^a-zA-Z0-9._-]/g,'_');
               const dataUrl = String(data.dataUrl||'');
-              const m = dataUrl.match(/^data:(image\/(png|jpeg|jpg|gif|webp));base64,(.+)$/i);
+              const m = dataUrl.match(/^data:((image\/[a-zA-Z0-9.+-]+)|(video\/(mp4|webm|ogg)));base64,(.+)$/i);
               if (!m) return sendJson(res, 400, { error: 'invalid dataUrl' });
-              const ext = m[2].toLowerCase() === 'jpg' ? 'jpg' : m[2].toLowerCase();
-              const base64 = m[3];
+              const mime = m[1].toLowerCase();
+              let ext = 'bin';
+              if (mime.startsWith('image/')) {
+                const mt = mime.split('/')[1];
+                ext = (mt === 'jpeg') ? 'jpg' : mt;
+              } else if (mime.startsWith('video/')) {
+                const mt = mime.split('/')[1];
+                ext = (mt === 'ogg') ? 'ogv' : mt;
+              }
+              const base64 = m[5];
               const buf = Buffer.from(base64, 'base64');
               const ts = Date.now();
               const safeName = filenameRaw.replace(/\.[^.]+$/, '') + '-' + ts + '.' + ext;
