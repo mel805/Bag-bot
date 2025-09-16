@@ -71,7 +71,7 @@ export default function Settings() {
   }, [configs]);
   return (
     <div className="space-y-6">
-      <div className="bg-transparent rounded-xl border border-white/10 p-4">
+      <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Devise</h3>
         <div className="flex gap-2">
           <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={currency} onChange={e=>setCurrency(e.target.value)} />
@@ -79,7 +79,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="bg-transparent rounded-xl border border-white/10 p-4">
+      <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Économie • Actions</h3>
         <div className="grid md:grid-cols-3 gap-3">
           <label className="text-white/70">Action
@@ -138,7 +138,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="bg-transparent rounded-xl border border-white/10 p-4">
+      <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Logs</h3>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex items-center gap-2"><input type="checkbox" checked={logJoin} onChange={e=>setLogJoin(e.target.checked)} /> Entrées/Sorties</label>
@@ -151,13 +151,13 @@ export default function Settings() {
         }}>Enregistrer</button></div>
       </div>
 
-      <div className="bg-transparent rounded-xl border border-white/10 p-4">
+      <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Confessions</h3>
         <label className="flex items-center gap-2"><input type="checkbox" checked={confAllow} onChange={e=>setConfAllow(e.target.checked)} /> Autoriser réponses anonymes</label>
         <div className="mt-3"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfess(confAllow); }}>Enregistrer</button></div>
       </div>
 
-      <div className="bg-transparent rounded-xl border border-white/10 p-4">
+      <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Action/Vérité</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <div>
@@ -172,7 +172,7 @@ export default function Settings() {
         <div className="mt-3"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveTd(tdSfw.split(',').map(s=>s.trim()).filter(Boolean), tdNsfw.split(',').map(s=>s.trim()).filter(Boolean)); }}>Enregistrer</button></div>
       </div>
 
-      <div className="bg-transparent rounded-xl border border-white/10 p-4">
+      <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Levels</h3>
         <div className="grid md:grid-cols-4 gap-3">
           <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={xpMsg} onChange={e=>setXpMsg(Number(e.target.value||0))} placeholder="XP/msg" />

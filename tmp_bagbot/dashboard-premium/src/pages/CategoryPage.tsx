@@ -391,7 +391,7 @@ export default function CategoryPage() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-transparent rounded-xl border border-white/10 p-4">
+      <div className="panel">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">{title} — {view}</h3>
         {cat==='logs' && (
           <div className="space-y-3">
