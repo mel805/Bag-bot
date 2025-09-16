@@ -2461,12 +2461,28 @@ async function handleEconomyAction(interaction, actionKey) {
   let imageLinkForContent = null;
   let imageAttachment = null; // { attachment, filename }
   if (imageUrl) {
-    // Treat local uploads as direct
-    if (String(imageUrl).startsWith('/')) imageIsDirect = true;
-    else {
-      try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
+    const raw = String(imageUrl);
+    if (raw.startsWith('/')) {
+      // Convert local upload to attachment for reliable embed rendering
+      try {
+        const path = require('path');
+        const fs = require('fs');
+        const p = path.join(PUBLIC_DIR, raw.replace(/^\/+/, ''));
+        const ext = path.extname(p) || '.png';
+        const name = 'action-image' + ext;
+        const buf = fs.readFileSync(p);
+        imageAttachment = { attachment: new AttachmentBuilder(buf, { name }), filename: name };
+        imageIsDirect = false;
+        imageLinkForContent = null;
+      } catch (e) {
+        // Fallback: keep as link
+        imageIsDirect = false;
+        imageLinkForContent = raw;
+      }
+    } else {
+      try { imageIsDirect = isLikelyDirectImageUrl(raw); } catch (_) { imageIsDirect = false; }
       if (!imageIsDirect) {
-        imageLinkForContent = String(imageUrl);
+        imageLinkForContent = raw;
       }
     }
   }
@@ -3219,10 +3235,10 @@ async function handleEconomyAction(interaction, actionKey) {
     const desc = msgText ? `${msgText}\nVous avez donné ${montant} ${currency} à ${cible}.` : `Vous avez donné ${montant} ${currency} à ${cible}.`;
     const fields = [
       { name: 'Argent', value: `-${montant} ${currency}`, inline: true },
-      { name: 'Solde argent', value: String(u.amount), inline: true },
+      { name: 'Solde argent', value: String(Math.round(u.amount)), inline: true },
       ...(giveKarmaField ? [{ name: 'Karma', value: `${giveKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${giveKarmaField[1]}`, inline: true }] : []),
-      { name: 'Solde charme', value: String(u.charm||0), inline: true },
-      { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+      { name: 'Solde charme', value: String(Math.round(u.charm||0)), inline: true },
+      { name: 'Solde perversion', value: String(Math.round(u.perversion||0)), inline: true },
     ];
     const embed = buildEcoEmbed({ title: 'Don effectué', description: desc, fields });
     if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
@@ -3260,10 +3276,10 @@ async function handleEconomyAction(interaction, actionKey) {
       const desc = msgText ? `${msgText}\nVous avez volé ${got} ${currency} à ${cible}.` : `Vous avez volé ${got} ${currency} à ${cible}.`;
       const fields = [
         { name: 'Argent', value: `+${got} ${currency}`, inline: true },
-        { name: 'Solde argent', value: String(u.amount), inline: true },
+        { name: 'Solde argent', value: String(Math.round(u.amount)), inline: true },
         ...(stealKarmaField ? [{ name: 'Karma', value: `${stealKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${stealKarmaField[1]}`, inline: true }] : []),
-        { name: 'Solde charme', value: String(u.charm||0), inline: true },
-        { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+        { name: 'Solde charme', value: String(Math.round(u.charm||0)), inline: true },
+        { name: 'Solde perversion', value: String(Math.round(u.perversion||0)), inline: true },
       ];
       const embed = buildEcoEmbed({ title: 'Vol réussi', description: desc, fields });
       if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
@@ -3300,10 +3316,10 @@ async function handleEconomyAction(interaction, actionKey) {
       const desc = msgText ? `${msgText}\nVous avez été repéré par ${cible} et perdu ${Math.abs(lostAmount)} ${currency}.` : `Vous avez été repéré par ${cible} et perdu ${Math.abs(lostAmount)} ${currency}.`;
       const fields = [
         { name: 'Argent', value: `-${Math.abs(lostAmount)} ${currency}`, inline: true },
-        { name: 'Solde argent', value: String(u.amount), inline: true },
+        { name: 'Solde argent', value: String(Math.round(u.amount)), inline: true },
         ...(stealKarmaField ? [{ name: 'Karma', value: `${stealKarmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${stealKarmaField[1]}`, inline: true }] : []),
-        { name: 'Solde charme', value: String(u.charm||0), inline: true },
-        { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+        { name: 'Solde charme', value: String(Math.round(u.charm||0)), inline: true },
+        { name: 'Solde perversion', value: String(Math.round(u.perversion||0)), inline: true },
       ];
       const embed = buildEcoEmbed({ title: 'Vol raté', description: desc, fields });
       if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
@@ -3376,13 +3392,13 @@ async function handleEconomyAction(interaction, actionKey) {
   const moneyField = { name: 'Argent', value: `${moneyDelta >= 0 ? '+' : '-'}${Math.abs(moneyDelta)} ${currency}`, inline: true };
   const fields = [
     moneyField,
-    { name: 'Solde argent', value: String(u.amount), inline: true },
+    { name: 'Solde argent', value: String(Math.round(u.amount)), inline: true },
     ...(karmaField ? [{ name: 'Karma', value: `${karmaField[0].toLowerCase().includes('perversion') ? 'Perversion' : 'Charme'} ${karmaField[1]}`, inline: true }] : []),
     ...(partnerField ? [partnerField] : []),
     ...(global.__eco_tromper_third ? [global.__eco_tromper_third] : []),
     ...(global.__eco_orgie_participants ? [global.__eco_orgie_participants] : []),
-    { name: 'Solde charme', value: String(u.charm||0), inline: true },
-    { name: 'Solde perversion', value: String(u.perversion||0), inline: true },
+    { name: 'Solde charme', value: String(Math.round(u.charm||0)), inline: true },
+    { name: 'Solde perversion', value: String(Math.round(u.perversion||0)), inline: true },
   ];
   const embed = buildEcoEmbed({ title, description: desc, fields });
   if (imageUrl && imageIsDirect) embed.setImage(imageUrl);
