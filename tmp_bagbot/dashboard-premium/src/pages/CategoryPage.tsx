@@ -523,6 +523,7 @@ export default function CategoryPage() {
               <NavLink to={`/config/${cat}/overview`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
               <NavLink to={`/config/${cat}/actions`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
               <NavLink to={`/config/${cat}/gifs`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
+              <NavLink to={`/config/${cat}/boutique`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Boutique</NavLink>
             </div>
           </div>
         )}
@@ -680,6 +681,9 @@ export default function CategoryPage() {
               }}>Enregistrer GIFs</button>
             </div>
           </div>
+        )}
+        {(cat==='economie' || cat==='economy') && view==='boutique' && (
+          <ShopEditor />
         )}
         {/* Phrases zones tab removed */}
         {cat==='confessions' && (
@@ -1139,6 +1143,101 @@ export default function CategoryPage() {
             <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Disboard ?')) return; await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ShopEditor() {
+  const { configs, fetchAll } = useApi();
+  const { saveEconomyAction } = (useApi.getState() as any);
+  const [items, setItems] = React.useState<{ id: string; name: string; price: number }[]>([]);
+  const [roles, setRoles] = React.useState<{ roleId: string; price: number; durationDays: number }[]>([]);
+  const [newItem, setNewItem] = React.useState<{ id: string; name: string; price: string }>({ id: '', name: '', price: '' });
+  const [newRole, setNewRole] = React.useState<{ roleId: string; price: string; durationDays: string }>({ roleId: '', price: '', durationDays: '' });
+  const rolesMeta = useApi((s:any)=>s.meta?.roles||[]);
+  React.useEffect(()=>{
+    const eco = configs?.economy || {};
+    setItems(Array.isArray(eco.shop?.items)? eco.shop.items : []);
+    setRoles(Array.isArray(eco.shop?.roles)? eco.shop.roles : []);
+  }, [configs]);
+  const saveShop = async (nextItems: any[], nextRoles: any[]) => {
+    // Le backend /api/configs/economy n’a pas encore un payload direct shop; on l’encode dans actions.config spécial "shop_config"
+    const payload:any = { action: 'shop_config', config: { items: nextItems, roles: nextRoles } };
+    await saveEconomyAction('shop_config', payload);
+    await fetchAll();
+  };
+  return (
+    <div className="space-y-3">
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-primary">Articles</span></div>
+        <div className="space-y-2">
+          <div className="grid md:grid-cols-3 gap-2 subcard">
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="ID unique" value={newItem.id} onChange={e=>setNewItem(v=>({...v,id:e.target.value}))} />
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Nom" value={newItem.name} onChange={e=>setNewItem(v=>({...v,name:e.target.value}))} />
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newItem.price} onChange={e=>setNewItem(v=>({...v,price:e.target.value}))} />
+            <div className="md:col-span-3"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              const id = newItem.id.trim(); const name = newItem.name.trim(); const price = Number(newItem.price||0);
+              if (!id || !name) return;
+              if (items.some(x=>x.id===id)) return alert('ID déjà utilisé');
+              const next = [...items, { id, name, price: Math.max(0, price) }];
+              setItems(next); await saveShop(next, roles);
+              setNewItem({ id:'', name:'', price:'' });
+            }}>Ajouter</button></div>
+          </div>
+          <div className="space-y-2">
+            {items.map((it, idx)=> (
+              <div key={it.id} className="grid md:grid-cols-6 gap-2 items-center subcard">
+                <div className="text-white/80 md:col-span-2 truncate">{it.name} <span className="text-white/50">#{it.id}</span></div>
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={it.price} onChange={e=>{
+                  const v = Number(e.target.value||0); setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
+                }} />
+                <div className="md:col-span-2"></div>
+                <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                  const next = items.filter((_,i)=>i!==idx); setItems(next); await saveShop(next, roles);
+                }}>Suppr</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-accent">Rôles</span></div>
+        <div className="space-y-2">
+          <div className="grid md:grid-cols-4 gap-2 subcard">
+            <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={newRole.roleId} onChange={e=>setNewRole(v=>({...v,roleId:e.target.value}))}>
+              <option value="">— Rôle —</option>
+              {rolesMeta.map((r:any)=>(<option key={r.id} value={r.id}>{r.name}</option>))}
+            </select>
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newRole.price} onChange={e=>setNewRole(v=>({...v,price:e.target.value}))} />
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Durée (jours, 0=permanent)" value={newRole.durationDays} onChange={e=>setNewRole(v=>({...v,durationDays:e.target.value}))} />
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              const roleId = newRole.roleId.trim(); const price = Number(newRole.price||0); const durationDays = Math.max(0, Number(newRole.durationDays||0));
+              if (!roleId) return;
+              if (roles.some(r=>String(r.roleId)===roleId && Number(r.durationDays||0)===durationDays)) return alert('Déjà présent');
+              const next = [...roles, { roleId, price: Math.max(0, price), durationDays }];
+              setRoles(next); await saveShop(items, next);
+              setNewRole({ roleId:'', price:'', durationDays:'' });
+            }}>Ajouter</button>
+          </div>
+          <div className="space-y-2">
+            {roles.map((r, idx)=> (
+              <div key={r.roleId+':'+(r.durationDays||0)} className="grid md:grid-cols-6 gap-2 items-center subcard">
+                <div className="text-white/80 md:col-span-2 truncate">{(rolesMeta.find((x:any)=>x.id===r.roleId)?.name)||r.roleId}</div>
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.price} onChange={e=>{
+                  const v = Number(e.target.value||0); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
+                }} />
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.durationDays} onChange={e=>{
+                  const v = Math.max(0, Number(e.target.value||0)); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], durationDays: v}; return n; });
+                }} />
+                <div className="md:col-span-1"></div>
+                <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                  const next = roles.filter((_,i)=>i!==idx); setRoles(next); await saveShop(items, next);
+                }}>Suppr</button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

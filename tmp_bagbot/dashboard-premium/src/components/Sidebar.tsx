@@ -91,6 +91,7 @@ export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: b
                       <LinkItem to="/config/levels/overview">🆙 Niveaux</LinkItem>
                       <LinkItem to="/config/economie/overview">🪙 Économie</LinkItem>
                       <LinkItem to="/config/economie/actions">⚙️ Économie • Actions</LinkItem>
+                      <LinkItem to="/config/economie/boutique">🛍️ Économie • Boutique</LinkItem>
                       <LinkItem to="/config/booster/overview">🚀 Booster</LinkItem>
                       <LinkItem to="/config/action-verite/overview">🎲 Action/Vérité</LinkItem>
                       <LinkItem to="/config/tickets/overview">🎫 Tickets</LinkItem>

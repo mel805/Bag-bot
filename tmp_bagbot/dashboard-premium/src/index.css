@@ -28,7 +28,12 @@
 
 /* Panel grouping */
 .panel {
-  @apply rounded-2xl border border-white/10 p-4 bg-transparent backdrop-blur;
+  @apply rounded-2xl border border-white/10 p-4 backdrop-blur;
+  background-color: rgba(239, 68, 68, 0.18);
+}
+.subcard {
+  @apply rounded-lg border border-white/10 p-2;
+  background-color: rgba(239, 68, 68, 0.18);
 }
 .panel-header {
   @apply flex items-center gap-2 mb-2 text-white/80;
