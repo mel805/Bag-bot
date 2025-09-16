@@ -5611,6 +5611,8 @@ client.once(Events.ClientReady, async (readyClient) => {
       const acts = (cfg.actions?.channels||[]);
       if (acts.length && !acts.includes('update')) return;
       if (shouldSkipLogByFilters(cfg, { channelId: newCh.parentId })) return;
+      // Ignore updates happening immediately after creation (common during ticket setup)
+      try { if (newCh.createdTimestamp && (Date.now() - Number(newCh.createdTimestamp)) < 1500) return; } catch (_) {}
       // Debounce rapid consecutive updates per channel (500ms window)
       global.__logChanUpd = global.__logChanUpd || new Map();
       const key = `${newCh.id}:${oldCh.name||''}:${newCh.name||''}`;

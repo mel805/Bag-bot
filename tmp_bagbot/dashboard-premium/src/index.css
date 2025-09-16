@@ -9,7 +9,7 @@
   --brand-surface: rgba(16, 18, 24, 0.8);
 }
 
-.bg-card { background: var(--brand-surface); }
+.bg-card { background: transparent; }
 .card {
   @apply rounded-xl border border-white/10 bg-card p-4;
 }

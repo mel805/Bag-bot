@@ -1171,6 +1171,7 @@ function ensureTicketsShape(g) {
       label: String(c.label || c.key || 'Catégorie'),
       emoji: typeof c.emoji === 'string' ? c.emoji : '',
       description: String(c.description || ''),
+      bannerUrl: typeof c.bannerUrl === 'string' ? c.bannerUrl : '',
       staffPingRoleIds: Array.isArray(c.staffPingRoleIds) ? c.staffPingRoleIds.map(String) : [],
       extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds) ? c.extraViewerRoleIds.map(String) : [],
     }));
