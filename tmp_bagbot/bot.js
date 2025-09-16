@@ -379,8 +379,22 @@ async function maybeAttachTicketBanner(embed) {
     const cfg = await getTicketsConfig(guildId);
     const url = String(cfg?.bannerUrl || '').trim();
     if (url) {
-      try { if (embed && typeof embed.setImage === 'function') embed.setImage(url); } catch (_) {}
-      return null;
+      if (url.startsWith('/')) {
+        // Attach local file and set embed image to attachment
+        const path = require('path');
+        const fs = require('fs');
+        const p = path.join(PUBLIC_DIR, url.replace(/^\/+/, ''));
+        try {
+          const ext = path.extname(p) || '.png';
+          const name = 'ticket-banner' + ext;
+          const buf = fs.readFileSync(p);
+          if (embed && typeof embed.setImage === 'function') embed.setImage(`attachment://${name}`);
+          return new AttachmentBuilder(buf, { name });
+        } catch (_) { /* fallthrough to no banner */ }
+      } else {
+        try { if (embed && typeof embed.setImage === 'function') embed.setImage(url); } catch (_) {}
+        return null;
+      }
     }
   } catch (_) {}
   if (!TICKET_BANNER_PATH) return null;
@@ -2447,9 +2461,13 @@ async function handleEconomyAction(interaction, actionKey) {
   let imageLinkForContent = null;
   let imageAttachment = null; // { attachment, filename }
   if (imageUrl) {
-    try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
-    if (!imageIsDirect) {
-      imageLinkForContent = String(imageUrl);
+    // Treat local uploads as direct
+    if (String(imageUrl).startsWith('/')) imageIsDirect = true;
+    else {
+      try { imageIsDirect = isLikelyDirectImageUrl(imageUrl); } catch (_) { imageIsDirect = false; }
+      if (!imageIsDirect) {
+        imageLinkForContent = String(imageUrl);
+      }
     }
   }
   // Try to resolve non-direct GIF page URLs (e.g., Tenor/Giphy) and attach if needed
