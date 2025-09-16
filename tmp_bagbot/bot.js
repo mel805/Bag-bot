@@ -1176,6 +1176,62 @@ function startKeepAliveServer() {
               }
               if (typeof data.certifiedRoleId === 'string') next.certifiedRoleId = String(data.certifiedRoleId);
               if (Array.isArray(data.categories)) next.categories = data.categories.map((c)=>({ key: String(c.key||''), label: String(c.label||''), emoji: String(c.emoji||''), description: String(c.description||''), color: String(c.color||''), staffPingRoleIds: Array.isArray(c.staffPingRoleIds)?c.staffPingRoleIds.map(String):[], extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds)?c.extraViewerRoleIds.map(String):[] }));
+              // If bannerUrl is a remote http(s) URL, fetch and store under /public/uploads and replace by local path
+              try {
+                const raw = String(data.bannerUrl || next.bannerUrl || '').trim();
+                if (raw && /^https?:\/\//i.test(raw)) {
+                  const http = require('http');
+                  const https = require('https');
+                  const urlObj = new URL(raw);
+                  const proto = urlObj.protocol === 'http:' ? http : https;
+                  await new Promise((resolve)=>{
+                    const req2 = proto.get(raw, (resp) => {
+                      if (resp.statusCode && resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
+                        try {
+                          const r2 = proto.get(resp.headers.location, (resp2)=>{
+                            handleResp(resp2);
+                          });
+                          r2.on('error', ()=>resolve());
+                        } catch (_) { resolve(); }
+                        return;
+                      }
+                      handleResp(resp);
+                      function handleResp(resp2) {
+                        try {
+                          const ct = String(resp2.headers['content-type']||'').toLowerCase();
+                          let ext = '.png';
+                          if (ct.startsWith('image/')) {
+                            const mt = ct.split('/')[1].split(';')[0];
+                            ext = '.' + (mt === 'jpeg' ? 'jpg' : mt);
+                          } else if (ct.startsWith('video/')) {
+                            const mt = ct.split('/')[1].split(';')[0];
+                            ext = '.' + (mt === 'ogg' ? 'ogv' : (mt === 'quicktime' ? 'mov' : mt));
+                          } else {
+                            // fallback from URL path
+                            const pathExt = (urlObj.pathname.split('.').pop() || '').toLowerCase();
+                            if (pathExt) ext = '.' + pathExt.replace(/[^a-z0-9]/g, '');
+                          }
+                          const base = (urlObj.pathname.split('/').pop() || 'banner').replace(/[^a-zA-Z0-9._-]/g,'_').replace(/\.[^.]+$/,'');
+                          const fs = require('fs');
+                          const path = require('path');
+                          const ts = Date.now();
+                          const dir = path.join(PUBLIC_DIR, 'uploads');
+                          try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+                          const filename = `${base}-${ts}${ext}`;
+                          const finalPath = path.join(dir, filename);
+                          const file = fs.createWriteStream(finalPath);
+                          resp2.pipe(file);
+                          file.on('finish', () => { try { file.close(); next.bannerUrl = '/uploads/' + filename; } catch (_) {} resolve(); });
+                          file.on('error', () => { try { file.close(); } catch (_) {} resolve(); });
+                        } catch (_) { resolve(); }
+                      }
+                    });
+                    req2.on('error', ()=>resolve());
+                  });
+                } else if (typeof data.bannerUrl === 'string') {
+                  next.bannerUrl = data.bannerUrl;
+                }
+              } catch (_) {}
               await updateTicketsConfig(guildId, next);
               // If panel channel is set, post/update panel
               try {
