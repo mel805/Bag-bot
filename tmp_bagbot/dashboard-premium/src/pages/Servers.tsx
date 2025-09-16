@@ -11,11 +11,11 @@ export default function Servers() {
   }, [meta]);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">{stats?.guildName || 'Serveur'}</h3>
         <div className="text-white/70">Membres: {stats?.memberCount ?? '—'} • Salons: {stats?.channels ?? '—'}</div>
       </div>
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Paramètres serveur</h3>
         <div className="text-white/70 space-y-1">
           <div>AFK: {channelName(meta?.settings?.afkChannelId)} • {meta?.settings?.afkTimeout ?? '—'}s</div>
@@ -27,7 +27,7 @@ export default function Servers() {
           <div>Locale: {meta?.settings?.preferredLocale ?? '—'}</div>
         </div>
       </div>
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Auto-threads (bot)</h3>
         <div className="text-white/70 space-y-1">
           <div>Politique: {configs?.autothread?.policy || '—'}</div>
@@ -35,11 +35,11 @@ export default function Servers() {
           <div>Salons: {(configs?.autothread?.channels||[]).map((id:string)=>channelName(id)).join(', ') || '—'}</div>
         </div>
       </div>
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Compteur (bot)</h3>
         <div className="text-white/70">Salons actifs: {(configs?.counting?.channels||[]).length || 0}</div>
       </div>
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4 md:col-span-2">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4 md:col-span-2">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Journalisation (bot)</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-white/70">
           {['joinleave','messages','threads','backup'].map(k => (

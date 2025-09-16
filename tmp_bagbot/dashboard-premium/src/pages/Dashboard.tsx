@@ -25,7 +25,7 @@ export default function Dashboard() {
   return (
     <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
       <div className="lg:col-span-2"><AreaCard title="Messages / mois" data={data} /></div>
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Temps réel</h3>
         <div className="text-white/80">Serveur: {stats?.guildName || '—'}</div>
         <div className="text-white/60 text-sm">

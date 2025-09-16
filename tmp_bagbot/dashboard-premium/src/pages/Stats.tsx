@@ -6,7 +6,7 @@ export default function Stats() {
   useEffect(()=>{ fetchAll(); }, []);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">État du serveur</h3>
         <div className="text-white/80">{stats?.guildName || '—'}</div>
         <div className="text-white/70">Membres: {stats?.memberCount ?? '—'}</div>
@@ -15,7 +15,7 @@ export default function Stats() {
         </>)}</div>
         <div className="text-white/60 text-sm mt-2">Uptime: {stats ? `${Math.floor((stats.uptimeSec||0)/3600)}h` : '—'}</div>
       </div>
-      <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+      <div className="bg-transparent rounded-xl border border-white/10 p-4">
         <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Ressources</h3>
         <div className="text-white/70">Affichage en direct via API</div>
       </div>

@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Reminders() {
   return (
-    <div className="bg-card/80 rounded-xl border border-white/10 p-4">
+    <div className="bg-transparent rounded-xl border border-white/10 p-4">
       <h3 className="text-sm uppercase tracking-wide text-white/60 mb-2">Rappels</h3>
       <div className="space-y-3">
         <div className="flex gap-2">

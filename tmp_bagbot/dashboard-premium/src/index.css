@@ -47,6 +47,6 @@ body {
   background-repeat: no-repeat;
 }
 
-.bg-card\/80 { background-color: rgba(10, 12, 16, 0.80); }
-.bg-white\/5 { background-color: rgba(16, 18, 22, 0.55); }
+.bg-card\/80 { background-color: transparent !important; }
+.bg-white\/5 { background-color: transparent !important; }
 .border-white\/10 { border-color: rgba(255, 255, 255, 0.25); }
