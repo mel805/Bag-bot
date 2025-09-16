@@ -11,7 +11,9 @@ const TITLES: Record<string, string> = {
   confessions: 'Confessions',
   autothread: 'Auto-threads',
   counting: 'Compteur',
-  disboard: 'Disboard'
+  disboard: 'Disboard',
+  tickets: 'Tickets',
+  booster: 'Booster'
 };
 
 function RewardsEditor() {
@@ -115,7 +117,7 @@ function TdPromptsEditor({ mode }: { mode: 'sfw'|'nsfw' }) {
 
 export default function CategoryPage() {
   const { cat = '', view = '' } = useParams();
-  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64, saveEconomyAction, saveEconomyRewards, resetLevels } = useApi();
+  const { fetchAll, configs, meta, fetchMeta, saveLogs, saveAutoKickRole, saveCurrency, saveConfess, saveTd, saveLevels, saveAutoThread, saveCounting, saveDisboard, saveAutoKickAdvanced, saveLogsAdvanced, saveConfessAdvanced, saveLevelsAdvanced, saveCurrencySymbol, saveLevelsExtra, uploadBase64, saveEconomyAction, saveEconomyRewards, resetLevels, saveTickets, saveBooster } = useApi();
   useEffect(() => { fetchAll(); fetchMeta(); }, []);
 
   const title = TITLES[cat] || cat;
@@ -179,6 +181,25 @@ export default function CategoryPage() {
   const [countingChannels, setCountingChannels] = useState<string[]>([]);
   const [disboardReminders, setDisboardReminders] = useState(false);
   const [disboardChannel, setDisboardChannel] = useState('');
+  // Tickets state
+  const [ticketsPanelTitle, setTicketsPanelTitle] = useState('');
+  const [ticketsPanelText, setTicketsPanelText] = useState('');
+  const [ticketsCategoryId, setTicketsCategoryId] = useState('');
+  const [ticketsPanelChannelId, setTicketsPanelChannelId] = useState('');
+  const [ticketsTranscriptChannelId, setTicketsTranscriptChannelId] = useState('');
+  const [ticketsTranscriptStyle, setTicketsTranscriptStyle] = useState<'pro'|'premium'|'classic'>('pro');
+  const [ticketsPingStaff, setTicketsPingStaff] = useState(false);
+  const [ticketsNamingMode, setTicketsNamingMode] = useState<'ticket_num'|'member_num'|'category_num'|'custom'|'numeric'|'date_num'>('ticket_num');
+  const [ticketsNamingPattern, setTicketsNamingPattern] = useState('');
+  const [ticketsCertifiedRoleId, setTicketsCertifiedRoleId] = useState('');
+  const [ticketCats, setTicketCats] = useState<any[]>([]);
+  // Booster state
+  const [boosterEnabled, setBoosterEnabled] = useState(false);
+  const [boosterTextXp, setBoosterTextXp] = useState<number|''>('');
+  const [boosterVoiceXp, setBoosterVoiceXp] = useState<number|''>('');
+  const [boosterCooldownMult, setBoosterCooldownMult] = useState<number|''>('');
+  const [boosterShopMult, setBoosterShopMult] = useState<number|''>('');
+  const [boosterRoleIds, setBoosterRoleIds] = useState<string[]>([]);
   // Economy Actions state
   const [actKey, setActKey] = useState('work');
   const [actMoneyMin, setActMoneyMin] = useState<number|''>('');
@@ -271,6 +292,31 @@ export default function CategoryPage() {
     setCountingChannels(Array.isArray(configs.counting?.channels) ? configs.counting.channels : []);
     setDisboardReminders(Boolean(configs.disboard?.remindersEnabled));
     setDisboardChannel(String(configs.disboard?.remindChannelId || ''));
+    // Tickets populate
+    try {
+      const t = configs.tickets || {};
+      setTicketsPanelTitle(String(t.panelTitle||''));
+      setTicketsPanelText(String(t.panelText||''));
+      setTicketsCategoryId(String(t.categoryId||''));
+      setTicketsPanelChannelId(String(t.panelChannelId||''));
+      setTicketsTranscriptChannelId(String(t.transcriptChannelId||''));
+      setTicketsTranscriptStyle((t.transcript?.style==='premium'?'premium':(t.transcript?.style==='classic'?'classic':'pro')));
+      setTicketsPingStaff(Boolean(t.pingStaffOnOpen));
+      setTicketsNamingMode((['ticket_num','member_num','category_num','custom','numeric','date_num'].includes(t.naming?.mode)?t.naming.mode:'ticket_num'));
+      setTicketsNamingPattern(String(t.naming?.customPattern||''));
+      setTicketsCertifiedRoleId(String(t.certifiedRoleId||''));
+      setTicketCats(Array.isArray(t.categories)?t.categories:[]);
+    } catch {}
+    // Booster populate
+    try {
+      const b = configs.economy?.booster || {};
+      setBoosterEnabled(Boolean(b.enabled));
+      setBoosterTextXp(Number.isFinite(b.textXpMult)?b.textXpMult:'');
+      setBoosterVoiceXp(Number.isFinite(b.voiceXpMult)?b.voiceXpMult:'');
+      setBoosterCooldownMult(Number.isFinite(b.actionCooldownMult)?b.actionCooldownMult:'');
+      setBoosterShopMult(Number.isFinite(b.shopPriceMult)?b.shopPriceMult:'');
+      setBoosterRoleIds(Array.isArray(b.roles)?b.roles:[]);
+    } catch {}
   }, [configs]);
   // Prime action fields when action key changes
   useEffect(() => {
@@ -664,12 +710,152 @@ export default function CategoryPage() {
         )}
         {(cat==='tickets') && (
           <div className="space-y-3">
-            <div className="text-white/70">Configuration Tickets (déjà gérée côté bot). Ajouts UI détaillés à venir.</div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="text-white/70">Titre panneau
+                <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsPanelTitle} onChange={e=>setTicketsPanelTitle(e.target.value)} />
+              </label>
+              <label className="text-white/70">Texte panneau
+                <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsPanelText} onChange={e=>setTicketsPanelText(e.target.value)} />
+              </label>
+              <label className="text-white/70">Catégorie de salons (Discord)
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsCategoryId} onChange={e=>setTicketsCategoryId(e.target.value)}>
+                  <option value="">—</option>
+                  {channels.filter(ch=>String(ch.type)==='4').map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Salon panneau
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsPanelChannelId} onChange={e=>setTicketsPanelChannelId(e.target.value)}>
+                  <option value="">—</option>
+                  {channels.filter(ch=>String(ch.type)==='0'||String(ch.type)==='5').map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Salon transcription
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsTranscriptChannelId} onChange={e=>setTicketsTranscriptChannelId(e.target.value)}>
+                  <option value="">—</option>
+                  {channels.filter(ch=>String(ch.type)==='0'||String(ch.type)==='5').map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
+                </select>
+              </label>
+              <label className="text-white/70">Style transcription
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsTranscriptStyle} onChange={e=>setTicketsTranscriptStyle(e.target.value as any)}>
+                  <option value="pro">Pro</option>
+                  <option value="premium">Premium</option>
+                  <option value="classic">Classic</option>
+                </select>
+              </label>
+              <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={ticketsPingStaff} onChange={e=>setTicketsPingStaff(e.target.checked)} /> Ping staff à l'ouverture</label>
+              <label className="text-white/70">Nommage
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsNamingMode} onChange={e=>setTicketsNamingMode(e.target.value as any)}>
+                  <option value="ticket_num">ticket + numéro</option>
+                  <option value="member_num">membre + numéro</option>
+                  <option value="category_num">catégorie + numéro</option>
+                  <option value="numeric">numérique</option>
+                  <option value="date_num">date + numéro</option>
+                  <option value="custom">personnalisé</option>
+                </select>
+              </label>
+              {ticketsNamingMode==='custom' && (
+                <label className="text-white/70">Modèle personnalisé
+                  <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="{user}-{num}" value={ticketsNamingPattern} onChange={e=>setTicketsNamingPattern(e.target.value)} />
+                </label>
+              )}
+              <label className="text-white/70">Rôle certifié (optionnel)
+                <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={ticketsCertifiedRoleId} onChange={e=>setTicketsCertifiedRoleId(e.target.value)}>
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
+                </select>
+              </label>
+            </div>
+            <div className="text-white/70 font-medium mt-2">Catégories de tickets</div>
+            <div className="space-y-2">
+              {ticketCats.map((c, idx)=> (
+                <div key={idx} className="grid md:grid-cols-3 gap-2 items-end border border-white/10 rounded-lg p-2">
+                  <label className="text-white/70">Label
+                    <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={c.label||''} onChange={e=>setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],label:e.target.value}; return n; })} />
+                  </label>
+                  <label className="text-white/70">Emoji
+                    <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={c.emoji||''} onChange={e=>setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],emoji:e.target.value}; return n; })} />
+                  </label>
+                  <label className="text-white/70">Description
+                    <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={c.description||''} onChange={e=>setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],description:e.target.value}; return n; })} />
+                  </label>
+                  <label className="text-white/70">Rôles staff à ping
+                    <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={c.staffPingRoleIds||[]} onChange={e=>{
+                      const vals = Array.from(e.target.selectedOptions).map(o=>o.value);
+                      setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],staffPingRoleIds:vals}; return n; });
+                    }}>
+                      {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
+                    </select>
+                  </label>
+                  <label className="text-white/70">Rôles ayant accès
+                    <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={c.extraViewerRoleIds||[]} onChange={e=>{
+                      const vals = Array.from(e.target.selectedOptions).map(o=>o.value);
+                      setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],extraViewerRoleIds:vals}; return n; });
+                    }}>
+                      {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
+                    </select>
+                  </label>
+                  <div className="flex gap-2">
+                    <button className="bg-red-500/20 border border-red-500/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>prev.filter((_,i)=>i!==idx))}>Supprimer</button>
+                  </div>
+                </div>
+              ))}
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>[...prev,{ key:'', label:'', emoji:'', description:'', staffPingRoleIds:[], extraViewerRoleIds:[] }])}>Ajouter une catégorie</button>
+            </div>
+            <div>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const payload:any = {
+                  panelTitle: ticketsPanelTitle,
+                  panelText: ticketsPanelText,
+                  categoryId: ticketsCategoryId,
+                  panelChannelId: ticketsPanelChannelId,
+                  transcriptChannelId: ticketsTranscriptChannelId,
+                  transcript: { style: ticketsTranscriptStyle },
+                  pingStaffOnOpen: ticketsPingStaff,
+                  naming: { mode: ticketsNamingMode, customPattern: ticketsNamingPattern },
+                  certifiedRoleId: ticketsCertifiedRoleId,
+                  categories: ticketCats
+                };
+                if (!confirm('Confirmer la sauvegarde des tickets ?')) return;
+                const ok = await saveTickets(payload);
+                if (ok) await fetchAll();
+              }}>Enregistrer Tickets</button>
+            </div>
           </div>
         )}
         {(cat==='booster') && (
           <div className="space-y-3">
-            <div className="text-white/70">Configuration Booster (déjà gérée côté bot). Ajouts UI détaillés à venir.</div>
+            <label className="flex items-center gap-2 text-white/70">
+              <input type="checkbox" checked={boosterEnabled} onChange={e=>setBoosterEnabled(e.target.checked)} /> Activé
+            </label>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="text-white/70">XP texte x
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={boosterTextXp as any} onChange={e=>setBoosterTextXp(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">XP vocal x
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={boosterVoiceXp as any} onChange={e=>setBoosterVoiceXp(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Cooldown actions x
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={boosterCooldownMult as any} onChange={e=>setBoosterCooldownMult(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+              <label className="text-white/70">Prix boutique x
+                <input type="number" step="0.1" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={boosterShopMult as any} onChange={e=>setBoosterShopMult(e.target.value===''?'':Number(e.target.value))} />
+              </label>
+            </div>
+            <div className="text-white/70">Rôles Booster</div>
+            <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={boosterRoleIds} onChange={e=>setBoosterRoleIds(Array.from(e.target.selectedOptions).map(o=>o.value))}>
+              {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
+            </select>
+            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              const payload:any = { enabled: boosterEnabled };
+              if (boosterTextXp !== '') payload.textXpMult = Number(boosterTextXp);
+              if (boosterVoiceXp !== '') payload.voiceXpMult = Number(boosterVoiceXp);
+              if (boosterCooldownMult !== '') payload.actionCooldownMult = Number(boosterCooldownMult);
+              if (boosterShopMult !== '') payload.shopPriceMult = Number(boosterShopMult);
+              payload.roles = boosterRoleIds;
+              if (!confirm('Confirmer la sauvegarde Booster ?')) return;
+              const ok = await saveBooster(payload);
+              if (ok) await fetchAll();
+            }}>Enregistrer Booster</button>
           </div>
         )}
         {cat==='levels' && (

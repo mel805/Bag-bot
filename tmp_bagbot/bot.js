@@ -699,8 +699,8 @@ function startKeepAliveServer() {
         if (parsed.pathname === '/api/configs') {
           if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
           try {
-            const { getEconomyConfig, getConfessConfig, getLogsConfig, getAutoKickConfig, getTruthDareConfig, getCountingConfig, getAutoThreadConfig, getLevelsConfig, getDisboardConfig } = require('./storage/jsonStore');
-            const [eco, confess, logs, ak, td, counting, autothread, levels, disboard] = await Promise.all([
+            const { getEconomyConfig, getConfessConfig, getLogsConfig, getAutoKickConfig, getTruthDareConfig, getCountingConfig, getAutoThreadConfig, getLevelsConfig, getDisboardConfig, getTicketsConfig } = require('./storage/jsonStore');
+            const [eco, confess, logs, ak, td, counting, autothread, levels, disboard, tickets] = await Promise.all([
               getEconomyConfig(guildId),
               getConfessConfig(guildId),
               getLogsConfig(guildId),
@@ -710,8 +710,9 @@ function startKeepAliveServer() {
               getAutoThreadConfig(guildId),
               getLevelsConfig(guildId),
               getDisboardConfig(guildId),
+              getTicketsConfig(guildId),
             ]);
-            return sendJson(res, 200, { economy: eco, confess, logs, autokick: ak, truthdare: td, counting, autothread, levels, disboard });
+            return sendJson(res, 200, { economy: eco, confess, logs, autokick: ak, truthdare: td, counting, autothread, levels, disboard, tickets });
           } catch (e) {
             return sendJson(res, 500, { error: String(e?.message || e) });
           }
@@ -724,7 +725,7 @@ function startKeepAliveServer() {
             if (!g) return sendJson(res, 404, { error: 'guild not found' });
             await g.channels.fetch().catch(()=>null);
             await g.roles.fetch().catch(()=>null);
-            const allowedTypes = new Set([0, 5]); // GuildText, GuildAnnouncement
+            const allowedTypes = new Set([0, 5, 4]); // Text, Announcement, Category
             const channels = Array.from(g.channels.cache.values())
               .filter(ch => {
                 try {
@@ -1136,6 +1137,59 @@ function startKeepAliveServer() {
               if (typeof data.remindersEnabled === 'boolean') next.remindersEnabled = data.remindersEnabled;
               if (data.remindChannelId) next.remindChannelId = String(data.remindChannelId);
               await updateDisboardConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+        // Tickets config
+        if (parsed.pathname === '/api/configs/tickets' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getTicketsConfig, updateTicketsConfig, addTicketCategory, editTicketCategory, removeTicketCategory } = require('./storage/jsonStore');
+              const curr = await getTicketsConfig(guildId);
+              const next = { ...(curr||{}) };
+              if (typeof data.panelTitle === 'string') next.panelTitle = String(data.panelTitle);
+              if (typeof data.panelText === 'string') next.panelText = String(data.panelText);
+              if (typeof data.categoryId === 'string') next.categoryId = String(data.categoryId);
+              if (typeof data.panelChannelId === 'string') next.panelChannelId = String(data.panelChannelId);
+              if (typeof data.pingStaffOnOpen === 'boolean') next.pingStaffOnOpen = data.pingStaffOnOpen;
+              if (typeof data.transcriptChannelId === 'string') next.transcriptChannelId = String(data.transcriptChannelId);
+              if (data.transcript && typeof data.transcript === 'object' && typeof data.transcript.style === 'string') next.transcript = { ...(next.transcript||{}), style: ['pro','premium','classic'].includes(data.transcript.style)?data.transcript.style:'pro' };
+              if (data.naming && typeof data.naming === 'object') {
+                const m = String(data.naming.mode||'ticket_num');
+                next.naming = { ...(next.naming||{}), mode: ['ticket_num','member_num','category_num','custom','numeric','date_num'].includes(m)?m:'ticket_num', customPattern: String(data.naming.customPattern||'') };
+              }
+              if (typeof data.certifiedRoleId === 'string') next.certifiedRoleId = String(data.certifiedRoleId);
+              if (Array.isArray(data.categories)) next.categories = data.categories.map((c)=>({ key: String(c.key||''), label: String(c.label||''), emoji: String(c.emoji||''), description: String(c.description||''), color: String(c.color||''), staffPingRoleIds: Array.isArray(c.staffPingRoleIds)?c.staffPingRoleIds.map(String):[], extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds)?c.extraViewerRoleIds.map(String):[] }));
+              await updateTicketsConfig(guildId, next);
+              return sendJson(res, 200, { ok: true });
+            } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
+          });
+          return;
+        }
+        // Booster config
+        if (parsed.pathname === '/api/configs/booster' && req.method === 'POST') {
+          if (!isAuthed(req, parsed)) return sendJson(res, 401, { error: 'unauthorized' });
+          let body='';
+          req.on('data',(c)=>{ body += c; if (body.length>1e6) req.socket.destroy(); });
+          req.on('end', async ()=>{
+            try {
+              const data = JSON.parse(body||'{}');
+              const { getEconomyConfig, updateEconomyConfig } = require('./storage/jsonStore');
+              const eco = await getEconomyConfig(guildId);
+              const b = { ...(eco.booster||{}) };
+              if (typeof data.enabled === 'boolean') b.enabled = data.enabled;
+              if (Number.isFinite(Number(data.textXpMult))) b.textXpMult = Number(data.textXpMult);
+              if (Number.isFinite(Number(data.voiceXpMult))) b.voiceXpMult = Number(data.voiceXpMult);
+              if (Number.isFinite(Number(data.actionCooldownMult))) b.actionCooldownMult = Number(data.actionCooldownMult);
+              if (Number.isFinite(Number(data.shopPriceMult))) b.shopPriceMult = Number(data.shopPriceMult);
+              if (Array.isArray(data.roles)) b.roles = data.roles.map(String).slice(0, 50);
+              await updateEconomyConfig(guildId, { booster: b });
               return sendJson(res, 200, { ok: true });
             } catch (e) { return sendJson(res, 400, { error: String(e?.message||e) }); }
           });

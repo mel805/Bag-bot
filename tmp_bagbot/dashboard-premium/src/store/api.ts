@@ -31,7 +31,7 @@ type Configs = any;
 type ApiState = {
   stats: Stats | null;
   configs: Configs | null;
-  meta: { channels: {id:string,name:string}[]; roles:{id:string,name:string}[]; guildIconUrl?: string|null; settings?: any } | null;
+  meta: { channels: {id:string,name:string,type?: any}[]; roles:{id:string,name:string}[]; guildIconUrl?: string|null; settings?: any } | null;
   loading: boolean;
   error: string | null;
   fetchAll: () => Promise<void>;
@@ -65,6 +65,8 @@ type ApiState = {
   addTdPrompts: (mode: 'sfw'|'nsfw', type: 'action'|'verite', lines: string[]) => Promise<boolean>;
   deleteTdPrompts: (mode: 'sfw'|'nsfw', ids: number[]) => Promise<boolean>;
   editTdPrompt: (mode: 'sfw'|'nsfw', id: number, text: string) => Promise<boolean>;
+  saveTickets: (payload: any) => Promise<boolean>;
+  saveBooster: (payload: any) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -256,6 +258,18 @@ export const useApi = create<ApiState>((set, get) => ({
   , editTdPrompt: async (mode, id, text) => {
     try {
       const res = await fetch(withKey('/api/truthdare/prompts/edit'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode, id, text }) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveTickets: async (payload) => {
+    try {
+      const res = await fetch(withKey('/api/configs/tickets'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveBooster: async (payload) => {
+    try {
+      const res = await fetch(withKey('/api/configs/booster'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }
