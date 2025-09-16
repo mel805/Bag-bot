@@ -194,6 +194,11 @@ export default function CategoryPage() {
   const [ticketsCertifiedRoleId, setTicketsCertifiedRoleId] = useState('');
   const [ticketCats, setTicketCats] = useState<any[]>([]);
   const [ticketsBannerUrl, setTicketsBannerUrl] = useState('');
+  // Role search filters
+  const [autoKickRoleFilter, setAutoKickRoleFilter] = useState('');
+  const [boosterRoleFilter, setBoosterRoleFilter] = useState('');
+  const [ticketsCertifiedRoleFilter, setTicketsCertifiedRoleFilter] = useState('');
+  const [ticketRoleFilterMap, setTicketRoleFilterMap] = useState<Record<number,string>>({});
   // Booster state
   const [boosterEnabled, setBoosterEnabled] = useState(false);
   const [boosterTextXp, setBoosterTextXp] = useState<number|''>('');
@@ -492,9 +497,10 @@ export default function CategoryPage() {
         {cat==='moderation' && (
           <div className="space-y-3">
             <div className="text-white/70">AutoKick: Rôle requis</div>
+            <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 mb-2" placeholder="Rechercher un rôle…" value={autoKickRoleFilter} onChange={e=>setAutoKickRoleFilter(e.target.value)} />
             <select className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" value={autoKickRole} onChange={e=>setAutoKickRole(e.target.value)}>
               <option value="">—</option>
-              {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
+              {roles.filter(r=>r.name.toLowerCase().includes(autoKickRoleFilter.toLowerCase())).map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
             </select>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-white/70 flex items-center gap-2"><input type="checkbox" checked={autoKickEnabled} onChange={e=>setAutoKickEnabled(e.target.checked)} /> Activé</label>
@@ -619,9 +625,11 @@ export default function CategoryPage() {
             <div className="grid md:grid-cols-2 gap-3">
               <label className="text-white/70">GIF succès (1 URL par ligne)
                 <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-40" value={gifSuccess} onChange={e=>setGifSuccess(e.target.value)} />
+                <input type="file" accept="image/gif,video/*,image/*" className="mt-2 text-white/70" multiple onChange={async e=>{ const files=Array.from(e.target.files||[]); if(!files.length) return; let urls: string[] = []; for (const f of files) { const fr=new FileReader(); await new Promise<void>(res=>{ fr.onloadend=()=>res(); fr.readAsDataURL(f); }); const url=await uploadBase64(f.name, String(fr.result||'')); if (url) urls.push(url); } const merged = [...gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean), ...urls]; setGifSuccess(Array.from(new Set(merged)).join('\n')); }} />
               </label>
               <label className="text-white/70">GIF échec (1 URL par ligne)
                 <textarea className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full h-40" value={gifFail} onChange={e=>setGifFail(e.target.value)} />
+                <input type="file" accept="image/gif,video/*,image/*" className="mt-2 text-white/70" multiple onChange={async e=>{ const files=Array.from(e.target.files||[]); if(!files.length) return; let urls: string[] = []; for (const f of files) { const fr=new FileReader(); await new Promise<void>(res=>{ fr.onloadend=()=>res(); fr.readAsDataURL(f); }); const url=await uploadBase64(f.name, String(fr.result||'')); if (url) urls.push(url); } const merged = [...gifFail.split('\n').map(s=>s.trim()).filter(Boolean), ...urls]; setGifFail(Array.from(new Set(merged)).join('\n')); }} />
               </label>
             </div>
             <div className="text-white/70 font-medium mt-2">Aperçu GIFs — Succès</div>
@@ -771,6 +779,7 @@ export default function CategoryPage() {
             <div className="grid md:grid-cols-2 gap-3">
               <label className="text-white/70">Image en bas (URL)
                 <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" placeholder="https://..." value={ticketsBannerUrl} onChange={e=>setTicketsBannerUrl(e.target.value)} />
+                <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const url=await uploadBase64(f.name, String(fr.result||'')); if (url) setTicketsBannerUrl(url); }; fr.readAsDataURL(f); }} />
               </label>
               <div className="text-white/70">Aperçu panneau</div>
               <div className="md:col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
