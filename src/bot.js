@@ -9839,15 +9839,7 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   if (Array.isArray(eco.shop?.roles)) {
     for (const role of eco.shop.roles) entries.push({ type: 'role', data: role });
   }
-  if (eco.suites) {
-    const prices = eco.suites.prices || { day: 0, week: 0, month: 0 };
-    const durations = [
-      { key: 'day', name: 'Suite privée (1 jour)', emoji: '🏠' },
-      { key: 'week', name: 'Suite privée (7 jours)', emoji: '🏡' },
-      { key: 'month', name: 'Suite privée (30 jours)', emoji: '🏰' }
-    ];
-    for (const dur of durations) entries.push({ type: 'suite', data: { key: dur.key, name: dur.name, emoji: dur.emoji, price: Number(prices[dur.key] || 0) } });
-  }
+  // Note: do not include Suites in the embed listing to keep controls visually adjacent to boutique content
   const total = entries.length;
   const slice = entries.slice(offset, offset + limit);
   
@@ -9855,7 +9847,6 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
   // On reconstruit des champs pour les éléments affichés uniquement
   const itemsShown = slice.filter(e => e.type === 'item').map(e => e.data);
   const rolesShown = slice.filter(e => e.type === 'role').map(e => e.data);
-  const suitesShown = slice.filter(e => e.type === 'suite').map(e => e.data);
 
   // Objets
   if (itemsShown.length) {
@@ -9879,14 +9870,7 @@ async function buildBoutiqueEmbed(guild, user, offset = 0, limit = 25) {
     if (rolesText) fields.push({ name: '🎭 Rôles', value: rolesText, inline: false });
   }
   
-  // Suites privées
-  if (suitesShown.length) {
-    let suitesText = '';
-    for (const s of suitesShown) {
-      suitesText += `${s.emoji} ${s.name} - ${formatPrice(s.price)}\n`;
-    }
-    if (suitesText) fields.push({ name: `${eco.suites.emoji || '💞'} Suites Privées`, value: suitesText, inline: false });
-  }
+  // Suites are selectable via the dropdown but intentionally not displayed in the embed section
   
   if (fields.length === 0) {
     embed.setDescription(description + '\n*Aucun article disponible pour le moment.*');
@@ -9954,7 +9938,7 @@ async function getBoutiqueEntriesCount(guild) {
   let count = 0;
   count += Array.isArray(eco.shop?.items) ? eco.shop.items.length : 0;
   count += Array.isArray(eco.shop?.roles) ? eco.shop.roles.length : 0;
-  if (eco.suites) count += 3; // day/week/month
+  // Suites not counted in embed pagination to avoid layout overlap with suites section
   return { entriesCount: count };
 }
 
