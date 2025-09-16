@@ -423,6 +423,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildInvites,
   ],
   partials: [Partials.GuildMember, Partials.Message, Partials.Channel],
 });
@@ -3518,6 +3519,7 @@ async function sendLog(guild, categoryKey, embed) {
     // Filtres
     const fmt = cfg?.filters?.format || 'detailed';
     try { if (fmt === 'compact') embed.setFooter(null).setTimestamp(null); } catch (_) {}
+    try { const img = String(cfg?.embedImageUrl||'').trim(); if (img) embed.setImage(img); } catch (_) {}
     if (!channelId) return;
     let ch = guild.channels.cache.get(channelId);
     if (!ch) { try { ch = await guild.channels.fetch(channelId).catch(()=>null); } catch (_) { ch = null; } }
@@ -5589,7 +5591,24 @@ client.once(Events.ClientReady, async (readyClient) => {
   // Channels
   client.on(Events.ChannelCreate, async (ch) => { try { const cfg = await getLogsConfig(ch.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('create')) return; if (shouldSkipLogByFilters(cfg, { channelId: ch.parentId })) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon créé`).setDescription(`${ch} (${ch.name||ch.id})`); await sendLog(ch.guild,'channels',e);}catch(_){} });
   client.on(Events.ChannelDelete, async (ch) => { try { const cfg = await getLogsConfig(ch.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('delete')) return; if (shouldSkipLogByFilters(cfg, { channelId: ch.parentId })) return; const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon supprimé`).setDescription(`${ch.name||ch.id}`); await sendLog(ch.guild,'channels',e);}catch(_){} });
-  client.on(Events.ChannelUpdate, async (oldCh, newCh) => { try { const cfg = await getLogsConfig(newCh.guild.id); if (!cfg.categories?.channels) return; const acts = (cfg.actions?.channels||[]); if (acts.length && !acts.includes('update')) return; if (shouldSkipLogByFilters(cfg, { channelId: newCh.parentId })) return; const e=new EmbedBuilder().setColor(0xdddd55).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon modifié`).setDescription(`${oldCh.name||oldCh.id} → ${newCh.name||newCh.id}`); await sendLog(newCh.guild,'channels',e);}catch(_){} });
+  client.on(Events.ChannelUpdate, async (oldCh, newCh) => {
+    try {
+      const cfg = await getLogsConfig(newCh.guild.id);
+      if (!cfg.categories?.channels) return;
+      const acts = (cfg.actions?.channels||[]);
+      if (acts.length && !acts.includes('update')) return;
+      if (shouldSkipLogByFilters(cfg, { channelId: newCh.parentId })) return;
+      // Debounce rapid consecutive updates per channel (500ms window)
+      global.__logChanUpd = global.__logChanUpd || new Map();
+      const key = String(newCh.id);
+      const now = Date.now();
+      const last = global.__logChanUpd.get(key) || 0;
+      if (now - last < 500) return;
+      global.__logChanUpd.set(key, now);
+      const e=new EmbedBuilder().setColor(0xdddd55).setTitle(`${(cfg.emojis&&cfg.emojis['channels'])||cfg.emoji} Salon modifié`).setDescription(`${oldCh.name||oldCh.id} → ${newCh.name||newCh.id}`);
+      await sendLog(newCh.guild,'channels',e);
+    } catch (_) {}
+  });
   // Roles
   client.on(Events.GuildRoleCreate, async (role) => { try { const cfg = await getLogsConfig(role.guild.id); if (!cfg.categories?.roles) return; const acts=(cfg.actions?.roles||[]); if (acts.length && !acts.includes('create')) return; if (shouldSkipLogByFilters(cfg, { })) return; const e=new EmbedBuilder().setColor(0x55ff55).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle créé`).setDescription(`${role.name}`); await sendLog(role.guild,'roles',e);}catch(_){} });
   client.on(Events.GuildRoleDelete, async (role) => { try { const cfg = await getLogsConfig(role.guild.id); if (!cfg.categories?.roles) return; const acts=(cfg.actions?.roles||[]); if (acts.length && !acts.includes('delete')) return; const e=new EmbedBuilder().setColor(0xff5555).setTitle(`${(cfg.emojis&&cfg.emojis['roles'])||cfg.emoji} Rôle supprimé`).setDescription(`${role.name}`); await sendLog(role.guild,'roles',e);}catch(_){} });

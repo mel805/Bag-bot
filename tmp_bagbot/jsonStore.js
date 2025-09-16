@@ -1362,6 +1362,7 @@ function ensureLogsShape(g) {
     if (typeof g.logs.channelId !== 'string') g.logs.channelId = '';
     if (typeof g.logs.pseudo !== 'boolean') g.logs.pseudo = true;
     if (typeof g.logs.emoji !== 'string' || !g.logs.emoji) g.logs.emoji = '📝';
+    if (typeof g.logs.embedImageUrl !== 'string') g.logs.embedImageUrl = '';
     if (!g.logs.categories || typeof g.logs.categories !== 'object') g.logs.categories = { moderation: true, voice: true, economy: true, boosts: true, threads: true, joinleave: true, messages: true, backup: true };
     for (const k of ['moderation','voice','economy','boosts','threads','joinleave','messages','backup','channels','roles','emojis','members','invites','tickets']) if (typeof g.logs.categories[k] !== 'boolean') g.logs.categories[k] = (['moderation','voice','economy','boosts','threads','joinleave','messages','backup'].includes(k));
     if (!g.logs.channels || typeof g.logs.channels !== 'object') g.logs.channels = { moderation: '', voice: '', economy: '', boosts: '', threads: '', joinleave: '', messages: '', backup: '' };
