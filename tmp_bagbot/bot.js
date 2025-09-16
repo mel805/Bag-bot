@@ -1420,6 +1420,19 @@ function startKeepAliveServer() {
                     next.rewards.voice = r;
                   }
                 }
+                // Suites config (category + prices)
+                if (data && data.suites && typeof data.suites === 'object') {
+                  const suites = { ...(eco.suites||{}) };
+                  if (typeof data.suites.categoryId === 'string') suites.categoryId = String(data.suites.categoryId);
+                  if (data.suites.prices && typeof data.suites.prices === 'object') {
+                    const p = { ...(suites.prices||{}) };
+                    if (Number.isFinite(Number(data.suites.prices.day))) p.day = Math.max(0, Number(data.suites.prices.day));
+                    if (Number.isFinite(Number(data.suites.prices.week))) p.week = Math.max(0, Number(data.suites.prices.week));
+                    if (Number.isFinite(Number(data.suites.prices.month))) p.month = Math.max(0, Number(data.suites.prices.month));
+                    suites.prices = p;
+                  }
+                  next.suites = suites;
+                }
                 // Actions config/messages/gifs update
                 if (data && data.action && typeof data.action === 'string') {
                   const normalizeActionKey = (k) => {

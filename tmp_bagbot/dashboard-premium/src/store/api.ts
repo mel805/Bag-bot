@@ -67,6 +67,7 @@ type ApiState = {
   editTdPrompt: (mode: 'sfw'|'nsfw', id: number, text: string) => Promise<boolean>;
   saveTickets: (payload: any) => Promise<boolean>;
   saveBooster: (payload: any) => Promise<boolean>;
+  saveEconomySuites: (categoryId: string, prices: { day?: number; week?: number; month?: number }) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -270,6 +271,15 @@ export const useApi = create<ApiState>((set, get) => ({
   , saveBooster: async (payload) => {
     try {
       const res = await fetch(withKey('/api/configs/booster'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveEconomySuites: async (categoryId, prices) => {
+    try {
+      const payload:any = { suites: {} };
+      if (categoryId) payload.suites.categoryId = categoryId;
+      if (prices && typeof prices === 'object') payload.suites.prices = prices;
+      const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }
   }

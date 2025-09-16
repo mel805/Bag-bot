@@ -495,28 +495,7 @@ export default function CategoryPage() {
           </div>
         )}
         {(cat==='economie' || cat==='economy') && view==='boutique' && (
-          <div className="space-y-3">
-            <div className="panel">
-              <div className="panel-header"><span className="pill pill-primary">Suites privées</span></div>
-              <div className="grid md:grid-cols-3 gap-2">
-                <label className="text-white/70">Catégorie Discord
-                  <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full">
-                    {channels.filter((c:any)=>String(c.type)==='4').map((c:any)=>(<option key={c.id} value={c.id}>{c.name}</option>))}
-                  </select>
-                </label>
-                <label className="text-white/70">Tarif jour
-                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" />
-                </label>
-                <label className="text-white/70">Tarif semaine
-                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" />
-                </label>
-                <label className="text-white/70">Tarif mois
-                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" />
-                </label>
-              </div>
-              <div className="mt-3"><button className="bg-transparent border border-white/10 rounded-xl px-3 py-2">Enregistrer Suites</button></div>
-            </div>
-          </div>
+          <SuitesEditor />
         )}
         {cat==='moderation' && (
           <div className="space-y-3">
@@ -548,6 +527,7 @@ export default function CategoryPage() {
               <NavLink to={`/config/${cat}/actions`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`}>Actions</NavLink>
               <NavLink to={`/config/${cat}/gifs`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`}>GIFs</NavLink>
               <NavLink to={`/config/${cat}/boutique`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`}>Boutique</NavLink>
+              <NavLink to={`/config/${cat}/karma`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`}>Karma</NavLink>
             </div>
           </div>
         )}
@@ -703,6 +683,14 @@ export default function CategoryPage() {
                 if(!confirm('Confirmer la sauvegarde des GIFs ?')) return;
                 await saveEconomyAction(actKey, payload);
               }}>Enregistrer GIFs</button>
+            </div>
+          </div>
+        )}
+        {(cat==='economie' || cat==='economy') && view==='karma' && (
+          <div className="space-y-3">
+            <div className="panel">
+              <div className="panel-header"><span className="pill pill-primary">Karma — paramètres globaux</span></div>
+              <div className="text-white/70">Ajustez les types et deltas via l’onglet Actions pour chaque action. Une vue globale viendra ensuite.</div>
             </div>
           </div>
         )}
@@ -1419,6 +1407,57 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
         ))}
       </div>
       <div><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={saveAll}>Enregistrer</button></div>
+    </div>
+  );
+}
+
+function SuitesEditor() {
+  const { configs, fetchAll } = useApi();
+  const { saveEconomySuites } = (useApi.getState() as any);
+  const channels = useApi((s:any)=>s.meta?.channels||[]);
+  const [categoryId, setCategoryId] = React.useState('');
+  const [day, setDay] = React.useState<number|''>('');
+  const [week, setWeek] = React.useState<number|''>('');
+  const [month, setMonth] = React.useState<number|''>('');
+  React.useEffect(()=>{
+    const suites = configs?.economy?.suites || {};
+    setCategoryId(String(suites.categoryId||''));
+    const p = suites.prices || {};
+    setDay(Number.isFinite(p.day)?p.day:'');
+    setWeek(Number.isFinite(p.week)?p.week:'');
+    setMonth(Number.isFinite(p.month)?p.month:'');
+  }, [configs]);
+  return (
+    <div className="space-y-3">
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-primary">Suites privées</span></div>
+        <div className="grid md:grid-cols-4 gap-2">
+          <label className="text-white/70">Catégorie Discord
+            <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
+              <option value="">—</option>
+              {channels.filter((c:any)=>String(c.type)==='4').map((c:any)=>(<option key={c.id} value={c.id}>{c.name}</option>))}
+            </select>
+          </label>
+          <label className="text-white/70">Tarif jour
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={day as any} onChange={e=>setDay(e.target.value===''?'':Number(e.target.value))} />
+          </label>
+          <label className="text-white/70">Tarif semaine
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={week as any} onChange={e=>setWeek(e.target.value===''?'':Number(e.target.value))} />
+          </label>
+          <label className="text-white/70">Tarif mois
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={month as any} onChange={e=>setMonth(e.target.value===''?'':Number(e.target.value))} />
+          </label>
+        </div>
+        <div className="mt-3"><button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+          const prices:any = {};
+          if (day !== '') prices.day = Number(day);
+          if (week !== '') prices.week = Number(week);
+          if (month !== '') prices.month = Number(month);
+          if(!confirm('Confirmer la sauvegarde des suites privées ?')) return;
+          const ok = await saveEconomySuites(categoryId, prices);
+          if (ok) await fetchAll();
+        }}>Enregistrer Suites</button></div>
+      </div>
     </div>
   );
 }
