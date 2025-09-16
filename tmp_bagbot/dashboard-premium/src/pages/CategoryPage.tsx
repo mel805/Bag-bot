@@ -856,7 +856,7 @@ export default function CategoryPage() {
                   </div>
                 </div>
               ))}
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>[...prev,{ key:'', label:'', emoji:'', description:'', staffPingRoleIds:[], extraViewerRoleIds:[] }])}>Ajouter une catégorie</button>
+              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>[...prev,{ key: `cat_${Math.random().toString(36).slice(2,8)}`, label:'', emoji:'', description:'', staffPingRoleIds:[], extraViewerRoleIds:[], bannerUrl:'' }])}>Ajouter une catégorie</button>
             </div>
             <div>
               <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{

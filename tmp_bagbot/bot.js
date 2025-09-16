@@ -1192,7 +1192,20 @@ function startKeepAliveServer() {
                 next.naming = { ...(next.naming||{}), mode: ['ticket_num','member_num','category_num','custom','numeric','date_num'].includes(m)?m:'ticket_num', customPattern: String(data.naming.customPattern||'') };
               }
               if (typeof data.certifiedRoleId === 'string') next.certifiedRoleId = String(data.certifiedRoleId);
-              if (Array.isArray(data.categories)) next.categories = data.categories.map((c)=>({ key: String(c.key||''), label: String(c.label||''), emoji: String(c.emoji||''), description: String(c.description||''), color: String(c.color||''), staffPingRoleIds: Array.isArray(c.staffPingRoleIds)?c.staffPingRoleIds.map(String):[], extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds)?c.extraViewerRoleIds.map(String):[], bannerUrl: typeof c.bannerUrl === 'string' ? c.bannerUrl : '' }));
+              if (Array.isArray(data.categories)) next.categories = data.categories.map((c)=>{
+                const rawLabel = String(c.label||c.key||'Catégorie');
+                const safeKey = String(c.key||'').trim() || ('cat_' + Math.random().toString(36).slice(2,8));
+                return {
+                  key: safeKey,
+                  label: rawLabel,
+                  emoji: String(c.emoji||''),
+                  description: String(c.description||''),
+                  color: String(c.color||''),
+                  staffPingRoleIds: Array.isArray(c.staffPingRoleIds)?c.staffPingRoleIds.map(String):[],
+                  extraViewerRoleIds: Array.isArray(c.extraViewerRoleIds)?c.extraViewerRoleIds.map(String):[],
+                  bannerUrl: typeof c.bannerUrl === 'string' ? c.bannerUrl : ''
+                };
+              });
               // If bannerUrl is a remote http(s) URL, fetch and store under /public/uploads and replace by local path
               try {
                 const raw = String(data.bannerUrl || next.bannerUrl || '').trim();
@@ -5600,7 +5613,7 @@ client.once(Events.ClientReady, async (readyClient) => {
       if (shouldSkipLogByFilters(cfg, { channelId: newCh.parentId })) return;
       // Debounce rapid consecutive updates per channel (500ms window)
       global.__logChanUpd = global.__logChanUpd || new Map();
-      const key = String(newCh.id);
+      const key = `${newCh.id}:${oldCh.name||''}:${newCh.name||''}`;
       const now = Date.now();
       const last = global.__logChanUpd.get(key) || 0;
       if (now - last < 500) return;
