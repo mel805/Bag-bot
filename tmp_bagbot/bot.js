@@ -6,6 +6,8 @@ const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 
 const fs2 = require('fs');
 const path2 = require('path');
+// Public directory root for serving uploaded assets
+const PUBLIC_DIR_ROOT = path2.resolve(__dirname, '../public');
 
 // Simple in-memory image cache
 const imageCache = new Map(); // url -> { img, width, height, ts }
@@ -2467,7 +2469,8 @@ async function handleEconomyAction(interaction, actionKey) {
       try {
         const path = require('path');
         const fs = require('fs');
-        const p = path.join(PUBLIC_DIR, raw.replace(/^\/+/, ''));
+        const safeRel = raw.replace(/^\/+/, '');
+        const p = path.join(PUBLIC_DIR_ROOT, safeRel);
         const ext = path.extname(p) || '.png';
         const name = 'action-image' + ext;
         const buf = fs.readFileSync(p);
