@@ -6370,7 +6370,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!opts.length) return interaction.editReply({ content: 'Ajoutez au moins une catégorie de ticket.' });
       select.addOptions(...opts);
       const row = new ActionRowBuilder().addComponents(select);
-      const __banner = maybeAttachTicketBanner(embed);
+      const __banner = await maybeAttachTicketBanner(embed);
       const msg = await panelChannel.send({ embeds: [embed], components: [row], files: __banner ? [__banner] : [] }).catch(()=>null);
       if (!msg) return interaction.editReply({ content: 'Impossible d\'envoyer le panneau.' });
       await updateTicketsConfig(interaction.guild.id, { panelMessageId: msg.id });
@@ -6602,6 +6602,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const ch = await interaction.guild.channels.create({ name: channelName, parent: parent?.id, type: ChannelType.GuildText, topic: `Ticket ${channelName} • ${interaction.user.tag} • ${cat.label}` }).catch(()=>null);
       if (!ch) return interaction.editReply({ content: 'Impossible de créer le ticket.' });
       await ch.permissionOverwrites?.create?.(interaction.user.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }).catch(()=>{});
+      // Allow @everyone to view only if already allowed by parent; else no change
+      try {
+        const everyoneId = interaction.guild.roles.everyone.id;
+        const parentAllows = parent?.permissionsLocked ? false : true;
+        if (!parentAllows) {
+          await ch.permissionOverwrites?.create?.(everyoneId, { ViewChannel: false }).catch(()=>{});
+        }
+      } catch (_) {}
       // Ensure bot can send embeds/buttons inside ticket channel
       try { await ch.permissionOverwrites?.create?.(interaction.client.user.id, { ViewChannel: true, SendMessages: true, EmbedLinks: true, AttachFiles: true, ReadMessageHistory: true, AddReactions: true }); } catch (_) {}
       try {
@@ -6648,7 +6656,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           }
         } catch (_) {}
       }
-      await ch.send({ content, embeds: [embed], components: [row], files: __banner ? [__banner] : [], allowedMentions: { users: [interaction.user.id], roles: allowedRoleIds } }).catch(()=>{});
+      try {
+        await ch.send({ content, embeds: [embed], components: [row], files: __banner ? [__banner] : [], allowedMentions: { users: [interaction.user.id], roles: allowedRoleIds } });
+      } catch (e) {
+        try { await ch.send({ content, embeds: [embed], components: [row], allowedMentions: { users: [interaction.user.id], roles: allowedRoleIds } }); } catch (_) {}
+      }
       await interaction.editReply({ content: `✅ Ticket créé: ${ch}` });
       return;
     }
