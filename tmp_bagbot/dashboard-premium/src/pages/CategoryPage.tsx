@@ -833,7 +833,7 @@ export default function CategoryPage() {
                   </label>
                   <label className="text-white/70">Image en bas (URL)
                     <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={c.bannerUrl||''} onChange={e=>setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],bannerUrl:e.target.value}; return n; })} />
-                    <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const dataUrl=String(fr.result||''); if (!dataUrl.startsWith('data:')) return; const url=await uploadBase64(f.name, dataUrl); if (url) setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],bannerUrl:url}; return n; }); }; fr.readAsDataURL(f); }} />
+                    <input type="file" accept="image/*" className="mt-2 text-white/70" onChange={async e=>{ const f=e.target.files?.[0]; if (!f) return; const fr=new FileReader(); fr.onloadend=async()=>{ const dataUrl=String(fr.result||''); if (!dataUrl.startsWith('data:')) return; const url=await uploadBase64(f.name, dataUrl); if (url) { setTicketCats(prev=>{ const n=[...prev]; n[idx]={...n[idx],bannerUrl:url}; return n; }); /* autosave */ const payload:any = { categories: [...ticketCats.map((x,i)=> i===idx? { ...x, bannerUrl:url } : x)] }; await saveTickets(payload); } }; fr.readAsDataURL(f); }} />
                   </label>
                   <label className="text-white/70">Rôles staff à ping
                     <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full min-h-[42px]" value={c.staffPingRoleIds||[]} onChange={e=>{

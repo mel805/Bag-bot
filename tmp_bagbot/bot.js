@@ -385,7 +385,7 @@ async function maybeAttachTicketBanner(embed, categoryBannerUrl) {
         // Attach local file and set embed image to attachment
         const path = require('path');
         const fs = require('fs');
-        const p = path.join(PUBLIC_DIR, url.replace(/^\/+/, ''));
+        const p = path.join(PUBLIC_DIR_ROOT, url.replace(/^\/+/, ''));
         try {
           const ext = path.extname(p) || '.png';
           const name = 'ticket-banner' + ext;
