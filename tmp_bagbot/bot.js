@@ -714,7 +714,22 @@ function startKeepAliveServer() {
               uptimeSec: Math.floor(process.uptime()),
               memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
               timestamp: now,
-              dailyMessages: await (async () => { try { const { getDailyMessages } = require('./storage/jsonStore'); return await getDailyMessages(guildId); } catch (_) { return await getDailyMessagesLocal(guildId); } })()
+              dailyMessages: await (async () => { try { const { getDailyMessages } = require('./storage/jsonStore'); return await getDailyMessages(guildId); } catch (_) { return await getDailyMessagesLocal(guildId); } })(),
+              dailyMembers: await (async () => {
+                try {
+                  const { getDailyMembers } = require('./storage/jsonStore');
+                  const arr = await getDailyMembers(guildId);
+                  if (Array.isArray(arr) && arr.length) return arr;
+                } catch (_) {}
+                // Fallback: synthesize last 30 days from current memberCount if no history
+                const out = [];
+                for (let i = 29; i >= 0; i--) {
+                  const d = new Date(Date.now() - i*86400000);
+                  const day = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  out.push({ date: day, count: Number(g?.memberCount||0) });
+                }
+                return out;
+              })()
             };
             return sendJson(res, 200, stats);
           } catch (e) {

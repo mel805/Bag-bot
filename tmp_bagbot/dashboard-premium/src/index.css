@@ -31,15 +31,15 @@
   @apply rounded-2xl border border-white/10 p-4 backdrop-blur;
   background-color: rgba(239, 68, 68, 0.18);
 }
-.panel, .panel * { color: #0b0b0b !important; }
-.panel ::placeholder { color: rgba(0,0,0,0.55) !important; }
+.panel, .panel * { color: #ffffff !important; }
+.panel ::placeholder { color: rgba(255,255,255,0.75) !important; }
 
 .subcard {
   @apply rounded-lg border border-white/10 p-2;
   background-color: rgba(239, 68, 68, 0.18);
 }
-.subcard, .subcard * { color: #0b0b0b !important; }
-.subcard ::placeholder { color: rgba(0,0,0,0.55) !important; }
+.subcard, .subcard * { color: #ffffff !important; }
+.subcard ::placeholder { color: rgba(255,255,255,0.75) !important; }
 .panel-header {
   @apply flex items-center gap-2 mb-2;
   color: #0b0b0b !important;
