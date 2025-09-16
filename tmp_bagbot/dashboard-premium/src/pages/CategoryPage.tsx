@@ -520,10 +520,10 @@ export default function CategoryPage() {
         {(cat==='economie' || cat==='economy') && (
           <div className="space-y-3">
             <div className="flex gap-2">
-              <NavLink to={`/config/${cat}/overview`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Devise</NavLink>
-              <NavLink to={`/config/${cat}/actions`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Actions</NavLink>
-              <NavLink to={`/config/${cat}/gifs`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>GIFs</NavLink>
-              <NavLink to={`/config/${cat}/boutique`} className={({isActive})=>`px-3 py-2 rounded-xl border ${isActive?'bg-white/10 border-white/20 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Boutique</NavLink>
+              <NavLink to={`/config/${cat}/overview`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-white/10 text-white':'bg-white/5 text-white/70'}`}>Devise</NavLink>
+              <NavLink to={`/config/${cat}/actions`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-white/10 text-white':'bg-white/5 text-white/70'}`}>Actions</NavLink>
+              <NavLink to={`/config/${cat}/gifs`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-white/10 text-white':'bg-white/5 text-white/70'}`}>GIFs</NavLink>
+              <NavLink to={`/config/${cat}/boutique`} className={({isActive})=>`px-3 py-2 rounded-xl border tab-gold ${isActive?'bg-white/10 text-white':'bg-white/5 text-white/70'}`}>Boutique</NavLink>
             </div>
           </div>
         )}

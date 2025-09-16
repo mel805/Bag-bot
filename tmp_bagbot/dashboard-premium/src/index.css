@@ -30,6 +30,7 @@
 .panel {
   @apply rounded-2xl border border-white/10 p-4 backdrop-blur;
   background-color: rgba(239, 68, 68, 0.18);
+  border-color: rgba(255, 215, 0, 0.8);
 }
 .panel, .panel * { color: #ffffff !important; }
 .panel ::placeholder { color: rgba(255,255,255,0.75) !important; }
@@ -37,6 +38,7 @@
 .subcard {
   @apply rounded-lg border border-white/10 p-2;
   background-color: rgba(239, 68, 68, 0.18);
+  border-color: rgba(255, 215, 0, 0.8);
 }
 .subcard, .subcard * { color: #ffffff !important; }
 .subcard ::placeholder { color: rgba(255,255,255,0.75) !important; }
@@ -46,6 +48,11 @@
 }
 .panel-grid {
   @apply grid md:grid-cols-2 gap-3;
+}
+
+/* Gold tab borders for NavLink tabs */
+.tab-gold {
+  border-color: rgba(255, 215, 0, 0.8) !important;
 }
 
 * { box-sizing: border-box; }

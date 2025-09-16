@@ -18,7 +18,7 @@ export default function Sidebar({ collapsed = false, onToggle }: { collapsed?: b
     try { window.dispatchEvent(new Event('sidebar-open')); } catch (_) {}
   };
   return (
-    <aside className={`bg-red-600/20 backdrop-blur border-r border-white/10 text-white ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
+    <aside className={`bg-red-600/20 backdrop-blur border-r text-white ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`} style={{ borderColor: 'rgba(255, 215, 0, 0.8)' }}>
       <div className="flex items-center gap-3 mb-4">
         <img
           src="https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68c8f09a&is=68c79f1a&hm=5eb6483a9302bf1b12c608c5caf45d39d3f1b60883ef7e31180f35fdb70002e9&"
