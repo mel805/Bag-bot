@@ -6670,7 +6670,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setThumbnail(interaction.user.displayAvatarURL?.() || THEME_IMAGE)
         .setFooter({ text: 'BAG • Tickets', iconURL: THEME_TICKET_FOOTER_ICON })
         .setTimestamp(new Date());
-      const __banner = maybeAttachTicketBanner(embed);
+      const __banner = await maybeAttachTicketBanner(embed, cat.bannerUrl);
       const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('S\'approprier').setStyle(ButtonStyle.Success);
       const transferBtn = new ButtonBuilder().setCustomId('ticket_transfer').setLabel('Transférer').setStyle(ButtonStyle.Secondary);
       const certifyBtn = new ButtonBuilder().setCustomId('ticket_certify').setLabel('Certifier').setStyle(ButtonStyle.Primary);
