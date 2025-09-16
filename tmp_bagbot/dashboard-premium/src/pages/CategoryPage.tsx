@@ -1124,6 +1124,14 @@ function GifPreview({ url, onDelete }: { url: string; onDelete: () => void }) {
     let alive = true;
     (async () => {
       try {
+        // Local file served by our server: bypass proxy and infer content type by extension
+        if (url.startsWith('/')) {
+          const lower = url.toLowerCase();
+          const isVid = ['.mp4','.webm','.ogv','.mov'].some(ext => lower.endsWith(ext));
+          if (!alive) return;
+          setMeta({ url, contentType: isVid ? 'video/*' : 'image/*' });
+          return;
+        }
         const key = (()=>{ try { return new URLSearchParams(window.location.search).get('key') || localStorage.getItem('DASHBOARD_KEY') || ''; } catch { return ''; } })();
         const res = await fetch(`/api/proxy?meta=1&url=${encodeURIComponent(url)}${key?`&key=${encodeURIComponent(key)}`:''}`);
         const j = await res.json();
@@ -1136,8 +1144,8 @@ function GifPreview({ url, onDelete }: { url: string; onDelete: () => void }) {
   }, [url]);
   const isVideo = (meta?.contentType||'').startsWith('video/');
   const key = (()=>{ try { return new URLSearchParams(window.location.search).get('key') || localStorage.getItem('DASHBOARD_KEY') || ''; } catch { return ''; } })();
-  const baseSrc = meta?.url ? `/api/proxy?url=${encodeURIComponent(meta.url)}` : `/api/proxy?url=${encodeURIComponent(url)}`;
-  const src = `${baseSrc}${key?`&key=${encodeURIComponent(key)}`:''}`;
+  const isLocal = (meta?.url || url).startsWith('/');
+  const src = isLocal ? (meta?.url || url) : `${meta?.url ? `/api/proxy?url=${encodeURIComponent(meta.url)}` : `/api/proxy?url=${encodeURIComponent(url)}`}${key?`&key=${encodeURIComponent(key)}`:''}`;
   return (
     <div className="relative group">
       {isVideo ? (

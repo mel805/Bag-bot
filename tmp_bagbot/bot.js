@@ -1246,7 +1246,23 @@ function startKeepAliveServer() {
                   const cats = Array.isArray(next.categories) ? next.categories : [];
                   const select = new StringSelectMenuBuilder().setCustomId('ticket_open').setPlaceholder('Sélectionnez une catégorie…').setMinValues(1).setMaxValues(1).addOptions(cats.slice(0,25).map(c=>({ label: String(c.label||c.key||'Catégorie').slice(0,100), value: String(c.key||'cat'), description: String(c.description||'').slice(0,100), emoji: String(c.emoji||'')||undefined })));
                   const row = new ActionRowBuilder().addComponents(select);
-                  const __banner = await maybeAttachTicketBanner(embed);
+                  let __banner = await maybeAttachTicketBanner(embed);
+                  // If bannerUrl is local and not attached (embed URL), attach file too for Discord reliability
+                  try {
+                    const { getTicketsConfig } = require('./storage/jsonStore');
+                    const tCfg = await getTicketsConfig(guildId);
+                    const bUrl = String(tCfg?.bannerUrl||'');
+                    if (bUrl.startsWith('/')) {
+                      // Attach local file
+                      const path = require('path');
+                      const fs = require('fs');
+                      const p = path.join(PUBLIC_DIR, bUrl.replace(/^\/+/, ''));
+                      if (fs.existsSync(p)) {
+                        const { AttachmentBuilder } = require('discord.js');
+                        __banner = new AttachmentBuilder(p, { name: 'ticket-banner' + path.extname(p) });
+                      }
+                    }
+                  } catch (_) {}
                   const sent = await ch.send({ embeds: [embed], components: [row], files: __banner ? [__banner] : [] }).catch(()=>null);
                   if (sent && sent.id) {
                     await updateTicketsConfig(guildId, { panelMessageId: sent.id });
