@@ -494,6 +494,30 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
+        {(cat==='economie' || cat==='economy') && view==='boutique' && (
+          <div className="space-y-3">
+            <div className="panel">
+              <div className="panel-header"><span className="pill pill-primary">Suites privées</span></div>
+              <div className="grid md:grid-cols-3 gap-2">
+                <label className="text-white/70">Catégorie Discord
+                  <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full">
+                    {channels.filter((c:any)=>String(c.type)==='4').map((c:any)=>(<option key={c.id} value={c.id}>{c.name}</option>))}
+                  </select>
+                </label>
+                <label className="text-white/70">Tarif jour
+                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" />
+                </label>
+                <label className="text-white/70">Tarif semaine
+                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" />
+                </label>
+                <label className="text-white/70">Tarif mois
+                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" />
+                </label>
+              </div>
+              <div className="mt-3"><button className="bg-transparent border border-white/10 rounded-xl px-3 py-2">Enregistrer Suites</button></div>
+            </div>
+          </div>
+        )}
         {cat==='moderation' && (
           <div className="space-y-3">
             <div className="text-white/70">AutoKick: Rôle requis</div>
@@ -1151,14 +1175,14 @@ export default function CategoryPage() {
 function ShopEditor() {
   const { configs, fetchAll } = useApi();
   const { saveEconomyAction } = (useApi.getState() as any);
-  const [items, setItems] = React.useState<{ id: string; name: string; price: number }[]>([]);
+  const [items, setItems] = React.useState<{ name: string; price: number }[]>([]);
   const [roles, setRoles] = React.useState<{ roleId: string; price: number; durationDays: number }[]>([]);
-  const [newItem, setNewItem] = React.useState<{ id: string; name: string; price: string }>({ id: '', name: '', price: '' });
+  const [newItem, setNewItem] = React.useState<{ name: string; price: string }>({ name: '', price: '' });
   const [newRole, setNewRole] = React.useState<{ roleId: string; price: string; durationDays: string }>({ roleId: '', price: '', durationDays: '' });
   const rolesMeta = useApi((s:any)=>s.meta?.roles||[]);
   React.useEffect(()=>{
     const eco = configs?.economy || {};
-    setItems(Array.isArray(eco.shop?.items)? eco.shop.items : []);
+    setItems(Array.isArray(eco.shop?.items)? eco.shop.items.map((x:any)=>({ name:String(x.name||''), price:Number(x.price||0) })) : []);
     setRoles(Array.isArray(eco.shop?.roles)? eco.shop.roles : []);
   }, [configs]);
   const saveShop = async (nextItems: any[], nextRoles: any[]) => {
@@ -1172,23 +1196,23 @@ function ShopEditor() {
       <div className="panel">
         <div className="panel-header"><span className="pill pill-primary">Articles</span></div>
         <div className="space-y-2">
-          <div className="grid md:grid-cols-3 gap-2 subcard">
-            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="ID unique" value={newItem.id} onChange={e=>setNewItem(v=>({...v,id:e.target.value}))} />
+          <div className="grid md:grid-cols-2 gap-2 subcard">
             <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Nom" value={newItem.name} onChange={e=>setNewItem(v=>({...v,name:e.target.value}))} />
             <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newItem.price} onChange={e=>setNewItem(v=>({...v,price:e.target.value}))} />
             <div className="md:col-span-3"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
-              const id = newItem.id.trim(); const name = newItem.name.trim(); const price = Number(newItem.price||0);
-              if (!id || !name) return;
-              if (items.some(x=>x.id===id)) return alert('ID déjà utilisé');
-              const next = [...items, { id, name, price: Math.max(0, price) }];
+              const name = newItem.name.trim(); const price = Number(newItem.price||0);
+              if (!name) return;
+              const next = [...items, { name, price: Math.max(0, price) }];
               setItems(next); await saveShop(next, roles);
-              setNewItem({ id:'', name:'', price:'' });
+              setNewItem({ name:'', price:'' });
             }}>Ajouter</button></div>
           </div>
           <div className="space-y-2">
             {items.map((it, idx)=> (
-              <div key={it.id} className="grid md:grid-cols-6 gap-2 items-center subcard">
-                <div className="text-white/80 md:col-span-2 truncate">{it.name} <span className="text-white/50">#{it.id}</span></div>
+              <div key={idx} className="grid md:grid-cols-6 gap-2 items-center subcard">
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 md:col-span-2" value={it.name} onChange={e=>{
+                  const v = e.target.value; setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], name: v}; return n; });
+                }} />
                 <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={it.price} onChange={e=>{
                   const v = Number(e.target.value||0); setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
                 }} />

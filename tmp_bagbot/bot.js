@@ -647,6 +647,34 @@ function startKeepAliveServer() {
       } catch (_) { return []; }
     }
 
+    // Simple persisted metrics (daily messages/members) per guild
+    const METRICS_FILE = path2.resolve(__dirname, '../data/metrics.json');
+    async function readMetrics() {
+      try { const raw = fs2.readFileSync(METRICS_FILE, 'utf8'); return JSON.parse(raw||'{}'); } catch (_) { return {}; }
+    }
+    function writeMetricsSync(obj) {
+      try {
+        fs2.mkdirSync(path2.dirname(METRICS_FILE), { recursive: true });
+        fs2.writeFileSync(METRICS_FILE, JSON.stringify(obj, null, 2), 'utf8');
+      } catch (_) {}
+    }
+    function ensureGuildMetrics(metrics, gid) {
+      if (!metrics[gid]) metrics[gid] = { dailyMessages: {}, dailyMembers: {} };
+      if (!metrics[gid].dailyMessages) metrics[gid].dailyMessages = {};
+      if (!metrics[gid].dailyMembers) metrics[gid].dailyMembers = {};
+    }
+    function dayKey(d = new Date()) { return d.toISOString().slice(0,10); }
+    function incMetricsMessage(gid) {
+      try { const m = readMetrics(); ensureGuildMetrics(m, gid); const k = dayKey(); m[gid].dailyMessages[k] = (Number(m[gid].dailyMessages[k]||0) + 1); writeMetricsSync(m); } catch (_) {}
+    }
+    async function snapshotMembersCount(gid) {
+      try {
+        const g = client.guilds.cache.get(gid) || await client.guilds.fetch(gid).catch(()=>null);
+        if (!g) return;
+        const m = readMetrics(); ensureGuildMetrics(m, gid); const k = dayKey(); m[gid].dailyMembers[k] = Number(g.memberCount||0); writeMetricsSync(m);
+      } catch (_) {}
+    }
+
     const server = http.createServer(async (req, res) => {
       try {
         const parsed = url.parse(req.url || '/', true);
@@ -714,14 +742,13 @@ function startKeepAliveServer() {
               uptimeSec: Math.floor(process.uptime()),
               memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
               timestamp: now,
-              dailyMessages: await (async () => { try { const { getDailyMessages } = require('./storage/jsonStore'); return await getDailyMessages(guildId); } catch (_) { return await getDailyMessagesLocal(guildId); } })(),
+              dailyMessages: await (async () => {
+                try { const metrics = readMetrics(); const rec = (metrics[guildId]?.dailyMessages)||{}; return Object.keys(rec).sort().slice(-30).map(k=>({ date:k, count:Number(rec[k]||0) })); } catch (_) {}
+                try { const { getDailyMessages } = require('./storage/jsonStore'); return await getDailyMessages(guildId); } catch (_) { return await getDailyMessagesLocal(guildId); }
+              })(),
               dailyMembers: await (async () => {
-                try {
-                  const { getDailyMembers } = require('./storage/jsonStore');
-                  const arr = await getDailyMembers(guildId);
-                  if (Array.isArray(arr) && arr.length) return arr;
-                } catch (_) {}
-                // Fallback: synthesize last 30 days from current memberCount if no history
+                try { const metrics = readMetrics(); const rec = (metrics[guildId]?.dailyMembers)||{}; return Object.keys(rec).sort().slice(-30).map(k=>({ date:k, count:Number(rec[k]||0) })); } catch (_) {}
+                // Fallback: snapshot current memberCount
                 const out = [];
                 for (let i = 29; i >= 0; i--) {
                   const d = new Date(Date.now() - i*86400000);
@@ -5513,11 +5540,13 @@ client.once(Events.ClientReady, async (readyClient) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
     const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['joinleave']) || cfg.emoji} Arrivée`, `${m.user} a rejoint le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
+    try { await snapshotMembersCount(m.guild.id); } catch (_) {}
   });
   client.on(Events.GuildMemberRemove, async (m) => {
     const cfg = await getLogsConfig(m.guild.id); if (!cfg.categories?.joinleave) return;
     const embed = buildModEmbed(`${(cfg.emojis&&cfg.emojis['joinleave']) || cfg.emoji} Départ`, `<@${m.id}> a quitté le serveur.`, []);
     await sendLog(m.guild, 'joinleave', embed);
+    try { await snapshotMembersCount(m.guild.id); } catch (_) {}
   });
   // Tickets: auto-close when member leaves
   client.on(Events.GuildMemberRemove, async (m) => {
@@ -10699,6 +10728,8 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild) return;
     try { const { incrementDailyMessage } = require('./storage/jsonStore'); incrementDailyMessage(message.guild.id); } catch (_) { try { incrementDailyMessageLocal(message.guild.id); } catch (_) {} }
+    // Persist real message count metric
+    try { incMetricsMessage(message.guild.id); } catch (_) {}
     // Disboard bump detection
     try {
       const DISBOARD_ID = '302050872383242240';
