@@ -45,7 +45,7 @@ function RewardsEditor() {
           <input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={vocMax as any} onChange={e=>setVocMax(e.target.value===''?'':Number(e.target.value))} />
         </label>
       </div>
-      <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+      <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
         if(!confirm('Confirmer la sauvegarde des récompenses ?')) return;
         const ok = await saveEconomyRewards(msgMin, msgMax, vocMin, vocMax);
         if (ok) await fetchAll();
@@ -74,7 +74,7 @@ function TdPromptsEditor({ mode }: { mode: 'sfw'|'nsfw' }) {
             <option value="verite">Vérité</option>
           </select>
         </label>
-        <button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+        <button type="button" className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
           const lines = newLines.split('\n').map(s=>s.trim()).filter(Boolean);
           if (!lines.length) return;
           if(!confirm('Ajouter ces prompts ?')) return;
@@ -92,7 +92,7 @@ function TdPromptsEditor({ mode }: { mode: 'sfw'|'nsfw' }) {
               <div className="col-span-2"><span className="inline-block text-xs px-2 py-1 rounded bg-white/10 text-white/70">{p.type}</span></div>
               <div className="col-span-7"><input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={val} onChange={e=>setEditMap(prev=>({ ...prev, [p.id]: e.target.value }))} /></div>
               <div className="col-span-1 flex justify-center"><input type="checkbox" checked={!!selected[p.id]} onChange={e=>setSelected(prev=>({ ...prev, [p.id]: e.target.checked }))} /></div>
-              <div className="col-span-1"><button className="bg-white/5 border border-white/10 rounded-xl px-2 py-2 w-full" onClick={async()=>{
+              <div className="col-span-1"><button type="button" className="bg-white/5 border border-white/10 rounded-xl px-2 py-2 w-full" onClick={async()=>{
                 const text = (editMap[p.id] ?? p.text).trim();
                 if (!text || text === p.text) return;
                 const ok = await editTdPrompt(mode, p.id, text);
@@ -103,7 +103,7 @@ function TdPromptsEditor({ mode }: { mode: 'sfw'|'nsfw' }) {
         })}
       </div>
       <div>
-        <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+        <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
           const ids = Object.entries(selected).filter(([,v])=>v).map(([k])=>Number(k)).filter(n=>Number.isFinite(n));
           if (!ids.length) return;
           if(!confirm(`Supprimer ${ids.length} prompt(s) ?`)) return;
@@ -404,7 +404,7 @@ export default function CategoryPage() {
             </div>
             <div className="flex items-center justify-between">
               <div className="text-white/70 mt-2">Catégories</div>
-              <button className="text-white/60 text-sm underline" onClick={()=>setLogsCollapsed(v=>!v)}>{logsCollapsed ? 'Déployer' : 'Réduire'}</button>
+              <button type="button" className="text-white/60 text-sm underline" onClick={()=>setLogsCollapsed(v=>!v)}>{logsCollapsed ? 'Déployer' : 'Réduire'}</button>
             </div>
             <div className="space-y-2">
               {['joinleave','messages','threads','backup','moderation','economy','voice','boosts','channels','roles','emojis','members','invites'].map((k)=>{
@@ -481,8 +481,8 @@ export default function CategoryPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des réglages de logs ?')) return; await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer global</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde des réglages de logs ?')) return; await saveLogsAdvanced(logsEnabled, logsPseudo, logsEmoji); }}>Enregistrer global</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const emojis:any = configs?.logs?.emojis || {};
                 const actions:any = configs?.logs?.actions || {};
                 if(!confirm('Confirmer la sauvegarde des catégories, salons, emojis et actions ?')) return;
@@ -494,11 +494,7 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
-        {(cat==='economie' || cat==='economy') && view==='boutique' && (
-          <div className="space-y-3">
-            <SuitesEditor />
-          </div>
-        )}
+        
         {cat==='moderation' && (
           <div className="space-y-3">
             <div className="text-white/70">AutoKick: Rôle requis</div>
@@ -517,8 +513,8 @@ export default function CategoryPage() {
               </label>
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le rôle AutoKick ?')) return; await saveAutoKickRole(autoKickRole); }}>Enregistrer rôle</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer les réglages AutoKick ?')) return; await saveAutoKickAdvanced(autoKickEnabled, autoKickDelay); }}>Enregistrer réglages</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le rôle AutoKick ?')) return; await saveAutoKickRole(autoKickRole); }}>Enregistrer rôle</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer les réglages AutoKick ?')) return; await saveAutoKickAdvanced(autoKickEnabled, autoKickDelay); }}>Enregistrer réglages</button>
             </div>
           </div>
         )}
@@ -540,8 +536,8 @@ export default function CategoryPage() {
             <div className="text-white/70">Symbole</div>
             <input className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-32" value={currencySymbol} onChange={e=>setCurrencySymbol(e.target.value)} />
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le nom de la devise ?')) return; await saveCurrency(currencyName); }}>Enregistrer nom</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le symbole de la devise ?')) return; await saveCurrencySymbol(currencySymbol); }}>Enregistrer symbole</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le nom de la devise ?')) return; await saveCurrency(currencyName); }}>Enregistrer nom</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer le symbole de la devise ?')) return; await saveCurrencySymbol(currencySymbol); }}>Enregistrer symbole</button>
             </div>
             <div className="mt-4 text-white/70 font-medium">Récompenses argent</div>
             <RewardsEditor />
@@ -619,7 +615,7 @@ export default function CategoryPage() {
               {/* GIF URLs moved to GIFs tab; no inputs here */}
             </div>
             <div className="mt-3 flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const payload:any = { action: actKey, config: {}, messages: {}, gifs: {} };
                 if (actMoneyMin !== '') payload.config.moneyMin = Number(actMoneyMin);
                 if (actMoneyMax !== '') payload.config.moneyMax = Number(actMoneyMax);
@@ -678,7 +674,7 @@ export default function CategoryPage() {
               ))}
             </div>
             <div className="mt-3">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const payload:any = { action: actKey, gifs: {} };
                 payload.gifs.success = gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean);
                 payload.gifs.fail = gifFail.split('\n').map(s=>s.trim()).filter(Boolean);
@@ -690,7 +686,7 @@ export default function CategoryPage() {
         )}
         {(cat==='economie' || cat==='economy') && view==='karma' && (<KarmaEditor />)}
         {(cat==='economie' || cat==='economy') && view==='boutique' && (
-          <ShopEditor />
+          <BoutiqueEditor />
         )}
         {/* Phrases zones tab removed */}
         {cat==='confessions' && (
@@ -722,8 +718,8 @@ export default function CategoryPage() {
               </label>
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfess(confessAllowReplies); }}>Enregistrer Réponses</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfessAdvanced(confessLogChannel, confessThreadNaming); }}>Enregistrer Avancé</button>
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfess(confessAllowReplies); }}>Enregistrer Réponses</button>
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveConfessAdvanced(confessLogChannel, confessThreadNaming); }}>Enregistrer Avancé</button>
             </div>
           </div>
         )}
@@ -744,7 +740,7 @@ export default function CategoryPage() {
                 <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={tdNsfw} onChange={e=>setTdNsfw(Array.from(e.target.selectedOptions).map(o=>o.value))}>
                   {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
                 </select>
-                <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 mt-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Action/Vérité ?')) return; await saveTd(tdSfw, tdNsfw); }}>Enregistrer</button>
+                <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 mt-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Action/Vérité ?')) return; await saveTd(tdSfw, tdNsfw); }}>Enregistrer</button>
               </>
             )}
             {view==='sfw' && (<TdPromptsEditor mode="sfw" />)}
@@ -863,14 +859,14 @@ export default function CategoryPage() {
                     </select>
                   </label>
                   <div className="flex gap-2">
-                    <button className="bg-red-500/20 border border-red-500/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>prev.filter((_,i)=>i!==idx))}>Supprimer</button>
+                    <button type="button" className="bg-red-500/20 border border-red-500/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>prev.filter((_,i)=>i!==idx))}>Supprimer</button>
                   </div>
                 </div>
               ))}
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>[...prev,{ key: `cat_${Math.random().toString(36).slice(2,8)}`, label:'', emoji:'', description:'', staffPingRoleIds:[], extraViewerRoleIds:[], bannerUrl:'' }])}>Ajouter une catégorie</button>
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>setTicketCats(prev=>[...prev,{ key: `cat_${Math.random().toString(36).slice(2,8)}`, label:'', emoji:'', description:'', staffPingRoleIds:[], extraViewerRoleIds:[], bannerUrl:'' }])}>Ajouter une catégorie</button>
             </div>
             <div>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const payload:any = {
                   panelTitle: ticketsPanelTitle,
                   panelText: ticketsPanelText,
@@ -914,7 +910,7 @@ export default function CategoryPage() {
             <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={boosterRoleIds} onChange={e=>setBoosterRoleIds(Array.from(e.target.selectedOptions).map(o=>o.value))}>
               {roles.map(r => (<option key={r.id} value={r.id}>{r.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
               const payload:any = { enabled: boosterEnabled };
               if (boosterTextXp !== '') payload.textXpMult = Number(boosterTextXp);
               if (boosterVoiceXp !== '') payload.voiceXpMult = Number(boosterVoiceXp);
@@ -948,8 +944,8 @@ export default function CategoryPage() {
               <label className="text-white/70">Cooldown vocal (s)<input type="number" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 w-full" value={vocCd as any} onChange={e=>setVocCd(e.target.value===''?'':Number(e.target.value))} /></label>
             </div>
             <div className="flex gap-2">
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde niveaux (base/facteur/xp) ?')) return; await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde niveaux (base/facteur/xp) ?')) return; await saveLevels(xpMsg, xpVoice, levelBase, levelFactor); }}>Enregistrer</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const payload:any = {};
                 if (xpMsgMin !== '') payload.xpMessageMin = Number(xpMsgMin);
                 if (xpMsgMax !== '') payload.xpMessageMax = Number(xpMsgMax);
@@ -960,8 +956,8 @@ export default function CategoryPage() {
                 if(!confirm('Confirmer la sauvegarde des réglages avancés ?')) return;
                 await saveLevelsExtra(payload);
               }}>Enregistrer avancé</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(true, {}); }}>Activer</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(false, {}); }}>Désactiver</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(true, {}); }}>Activer</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ await saveLevelsAdvanced(false, {}); }}>Désactiver</button>
             </div>
             </>
             )}
@@ -1079,7 +1075,7 @@ export default function CategoryPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="bg-brand-cyan/20 border border-brand-cyan/40 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-brand-cyan/20 border border-brand-cyan/40 rounded-xl px-3 py-2" onClick={async()=>{
                 const ok = confirm('Confirmer la sauvegarde des cartes et templates ?');
                 if (!ok) return;
                 const cards:any = { backgrounds: {} };
@@ -1090,7 +1086,7 @@ export default function CategoryPage() {
                 if (bgPrestigeRose) cards.backgrounds.prestigeRose = bgPrestigeRose;
                 await saveLevelsExtra({ cards, announce: { levelUp: { template: tplLevelUp }, roleAward: { template: tplRole } } });
               }}>Confirmer et sauvegarder</button>
-              <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const ok = confirm('Réinitialiser les cartes (fonds et templates) sur le bot ?');
                 if (!ok) return;
                 const done = await resetLevels();
@@ -1125,7 +1121,7 @@ export default function CategoryPage() {
                 </select>
               </label>
             </div>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Auto-threads ?')) return; await saveAutoThread(autoThreadChannels, autoThreadPolicy, autoThreadArchive); }}>Enregistrer</button>
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Auto-threads ?')) return; await saveAutoThread(autoThreadChannels, autoThreadPolicy, autoThreadArchive); }}>Enregistrer</button>
           </div>
         )}
         {cat==='counting' && (
@@ -1134,7 +1130,7 @@ export default function CategoryPage() {
             <select multiple className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 min-h-[120px]" value={countingChannels} onChange={e=>setCountingChannels(Array.from(e.target.selectedOptions).map(o=>o.value))}>
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Compteur ?')) return; await saveCounting(countingChannels); }}>Enregistrer</button>
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Compteur ?')) return; await saveCounting(countingChannels); }}>Enregistrer</button>
           </div>
         )}
         {cat==='disboard' && (
@@ -1147,7 +1143,7 @@ export default function CategoryPage() {
               <option value="">—</option>
               {channels.map(ch => (<option key={ch.id} value={ch.id}>{ch.name}</option>))}
             </select>
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Disboard ?')) return; await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{ if(!confirm('Confirmer la sauvegarde Disboard ?')) return; await saveDisboard(disboardReminders, disboardChannel); }}>Enregistrer</button>
           </div>
         )}
       </div>
@@ -1182,7 +1178,7 @@ function ShopEditor() {
           <div className="grid md:grid-cols-2 gap-2 subcard">
             <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Nom" value={newItem.name} onChange={e=>setNewItem(v=>({...v,name:e.target.value}))} />
             <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newItem.price} onChange={e=>setNewItem(v=>({...v,price:e.target.value}))} />
-            <div className="md:col-span-3"><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              <div className="md:col-span-3"><button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
               const name = newItem.name.trim(); const price = Number(newItem.price||0);
               if (!name) return;
               const next = [...items, { name, price: Math.max(0, price) }];
@@ -1200,7 +1196,7 @@ function ShopEditor() {
                   const v = Number(e.target.value||0); setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
                 }} />
                 <div className="md:col-span-2"></div>
-                <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
                   const next = items.filter((_,i)=>i!==idx); setItems(next); await saveShop(next, roles);
                 }}>Suppr</button>
               </div>
@@ -1218,7 +1214,7 @@ function ShopEditor() {
             </select>
             <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newRole.price} onChange={e=>setNewRole(v=>({...v,price:e.target.value}))} />
             <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Durée (jours, 0=permanent)" value={newRole.durationDays} onChange={e=>setNewRole(v=>({...v,durationDays:e.target.value}))} />
-            <button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
               const roleId = newRole.roleId.trim(); const price = Number(newRole.price||0); const durationDays = Math.max(0, Number(newRole.durationDays||0));
               if (!roleId) return;
               if (roles.some(r=>String(r.roleId)===roleId && Number(r.durationDays||0)===durationDays)) return alert('Déjà présent');
@@ -1238,7 +1234,7 @@ function ShopEditor() {
                   const v = Math.max(0, Number(e.target.value||0)); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], durationDays: v}; return n; });
                 }} />
                 <div className="md:col-span-1"></div>
-                <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+              <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
                   const next = roles.filter((_,i)=>i!==idx); setRoles(next); await saveShop(items, next);
                 }}>Suppr</button>
               </div>
@@ -1246,6 +1242,118 @@ function ShopEditor() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BoutiqueEditor() {
+  const { configs, fetchAll } = useApi();
+  const { saveEconomyAction } = (useApi.getState() as any);
+  const [subTab, setSubTab] = React.useState<'articles'|'roles'|'suites'>('articles');
+  // Articles state
+  const [items, setItems] = React.useState<{ name: string; price: number }[]>([]);
+  const [newItem, setNewItem] = React.useState<{ name: string; price: string }>({ name: '', price: '' });
+  // Roles state
+  const [roles, setRoles] = React.useState<{ roleId: string; price: number; durationDays: number }[]>([]);
+  const [newRole, setNewRole] = React.useState<{ roleId: string; price: string; durationDays: string }>({ roleId: '', price: '', durationDays: '' });
+  const rolesMeta = useApi((s:any)=>s.meta?.roles||[]);
+  React.useEffect(()=>{
+    const eco = configs?.economy || {};
+    setItems(Array.isArray(eco.shop?.items)? eco.shop.items.map((x:any)=>({ name:String(x.name||''), price:Number(x.price||0) })) : []);
+    setRoles(Array.isArray(eco.shop?.roles)? eco.shop.roles : []);
+  }, [configs]);
+  const saveShop = async (nextItems: any[], nextRoles: any[]) => {
+    const payload:any = { action: 'shop_config', config: { items: nextItems, roles: nextRoles } };
+    await saveEconomyAction('shop_config', payload);
+    await fetchAll();
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <button type="button" className={`px-3 py-2 rounded-xl border tab-gold ${subTab==='articles'?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`} onClick={()=>setSubTab('articles')}>Articles</button>
+        <button type="button" className={`px-3 py-2 rounded-xl border tab-gold ${subTab==='roles'?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`} onClick={()=>setSubTab('roles')}>Rôles</button>
+        <button type="button" className={`px-3 py-2 rounded-xl border tab-gold ${subTab==='suites'?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`} onClick={()=>setSubTab('suites')}>Suites privées</button>
+      </div>
+
+      {subTab==='articles' && (
+        <div className="panel">
+          <div className="panel-header"><span className="pill pill-primary">Articles</span></div>
+          <div className="space-y-2">
+            <div className="grid md:grid-cols-2 gap-2 subcard">
+              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Nom" value={newItem.name} onChange={e=>setNewItem(v=>({...v,name:e.target.value}))} />
+              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newItem.price} onChange={e=>setNewItem(v=>({...v,price:e.target.value}))} />
+              <div className="md:col-span-3"><button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const name = newItem.name.trim(); const price = Number(newItem.price||0);
+                if (!name) return;
+                const next = [...items, { name, price: Math.max(0, price) }];
+                setItems(next); await saveShop(next, roles);
+                setNewItem({ name:'', price:'' });
+              }}>Ajouter</button></div>
+            </div>
+            <div className="space-y-2">
+              {items.map((it, idx)=> (
+                <div key={idx} className="grid md:grid-cols-6 gap-2 items-center subcard">
+                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 md:col-span-2" value={it.name} onChange={e=>{
+                    const v = e.target.value; setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], name: v}; return n; });
+                  }} />
+                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={it.price} onChange={e=>{
+                    const v = Number(e.target.value||0); setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
+                  }} />
+                  <div className="md:col-span-2"></div>
+                  <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                    const next = items.filter((_,i)=>i!==idx); setItems(next); await saveShop(next, roles);
+                  }}>Suppr</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subTab==='roles' && (
+        <div className="panel">
+          <div className="panel-header"><span className="pill pill-accent">Rôles</span></div>
+          <div className="space-y-2">
+            <div className="grid md:grid-cols-4 gap-2 subcard">
+              <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={newRole.roleId} onChange={e=>setNewRole(v=>({...v,roleId:e.target.value}))}>
+                <option value="">— Rôle —</option>
+                {rolesMeta.map((r:any)=>(<option key={r.id} value={r.id}>{r.name}</option>))}
+              </select>
+              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newRole.price} onChange={e=>setNewRole(v=>({...v,price:e.target.value}))} />
+              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Durée (jours, 0=permanent)" value={newRole.durationDays} onChange={e=>setNewRole(v=>({...v,durationDays:e.target.value}))} />
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+                const roleId = newRole.roleId.trim(); const price = Number(newRole.price||0); const durationDays = Math.max(0, Number(newRole.durationDays||0));
+                if (!roleId) return;
+                if (roles.some(r=>String(r.roleId)===roleId && Number(r.durationDays||0)===durationDays)) return alert('Déjà présent');
+                const next = [...roles, { roleId, price: Math.max(0, price), durationDays }];
+                setRoles(next); await saveShop(items, next);
+                setNewRole({ roleId:'', price:'', durationDays:'' });
+              }}>Ajouter</button>
+            </div>
+            <div className="space-y-2">
+              {roles.map((r, idx)=> (
+                <div key={r.roleId+':'+(r.durationDays||0)} className="grid md:grid-cols-6 gap-2 items-center subcard">
+                  <div className="text-white/80 md:col-span-2 truncate">{(rolesMeta.find((x:any)=>x.id===r.roleId)?.name)||r.roleId}</div>
+                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.price} onChange={e=>{
+                    const v = Number(e.target.value||0); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
+                  }} />
+                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.durationDays} onChange={e=>{
+                    const v = Math.max(0, Number(e.target.value||0)); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], durationDays: v}; return n; });
+                  }} />
+                  <div className="md:col-span-1"></div>
+                  <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                    const next = roles.filter((_,i)=>i!==idx); setRoles(next); await saveShop(items, next);
+                  }}>Suppr</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subTab==='suites' && (
+        <SuitesEditor />
+      )}
     </div>
   );
 }
@@ -1401,7 +1509,7 @@ function PhrasesZonesEditor({ actKey, actionsList }: { actKey: string; actionsLi
           </div>
         ))}
       </div>
-      <div><button className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={saveAll}>Enregistrer</button></div>
+      <div><button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={saveAll}>Enregistrer</button></div>
     </div>
   );
 }
@@ -1443,7 +1551,7 @@ function SuitesEditor() {
             <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 w-full" value={month as any} onChange={e=>setMonth(e.target.value===''?'':Number(e.target.value))} />
           </label>
         </div>
-        <div className="mt-3"><button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+        <div className="mt-3"><button type="button" className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
           const prices:any = {};
           if (day !== '') prices.day = Number(day);
           if (week !== '') prices.week = Number(week);
@@ -1476,10 +1584,10 @@ function KarmaEditor() {
           <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="condition (ex: charm > 50)" value={String(r.condition||'')} onChange={e=>setList((prev:any)=>{ const n=[...prev]; n[idx]={...n[idx], condition:e.target.value}; return n; })} />
           <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="percent (ex: -10)" value={String(r.percent??'')} onChange={e=>setList((prev:any)=>{ const n=[...prev]; n[idx]={...n[idx], percent:e.target.value}; return n; })} />
           <div></div>
-          <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>prev.filter((_:any,i:number)=>i!==idx))}>Suppr</button>
+          <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>prev.filter((_:any,i:number)=>i!==idx))}>Suppr</button>
         </div>
       ))}
-      <button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>[...prev, { condition:'', percent: 0 }])}>Ajouter</button>
+      <button type="button" className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>[...prev, { condition:'', percent: 0 }])}>Ajouter</button>
     </div>
   );
   return (
@@ -1496,7 +1604,7 @@ function KarmaEditor() {
         <div className="panel-header"><span className="pill pill-primary">Karma — Grants</span></div>
         <Row list={grants} setList={setGrants as any} placeholder="condition" />
       </div>
-      <div><button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+      <div><button type="button" className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
         const payload = {
           shop: shop.map((r:any)=>({ condition:String(r.condition||''), percent: Number(r.percent||0) })),
           actions: actions.map((r:any)=>({ condition:String(r.condition||''), percent: Number(r.percent||0) })),

@@ -21,12 +21,8 @@
 .pill {
   @apply inline-block px-2 py-1 rounded-full text-xs border;
 }
-.pill-primary {
-  @apply border-purple-400/40 text-purple-200 bg-purple-500/10;
-}
-.pill-accent {
-  @apply border-cyan-400/40 text-cyan-200 bg-cyan-500/10;
-}
+.pill-primary { border-color: var(--panel-gold) !important; color: #fff !important; background-color: rgba(239, 68, 68, 0.28) !important; }
+.pill-accent { border-color: var(--panel-gold) !important; color: #fff !important; background-color: rgba(239, 68, 68, 0.28) !important; }
 
 /* Panel grouping */
 .panel {
