@@ -71,5 +71,5 @@ body {
 }
 
 .bg-card\/80 { background-color: transparent !important; }
-.bg-white\/5 { background-color: transparent !important; }
-.border-white\/10 { border-color: rgba(255, 255, 255, 0.25); }
+.bg-white\/5 { background-color: rgba(239, 68, 68, 0.28) !important; }
+.border-white\/10 { border-color: rgba(255, 215, 0, 0.9) !important; border-width: 2px; }
