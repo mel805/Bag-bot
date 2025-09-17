@@ -68,6 +68,7 @@ type ApiState = {
   saveTickets: (payload: any) => Promise<boolean>;
   saveBooster: (payload: any) => Promise<boolean>;
   saveEconomySuites: (categoryId: string, prices: { day?: number; week?: number; month?: number }) => Promise<boolean>;
+  saveKarmaModifiers: (mods: { shop?: any[]; actions?: any[]; grants?: any[] }) => Promise<boolean>;
 };
 
 export const useApi = create<ApiState>((set, get) => ({
@@ -279,6 +280,16 @@ export const useApi = create<ApiState>((set, get) => ({
       const payload:any = { suites: {} };
       if (categoryId) payload.suites.categoryId = categoryId;
       if (prices && typeof prices === 'object') payload.suites.prices = prices;
+      const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!res.ok) return false; await get().fetchAll(); return true;
+    } catch { return false; }
+  }
+  , saveKarmaModifiers: async (mods) => {
+    try {
+      const payload:any = { karmaModifiers: {} };
+      if (Array.isArray(mods.shop)) payload.karmaModifiers.shop = mods.shop;
+      if (Array.isArray(mods.actions)) payload.karmaModifiers.actions = mods.actions;
+      if (Array.isArray(mods.grants)) payload.karmaModifiers.grants = mods.grants;
       const res = await fetch(withKey('/api/configs/economy'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       if (!res.ok) return false; await get().fetchAll(); return true;
     } catch { return false; }

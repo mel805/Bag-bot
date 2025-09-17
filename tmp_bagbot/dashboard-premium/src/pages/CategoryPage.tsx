@@ -568,7 +568,7 @@ export default function CategoryPage() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-3">
+            <div className="grid md:grid-cols-2 gap-3 subcard">
               <div className="panel">
                 <div className="panel-header">
                   <span className="pill pill-accent">Argent</span>
@@ -688,14 +688,7 @@ export default function CategoryPage() {
             </div>
           </div>
         )}
-        {(cat==='economie' || cat==='economy') && view==='karma' && (
-          <div className="space-y-3">
-            <div className="panel">
-              <div className="panel-header"><span className="pill pill-primary">Karma — paramètres globaux</span></div>
-              <div className="text-white/70">Ajustez les types et deltas via l’onglet Actions pour chaque action. Une vue globale viendra ensuite.</div>
-            </div>
-          </div>
-        )}
+        {(cat==='economie' || cat==='economy') && view==='karma' && (<KarmaEditor />)}
         {(cat==='economie' || cat==='economy') && view==='boutique' && (
           <ShopEditor />
         )}
@@ -1460,6 +1453,59 @@ function SuitesEditor() {
           if (ok) await fetchAll();
         }}>Enregistrer Suites</button></div>
       </div>
+    </div>
+  );
+}
+
+function KarmaEditor() {
+  const { configs, fetchAll } = useApi();
+  const { saveKarmaModifiers } = (useApi.getState() as any);
+  const [shop, setShop] = React.useState<any[]>([]);
+  const [actions, setActions] = React.useState<any[]>([]);
+  const [grants, setGrants] = React.useState<any[]>([]);
+  React.useEffect(()=>{
+    const km = configs?.economy?.karmaModifiers || { shop: [], actions: [], grants: [] };
+    setShop(Array.isArray(km.shop) ? km.shop : []);
+    setActions(Array.isArray(km.actions) ? km.actions : []);
+    setGrants(Array.isArray(km.grants) ? km.grants : []);
+  }, [configs]);
+  const Row = ({ list, setList, placeholder }: { list: any[]; setList: (fn: any)=>void; placeholder: string }) => (
+    <div className="space-y-2">
+      {list.map((r:any, idx:number)=> (
+        <div key={idx} className="grid md:grid-cols-4 gap-2 items-center subcard">
+          <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="condition (ex: charm > 50)" value={String(r.condition||'')} onChange={e=>setList((prev:any)=>{ const n=[...prev]; n[idx]={...n[idx], condition:e.target.value}; return n; })} />
+          <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="percent (ex: -10)" value={String(r.percent??'')} onChange={e=>setList((prev:any)=>{ const n=[...prev]; n[idx]={...n[idx], percent:e.target.value}; return n; })} />
+          <div></div>
+          <button className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>prev.filter((_:any,i:number)=>i!==idx))}>Suppr</button>
+        </div>
+      ))}
+      <button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>[...prev, { condition:'', percent: 0 }])}>Ajouter</button>
+    </div>
+  );
+  return (
+    <div className="space-y-3">
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-primary">Karma — Boutique</span></div>
+        <Row list={shop} setList={setShop as any} placeholder="condition" />
+      </div>
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-accent">Karma — Actions</span></div>
+        <Row list={actions} setList={setActions as any} placeholder="condition" />
+      </div>
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-primary">Karma — Grants</span></div>
+        <Row list={grants} setList={setGrants as any} placeholder="condition" />
+      </div>
+      <div><button className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+        const payload = {
+          shop: shop.map((r:any)=>({ condition:String(r.condition||''), percent: Number(r.percent||0) })),
+          actions: actions.map((r:any)=>({ condition:String(r.condition||''), percent: Number(r.percent||0) })),
+          grants: grants.map((r:any)=>({ condition:String(r.condition||''), percent: Number(r.percent||0) })),
+        };
+        if(!confirm('Confirmer la sauvegarde des modificateurs de karma ?')) return;
+        const ok = await saveKarmaModifiers(payload);
+        if (ok) await fetchAll();
+      }}>Sauvegarder Karma</button></div>
     </div>
   );
 }

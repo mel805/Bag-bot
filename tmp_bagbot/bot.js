@@ -1433,6 +1433,15 @@ function startKeepAliveServer() {
                   }
                   next.suites = suites;
                 }
+                // Karma modifiers save (shop/actions/grants)
+                if (data && data.karmaModifiers && typeof data.karmaModifiers === 'object') {
+                  const km = { ...(eco.karmaModifiers||{ shop: [], actions: [], grants: [] }) };
+                  const src = data.karmaModifiers || {};
+                  if (Array.isArray(src.shop)) km.shop = src.shop;
+                  if (Array.isArray(src.actions)) km.actions = src.actions;
+                  if (Array.isArray(src.grants)) km.grants = src.grants;
+                  next.karmaModifiers = km;
+                }
                 // Actions config/messages/gifs update
                 if (data && data.action && typeof data.action === 'string') {
                   const normalizeActionKey = (k) => {
