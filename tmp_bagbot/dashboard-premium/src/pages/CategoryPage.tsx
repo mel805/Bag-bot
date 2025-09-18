@@ -657,22 +657,6 @@ export default function CategoryPage() {
                 <input type="file" accept="image/gif,video/*,image/*" className="mt-2 text-white/70" multiple onChange={async e=>{ const files=Array.from(e.target.files||[]); if(!files.length) return; let urls: string[] = []; for (const f of files) { const fr=new FileReader(); await new Promise<void>(res=>{ fr.onloadend=()=>res(); fr.readAsDataURL(f); }); const dataUrl=String(fr.result||''); if (!dataUrl.startsWith('data:')) { alert(`Fichier invalide: ${f.name}`); continue; } const url=await uploadBase64(f.name, dataUrl); if (url) urls.push(url); else alert(`Échec upload: ${f.name}`); } const merged = [...gifFail.split('\n').map(s=>s.trim()).filter(Boolean), ...urls]; setGifFail(Array.from(new Set(merged)).join('\n')); const payload:any={ action: actKey, gifs: {} }; payload.gifs.fail = Array.from(new Set(merged)); await saveEconomyAction(actKey, payload); }} />
               </label>
             </div>
-            <div className="text-white/70 font-medium mt-2">Aperçu GIFs — Succès</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
-                <GifPreview key={'gs'+idx} url={u} onDelete={()=>{
-                  setGifSuccess(gifSuccess.split('\n').map(s=>s.trim()).filter(Boolean).filter((x:string)=>x!==u).join('\n'));
-                }} />
-              ))}
-            </div>
-            <div className="text-white/70 font-medium mt-2">Aperçu GIFs — Échec</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {gifFail.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8).map((u,idx)=>(
-                <GifPreview key={'gf'+idx} url={u} onDelete={()=>{
-                  setGifFail(gifFail.split('\n').map(s=>s.trim()).filter(Boolean).filter((x:string)=>x!==u).join('\n'));
-                }} />
-              ))}
-            </div>
             <div className="mt-3">
               <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
                 const payload:any = { action: actKey, gifs: {} };
@@ -1249,11 +1233,8 @@ function ShopEditor() {
 function BoutiqueEditor() {
   const { configs, fetchAll } = useApi();
   const { saveEconomyAction } = (useApi.getState() as any);
-  const [subTab, setSubTab] = React.useState<'articles'|'roles'|'suites'>('articles');
-  // Articles state
   const [items, setItems] = React.useState<{ name: string; price: number }[]>([]);
   const [newItem, setNewItem] = React.useState<{ name: string; price: string }>({ name: '', price: '' });
-  // Roles state
   const [roles, setRoles] = React.useState<{ roleId: string; price: number; durationDays: number }[]>([]);
   const [newRole, setNewRole] = React.useState<{ roleId: string; price: string; durationDays: string }>({ roleId: '', price: '', durationDays: '' });
   const rolesMeta = useApi((s:any)=>s.meta?.roles||[]);
@@ -1269,91 +1250,79 @@ function BoutiqueEditor() {
   };
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <button type="button" className={`px-3 py-2 rounded-xl border tab-gold ${subTab==='articles'?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`} onClick={()=>setSubTab('articles')}>Articles</button>
-        <button type="button" className={`px-3 py-2 rounded-xl border tab-gold ${subTab==='roles'?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`} onClick={()=>setSubTab('roles')}>Rôles</button>
-        <button type="button" className={`px-3 py-2 rounded-xl border tab-gold ${subTab==='suites'?'bg-red-600/20 text-white':'bg-red-600/10 text-white/80'}`} onClick={()=>setSubTab('suites')}>Suites privées</button>
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-primary">Articles</span></div>
+        <div className="space-y-2">
+          <div className="grid md:grid-cols-2 gap-2 subcard">
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Nom" value={newItem.name} onChange={e=>setNewItem(v=>({...v,name:e.target.value}))} />
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newItem.price} onChange={e=>setNewItem(v=>({...v,price:e.target.value}))} />
+            <div className="md:col-span-3"><button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              const name = newItem.name.trim(); const price = Number(newItem.price||0);
+              if (!name) return;
+              const next = [...items, { name, price: Math.max(0, price) }];
+              setItems(next); await saveShop(next, roles);
+              setNewItem({ name:'', price:'' });
+            }}>Ajouter</button></div>
+          </div>
+          <div className="space-y-2">
+            {items.map((it, idx)=> (
+              <div key={idx} className="grid md:grid-cols-6 gap-2 items-center subcard">
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 md:col-span-2" value={it.name} onChange={e=>{
+                  const v = e.target.value; setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], name: v}; return n; });
+                }} />
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={it.price} onChange={e=>{
+                  const v = Number(e.target.value||0); setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
+                }} />
+                <div className="md:col-span-2"></div>
+                <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                  const next = items.filter((_,i)=>i!==idx); setItems(next); await saveShop(next, roles);
+                }}>Suppr</button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {subTab==='articles' && (
-        <div className="panel">
-          <div className="panel-header"><span className="pill pill-primary">Articles</span></div>
+      <div className="panel">
+        <div className="panel-header"><span className="pill pill-accent">Rôles</span></div>
+        <div className="space-y-2">
+          <div className="grid md:grid-cols-4 gap-2 subcard">
+            <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={newRole.roleId} onChange={e=>setNewRole(v=>({...v,roleId:e.target.value}))}>
+              <option value="">— Rôle —</option>
+              {rolesMeta.map((r:any)=>(<option key={r.id} value={r.id}>{r.name}</option>))}
+            </select>
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newRole.price} onChange={e=>setNewRole(v=>({...v,price:e.target.value}))} />
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Durée (jours, 0=permanent)" value={newRole.durationDays} onChange={e=>setNewRole(v=>({...v,durationDays:e.target.value}))} />
+            <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
+              const roleId = newRole.roleId.trim(); const price = Number(newRole.price||0); const durationDays = Math.max(0, Number(newRole.durationDays||0));
+              if (!roleId) return;
+              if (roles.some(r=>String(r.roleId)===roleId && Number(r.durationDays||0)===durationDays)) return alert('Déjà présent');
+              const next = [...roles, { roleId, price: Math.max(0, price), durationDays }];
+              setRoles(next); await saveShop(items, next);
+              setNewRole({ roleId:'', price:'', durationDays:'' });
+            }}>Ajouter</button>
+          </div>
           <div className="space-y-2">
-            <div className="grid md:grid-cols-2 gap-2 subcard">
-              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Nom" value={newItem.name} onChange={e=>setNewItem(v=>({...v,name:e.target.value}))} />
-              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newItem.price} onChange={e=>setNewItem(v=>({...v,price:e.target.value}))} />
-              <div className="md:col-span-3"><button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
-                const name = newItem.name.trim(); const price = Number(newItem.price||0);
-                if (!name) return;
-                const next = [...items, { name, price: Math.max(0, price) }];
-                setItems(next); await saveShop(next, roles);
-                setNewItem({ name:'', price:'' });
-              }}>Ajouter</button></div>
-            </div>
-            <div className="space-y-2">
-              {items.map((it, idx)=> (
-                <div key={idx} className="grid md:grid-cols-6 gap-2 items-center subcard">
-                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2 md:col-span-2" value={it.name} onChange={e=>{
-                    const v = e.target.value; setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], name: v}; return n; });
-                  }} />
-                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={it.price} onChange={e=>{
-                    const v = Number(e.target.value||0); setItems(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
-                  }} />
-                  <div className="md:col-span-2"></div>
-                  <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
-                    const next = items.filter((_,i)=>i!==idx); setItems(next); await saveShop(next, roles);
-                  }}>Suppr</button>
-                </div>
-              ))}
-            </div>
+            {roles.map((r, idx)=> (
+              <div key={r.roleId+':'+(r.durationDays||0)} className="grid md:grid-cols-6 gap-2 items-center subcard">
+                <div className="text-white/80 md:col-span-2 truncate">{(rolesMeta.find((x:any)=>x.id===r.roleId)?.name)||r.roleId}</div>
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.price} onChange={e=>{
+                  const v = Number(e.target.value||0); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
+                }} />
+                <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.durationDays} onChange={e=>{
+                  const v = Math.max(0, Number(e.target.value||0)); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], durationDays: v}; return n; });
+                }} />
+                <div className="md:col-span-1"></div>
+                <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
+                  const next = roles.filter((_,i)=>i!==idx); setRoles(next); await saveShop(items, next);
+                }}>Suppr</button>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
 
-      {subTab==='roles' && (
-        <div className="panel">
-          <div className="panel-header"><span className="pill pill-accent">Rôles</span></div>
-          <div className="space-y-2">
-            <div className="grid md:grid-cols-4 gap-2 subcard">
-              <select className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={newRole.roleId} onChange={e=>setNewRole(v=>({...v,roleId:e.target.value}))}>
-                <option value="">— Rôle —</option>
-                {rolesMeta.map((r:any)=>(<option key={r.id} value={r.id}>{r.name}</option>))}
-              </select>
-              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Prix" value={newRole.price} onChange={e=>setNewRole(v=>({...v,price:e.target.value}))} />
-              <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="Durée (jours, 0=permanent)" value={newRole.durationDays} onChange={e=>setNewRole(v=>({...v,durationDays:e.target.value}))} />
-              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={async()=>{
-                const roleId = newRole.roleId.trim(); const price = Number(newRole.price||0); const durationDays = Math.max(0, Number(newRole.durationDays||0));
-                if (!roleId) return;
-                if (roles.some(r=>String(r.roleId)===roleId && Number(r.durationDays||0)===durationDays)) return alert('Déjà présent');
-                const next = [...roles, { roleId, price: Math.max(0, price), durationDays }];
-                setRoles(next); await saveShop(items, next);
-                setNewRole({ roleId:'', price:'', durationDays:'' });
-              }}>Ajouter</button>
-            </div>
-            <div className="space-y-2">
-              {roles.map((r, idx)=> (
-                <div key={r.roleId+':'+(r.durationDays||0)} className="grid md:grid-cols-6 gap-2 items-center subcard">
-                  <div className="text-white/80 md:col-span-2 truncate">{(rolesMeta.find((x:any)=>x.id===r.roleId)?.name)||r.roleId}</div>
-                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.price} onChange={e=>{
-                    const v = Number(e.target.value||0); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], price: v}; return n; });
-                  }} />
-                  <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" value={r.durationDays} onChange={e=>{
-                    const v = Math.max(0, Number(e.target.value||0)); setRoles(prev=>{ const n=[...prev]; n[idx]={...n[idx], durationDays: v}; return n; });
-                  }} />
-                  <div className="md:col-span-1"></div>
-                  <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={async()=>{
-                    const next = roles.filter((_,i)=>i!==idx); setRoles(next); await saveShop(items, next);
-                  }}>Suppr</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {subTab==='suites' && (
-        <SuitesEditor />
-      )}
+      <SuitesEditor />
     </div>
   );
 }
@@ -1577,19 +1546,35 @@ function KarmaEditor() {
     setActions(Array.isArray(km.actions) ? km.actions : []);
     setGrants(Array.isArray(km.grants) ? km.grants : []);
   }, [configs]);
-  const Row = ({ list, setList, placeholder }: { list: any[]; setList: (fn: any)=>void; placeholder: string }) => (
-    <div className="space-y-2">
-      {list.map((r:any, idx:number)=> (
-        <div key={idx} className="grid md:grid-cols-4 gap-2 items-center subcard">
-          <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="condition (ex: charm > 50)" value={String(r.condition||'')} onChange={e=>setList((prev:any)=>{ const n=[...prev]; n[idx]={...n[idx], condition:e.target.value}; return n; })} />
-          <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="percent (ex: -10)" value={String(r.percent??'')} onChange={e=>setList((prev:any)=>{ const n=[...prev]; n[idx]={...n[idx], percent:e.target.value}; return n; })} />
-          <div></div>
-          <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>prev.filter((_:any,i:number)=>i!==idx))}>Suppr</button>
-        </div>
-      ))}
-      <button type="button" className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>[...prev, { condition:'', percent: 0 }])}>Ajouter</button>
-    </div>
-  );
+  const Row = ({ list, setList, placeholder }: { list: any[]; setList: (fn: any)=>void; placeholder: string }) => {
+    const [drafts, setDrafts] = React.useState<any[]>([]);
+    React.useEffect(()=>{ setDrafts(list.map(r=>({ ...r }))); }, [list]);
+    const updateField = (idx:number, key:string, value:any) => {
+      setDrafts(prev=>{ const n=[...prev]; n[idx]={...n[idx], [key]: value}; return n; });
+    };
+    return (
+      <div className="space-y-2">
+        {drafts.map((r:any, idx:number)=> (
+          <div key={idx} className="grid md:grid-cols-5 gap-2 items-center subcard">
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="condition (ex: charm > 50)" value={String(r.condition||'')} onChange={e=>updateField(idx,'condition', e.target.value)} />
+            <input className="bg-transparent border border-white/10 rounded-xl px-3 py-2" placeholder="percent (ex: -10)" value={String(r.percent??'')} onChange={e=>updateField(idx,'percent', e.target.value)} />
+            <div className="flex gap-2">
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>{
+                setList((prev:any)=>{
+                  const n=[...prev]; n[idx]={ condition: String(drafts[idx].condition||''), percent: Number(drafts[idx].percent||0) }; return n;
+                });
+              }}>Appliquer</button>
+              <button type="button" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2" onClick={()=>{
+                setDrafts(prev=>prev.map((x,i)=> i===idx ? (list[idx]||x) : x));
+              }}>Annuler</button>
+            </div>
+            <button type="button" className="bg-red-600/20 border border-red-600/30 text-red-200 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>prev.filter((_:any,i:number)=>i!==idx))}>Suppr</button>
+          </div>
+        ))}
+        <button type="button" className="bg-transparent border border-white/10 rounded-xl px-3 py-2" onClick={()=>setList((prev:any)=>[...prev, { condition:'', percent: 0 }])}>Ajouter</button>
+      </div>
+    );
+  };
   return (
     <div className="space-y-3">
       <div className="panel">
