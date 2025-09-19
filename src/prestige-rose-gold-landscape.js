@@ -194,16 +194,36 @@ async function renderPrestigeCardRoseGoldLandscape({
   height = 900,
   xpSinceLevel = 0,
   xpRequiredForNext = 100,
+  texts = {},
+  backgroundUrl,
 }) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Fond sombre + vignette
-  const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, '#0d0b0b');
-  bg.addColorStop(1, '#070606');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
+  // Fond image (optionnel) ou dégradé sombre
+  let drewBg = false;
+  if (backgroundUrl) {
+    try {
+      const src = backgroundUrl.startsWith('file://') ? backgroundUrl.slice(7) : backgroundUrl;
+      const img = await loadImage(src);
+      const ir = img.width / (img.height || 1);
+      const cr = width / height;
+      let dw, dh, dx, dy;
+      if (ir > cr) { dh = height; dw = Math.ceil(dh * ir); dx = Math.floor((width - dw) / 2); dy = 0; }
+      else { dw = width; dh = Math.ceil(dw / ir); dx = 0; dy = Math.floor((height - dh) / 2); }
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.fillStyle = 'rgba(0,0,0,0.58)';
+      ctx.fillRect(0, 0, width, height);
+      drewBg = true;
+    } catch (_) {}
+  }
+  if (!drewBg) {
+    const bg = ctx.createLinearGradient(0, 0, 0, height);
+    bg.addColorStop(0, '#0d0b0b');
+    bg.addColorStop(1, '#070606');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const vign = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/2.2, width/2, height/2, Math.max(width,height));
   vign.addColorStop(0, 'rgba(0,0,0,0)');
@@ -252,7 +272,7 @@ async function renderPrestigeCardRoseGoldLandscape({
   }
   ctx.shadowColor = '#00000080';
   ctx.shadowBlur = 10;
-  await drawTextWithEmoji(ctx, 'PROMOTION DE PRESTIGE', width/2, 72, 'center', 'top', titleSize);
+  await drawTextWithEmoji(ctx, String(texts.title || 'PROMOTION DE PRESTIGE'), width/2, 72, 'center', 'top', titleSize);
   ctx.shadowBlur = 0;
 
   // Bloc central
@@ -273,7 +293,7 @@ async function renderPrestigeCardRoseGoldLandscape({
     // Texte simplifié pour annonce de rôle
     ctx.fillStyle = roseGold(ctx, 0, y, width, 60);
     {
-      const t = 'Félicitations !';
+      const t = String(texts.congrats || 'Félicitations !');
       const sz = fitCentered(ctx, t, y, '800', 72, maxW);
       setSerif(ctx, '800', sz);
       await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
@@ -282,7 +302,7 @@ async function renderPrestigeCardRoseGoldLandscape({
 
     ctx.fillStyle = roseGold(ctx, 0, y, width, 56);
     {
-      const t = 'Tu as obtenue le rôle';
+      const t = String(texts.subtitle || 'Tu as obtenue le rôle');
       const sz = fitCentered(ctx, t, y, '700', 56, maxW);
       setSerif(ctx, '700', sz);
       await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
@@ -291,7 +311,7 @@ async function renderPrestigeCardRoseGoldLandscape({
 
     ctx.fillStyle = roseGold(ctx, 0, y, width, 56);
     {
-      const t = `(${String(lastRole || '—')})`;
+      const t = String(texts.roleLine || `(${String(lastRole || '—')})`);
       const sz = fitCentered(ctx, t, y, '700', 56, maxW);
       setSerif(ctx, '700', sz);
       await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
@@ -301,7 +321,7 @@ async function renderPrestigeCardRoseGoldLandscape({
     // Sous-texte
     ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
     {
-      const t = 'vient de franchir un nouveau cap !';
+      const t = String(texts.subtitle || 'vient de franchir un nouveau cap !');
       const sz = fitCentered(ctx, t, y, '600', 50, maxW);
       setSerif(ctx, '600', sz);
       await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
@@ -311,7 +331,7 @@ async function renderPrestigeCardRoseGoldLandscape({
     // Niveau
     ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
     {
-      const t = `Niveau atteint : ${Number(level || 0)}`;
+      const t = String(texts.levelLine || `Niveau atteint : ${Number(level || 0)}`);
       const sz = fitCentered(ctx, t, y, '700', 58, maxW);
       setSerif(ctx, '700', sz);
       await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
@@ -321,7 +341,7 @@ async function renderPrestigeCardRoseGoldLandscape({
     // Distinction
     ctx.fillStyle = roseGold(ctx, 0, y, width, 50);
     {
-      const t = `Dernière distinction : ${String(lastRole || '—')}`;
+      const t = String(texts.roleLine || `Dernière distinction : ${String(lastRole || '—')}`);
       const sz = fitCentered(ctx, t, y, '700', 58, maxW);
       setSerif(ctx, '700', sz);
       await drawTextWithEmoji(ctx, t, width/2, y, 'center', 'top', sz);
@@ -433,7 +453,7 @@ async function renderPrestigeCardRoseGoldLandscape({
   if (!isRoleAward) {
     ctx.fillStyle = roseGold(ctx, 0, congratsY, width, 40);
     setSerif(ctx, '800', 80);
-    await drawTextWithEmoji(ctx, 'Félicitations !', width/2, congratsY, 'center', 'top', 80);
+    await drawTextWithEmoji(ctx, String(texts.congrats || 'Félicitations !'), width/2, congratsY, 'center', 'top', 80);
   }
 
   // Baseline finale identique à la carte défaut (majuscule + diamants)

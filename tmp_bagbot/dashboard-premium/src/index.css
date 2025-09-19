@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theming refinements */
+:root {
+  --brand-primary: #7c3aed; /* violet-600 */
+  --brand-accent: #06b6d4; /* cyan-500 */
+  --brand-surface: rgba(16, 18, 24, 0.8);
+  --panel-red: rgba(239, 68, 68, 0.28);
+  --panel-gold: rgba(255, 215, 0, 0.9);
+}
+
+.bg-card { background: transparent; }
+.card {
+  @apply rounded-xl border border-white/10 bg-card p-4;
+}
+.section-title {
+  @apply text-white/80 font-semibold mb-1;
+}
+.pill {
+  @apply inline-block px-2 py-1 rounded-full text-xs border;
+}
+.pill-primary { border-color: var(--panel-gold) !important; color: #fff !important; background-color: rgba(239, 68, 68, 0.28) !important; }
+.pill-accent { border-color: var(--panel-gold) !important; color: #fff !important; background-color: rgba(239, 68, 68, 0.28) !important; }
+
+/* Panel grouping */
+.panel {
+  @apply rounded-2xl border border-white/10 p-4 backdrop-blur;
+  background-color: var(--panel-red);
+  border-color: var(--panel-gold);
+  border-width: 2px;
+}
+.panel, .panel * { color: #ffffff !important; }
+.panel ::placeholder { color: rgba(255,255,255,0.75) !important; }
+
+.subcard {
+  @apply rounded-lg border border-white/10 p-2;
+  background-color: var(--panel-red);
+  border-color: var(--panel-gold);
+  border-width: 2px;
+}
+.subcard, .subcard * { color: #ffffff !important; }
+.subcard ::placeholder { color: rgba(255,255,255,0.75) !important; }
+.panel-header {
+  @apply flex items-center gap-2 mb-2;
+  color: #0b0b0b !important;
+}
+.panel-grid {
+  @apply grid md:grid-cols-2 gap-3;
+}
+.panel [class*="border-white/"] { border-color: var(--panel-gold) !important; }
+.panel .text-white\/60 { color: rgba(255,255,255,0.85) !important; }
+.panel .text-white\/70 { color: rgba(255,255,255,0.92) !important; }
+/* Force inner backgrounds to match Boutique red */
+.panel .bg-white\/5, .panel .bg-white\/10, .panel .bg-white\/20, .panel .bg-white\/30,
+.subcard .bg-white\/5, .subcard .bg-white\/10, .subcard .bg-white\/20, .subcard .bg-white\/30 {
+  background-color: var(--panel-red) !important;
+}
+
+/* Gold tab borders for NavLink tabs */
+.tab-gold {
+  border-color: rgba(255, 215, 0, 0.8) !important;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-image: url('https://cdn.discordapp.com/attachments/1408458115283812484/1408497858256179400/file_00000000d78861f4993dddd515f84845.png?ex=68c8f09a&is=68c79f1a&hm=5eb6483a9302bf1b12c608c5caf45d39d3f1b60883ef7e31180f35fdb70002e9&');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+.bg-card\/80 { background-color: transparent !important; }
+.bg-white\/5 { background-color: rgba(239, 68, 68, 0.28) !important; }
+.border-white\/10 { border-color: rgba(255, 215, 0, 0.9) !important; border-width: 2px; }

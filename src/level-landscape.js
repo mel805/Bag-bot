@@ -198,17 +198,40 @@ async function renderLevelCardLandscape({
   height = 900,
   xpSinceLevel = 0,
   xpRequiredForNext = 100,
+  texts = {},
+  backgroundUrl,
 }) {
   console.log('[LevelCard] Génération carte niveau:', { memberName, level, roleName, logoUrl, isCertified, isRoleAward });
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Fond noir luxe + vignette
-  const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, '#121212');
-  bg.addColorStop(1, '#0a0a0a');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
+  // Fond image (optionnel) ou dégradé noir luxe
+  let bgDrawn = false;
+  if (backgroundUrl && typeof backgroundUrl === 'string') {
+    try {
+      const src = backgroundUrl.startsWith('file://') ? backgroundUrl.slice(7) : backgroundUrl;
+      const bgImg = await loadImage(src);
+      // cover
+      const iw = bgImg.width || 1, ih = bgImg.height || 1;
+      const ir = iw / ih;
+      const cr = width / height;
+      let dw, dh, dx, dy;
+      if (ir > cr) { dh = height; dw = Math.ceil(dh * ir); dx = Math.floor((width - dw) / 2); dy = 0; }
+      else { dw = width; dh = Math.ceil(dw / ir); dx = 0; dy = Math.floor((height - dh) / 2); }
+      ctx.drawImage(bgImg, dx, dy, dw, dh);
+      // assombrir
+      ctx.fillStyle = 'rgba(0,0,0,0.58)';
+      ctx.fillRect(0, 0, width, height);
+      bgDrawn = true;
+    } catch (_) { /* fallback below */ }
+  }
+  if (!bgDrawn) {
+    const bg = ctx.createLinearGradient(0, 0, 0, height);
+    bg.addColorStop(0, '#121212');
+    bg.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const vign = ctx.createRadialGradient(width/2, height/2, Math.min(width, height)/3, width/2, height/2, Math.max(width, height));
   vign.addColorStop(0, 'rgba(0,0,0,0)');
@@ -236,7 +259,7 @@ async function renderLevelCardLandscape({
   ctx.fillStyle = goldGradient(ctx, 0, 0, width, 160);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  const baseTitle = isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE PRESTIGE';
+  const baseTitle = texts.title || (isCertified ? 'ANNONCE DE PRESTIGE' : 'ANNONCE DE PRESTIGE');
   const displayedTitle = isCertified ? `👑 ${baseTitle} 👑` : baseTitle;
   // Aligne la taille sur la carte défaut (bleue): départ 100 et marge 260
   let titleSize = 100;
@@ -261,30 +284,30 @@ async function renderLevelCardLandscape({
     // Texte simplifié pour annonce de rôle
     ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
     setFont(ctx, '800 72px');
-    y += fitAndDrawCentered(ctx, 'Félicitations !', y, 800, 72, maxW) + 18;
+    y += fitAndDrawCentered(ctx, String(texts.congrats || 'Félicitations !'), y, 800, 72, maxW) + 18;
 
     ctx.fillStyle = goldGradient(ctx, 0, y, width, 56);
     setFont(ctx, '700 56px');
-    y += fitAndDrawCentered(ctx, 'Tu as obtenue le rôle', y, 700, 56, maxW) + 14;
+    y += fitAndDrawCentered(ctx, String(texts.subtitle || 'Tu as obtenue le rôle'), y, 700, 56, maxW) + 14;
 
     ctx.fillStyle = goldGradient(ctx, 0, y, width, 56);
     setFont(ctx, '700 56px');
-    y += fitAndDrawCentered(ctx, `(${String(roleName || '—')})`, y, 700, 56, maxW) + 24;
+    y += fitAndDrawCentered(ctx, String(texts.roleLine || `(${String(roleName || '—')})`), y, 700, 56, maxW) + 24;
   } else {
     // Sous-texte
     ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
     setFont(ctx, '600 50px');
-    y += fitAndDrawCentered(ctx, 'vient de franchir un nouveau cap !', y, 600, 50, maxW) + 14;
+    y += fitAndDrawCentered(ctx, String(texts.subtitle || 'vient de franchir un nouveau cap !'), y, 600, 50, maxW) + 14;
 
     // Niveau
     ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
     setFont(ctx, '700 58px');
-    y += fitAndDrawCentered(ctx, `Niveau atteint : ${Number(level || 0)}`, y, 700, 58, maxW) + 12;
+    y += fitAndDrawCentered(ctx, String(texts.levelLine || `Niveau atteint : ${Number(level || 0)}`), y, 700, 58, maxW) + 12;
 
     // Rôle obtenu
     ctx.fillStyle = goldGradient(ctx, 0, y, width, 60);
     setFont(ctx, '700 58px');
-    y += fitAndDrawCentered(ctx, `Rôle obtenu : ${String(roleName || '—')}`, y, 700, 58, maxW) + 24;
+    y += fitAndDrawCentered(ctx, String(texts.roleLine || `Rôle obtenu : ${String(roleName || '—')}`), y, 700, 58, maxW) + 24;
   }
 
   // Logo central (bag.png) avec barre de progression circulaire
@@ -393,7 +416,7 @@ async function renderLevelCardLandscape({
   if (!isRoleAward) {
     ctx.fillStyle = goldGradient(ctx, 0, congratsY, width, 50);
     setFont(ctx, '800 80px');
-    ctx.fillText('Félicitations !', width/2, congratsY);
+    ctx.fillText(String(texts.congrats || 'Félicitations !'), width/2, congratsY);
   }
 
   // Baseline / slogan (with Twemoji)
@@ -402,7 +425,7 @@ async function renderLevelCardLandscape({
   let sizePx = 42;
   setFont(ctx, `700 ${sizePx}px`);
   // Même version que la carte défaut bleue
-  const text = '💎 CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES 💎';
+  const text = String(texts.baseline || '💎 CONTINUE TON ASCENSION VERS LES RÉCOMPENSES ULTIMES 💎');
   while (measureTextWithEmoji(ctx, text, sizePx) > width - 180) {
     sizePx -= 2;
     if (sizePx <= 30) break;
